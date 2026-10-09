@@ -34,8 +34,11 @@ class PackagingChecks(unittest.TestCase):
     def test_archive_paths_and_executable_modes(self):
         data=package.tar_bytes([('Applications/Yubenzhe.app/Yubenzhe',b'fixture',0o755)])
         with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as tar:
-            info=tar.getmembers()[0]
+            members=tar.getmembers()
+            self.assertEqual([m.name for m in members if m.isdir()], ['Applications', 'Applications/Yubenzhe.app'])
+            info=tar.getmember('Applications/Yubenzhe.app/Yubenzhe')
             self.assertEqual(info.mode,0o755);self.assertEqual(info.uid,0);self.assertEqual(info.mtime,0)
+            self.assertTrue(all(m.isdir() for m in members[:-1]))
     def test_https_repo_validation(self):
         self.assertEqual(repo.safe_url('https://release.yubenzhe.org/ios/repo'),'https://release.yubenzhe.org/ios/repo/')
         for url in ('http://host/repo','https://u:p@host','https://host?a=b','https://host#hash','https://example.com/repo','https://localhost/','javascript:alert(1)'):

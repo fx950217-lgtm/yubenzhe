@@ -8,6 +8,14 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 def tar_bytes(files):
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w', format=tarfile.USTAR_FORMAT) as archive:
+        # dpkg requires parent directories to be declared before application files.
+        directories = {str(parent) for name, _, _ in files
+                       for parent in pathlib.PurePosixPath(name).parents if str(parent) != '.'}
+        for name in sorted(directories, key=lambda value: (value.count('/'), value)):
+            info = tarfile.TarInfo(name + '/')
+            info.type, info.mode, info.uid, info.gid, info.mtime = tarfile.DIRTYPE, 0o755, 0, 0, 0
+            info.uname, info.gname = 'root', 'wheel'
+            archive.addfile(info)
         for name, data, mode in files:
             info = tarfile.TarInfo(name)
             info.size, info.mode, info.uid, info.gid, info.mtime = len(data), mode, 0, 0, 0
