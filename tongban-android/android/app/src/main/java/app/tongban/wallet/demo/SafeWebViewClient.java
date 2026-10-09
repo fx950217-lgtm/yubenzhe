@@ -37,7 +37,7 @@ final class SafeWebViewClient extends BridgeWebViewClient {
     @Override
     public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         String url = request.getUrl().toString();
-        if ((NavigationPolicy.isLocal(url) && !NavigationPolicy.isPrivateBridgePath(url)) || (!request.isForMainFrame() && NavigationPolicy.isTestnetRpc(url))) {
+        if ((NavigationPolicy.isLocal(url) && !NavigationPolicy.isPrivateBridgePath(url)) || (!request.isForMainFrame() && (NavigationPolicy.isTestnetRpc(url) || NavigationPolicy.isSocialApi(url) || NavigationPolicy.isSocialAvatar(url)))) {
             return super.shouldInterceptRequest(view, request);
         }
         return new WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));

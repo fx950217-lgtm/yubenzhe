@@ -53,16 +53,16 @@ function rememberDraft(id, value) {
   if (text) sessionDrafts.set(id, text); else sessionDrafts.delete(id);
   return text;
 }
-function listScreen(view) { return { type: 'list', view, filter: 'all', search: '', ...sessionLists.get(view) }; }
+function listScreen(view) { return { type: 'list', view, search: '', ...sessionLists.get(view), filter: 'all' }; }
 
 const people = {
-  lin: { id: 'lin', name: '林一', initial: '林', color: 'mint', bio: '慢慢来，比较快。', handle: 'linyi.demo', amount: 28640.82 },
-  ke: { id: 'ke', name: '可可', initial: '可', color: 'purple', bio: '把生活过成喜欢的样子。', handle: 'coco.demo', amount: 12480.00 },
-  zhou: { id: 'zhou', name: '周舟', initial: '周', color: 'peach', bio: '周末一起出去走走。', handle: 'zhouzhou.demo', amount: 8320.50 },
-  xu: { id: 'xu', name: '许知远', initial: '许', color: 'blue', bio: '保持好奇，认真生活。', handle: 'xuzhi.demo', amount: 3860.00 },
-  moon: { id: 'moon', name: '月亮邮递员', initial: '月', color: 'blue', bio: '记录日常，收藏好风景。', handle: 'moon.demo', amount: 168520.30 },
-  ocean: { id: 'ocean', name: '山海', initial: '山', color: 'purple', bio: '在自己的节奏里向前。', handle: 'shanhai.demo', amount: 98620.00 },
-  green: { id: 'green', name: '青柠', initial: '青', color: 'mint', bio: '生活有一点点甜。', handle: 'lime.demo', amount: 56328.16 },
+  lin: { id: 'lin', userId: '48173592', name: '林一', initial: '林', color: 'mint', bio: '慢慢来，比较快。', handle: 'linyi.demo', amount: 28640.82 },
+  ke: { id: 'ke', userId: '76218405', name: '可可', initial: '可', color: 'purple', bio: '把生活过成喜欢的样子。', handle: 'coco.demo', amount: 12480.00 },
+  zhou: { id: 'zhou', userId: '59382714', name: '周舟', initial: '周', color: 'peach', bio: '周末一起出去走走。', handle: 'zhouzhou.demo', amount: 8320.50 },
+  xu: { id: 'xu', userId: '83742659', name: '许知远', initial: '许', color: 'blue', bio: '保持好奇，认真生活。', handle: 'xuzhi.demo', amount: 3860.00 },
+  moon: { id: 'moon', userId: '27594638', name: '月亮邮递员', initial: '月', color: 'blue', bio: '记录日常，收藏好风景。', handle: 'moon.demo', amount: 168520.30 },
+  ocean: { id: 'ocean', userId: '94628517', name: '山海', initial: '山', color: 'purple', bio: '在自己的节奏里向前。', handle: 'shanhai.demo', amount: 98620.00 },
+  green: { id: 'green', userId: '62849173', name: '青柠', initial: '青', color: 'mint', bio: '生活有一点点甜。', handle: 'lime.demo', amount: 56328.16 },
 };
 
 function seed() {
@@ -122,11 +122,15 @@ export function getSocialPeople() {
   const data = readState();
   return Object.values(people).map(person => ({ ...person, name: displayName(data, person.id), originalName: person.name, isFriend: data.friends.includes(person.id), requested: data.outgoing.includes(person.id) }));
 }
+export function normalizeFriendId(value) {
+  const id = String(value || '').trim();
+  if (!/^\d{6,16}$/.test(id)) throw new Error('请输入 6–16 位数字好友 ID');
+  return id;
+}
 export function searchSocialDirectory(query, directory = getSocialPeople()) {
-  const term = String(query || '').trim().toLowerCase().slice(0,80).replace(/^@/,'');
-  return directory.filter(person => person && Object.hasOwn(people, person.id)).filter(person =>
-    [person.name,person.originalName,person.id,person.handle].some(value => String(value || '').toLowerCase().includes(term))
-  ).map(person => ({ ...person }));
+  let id;
+  try { id = normalizeFriendId(query); } catch { return []; }
+  return directory.filter(person => person && Object.hasOwn(people, person.id) && person.userId === id).map(person => ({ ...person }));
 }
 export function getSocialFriends() { return getSocialPeople().filter(person => person.isFriend); }
 export function getSocialShareTargets() {
@@ -134,7 +138,7 @@ export function getSocialShareTargets() {
   return [...data.friends.map(id => ({ id, name: displayName(data, id), type: 'friend', initial: people[id].initial, color: people[id].color })), ...data.groups.map(group => ({ id: group.id, name: group.name, type: 'group', initial: '群', color: group.color }))];
 }
 export function shareMomentToChat(targetId, moment) {
-  const data = readState();
+  const data = readState({ strict: true });
   if (!canChat(data, targetId)) throw new Error('只能分享给已添加的好友或自己的群聊');
   if (!moment || typeof moment.id !== 'string' || typeof moment.author !== 'string' || typeof moment.text !== 'string' || !moment.text.trim()) throw new Error('动态内容无效');
   const share = { id: moment.id.slice(0, 120), author: moment.author.trim().slice(0, 80), text: moment.text.trim().slice(0, 2000) };
@@ -242,7 +246,7 @@ export function mountSocial(container, options = {}) {
   root.setAttribute('aria-label', '本机社交演示');
   container.append(root);
 
-  function ownPerson() { return { id: 'me', name: myProfile?.nickname || '我', initial: myProfile?.avatar || '我', bio: myProfile?.bio || '', color: 'mint' }; }
+  function ownPerson() { return { id: 'me', name: myProfile?.nickname || '我', initial: myProfile?.avatar || '我', bio: myProfile?.bio || '', avatarImage: myProfile?.avatarImage || '', color: 'mint' }; }
   function syncProfile() {
     try { myProfile = getLocalProfile(); profileError = ''; }
     catch (error) { myProfile = null; profileError = error.message; }
@@ -267,10 +271,12 @@ export function mountSocial(container, options = {}) {
     root.style.setProperty('--soc-chat-top', `${viewport.offsetTop}px`);
   }
 
-  function save() {
-    if (storageError) { toast(storageError); return; }
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-    catch { if (!persistenceWarned) { toast('本机存储不可用，本次体验数据不会保留'); persistenceWarned = true; } }
+  function mutateData(change) {
+    if (storageError) throw new Error(storageError);
+    const next = readState({ strict: true });
+    const result = change(next);
+    commitData(next);
+    return result;
   }
   function commitData(next) {
     if (storageError) throw new Error(storageError);
@@ -298,7 +304,7 @@ export function mountSocial(container, options = {}) {
   function avatar(person, size = '', group = false) {
     const p = typeof person === 'string' ? people[person] : person;
     if (!p) return '';
-    return `<span class="soc-avatar soc-${esc(p.color || 'mint')} ${size} ${group ? 'soc-avatar-group' : ''}" aria-hidden="true">${group ? icon('users') : esc(p.initial || p.name.slice(0, 1))}</span>`;
+    return `<span class="soc-avatar soc-${esc(p.color || 'mint')} ${size} ${group ? 'soc-avatar-group' : ''}" aria-hidden="true">${group ? icon('users') : p.avatarImage && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(p.avatarImage) ? `<img src="${esc(p.avatarImage)}" alt=""/>` : esc(p.initial || p.name.slice(0, 1))}</span>`;
   }
   function localBanner(compact = false) { return `<p class="soc-local-notice">${icon('lock')}<span>${compact ? '本机演示 · 消息不会发送给他人' : LOCAL_NOTICE}</span></p>`; }
   function header(title, sub, action = '') {
@@ -311,9 +317,8 @@ export function mountSocial(container, options = {}) {
   function renderQuickMenu() {
     const host = root.querySelector('[data-quick-menu-host]');
     if (host) host.innerHTML = quickMenuOpen ? `<div class="soc-quick-menu" id="soc-quick-menu" role="menu" aria-label="消息快捷菜单">${[
-      ['soc-scan-transfer','transfer','扫码转账'], ['soc-add-friend','addFriend','添加好友'], ['soc-scan','scan','扫一扫'],
-      ['new-conversation','chat','发起聊天'], ['create-group','users','创建群聊'],
-    ].map(([action,symbol,label],index)=>`<button type="button" role="menuitem" tabindex="-1" data-action="${action}" ${index===3?'class="soc-quick-separated"':''}>${icon(symbol)}<span>${label}</span></button>`).join('')}</div>` : '';
+      ['soc-scan','scan','扫一扫'], ['soc-add-friend','addFriend','添加好友'], ['create-group','users','创建群聊'],
+    ].map(([action,symbol,label])=>`<button type="button" role="menuitem" tabindex="-1" data-action="${action}">${icon(symbol)}<span>${label}</span></button>`).join('')}</div>` : '';
     root.querySelector('[data-action="quick-menu"]')?.setAttribute('aria-expanded',String(quickMenuOpen));
   }
   function closeQuickMenu(restoreFocus = false) {
@@ -336,7 +341,7 @@ export function mountSocial(container, options = {}) {
   function groupById(id) { return data.groups.find(g => g.id === id); }
   function conversation(id) { return groupById(id) || personById(id); }
   function lastMessage(id) { const messages = data.chats[id] || []; return messages.at(-1); }
-  function chatPreview(id) { const m = lastMessage(id); if (!m) return '你们已经是好友了，打个招呼吧'; return m.type === 'packet' ? `[演示红包] ${m.packet?.greeting || '一点心意，愿你开心'}` : m.type === 'moment' ? `[好友动态] ${m.share?.author || ''}：${m.share?.text || ''}` : m.type === 'image' ? `[图片] ${m.images.length} 张` : m.type === 'sticker' ? `[表情] ${getSticker(m.stickerId)?.label || ''}` : String(m.text || ''); }
+  function chatPreview(id) { const m = lastMessage(id); if (!m) return groupById(id) ? '群聊已创建，和大家打个招呼吧' : '你们已经是好友了，打个招呼吧'; return m.type === 'packet' ? `[演示红包] ${m.packet?.greeting || '一点心意，愿你开心'}` : m.type === 'moment' ? `[好友动态] ${m.share?.author || ''}：${m.share?.text || ''}` : m.type === 'image' ? `[图片] ${m.images.length} 张` : m.type === 'sticker' ? `[表情] ${getSticker(m.stickerId)?.label || ''}` : String(m.text || ''); }
   function searchMessages(id, query) { const term = String(query || '').trim().toLowerCase(); return (data.chats[id] || []).filter(m => messageSearchText(m).toLowerCase().includes(term)); }
   function highlighted(value, query = screen.chatQuery) {
     const text = String(value || ''), term = String(query || '').trim();
@@ -373,11 +378,13 @@ export function mountSocial(container, options = {}) {
     return `${header('好友', '', buttonIcon('invite', 'plus', '添加好友'))}${localBanner()}${searchBox('搜索我的好友')}<div class="soc-contact-actions"><button data-action="requests"><span class="soc-feature-icon soc-peach">${icon('users')}</span><span><strong>新的朋友</strong><small>${data.incoming.length ? `${data.incoming.length} 条示例好友申请` : '管理好友申请'}</small></span>${data.incoming.length ? `<b class="soc-count">${data.incoming.length}</b>` : icon('chevron')}</button><button data-action="group-list"><span class="soc-feature-icon soc-purple">${icon('chat')}</span><span><strong>我的群聊</strong><small>${data.groups.length} 个熟人小圈子</small></span>${icon('chevron')}</button></div><div class="soc-section-label"><span>我的好友</span><span>${data.friends.length} 位</span></div><div class="soc-list" data-search-results>${contactList()}</div><div class="soc-trust-note">${icon('shield')}<span>双向同意后，才开启对话。</span></div>`;
   }
   function friendDirectoryRows() {
+    if (!screen.friendSearched) return empty('输入好友 ID', '请向好友索取个人资料中的数字 ID。', 'users');
+    if (screen.friendError) return '<p class="soc-form-error" role="alert">' + esc(screen.friendError) + '</p>';
     const list = searchSocialDirectory(screen.friendQuery);
-    return list.length ? list.map(person => `<button type="button" class="soc-directory-person" data-action="profile" data-id="${esc(person.id)}">${avatar(person)}<span><strong>${esc(person.name)}</strong><small>ID：${esc(person.id)} · ${esc(person.handle)}</small></span><span class="soc-directory-status ${person.isFriend?'is-friend':''}">${person.isFriend?'我的好友':person.requested?'等待通过':'查看资料'}${icon('chevron')}</span></button>`).join('') : empty('没有找到示例用户','试试昵称或 ID，例如「可可」或「moon」。','search');
+    return list.length ? list.map(person => `<button type="button" class="soc-directory-person" data-action="profile" data-id="${esc(person.id)}">${avatar(person)}<span><strong>${esc(person.name)}</strong><small>ID：${esc(person.userId)}</small></span><span class="soc-directory-status ${person.isFriend?'is-friend':''}">${person.isFriend?'我的好友':person.requested?'等待通过':'查看资料'}${icon('chevron')}</span></button>`).join('') : empty('未找到这个 ID', '请核对数字是否正确。当前本机体验只能查询示例用户。', 'search');
   }
   function renderAddFriend() {
-    return `<section class="soc-add-friend-page"><header class="soc-subheader">${buttonIcon('back','back','返回')}<h2>添加好友</h2><span></span></header><label class="soc-search">${icon('search')}<input type="search" data-friend-search maxlength="80" value="${esc(screen.friendQuery || '')}" placeholder="搜索昵称或 ID" aria-label="搜索示例好友的昵称或 ID" autocomplete="off"/></label><button class="soc-scan-friend-row" type="button" data-action="soc-scan-friend"><span>${icon('scan')}</span><strong>扫描好友码</strong>${icon('chevron')}</button><p class="soc-directory-note">仅搜索本机示例，暂不支持跨设备添加好友。</p><div class="soc-directory-label"><span>示例目录</span><span data-friend-count role="status">${searchSocialDirectory(screen.friendQuery).length} 位</span></div><div class="soc-directory-list" data-friend-results>${friendDirectoryRows()}</div><p class="soc-directory-footnote">查看资料后可提交申请，对方通过前不能聊天。</p></section>`;
+    return `<section class="soc-add-friend-page"><header class="soc-subheader">${buttonIcon('back','back','返回')}<h2>添加好友</h2><span></span></header><form data-form="friend-lookup" class="soc-friend-lookup"><label class="soc-field-label">好友 ID<input type="text" name="friendId" data-friend-search inputmode="numeric" pattern="[0-9]{6,16}" maxlength="16" value="${esc(screen.friendQuery || '')}" placeholder="输入至少 6 位数字 ID" aria-label="好友 ID" autocomplete="off" required/></label><button type="submit" class="soc-primary soc-full">查找好友</button></form><p class="soc-directory-note">本机体验，好友申请尚未发送给他人。</p><div class="soc-directory-list" data-friend-results aria-live="polite">${friendDirectoryRows()}</div></section>`;
   }
 
   function rankings() {
@@ -676,18 +683,15 @@ export function mountSocial(container, options = {}) {
     }
     else if (action === 'toggle-setting') {
       const key = target.dataset.key;
-      try { setConversationSetting(data, screen.id, key, !data.conversationSettings[screen.id]?.[key]); save(); render(); }
+      try { mutateData(next => setConversationSetting(next, screen.id, key, !next.conversationSettings[screen.id]?.[key])); render(); }
       catch (error) { toast(error.message); }
     }
     else if (action === 'social-wallet') openModal('social-wallet');
     else if (action === 'rank-settings') openModal('rank-settings');
-    else if (action === 'toggle-rank') { data.joinedRank = !data.joinedRank; save(); closeModal(); render(); toast(data.joinedRank ? '参与意向已保存在本机，未上传资产' : '已关闭本机参与意向'); }
+    else if (action === 'toggle-rank') { try { mutateData(next => { next.joinedRank = !next.joinedRank; }); closeModal(); render(); toast(data.joinedRank ? '参与意向已保存在本机，未上传资产' : '已关闭本机参与意向'); } catch (error) { toast(error.message); } }
     else if (action === 'request-friend' && people[id] && !data.friends.includes(id) && !data.outgoing.includes(id)) openModal('request-friend', { id });
     else if (action === 'accept-request' && data.incoming.includes(id)) {
-      data.incoming = data.incoming.filter(p => p !== id);
-      if (!data.friends.includes(id)) data.friends.push(id);
-      data.chats[id] ||= [];
-      save(); render(); toast('已添加示例好友，可以体验聊天了');
+      try { mutateData(next => { if (!next.incoming.includes(id)) throw new Error('申请状态已改变，请重新查看'); next.incoming = next.incoming.filter(p => p !== id); if (!next.friends.includes(id)) next.friends.push(id); next.outgoing = next.outgoing.filter(p => p !== id); next.chats[id] ||= []; }); render(); toast('已添加示例好友，可以体验聊天了'); } catch (error) { toast(error.message); }
     } else if (action === 'chat-details') {
       if (groupById(screen.id)) navigate({ type: 'group-details', id: screen.id });
       else if (data.friends.includes(screen.id)) navigate({ type: 'friend-details', id: screen.id });
@@ -768,22 +772,20 @@ export function mountSocial(container, options = {}) {
       setDraft(''); screen.chatQuery = ''; screen.searchOpen = false;
       render(); root.querySelector('[name=message]')?.focus();
     } else if (form.dataset.form === 'remark' && modal?.type === 'edit-remark') {
-      try { setFriendRemark(data, modal.id, values.get('remark')); save(); closeModal(); render(); toast('好友备注已保存在本机'); }
+      try { mutateData(next => setFriendRemark(next, modal.id, values.get('remark'))); closeModal(); render(); toast('好友备注已保存在本机'); }
       catch (error) { formError(form, error.message); }
     } else if (form.dataset.form === 'group-details' && modal?.type === 'edit-group') {
-      try { updateGroupDetails(data, modal.id, { name: values.get('name'), note: values.get('note') }); save(); closeModal(); render(); toast('群资料已更新'); }
+      try { mutateData(next => updateGroupDetails(next, modal.id, { name: values.get('name'), note: values.get('note') })); closeModal(); render(); toast('群资料已更新'); }
       catch (error) { formError(form, error.message); }
     } else if (form.dataset.form === 'invite-members' && modal?.type === 'invite-members') {
-      try { inviteFriendsToGroup(data, modal.id, values.getAll('members')); save(); closeModal(); render(); toast('好友已加入本机演示群'); }
+      try { mutateData(next => inviteFriendsToGroup(next, modal.id, values.getAll('members'))); closeModal(); render(); toast('好友已加入本机演示群'); }
       catch (error) { formError(form, error.message); }
     } else if (form.dataset.form === 'group') {
       const name = String(values.get('name') || '').trim().slice(0, 24), members = values.getAll('members').filter(id => data.friends.includes(id));
       if (!name) return formError(form, '给群聊起个名字吧。');
       if (!members.length) return formError(form, '至少选择 1 位好友。');
       const id = `group-${uid()}`;
-      data.groups.push({ id, name, members, color: 'mint', note: '和熟悉的人，聊有温度的日常。' });
-      data.chats[id] = [];
-      save(); closeModal(); openChat(id); toast('本机演示群聊已创建');
+      try { mutateData(next => { if (members.some(member => !next.friends.includes(member))) throw new Error('好友关系已改变，请重新选择成员'); next.groups.push({ id, name, members: [...new Set(members)], color: 'purple', note: '' }); next.chats[id] = []; }); closeModal(); openChat(id); toast('本机演示群聊已创建'); } catch (error) { formError(form, error.message); }
     } else if (form.dataset.form === 'request' && modal?.type === 'request-friend' && Object.hasOwn(people, modal.id)) {
       try {
         const next = readState({ strict:true });
@@ -800,8 +802,7 @@ export function mountSocial(container, options = {}) {
     } else if (form.dataset.form === 'post') {
       const value = String(values.get('text') || '').trim().slice(0, 500);
       if (!value) return formError(form, '写一点想分享的日常吧。');
-      data.posts.push({ id: uid(), text: value, time: `本机动态 · ${nowLabel()}` });
-      save(); closeModal(); render(); toast('动态已保存在本机');
+      try { mutateData(next => { next.posts.push({ id: uid(), text: value, time: `本机动态 · ${nowLabel()}` }); }); closeModal(); render(); toast('动态已保存在本机'); } catch (error) { formError(form, error.message); }
     }
   }
   function onKeydown(event) {

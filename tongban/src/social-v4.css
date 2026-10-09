@@ -34,3 +34,5 @@
   body.social-chat-open .soc-message-form{gap:5px}
   body.social-chat-open .soc-local-notice{font-size:10px!important}
 }
+
+.soc-avatar>img{width:100%;height:100%;object-fit:cover;border-radius:inherit}

@@ -1,5 +1,6 @@
 import './mine.css';
-import { getLocalProfile, saveLocalProfile, PROFILE_AVATARS } from './profile-store.js';
+import { getLocalProfile, saveLocalProfile, PROFILE_AVATARS, validateUserId } from './profile-store.js';
+import { prepareProfilePhoto } from './profile-photo.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const paths = {
@@ -16,11 +17,16 @@ const button = (action, label, extra = '') => `<button type="button" class="mine
 const row = (action, name, description, symbol, suffix = '') => `<button type="button" class="mine-row" data-mine-action="${action}"><span class="mine-row-icon">${icon(symbol)}</span><span class="mine-row-copy"><strong>${name}</strong><small>${description}</small></span>${suffix ? `<span class="mine-row-note">${suffix}</span>` : ''}${icon('arrow')}</button>`;
 
 /** Local profile and product navigation only. Wallet authorization stays in app.js. */
-export function mountMine(container, { toast = () => {}, onNavigate = () => {}, onAction = () => {}, getWalletStatus = () => ({}), getDraftCount = () => 0, isNative = false } = {}) {
-  let active = true, view = 'home', profile = null, profileError = false, selectedAvatar = PROFILE_AVATARS[0], homeScroll = 0;
+export function mountMine(container, { toast = () => {}, onNavigate = () => {}, onAction = () => {}, getWalletStatus = () => ({}), getDraftCount = () => 0, isNative = false, profileService = null, processPhoto = prepareProfilePhoto } = {}) {
+  let active = true, view = 'home', profile = null, profileError = false, selectedAvatar = PROFILE_AVATARS[0], selectedPhoto = '', homeScroll = 0, generation = 0, photoTask = 0, photoBusy = false, saving = false;
+  const remote = () => profile?.identityScope === 'server';
+  const avatarContent = (avatar, photo) => photo ? `<img src="${esc(photo)}" alt="个人头像" width="512" height="512">` : esc(avatar);
+  const identity = () => profile ? `<span class="mine-user-id">ID ${esc(profile.userId)}</span><span class="mine-level">Lv. ${esc(profile.level)}</span>${profile.official ? '<span class="mine-official">官方认证</span>' : ''}` : '';
 
   function readProfile() {
-    try { profile = getLocalProfile(); profileError = false; }
+    try { profile = profileService ? profileService.getProfile() : getLocalProfile();
+      if (!profile || typeof profile.then === 'function') throw new Error('资料尚未加载');
+      profileError = false; }
     catch { profile = null; profileError = true; }
   }
   function walletStatus() {
@@ -38,21 +44,21 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     const count = draftCount(), state = walletStatus();
     const unavailable = state.corrupt || state.unavailable || typeof state.exists !== 'boolean' || state.exists && !state.address;
     const walletLabel = unavailable ? '钱包状态暂不可用' : state.exists ? '钱包已创建' : '尚未创建钱包';
-    return `<section class="mine-home-profile"><span class="mine-avatar" aria-hidden="true">${profile ? esc(profile.avatar) : '🌱'}</span><div class="mine-home-profile-copy"><h2>${profile ? esc(profile.nickname) : '个人资料暂不可用'}</h2><p>${profile ? esc(profile.bio || '写一句个人签名') : '原始资料已保留'}</p><span>本机资料</span></div>${button('edit', `${icon('edit')}<span>编辑</span>`, `aria-label="编辑资料" ${profileError ? 'disabled' : ''}`)}</section>${profileError ? `<div class="mine-inline-error" role="alert">本机资料无法读取，请检查存储权限。${button('retry-profile', '重新读取资料')}</div>` : ''}
+    return `<section class="mine-home-profile"><span class="mine-avatar" aria-hidden="true">${profile ? avatarContent(profile.avatar, profile.avatarImage) : '🌱'}</span><div class="mine-home-profile-copy"><h2>${profile ? esc(profile.nickname) : '个人资料暂不可用'}</h2><p>${profile ? esc(profile.bio || '写一句个人签名') : '原始资料已保留'}</p><div class="mine-profile-meta">${identity()}</div><span>${remote() ? '账号资料' : '本机资料 · ID 尚未云端登记'}</span></div>${button('edit', `${icon('edit')}<span>编辑</span>`, `aria-label="编辑资料" ${profileError ? 'disabled' : ''}`)}</section>${profileError ? `<div class="mine-inline-error" role="alert">${profileService ? '账号资料暂不可读，请检查网络后重新连接。' : '本机资料无法读取，请检查存储权限。'}${button('retry-profile', '重新读取资料')}</div>` : ''}
       <button type="button" class="mine-assets-entry" data-mine-action="wallet"><span class="mine-assets-symbol">${icon('wallet')}</span><span class="mine-assets-copy"><strong>我的资产</strong><small>钱包与平台余额</small></span><span class="mine-assets-state ${unavailable ? 'is-unavailable' : ''}">${walletLabel}</span>${icon('arrow')}</button>
       <div class="mine-home-shortcuts"><button type="button" class="mine-home-shortcut mine-mint" data-mine-action="moments"><span class="mine-shortcut-icon">${icon('moments')}</span><span><strong>朋友圈</strong><small>我的动态</small></span>${icon('arrow')}</button><button type="button" class="mine-home-shortcut mine-lilac" data-mine-action="drafts"><span class="mine-shortcut-icon">${icon('draft')}</span><span><strong>草稿</strong><small>${count === '暂不可用' ? '数量暂不可用' : `${count} 份 · 未提交`}</small></span>${icon('arrow')}</button></div>
-      <section class="mine-list mine-home-links" aria-label="个人功能">${row('ai', '我的 AI 工作台', '本地安装与云端进度', 'order')}${row('bill-center', '账单记录', '', 'bill')}${row('security', '安全设置', '', 'shield')}${row('help', '帮助', '', 'help')}${!isNative?row('install', '安装愚笨者', '手机与电脑', 'wallet'):''}</section>
-      <p class="mine-footnote mine-home-footnote">愚笨者 · 0.10.0 · 仅支持 BSC 测试网</p>`;
+      <section class="mine-list mine-home-links" aria-label="个人功能">${row('ai', '我的 AI 工作台', '本地安装与云端进度', 'order')}${row('bill-center', '账单记录', '', 'bill')}${profileService ? row('account-settings', '账号设置', '登录密码与退出账号', 'lock') : ''}${row('security', '安全设置', '', 'shield')}${row('help', '帮助', '', 'help')}${!isNative?row('install', '安装愚笨者', '手机与电脑', 'wallet'):''}</section>
+      <p class="mine-footnote mine-home-footnote">愚笨者 · 0.11.0 · 仅支持 BSC 测试网</p>`;
   }
   function edit() {
-    if (!profile) return `${heading('编辑资料', '仅保存在当前设备')}<div class="mine-info mine-warning" role="alert">资料暂不可用，当前不能覆盖原始资料。</div>${button('retry-profile', '返回并重新读取')}`;
-    return `${heading('编辑资料', '让朋友认出你，也保留自己的风格')}<form class="mine-edit-form mine-panel" data-mine-form="profile"><div class="mine-avatar-preview"><span class="mine-avatar" data-mine-preview aria-hidden="true">${esc(selectedAvatar)}</span><span>选择一个头像<small>预设头像，不上传图片</small></span></div><fieldset class="mine-avatar-fieldset"><legend class="mine-sr-only">选择头像</legend><div class="mine-avatar-options">${PROFILE_AVATARS.map((avatar, index) => `<button type="button" data-mine-action="avatar" data-mine-avatar="${index}" class="mine-avatar-option" aria-label="头像 ${index + 1}：${esc(avatar)}" aria-pressed="${avatar === selectedAvatar}">${esc(avatar)}</button>`).join('')}</div></fieldset><label class="mine-field">昵称 <span>最多 24 个字符</span><input name="nickname" type="text" maxlength="24" required autocomplete="nickname" value="${esc(profile.nickname)}" placeholder="朋友熟悉的名字"></label><label class="mine-field">个人签名 <span>最多 80 个字符</span><textarea name="bio" maxlength="80" rows="3" placeholder="分享一句此刻的心情">${esc(profile.bio)}</textarea></label><div class="mine-readonly"><span>档案标识</span><strong>${esc(profile.localId)}</strong><small>这是本机体验标识，不是注册账号或好友邀请码。</small></div><p class="mine-form-error" role="alert" data-mine-form-error></p><button type="submit" class="mine-primary">保存本机资料</button>${button('home', '取消编辑')}<p class="mine-form-note">只保存昵称、签名和预设头像，不修改钱包地址或密钥。</p></form>`;
+    if (!profile) return `${heading('个人资料', '资料暂不可用')}<div class="mine-info mine-warning" role="alert">资料暂不可用，当前不能覆盖原始资料。</div>${button('retry-profile', '返回并重新读取')}`;
+    return `${heading('个人资料', '让朋友认出你，也保留自己的风格')}<form class="mine-edit-form mine-panel" data-mine-form="profile"><div class="mine-avatar-preview"><span class="mine-avatar" data-mine-preview>${avatarContent(selectedAvatar, selectedPhoto)}</span><div><strong>个人照片</strong><small>自动居中裁成正方形，保存前可预览</small><div class="mine-photo-actions">${button('choose-photo', '选择照片')}${button('remove-photo', '移除照片', `data-mine-remove-photo ${selectedPhoto ? '' : 'disabled'}`)}</div></div></div><input class="mine-sr-only" type="file" data-mine-photo accept="image/jpeg,image/png,image/webp" aria-label="选择个人照片"><p class="mine-photo-status" data-mine-photo-status role="status" aria-live="polite">支持 JPG、PNG、WebP，最大 10 MB；保存时使用压缩头像。</p><fieldset class="mine-avatar-fieldset"><legend>或使用预设头像</legend><div class="mine-avatar-options">${PROFILE_AVATARS.map((avatar, index) => `<button type="button" data-mine-action="avatar" data-mine-avatar="${index}" class="mine-avatar-option" aria-label="头像 ${index + 1}：${esc(avatar)}" aria-pressed="${!selectedPhoto && avatar === selectedAvatar}">${esc(avatar)}</button>`).join('')}</div></fieldset><label class="mine-field">用户名 <span>最多 24 个字符</span><input name="nickname" type="text" maxlength="24" required autocomplete="nickname" value="${esc(profile.nickname)}" placeholder="朋友熟悉的名字"></label><label class="mine-field">用户 ID <span>6–16 位数字</span><input name="userId" type="text" inputmode="numeric" pattern="[0-9]{6,16}" minlength="6" maxlength="16" required autocomplete="off" value="${esc(profile.userId)}" aria-describedby="mine-id-help"></label><div class="mine-id-tools">${button('copy-id', '复制当前 ID')}<small id="mine-id-help">${remote() ? '用于登录和添加好友。靓号由系统保留，保存时检查占用。' : '此 ID 尚未云端登记，不保证与其他用户不重复。'}</small></div>${remote() ? '<label class="mine-field" data-mine-id-password hidden>当前登录密码 <span>修改 ID 时验证</span><input name="currentPassword" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="current-password" placeholder="6 位登录密码"></label>' : ''}<label class="mine-field">个人签名 <span>最多 80 个字符</span><textarea name="bio" maxlength="80" rows="3" placeholder="分享一句此刻的心情">${esc(profile.bio)}</textarea></label><div class="mine-readonly"><span>账号等级与认证</span><strong>Lv. ${esc(profile.level)} · ${profile.official ? '官方认证' : '普通账号'}</strong><small>等级由系统记录，官方标志仅由平台授予。</small></div><p class="mine-form-error" role="alert" data-mine-form-error></p><button type="submit" class="mine-primary" data-mine-save>保存资料</button>${button('home', '取消编辑')}<p class="mine-form-note">${remote() ? '保存到账号后同步到其他已登录设备。' : '当前资料保存在本机。'}取消编辑会放弃本次修改；个人资料不改变钱包地址、助记词或私钥。</p></form>`;
   }
   function security() {
     const state = walletStatus(), unavailable = state.corrupt || state.unavailable || state.exists && !state.address;
     const label = unavailable ? '暂不可读取' : state.exists ? state.unlocked ? '已解锁' : '已锁定' : '尚未创建';
     return `${heading('安全中心', '个人资料与钱包，各自管理')}<section class="mine-security-card"><span class="mine-security-symbol">${icon('shield')}</span><div><span class="mine-eyebrow">自托管钱包</span><h3>${label}</h3><p>${unavailable ? '原始钱包数据不会被覆盖。请保留已有离线备份。' : state.exists ? '本机加密保存，密钥由你自行保管。' : '社交资料可以独立使用；资金操作前再创建测试钱包。'}</p></div></section>
-      <div class="mine-info">本机资料不是线上账号，钱包密码也不是社交登录密码。目前仅支持 BSC 测试网，其他网络与真实资金服务尚未开放。</div>
+      <div class="mine-info">${remote() ? '账号登录和钱包使用独立密码，修改资料不会改变钱包密钥。' : '本机资料尚未登记为线上账号，钱包密码也不是社交登录密码。'}目前仅支持 BSC 测试网，其他网络与真实资金服务尚未开放。</div>
       <section class="mine-section"><div class="mine-section-title"><h3>钱包管理</h3></div><div class="mine-list">${row('wallet', '查看我的钱包', '查看链上资产和平台账户', 'wallet')}${!unavailable ? state.exists ? `${row(state.unlocked ? 'lock' : 'unlock', state.unlocked ? '立即锁定钱包' : '解锁钱包', state.unlocked ? '关闭当前签名会话' : '使用本机钱包密码验证', 'lock')}${row('export', '导出加密备份', '导出受密码保护的 JSON 文件', 'draft')}` : row('create', '创建或恢复测试钱包', '创建后完成助记词备份验证', 'key') : row('help', '查看钱包恢复指引', '先保护原始数据，再确认恢复方式', 'help')}</div><p class="mine-form-note">切到后台或闲置 5 分钟后钱包自动锁定。助记词请离线保存；加密文件与密码分开保管。</p></section>
       <section class="mine-section"><div class="mine-section-title"><h3>当前隐私规则</h3><span>默认隐私规则</span></div><div class="mine-rules"><div>${icon('check')}<span><strong>好友通过后才能私聊</strong><small>同群成员不会自动成为好友</small></span></div><div>${icon('eye')}<span><strong>资产默认隐藏</strong><small>可在资产页面临时展开查看</small></span></div><div>${icon('shield')}<span><strong>不自动公开资产或加入榜单</strong><small>当前榜单使用示例资料</small></span></div></div></section><div class="mine-info mine-warning">愚笨者不会索要助记词或私钥。忘记本机密码时，可通过离线助记词在可信钱包中恢复；请勿导入存有真实资产的钱包。</div>`;
   }
@@ -61,12 +67,12 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   }
   function help() {
     return `${heading('帮助与反馈', '先找到原因，再继续下一步')}<div class="mine-help-banner"><span>${icon('help')}</span><div><h3>需要一点帮助？</h3><p>常见问题的处理方法，都放在这里。</p></div></div><section class="mine-faqs" aria-label="常见问题">
-      <details><summary>AI 本地安装和云端使用有什么区别？</summary><p>本地版在电脑安装 Ollama 与模型，Windows 客户端可检查连接并运行已有本地模型；网页端可整理并导出提示词。云端版在服务器网页提交申请，审核和服务配置完成后使用；可查看任务结果和取消任务。当前使用免费验收额度，不扣平台余额；请勿输入助记词、私钥、钱包密码或敏感个人资料。</p><button type="button" class="mine-text-button" data-mine-action="ai">打开 AI 工作台</button></details><details><summary>手机、电脑和网页的数据会同步吗？</summary><p>社交、钱包和草稿各自保存本机数据，不自动同步。云端 AI 申请和任务保存在服务器，与服务器访问账号关联。安装 App 后需要创建新的测试钱包，或使用你自己的测试钱包助记词恢复。聊天、图片、朋友圈及草稿仍是单机演示；导出的加密备份请单独保管。请勿导入存有真实资产的钱包。</p></details>
-      <details><summary>本机资料和钱包有什么区别？</summary><p>昵称、头像和签名只保存在当前设备，不代表已注册线上账号。钱包管理链上资产，使用独立的本机密码；修改资料不会修改钱包地址。</p></details>
+      <details><summary>AI 本地安装和云端使用有什么区别？</summary><p>本地版在电脑安装 Ollama 与模型，Windows 客户端可检查连接并运行已有本地模型；网页端可整理并导出提示词。云端版在服务器网页提交申请，审核和服务配置完成后使用；可查看任务结果和取消任务。当前使用免费验收额度，不扣平台余额；请勿输入助记词、私钥、钱包密码或敏感个人资料。</p><button type="button" class="mine-text-button" data-mine-action="ai">打开 AI 工作台</button></details><details><summary>手机、电脑和网页的数据会同步吗？</summary><p>${remote() ? '账号资料保存在服务器，登录同一账号后可获取。' : '本机资料尚未与云端账号关联。'}钱包密钥与本机草稿不会自动上传。云端 AI 申请和任务保存在服务器，与服务器访问账号关联。安装 App 后需要创建新的测试钱包，或使用你自己的测试钱包助记词恢复。${remote() ? '好友、群聊、聊天文字和图片随账号同步；朋友圈和发现草稿仍为本机体验。' : '未登录时的体验内容只保存在本机。'}导出的加密备份请单独保管。请勿导入存有真实资产的钱包。</p></details>
+      <details><summary>本机资料和钱包有什么区别？</summary><p>${remote() ? '用户名、ID、头像和签名保存到账号，可在其他设备登录后获取。' : '用户名、ID、头像和签名只保存在当前设备，ID 尚未云端登记。'}钱包管理链上资产，使用独立的本机密码；修改资料不会修改钱包地址。</p></details>
       <details><summary>能使用哪些网络和资产？</summary><p>当前链上功能仅支持 BSC 测试网原生 tBNB。测试币没有实际价值。BSC 主网、其他网络和真实 USDT 充值提现均未开放，请勿转入真实资金。</p><button type="button" class="mine-text-button" data-mine-action="wallet">查看资产页面 ${icon('arrow')}</button></details>
       <details><summary>转账已提交，为什么还没到账？</summary><p>已提交不等于已确认。在账单中心查看最新状态；广播结果不明确时，先核对交易哈希与链上状态，避免重复转账。当前本机记录不代表完整链上收支。</p><button type="button" class="mine-text-button" data-mine-action="bill-center">去账单中心 ${icon('arrow')}</button></details>
       <details><summary>为什么转入、转出余额后金额没变？</summary><p>平台充值、提现和真实资金托管尚未接通。密码验证后只保存未提交草稿，不扣款、不入账。服务接通后也需要重新确认，草稿不会自动执行。</p></details>
-      <details><summary>忘记密码、换手机或卸载 App 怎么办？</summary><p>本机密码不能由平台找回。钱包需使用离线助记词在可信钱包中恢复；当前版本只用于测试，不要导入真实资金钱包。昵称、草稿和演示记录没有云端同步，卸载 App 或清除数据会丢失本机记录。操作前请先保留已有备份。</p><button type="button" class="mine-text-button" data-mine-action="security">打开安全中心 ${icon('arrow')}</button></details>
+      <details><summary>忘记密码、换手机或卸载 App 怎么办？</summary><p>本机密码不能由平台找回。钱包需使用离线助记词在可信钱包中恢复；当前版本只用于测试，不要导入真实资金钱包。${remote() ? '账号资料可再次登录获取；本机草稿和演示记录不会随账号恢复。' : '本机资料、草稿和演示记录没有云端同步。'}卸载 App 或清除数据前，请保留本机记录。操作前请先保留已有备份。</p><button type="button" class="mine-text-button" data-mine-action="security">打开安全中心 ${icon('arrow')}</button></details>
       <details><summary>页面显示存储或网络异常怎么办？</summary><p>先检查网络与浏览器存储权限，再重试读取。不要先清除网站数据，也不要连续重复转账。记录读取失败不代表记录不存在；原始数据不会由错误提示自动覆盖。</p></details></section>
       <section class="mine-support-card"><span class="mine-status-pill">在线支持尚未接通</span><h3>关于问题反馈</h3><p>当前没有在线客服或工单提交功能，页面不会把本机操作显示成已提交反馈。请勿通过任何聊天或反馈发送助记词、私钥和钱包密码。</p></section>`;
   }
@@ -79,9 +85,10 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   function scrollTo(top) { globalThis.window?.scrollTo({ top, behavior: 'instant' }); }
   function open(next) {
     if (view === 'home') homeScroll = globalThis.window?.scrollY || 0;
+    generation++; photoTask++; photoBusy = false; saving = false;
     view = next;
     if (next === 'home') readProfile();
-    if (next === 'edit') selectedAvatar = profile?.avatar || PROFILE_AVATARS[0];
+    if (next === 'edit') { selectedAvatar = profile?.avatar || PROFILE_AVATARS[0]; selectedPhoto = profile?.avatarImage || ''; }
     render(true); scrollTo(next === 'home' ? homeScroll : 0);
   }
   function action(name) {
@@ -94,49 +101,106 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     const target = event.target.closest('[data-mine-action]');
     if (!active || !target || !container.contains(target) || target.disabled) return;
     const name = target.dataset.mineAction;
+    if (saving && ['home', 'edit', 'avatar', 'choose-photo', 'remove-photo'].includes(name)) { toast('资料正在保存，请稍候。'); return; }
     if (['home', 'edit', 'security', 'orders', 'help'].includes(name)) { open(name); return; }
     if (name === 'retry-profile') { open('home'); return; }
     if (name === 'moments') { onNavigate('discover', { route: 'moments', own: true }); return; }
     if (name === 'ai') { onNavigate('discover', { route: 'ai' }); return; }
     if (name === 'drafts') { onNavigate('discover', { route: 'drafts' }); return; }
     if (name === 'wallet') { onNavigate('wallet'); return; }
+    if (name === 'choose-photo' && view === 'edit' && !saving) { container.querySelector('[data-mine-photo]')?.click(); return; }
+    if (name === 'remove-photo' && view === 'edit' && !saving) { photoTask++; photoBusy = false; selectedPhoto = ''; updatePhoto('照片已移除，保存后生效。'); return; }
+    if (name === 'copy-id' && profile) {
+      const copiedId = profile.userId;
+      Promise.resolve().then(() => { if (!globalThis.navigator?.clipboard?.writeText) throw new Error(); return navigator.clipboard.writeText(copiedId); }).then(() => { if (active) toast('用户 ID 已复制'); }, () => { if (active) toast('复制暂不可用，请长按 ID 输入框复制。'); });
+      return;
+    }
     if (name === 'avatar') {
       const value = PROFILE_AVATARS[Number(target.dataset.mineAvatar)];
-      if (view !== 'edit' || !value) return;
-      selectedAvatar = value;
+      if (view !== 'edit' || !value || saving) return;
+      photoTask++; photoBusy = false; selectedAvatar = value; selectedPhoto = '';
+      updatePhoto('预设头像已选择，保存后生效。');
       for (const node of container.querySelectorAll('[data-mine-avatar]')) node.setAttribute('aria-pressed', String(PROFILE_AVATARS[Number(node.dataset.mineAvatar)] === value));
       const preview = container.querySelector('[data-mine-preview]'); if (preview) preview.textContent = value;
       return;
     }
-    if (['bill-center', 'lock', 'unlock', 'export', 'create'].includes(name) || name === 'install' && !isNative) action(name);
+    if (['bill-center', 'lock', 'unlock', 'export', 'create', 'account-settings'].includes(name) || name === 'install' && !isNative) action(name);
   }
-  function onSubmit(event) {
+  function updatePhoto(message) {
+    for (const node of container.querySelectorAll('[data-mine-form] input, [data-mine-form] textarea, [data-mine-form] button, .mine-back')) node.disabled = saving;
+    const preview = container.querySelector('[data-mine-preview]');
+    if (preview) { if (selectedPhoto) preview.innerHTML = avatarContent(selectedAvatar, selectedPhoto); else preview.textContent = selectedAvatar; }
+    for (const node of container.querySelectorAll('[data-mine-avatar]')) node.setAttribute('aria-pressed', String(!selectedPhoto && PROFILE_AVATARS[Number(node.dataset.mineAvatar)] === selectedAvatar));
+    const status = container.querySelector('[data-mine-photo-status]'); if (status) status.textContent = message;
+    const remove = container.querySelector('[data-mine-remove-photo]'); if (remove) remove.disabled = !selectedPhoto || saving;
+    const save = container.querySelector('[data-mine-save]'); if (save) save.disabled = photoBusy || saving;
+  }
+  async function onChange(event) {
+    const input = event.target;
+    if (!active || view !== 'edit' || !container.contains(input) || !input.matches?.('[data-mine-photo]') || saving) return;
+    const file = input.files?.[0]; input.value = '';
+    if (!file) return;
+    const task = ++photoTask, currentGeneration = generation;
+    photoBusy = true; updatePhoto('正在处理照片…');
+    try {
+      const photo = await processPhoto(file);
+      if (!active || view !== 'edit' || currentGeneration !== generation || task !== photoTask) return;
+      selectedPhoto = photo; photoBusy = false; updatePhoto('照片已准备好，点击保存资料后生效。');
+    } catch (error) {
+      if (!active || view !== 'edit' || currentGeneration !== generation || task !== photoTask) return;
+      photoBusy = false; updatePhoto(error instanceof Error ? error.message : '照片处理失败，请重新选择。');
+    }
+  }
+  function onInput(event) {
+    if (view !== 'edit' || event.target.name !== 'userId' || !remote()) return;
+    const section = container.querySelector('[data-mine-id-password]');
+    if (section) {
+      const changed = event.target.value.trim() !== profile.userId;
+      section.hidden = !changed;
+      const input = section.querySelector('input'); if (input) { input.required = changed; if (!changed) input.value = ''; }
+    }
+  }
+  async function onSubmit(event) {
     const form = event.target.closest('form[data-mine-form="profile"]');
     if (!active || !form || !container.contains(form) || view !== 'edit') return;
     event.preventDefault();
-    const error = form.querySelector('[data-mine-form-error]');
-    error.textContent = '';
+    const error = form.querySelector('[data-mine-form-error]'); error.textContent = '';
+    if (saving) return;
+    if (photoBusy) { error.textContent = '照片还在处理中，请稍等。'; return; }
+    const currentGeneration = generation;
     try {
-      const saved = saveLocalProfile({ nickname: form.elements.nickname.value, bio: form.elements.bio.value, avatar: selectedAvatar });
-      // Do not leave the form or claim success before storage confirms the write.
-      profile = saved; profileError = false; view = 'home'; homeScroll = 0; render(true); scrollTo(0); toast('个人资料已保存在本机');
+      const userId = validateUserId(form.elements.userId?.value ?? profile.userId, { allowReserved: (form.elements.userId?.value ?? profile.userId).trim() === profile.userId });
+      const input = { nickname: form.elements.nickname.value, bio: form.elements.bio.value, avatar: selectedAvatar, avatarImage: selectedPhoto, userId, revision: profile.revision };
+      if (remote() && userId !== profile.userId) {
+        input.currentPassword = form.elements.currentPassword?.value || '';
+        if (!/^\d{6}$/.test(input.currentPassword)) throw new Error('修改用户 ID 需要输入当前 6 位登录密码。');
+      }
+      saving = true; updatePhoto('正在保存资料…');
+      const saved = profileService ? await profileService.saveProfile(input) : saveLocalProfile(input);
+      if (!active || view !== 'edit' || generation !== currentGeneration) return;
+      profile = saved; profileError = false; saving = false; view = 'home'; homeScroll = 0; render(true); scrollTo(0); toast(profileService ? '个人资料已保存' : '个人资料已保存在本机');
       action('profile-updated');
     } catch (failure) {
-      error.textContent = failure instanceof Error ? failure.message : '资料没有保存，请稍后重试。';
+      if (!active || view !== 'edit' || generation !== currentGeneration) return;
+      saving = false; updatePhoto(''); error.textContent = failure instanceof Error ? failure.message : '资料没有保存，请稍后重试。';
     }
   }
   const refreshStatus = () => { if (active && view === 'security') render(); };
   readProfile(); render();
   container.addEventListener('click', onClick);
   container.addEventListener('submit', onSubmit);
+  container.addEventListener('change', onChange);
+  container.addEventListener('input', onInput);
   globalThis.window?.addEventListener('tongban:wallet-locked', refreshStatus);
   const cleanup = () => {
-    active = false;
+    active = false; generation++; photoTask++;
     container.removeEventListener('click', onClick);
     container.removeEventListener('submit', onSubmit);
+    container.removeEventListener('change', onChange);
+    container.removeEventListener('input', onInput);
     globalThis.window?.removeEventListener('tongban:wallet-locked', refreshStatus);
   };
-  cleanup.back = () => { if(view==='home')return false;open('home');return true; };
-  cleanup.refresh = () => { if (view !== 'edit') render(); };
+  cleanup.back = () => { if (saving) { toast('资料正在保存，请稍候。'); return true; } if(view==='home')return false;open('home');return true; };
+  cleanup.refresh = () => { if (view !== 'edit') { readProfile(); render(); } };
   return cleanup;
 }

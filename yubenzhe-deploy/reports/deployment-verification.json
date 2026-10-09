@@ -28,8 +28,9 @@
   },
   "frontend": {
     "staged": true,
-    "stagedAt": "2026-10-09T09:58:10.936Z",
-    "consumerConnected": false,
+    "stagedAt": "2026-10-09T10:33:40.295Z",
+    "consumerConnected": true,
+    "socialServiceIncluded": true,
     "cloudAIConnected": true,
     "adminEntry": false
   },

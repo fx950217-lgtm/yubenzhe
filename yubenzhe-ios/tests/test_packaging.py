@@ -1,7 +1,7 @@
 import gzip, importlib.util, io, pathlib, plistlib, struct, sys, tarfile, tempfile, unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from verify_app import macho_ios_arm64, verify_preview_entitlements
+from verify_app import macho_ios_arm64, verify_preview_entitlements, verify_app
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, ROOT / 'scripts' / path)
@@ -54,6 +54,27 @@ class PackagingChecks(unittest.TestCase):
         self.assertEqual(repo.safe_url('https://release.yubenzhe.org/ios/repo'),'https://release.yubenzhe.org/ios/repo/')
         for url in ('http://host/repo','https://u:p@host','https://host?a=b','https://host#hash','https://example.com/repo','https://localhost/','javascript:alert(1)'):
             with self.assertRaises(ValueError):repo.safe_url(url)
+    def test_app_and_build_version_are_checked_before_packaging(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = pathlib.Path(directory)/'Yubenzhe.app'; app.mkdir()
+            info = {'CFBundleIdentifier':'app.yubenzhe.wallet', 'CFBundleShortVersionString':'0.11.0', 'CFBundleVersion':'12', 'CFBundleExecutable':'Yubenzhe'}
+            (app/'Info.plist').write_bytes(plistlib.dumps(info)); (app/'Yubenzhe').write_bytes(self.binary())
+            web = app/'Web'; web.mkdir()
+            for name in ('index.html','app.js','app.css','icon.png','icon.svg','manifest.webmanifest','apple-touch-icon.png'):
+                (web/name).write_bytes(b'fixture')
+            self.assertEqual(verify_app(app, verify_signature=False)['CFBundleVersion'], '12')
+            for key, wrong in (('CFBundleVersion','11'), ('CFBundleShortVersionString','0.10.0')):
+                changed = dict(info); changed[key] = wrong; (app/'Info.plist').write_bytes(plistlib.dumps(changed))
+                with self.assertRaisesRegex(ValueError, 'Unexpected app'): verify_app(app, verify_signature=False)
+    def test_social_csp_keeps_a_fixed_https_api_prefix(self):
+        source = (ROOT/'App/LocalAssetServer.swift').read_text(encoding='utf-8')
+        policy = source.split('let policy = "',1)[1].split('"',1)[0]
+        connect = next(d.strip().split() for d in policy.split(';') if d.strip().startswith('connect-src'))
+        self.assertEqual(connect, ['connect-src', "'self'", 'https://bsc-testnet-dataseed.bnbchain.org', 'https://bsc-testnet.bnbchain.org', 'https://66.42.56.29/api/social/'])
+        images = next(d.strip().split() for d in policy.split(';') if d.strip().startswith('img-src'))
+        self.assertEqual(images, ['img-src', "'self'", 'data:', 'blob:', 'https://66.42.56.29/api/social/avatars/'])
+        self.assertIn("frame-src 'none'", policy)
+        self.assertIn("object-src 'none'", policy)
     def test_project_references_are_resolvable(self):
         with (ROOT/'Yubenzhe.xcodeproj/project.pbxproj').open('rb') as file:data=plistlib.load(file)
         objects=data['objects']
@@ -67,5 +88,12 @@ class PackagingChecks(unittest.TestCase):
         self.assertFalse(info.get('NSAppTransportSecurity',{}).get('NSAllowsArbitraryLoads',False))
         self.assertNotIn('NSMicrophoneUsageDescription',info)
         self.assertEqual(info['CFBundleDisplayName'],'愚笨者')
+        self.assertEqual(info['CFBundleShortVersionString'], '0.11.0')
+        self.assertEqual(info['CFBundleVersion'], '12')
+        for obj in objects.values():
+            settings = obj.get('buildSettings', {})
+            if 'MARKETING_VERSION' in settings:
+                self.assertEqual(settings['MARKETING_VERSION'], '0.11.0')
+                self.assertEqual(settings['CURRENT_PROJECT_VERSION'], '12')
 
 if __name__=='__main__':unittest.main()

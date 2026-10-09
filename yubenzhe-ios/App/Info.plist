@@ -15,15 +15,15 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.10.0</string>
+	<string>0.11.0</string>
 	<key>CFBundleVersion</key>
-	<string>11</string>
+	<string>12</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>你点击扫码后，使用相机识别收款地址或好友码。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>你选择图片后，将图片用于聊天、朋友圈或本机扫码。</string>
+	<string>你选择图片后，将图片用于个人头像、聊天、朋友圈或本机扫码。</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

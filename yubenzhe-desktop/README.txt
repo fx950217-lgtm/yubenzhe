@@ -1,21 +1,21 @@
-愚笨者 Windows 客户端 0.10.0
+愚笨者 Windows 客户端 0.11.0
 
 用途
 独立安装的 Windows x64 桌面客户端。本轮是供团队查看最终界面与服务器联调的内部验收版本，尚未公开上线或提交 Microsoft Store。
-钱包仍仅连接 BSC 测试网；聊天、朋友圈、红包和平台余额属于本机演示数据，不支持真实托管资金或跨设备同步。
+钱包仍仅连接 BSC 测试网；账号、好友、群聊及图片随账号同步；朋友圈、红包和平台余额仍为本机体验，不支持真实托管资金。
 
 安装
-优先运行 yubenzhe-0.10.0-windows-x64-setup.exe。安装到当前用户目录，无需管理员权限。
+优先运行 yubenzhe-0.11.0-windows-x64-setup.exe。安装到当前用户目录，无需管理员权限。
 免安装版解压 ZIP 后运行 Yubenzhe.exe。不要仅从 ZIP 中拖出单个 EXE，其余运行文件也必须保留。
 支持 Windows 10/11 64 位电脑。此构建无 Windows 代码签名证书；请先核对下载来源及 SHA256，并遵循系统安全提示，不要关闭安全防护。
 本轮已完成编译、签名状态/安全边界核验及 21 项测试；已在当前 Windows 电脑安装并启动，安装资源与构建一致。相机、文件导出和本地模型运行仍需完整设备验收。
 
 数据与使用
-本机钱包和聊天数据保存在当前 Windows 用户的愚笨者应用数据中，与网站、安卓以及其他电脑相互独立。
+钱包密钥和发现草稿保存在当前 Windows 用户的应用数据中；账号、好友和消息通过固定 HTTPS 社交 API 同步。
 卸载器保留应用数据，避免误删备份；自行删除应用数据前请先保存加密钱包备份。
 窗口切到后台、最小化、电脑锁屏或休眠时，前端收到锁定事件。摄像头只用于用户发起的扫码，须经过明确授权，不开放麦克风。
 JSON 导出使用系统保存窗口；点击取消不会显示保存成功。图片导入通过浏览器系统文件选择完成。
-客户端不包含后台管理入口，不自动上传助记词、密码、聊天数据或钱包私钥。
+客户端不包含后台管理入口，助记词、钱包密码和私钥不上传；账号登录密码通过 HTTPS 验证，聊天记录存储在社交服务器。
 仅内置已打包的网页资产。后续服务器域名更改不会自动改变钱包或同步数据。
 
 开发与复现
@@ -30,7 +30,7 @@ web-assets-verification.json 记录打包前端文件 SHA256，release-verificat
 
 原生接口
 window.YubenzheDesktop.platform = 'windows'
-window.YubenzheDesktop.version = '0.10.0'
+window.YubenzheDesktop.version = '0.11.0'
 saveJson({filename, mimeType:'application/json', content}) -> Promise<{saved:boolean, method:'desktop'}>
 onBackground(callback) -> unsubscribe 函数
 接口没有任意文件读写、命令执行、process、Node.js 或 Electron 对象。

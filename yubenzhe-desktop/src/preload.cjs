@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('YubenzheDesktop', Object.freeze({
   platform: 'windows',
-  version: '0.10.0',
+  version: '0.11.0',
   localAI: Object.freeze({
     status: () => ipcRenderer.invoke('yubenzhe:local-ai-status'),
     generate: value => ipcRenderer.invoke('yubenzhe:local-ai-generate', { model:value?.model, prompt:value?.prompt, requestId:value?.requestId }),

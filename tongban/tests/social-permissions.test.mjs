@@ -98,3 +98,19 @@ test('strict financial and media reads preserve corrupt records instead of resee
   assert.throws(() => social.readState({ strict: true }), /未覆盖旧记录/);
   assert.equal(JSON.parse(localStorage.getItem(key)).wallets.me, -1);
 });
+
+test('friend lookup accepts exact numeric IDs and never expands short inputs or names', () => {
+ assert.equal(social.normalizeFriendId(' 27594638 '), '27594638');
+ for (const value of ['', '12345', 'moon', '月亮邮递员', '0xdeadbeef', '27594638x', '1'.repeat(21)]) {
+  assert.throws(() => social.normalizeFriendId(value), /数字好友 ID/);
+  assert.deepEqual(social.searchSocialDirectory(value), []);
+ }
+ assert.equal(social.searchSocialDirectory('27594638')[0].id, 'moon');
+ assert.deepEqual(social.searchSocialDirectory('275946'), []);
+});
+
+test('sharing refuses corrupt storage without replacing it with demonstration data', () => {
+ store.set(key, '{broken');
+ assert.throws(() => social.shareMomentToChat('lin', { id: 'm', author: '我', text: '保留旧数据' }), /未覆盖旧记录/);
+ assert.equal(store.get(key), '{broken');
+});

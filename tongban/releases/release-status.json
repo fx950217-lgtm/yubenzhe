@@ -1,6 +1,6 @@
 {
   "name": "愚笨者",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "environment": "public-ui-preview",
   "publiclyLaunched": false,
   "appStorePublished": false,
@@ -8,36 +8,36 @@
   "realFundsSupported": false,
   "walletAndSocialCloudSync": false,
   "android": {
-    "built": true,
-    "versionName": "0.10.0",
-    "versionCode": 10,
+    "built": false,
+    "versionName": "0.11.0",
+    "versionCode": 11,
     "appId": "app.tongban.wallet.demo",
     "signature": "original-preview",
     "signatureSHA256": "3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d",
-    "emulatorLaunchVerified": true,
-    "emulatorUpgradeVerified": true,
+    "emulatorLaunchVerified": false,
+    "emulatorUpgradeVerified": false,
     "deviceVerified": false
   },
   "windows": {
-    "built": true,
-    "version": "0.10.0",
+    "built": false,
+    "version": "0.11.0",
     "architecture": "x64",
     "signed": false,
-    "installedOnWindows": true,
-    "launchVerified": true,
+    "installedOnWindows": false,
+    "launchVerified": false,
     "deviceVerified": false
   },
   "ios": {
     "sourceReady": true,
-    "sourceVersion": "0.10.0",
-    "built": true,
-    "installableDeb": true,
+    "sourceVersion": "0.11.0",
+    "built": false,
+    "installableDeb": false,
     "layout": "rootless",
     "minimumIOS": "15.4",
     "deviceVerified": false,
-    "installedOnDevice": true,
-    "build": 11,
-    "launchVerified": true,
+    "installedOnDevice": false,
+    "build": 12,
+    "launchVerified": false,
     "userScreenConfirmed": false
   },
   "ai": {
@@ -94,5 +94,7 @@
     }
   ],
   "publicPreview": true,
-  "scope": "Approved bright lilac UI and orbit B; social/profile remain local demo. Production accounts, random/custom IDs, reserved IDs, levels and official badges are pending backend integration."
+  "scope": "Independent live accounts, profiles, friends and group messages; discovery and platform balances remain local preview. Standard EVM wallet import and address watching; BSC testnet only.",
+  "socialCloudSync": true,
+  "walletKeyCloudSync": false
 }

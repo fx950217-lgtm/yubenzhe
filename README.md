@@ -1,8 +1,8 @@
 # 愚笨者
 
-熟人社交、测试网钱包和 AI 协作项目。当前网页与客户端源码为 **0.10.0 浅紫公开体验版**，产品账号与多人社交仍待后端接入。
+熟人社交、测试网钱包和 AI 协作项目。当前网页与客户端源码为 **0.11.0 浅紫公开体验版**。新增独立账号、在线好友与群聊，以及标准钱包导入；发现和平台资金流程仍为体验功能。
 
-[打开网页版](https://66.42.56.29/) · [下载 Android 浅紫测试版](https://66.42.56.29/downloads/yubenzhe-0.10.0-android.apk)。Android 沿用原签名，可覆盖升级 0.9.0；Windows 0.10.0 已在当前电脑安装。iOS 0.10.0 build 11 已修复启动卡住，并在 Dopamine iPhone X 安装启动，完整功能验收状态见发布记录。各平台统一从[下载页](https://66.42.56.29/install.html)获取。
+[打开网页版](https://66.42.56.29/) · [下载 Android 浅紫测试版](https://66.42.56.29/downloads/yubenzhe-0.11.0-android.apk)。Android 沿用原签名，可覆盖升级 0.9.0；Windows 0.10.0 已在当前电脑安装。iOS 0.10.0 build 11 已修复启动卡住，并在 Dopamine iPhone X 安装启动，完整功能验收状态见发布记录。各平台统一从[下载页](https://66.42.56.29/install.html)获取。
 
 先读 [项目上下文](PROJECT_CONTEXT.md) 和 [协作约定](AGENTS.md)。详细重建顺序保留在原始 [源码包说明](README.txt)。
 
@@ -14,7 +14,7 @@
 
 | 目录 | 内容 |
 | --- | --- |
-| `tongban` | 手机网页、社交演示、测试网钱包、AI 工作台及测试 |
+| `tongban` | 手机网页、在线社交、测试网钱包、AI 工作台及测试 |
 | `tongban-android` | Android 工程、Gradle wrapper、网页快照 |
 | `yubenzhe-desktop` | Windows/Electron 工程、本地 Ollama 桥 |
 | `yubenzhe-ios` | iOS 源码；仍需 Xcode 编译和设备验证 |

@@ -1,0 +1,16 @@
+CREATE TABLE accounts (id TEXT PRIMARY KEY,user_id TEXT NOT NULL UNIQUE,nickname TEXT NOT NULL,bio TEXT NOT NULL DEFAULT '',avatar TEXT NOT NULL DEFAULT '🌱',avatar_image TEXT NOT NULL DEFAULT '',avatar_key TEXT NOT NULL DEFAULT '',level INTEGER NOT NULL DEFAULT 1 CHECK(level>=1),official INTEGER NOT NULL DEFAULT 0 CHECK(official IN(0,1)),password_salt TEXT NOT NULL,password_hash TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,created_at INTEGER NOT NULL);
+CREATE UNIQUE INDEX accounts_avatar_key ON accounts(avatar_key) WHERE avatar_key<>'';
+CREATE TABLE user_ids (user_id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id));
+CREATE TABLE registrations (request_id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id));
+CREATE TABLE social_sessions (token_hash TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),expires_at INTEGER NOT NULL,created_at INTEGER NOT NULL);
+CREATE INDEX social_sessions_account ON social_sessions(account_id);
+CREATE TABLE social_limits (key TEXT PRIMARY KEY,window_start INTEGER NOT NULL,count INTEGER NOT NULL);
+CREATE TABLE friend_requests (id TEXT PRIMARY KEY,sender TEXT NOT NULL REFERENCES accounts(id),recipient TEXT NOT NULL REFERENCES accounts(id),status TEXT NOT NULL CHECK(status IN('pending','accepted','rejected')),created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,CHECK(sender<>recipient));
+CREATE UNIQUE INDEX pending_friend_request ON friend_requests(sender,recipient) WHERE status='pending';
+CREATE TABLE friendships (a TEXT NOT NULL REFERENCES accounts(id),b TEXT NOT NULL REFERENCES accounts(id),created_at INTEGER NOT NULL,PRIMARY KEY(a,b),CHECK(a<b));
+CREATE TABLE conversations (id TEXT PRIMARY KEY,type TEXT NOT NULL CHECK(type IN('direct','group')),name TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',owner_id TEXT REFERENCES accounts(id),pair_key TEXT UNIQUE,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE conversation_members (conversation_id TEXT NOT NULL REFERENCES conversations(id),account_id TEXT NOT NULL REFERENCES accounts(id),joined_at INTEGER NOT NULL,last_read_id INTEGER NOT NULL DEFAULT 0,history_start_id INTEGER NOT NULL DEFAULT 0,pinned INTEGER NOT NULL DEFAULT 0,muted INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(conversation_id,account_id));
+CREATE TABLE social_media (id TEXT PRIMARY KEY,conversation_id TEXT NOT NULL REFERENCES conversations(id),owner_id TEXT NOT NULL REFERENCES accounts(id),name TEXT NOT NULL,mime TEXT NOT NULL,bytes BLOB NOT NULL,width INTEGER NOT NULL,height INTEGER NOT NULL,created_at INTEGER NOT NULL);
+CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT,conversation_id TEXT NOT NULL REFERENCES conversations(id),sender TEXT NOT NULL REFERENCES accounts(id),client_id TEXT NOT NULL,type TEXT NOT NULL CHECK(type IN('text','image','sticker')),text TEXT NOT NULL DEFAULT '',media_id TEXT REFERENCES social_media(id),sticker TEXT NOT NULL DEFAULT '',created_at INTEGER NOT NULL,UNIQUE(sender,client_id));
+CREATE INDEX messages_conversation ON messages(conversation_id,id);
+CREATE TABLE group_requests (request_id TEXT NOT NULL,owner_account_id TEXT NOT NULL REFERENCES accounts(id),conversation_id TEXT NOT NULL REFERENCES conversations(id),input_digest TEXT NOT NULL,PRIMARY KEY(owner_account_id,request_id));

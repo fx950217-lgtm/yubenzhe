@@ -1,4 +1,8 @@
 import { Wallet, getAddress, formatEther, parseEther, keccak256, toQuantity } from 'ethers';
+import { walletFromMnemonic, walletFromPrivateKey, walletFromKeystore, normalizePublicAddress, validateExpectedAddress } from './wallet-compatibility.js';
+import { requireWatchWallet } from './wallet-watchlist.js';
+export { listWatchWallets, addWatchWallet, removeWatchWallet } from './wallet-watchlist.js';
+export { DEFAULT_DERIVATION_PATH, MAX_KEYSTORE_BYTES, previewMnemonic, previewPrivateKey, previewKeystore } from './wallet-compatibility.js';
 
 // This pilot is deliberately pinned to BSC testnet. There is no mainnet toggle.
 export const NETWORK = Object.freeze({
@@ -149,29 +153,42 @@ export function cancelCreation() {
   if (!session) { clearTimeout(lockTimer); lockTimer = null; }
 }
 
-export async function restoreWallet(phrase, password) {
+async function importWallet(factory, password, options = {}) {
   validatePassword(password);
   if (readVault()) throw fail('此设备已有钱包，未覆盖原有数据。', 'WALLET_EXISTS');
   if (creating) throw fail('钱包正在处理中，请稍候。', 'WALLET_BUSY');
-  if (typeof phrase !== 'string' || phrase.length > 400) throw fail('请输入正确的英文助记词。', 'PHRASE_INVALID');
-  let wallet;
-  try { wallet = Wallet.fromPhrase(phrase.trim().toLowerCase().replace(/\s+/g, ' ')); }
-  catch { throw fail('助记词无效，请检查单词、顺序和数量。', 'PHRASE_INVALID'); }
   creating = true;
+  draft = null;
   const startEpoch = epoch;
   try {
+    const wallet = await factory();
+    if (epoch !== startEpoch) throw fail('导入已取消，请重新开始。', 'CREATION_CANCELLED');
+    validateExpectedAddress(wallet.address, options);
     const encryptedJson = await wallet.encrypt(password);
-    if (epoch !== startEpoch) throw fail('恢复已取消，请重新开始。', 'CREATION_CANCELLED');
+    if (epoch !== startEpoch) throw fail('导入已取消，请重新开始。', 'CREATION_CANCELLED');
     if (readVault()) throw fail('此设备已有钱包，未覆盖原有数据。', 'WALLET_EXISTS');
     persistVault(wallet, encryptedJson);
     session = wallet;
-    draft = null;
     armLock();
     return getWalletState();
   } catch (error) {
-    if (['CREATION_CANCELLED', 'WALLET_EXISTS', 'STORAGE_UNAVAILABLE'].includes(error.code)) throw error;
-    throw fail('恢复失败，请检查助记词后重试。', 'RESTORE_FAILED');
+    if (error.code && /^[\u3400-\u9fff]/.test(error.message || '')) throw error;
+    throw fail('钱包导入失败，请检查输入后重试。', 'RESTORE_FAILED');
   } finally { creating = false; }
+}
+
+// One selected EVM account is imported; this does not synchronize app profiles or
+// discover every account belonging to a mnemonic. No raw secrets are persisted.
+export function restoreWallet(phrase, password, options = {}) {
+  return importWallet(() => walletFromMnemonic(phrase, options), password, options);
+}
+
+export function importPrivateKey(privateKey, password, options = {}) {
+  return importWallet(() => walletFromPrivateKey(privateKey), password, options);
+}
+
+export function importKeystore(json, sourcePassword, password, options = {}) {
+  return importWallet(() => walletFromKeystore(json, sourcePassword), password, options);
 }
 
 async function decrypt(vault, password) {
@@ -289,6 +306,13 @@ export async function getBalance() {
   if (!vault) return '0.0';
   const url = await connectRpc();
   return formatEther(quantity(await rpc(url, 'eth_getBalance', [vault.address, 'latest'])));
+}
+
+// This reads a public chain address only. A watch entry never supplies a signer.
+export async function getWatchBalance(address) {
+  const checked = requireWatchWallet(address);
+  const url = await connectRpc();
+  return formatEther(quantity(await rpc(url, 'eth_getBalance', [checked, 'latest'])));
 }
 
 export async function prepareTransfer(to, amount) {

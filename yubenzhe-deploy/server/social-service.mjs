@@ -1,0 +1,118 @@
+import { randomBytes,randomUUID,randomInt,createHash,scrypt as scryptCallback,timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
+import { fail,fields,text,userId,password,reservedId,AVATARS,imageData } from './social-validation.mjs';
+const scrypt=promisify(scryptCallback),hash=v=>createHash('sha256').update(v).digest('hex');
+const SESSION_AGE=30*86400000;
+export function createSocialService({database,now=()=>Date.now()}){
+ const db=database.raw;let hashing=0;
+ const one=(sql,...p)=>db.prepare(sql).get(...p),all=(sql,...p)=>db.prepare(sql).all(...p),run=(sql,...p)=>db.prepare(sql).run(...p);
+ const transaction=fn=>{db.exec('BEGIN IMMEDIATE');try{const v=fn();db.exec('COMMIT');return v;}catch(e){db.exec('ROLLBACK');throw e;}};
+ function limit(key,max,period){const time=now(),old=one('SELECT * FROM social_limits WHERE key=?',key);if(!old||time-old.window_start>=period){run('INSERT INTO social_limits VALUES(?,?,1) ON CONFLICT(key) DO UPDATE SET window_start=excluded.window_start,count=1',key,time);return;}if(old.count>=max)fail(429,'RATE_LIMITED','操作过于频繁，请稍后再试。');run('UPDATE social_limits SET count=count+1 WHERE key=?',key);}
+ async function derive(value,salt){if(hashing>=2)fail(429,'BUSY','正在处理其他登录，请稍后重试。');hashing++;try{return Buffer.from(await scrypt(value,salt,32,{N:16384,r:8,p:1,maxmem:64*1024*1024}));}finally{hashing--;}}
+ async function verify(account,value){const salt=account?.password_salt||'invalid-account-salt';const actual=await derive(typeof value==='string'?value:'',salt);return Boolean(account)&&timingSafeEqual(actual,Buffer.from(account.password_hash,'hex'));}
+ function profile(account,{full=false}={}){if(!account)return null;return {userId:account.user_id,nickname:account.nickname,bio:account.bio,avatar:account.avatar,avatarImage:full?account.avatar_image:(account.avatar_key?'/api/social/avatars/'+account.avatar_key:''),level:account.level,official:Boolean(account.official),identityScope:'server',revision:account.revision};}
+ const accountById=id=>one('SELECT * FROM accounts WHERE id=?',id),accountByUserId=id=>one('SELECT * FROM accounts WHERE user_id=?',id);
+ function session(account){const token=randomBytes(32).toString('base64url');run('DELETE FROM social_sessions WHERE expires_at<=?',now());run('INSERT INTO social_sessions VALUES(?,?,?,?)',hash(token),account.id,now()+SESSION_AGE,now());run('DELETE FROM social_sessions WHERE account_id=? AND token_hash NOT IN(SELECT token_hash FROM social_sessions WHERE account_id=? ORDER BY created_at DESC,rowid DESC LIMIT 10)',account.id,account.id);return {profile:profile(account,{full:true}),token,expiresAt:now()+SESSION_AGE};}
+ function authenticate(token){if(typeof token!=='string'||!/^[-_A-Za-z0-9]{43}$/.test(token))fail(401,'ACCOUNT_REQUIRED','请登录你的愚笨者账号。');const row=one('SELECT a.* FROM social_sessions s JOIN accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.expires_at>?',hash(token),now());if(!row)fail(401,'ACCOUNT_REQUIRED','登录已失效，请重新输入 ID 和密码。');return row;}
+ function pair(a,b){return [a,b].sort();}
+ function isFriend(a,b){return !!one('SELECT 1 FROM friendships WHERE a=? AND b=?',...pair(a,b));}
+ function requireFriend(a,b){if(!isFriend(a,b))fail(403,'FRIEND_REQUIRED','需要先成为好友。');}
+ function membership(id,account){const row=one('SELECT c.*,m.last_read_id,m.pinned,m.muted,m.joined_at,m.history_start_id FROM conversations c JOIN conversation_members m ON m.conversation_id=c.id WHERE c.id=? AND m.account_id=?',id,account.id);if(!row)fail(404,'CHAT_NOT_FOUND','会话不存在，或你已不在这个群聊中。');return row;}
+ function requireOwner(c,a){if(c.type!=='group'||c.owner_id!==a.id)fail(403,'OWNER_REQUIRED','只有群主可以进行此操作。');}
+ function requireChatCapacity(ids){for(const id of new Set(ids))if(one('SELECT count(*) n FROM conversation_members WHERE account_id=?',id).n>=100)fail(409,'CHAT_LIMIT','成员的会话数量已达 100 个上限。');}
+ function direct(a,b){const key=pair(a,b).join(':');let c=one('SELECT * FROM conversations WHERE pair_key=?',key);if(!c){requireChatCapacity([a,b]);const id=randomUUID(),time=now();run("INSERT INTO conversations(id,type,pair_key,created_at,updated_at) VALUES(?,'direct',?,?,?)",id,key,time,time);for(const member of [a,b])run('INSERT INTO conversation_members(conversation_id,account_id,joined_at) VALUES(?,?,?)',id,member,time);c=one('SELECT * FROM conversations WHERE id=?',id);}return c.id;}
+ function message(row,{summary=false}={}){if(!row)return null;const sender=accountById(row.sender);const value={id:String(row.id),conversationId:row.conversation_id,senderId:sender.user_id,type:row.type,text:row.text,sticker:row.sticker,createdAt:row.created_at};if(row.media_id&&!summary){const media=one('SELECT id,name,mime,width,height,length(bytes) size FROM social_media WHERE id=?',row.media_id);value.image={...media,src:'/api/social/media/'+media.id};}return value;}
+ function getState(a){const friends=all('SELECT a.* FROM accounts a JOIN friendships f ON (f.a=? AND f.b=a.id) OR (f.b=? AND f.a=a.id) ORDER BY a.nickname',a.id,a.id).map(profile);
+ const requestView=r=>({id:r.id,from:profile(accountById(r.sender)),to:profile(accountById(r.recipient)),status:r.status,createdAt:r.created_at});
+ const requests=all("SELECT * FROM friend_requests WHERE recipient=? AND status='pending' ORDER BY created_at DESC",a.id).map(requestView),outgoingRequests=all("SELECT * FROM friend_requests WHERE sender=? AND status='pending' ORDER BY created_at DESC",a.id).map(requestView);
+ const conversations=all('SELECT c.*,m.last_read_id,m.pinned,m.muted,m.joined_at,m.history_start_id FROM conversations c JOIN conversation_members m ON m.conversation_id=c.id WHERE m.account_id=? ORDER BY m.pinned DESC,c.updated_at DESC',a.id).map(c=>{const members=all('SELECT a.* FROM accounts a JOIN conversation_members m ON m.account_id=a.id WHERE m.conversation_id=? ORDER BY m.joined_at',c.id).map(profile);return {id:c.id,membershipRevision:String(c.joined_at)+':'+String(c.history_start_id),historyStartId:c.history_start_id,type:c.type,name:c.type==='direct'?(members.find(p=>p.userId!==a.user_id)?.nickname||'好友'):c.name,note:c.note,members,ownerId:c.owner_id?accountById(c.owner_id)?.user_id:null,lastMessage:message(one('SELECT * FROM messages WHERE conversation_id=? AND id>? ORDER BY id DESC LIMIT 1',c.id,c.history_start_id),{summary:true}),unread:one('SELECT count(*) n FROM messages WHERE conversation_id=? AND id>? AND sender<>?',c.id,Math.max(c.last_read_id,c.history_start_id),a.id).n,pinned:!!c.pinned,muted:!!c.muted,updatedAt:c.updated_at};});
+ return {profile:profile(a,{full:true}),friends,requests,outgoingRequests,conversations};}
+ async function handle({method,path,input={},query={},token='',ip='unknown'}){
+ // Avatar URLs are deliberately shareable opaque image capabilities, unlike
+ // private chat media. A replacement or removal revokes the old URL immediately.
+ if(method==='GET'&&path.startsWith('avatars/')){
+  if(!/^avatars\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(path))fail(404,'AVATAR_NOT_FOUND','头像不存在。');
+  const row=one('SELECT avatar_image FROM accounts WHERE avatar_key=?',path.slice(8));
+  if(!row?.avatar_image)fail(404,'AVATAR_NOT_FOUND','头像不存在。');
+  const image=imageData(row.avatar_image,256*1024);return {binary:image.bytes,mime:image.mime};
+ }
+ if(method==='POST'&&(path==='register'||path==='login')){
+  fields(input,path==='register'?['password','requestId','native']:['userId','password','native']);password(input.password);limit('auth-ip:'+hash(ip),40,900000);
+  if(path==='register'){
+   if(typeof input.requestId!=='string'||!/^[a-f0-9-]{36}$/i.test(input.requestId))fail(400,'INVALID_REQUEST_ID','请刷新页面后重新尝试。');
+   const previous=one('SELECT account_id FROM registrations WHERE request_id=?',input.requestId);
+   if(previous){const account=accountById(previous.account_id);limit('login:'+account.user_id,8,900000);if(!await verify(account,input.password))fail(409,'REGISTRATION_CONFLICT','这次创建已完成，请使用账号 ID 登录。');const latest=accountById(account.id);if(latest.password_hash!==account.password_hash||latest.password_salt!==account.password_salt)fail(409,'ACCOUNT_CHANGED','账号已更新，请重新登录。');run('DELETE FROM social_limits WHERE key=?','login:'+account.user_id);return session(latest);}
+   limit('signup:'+hash(ip),10,3600000);const salt=randomBytes(16).toString('hex'),derived=await derive(input.password,salt);
+   return transaction(()=>{const again=one('SELECT account_id FROM registrations WHERE request_id=?',input.requestId);if(again)fail(409,'REGISTRATION_CONFLICT','账号创建已完成，请重新登录。');let id;for(let i=0;i<100;i++){id=String(randomInt(1000000000,9999999999));if(!reservedId(id)&&!one('SELECT 1 FROM user_ids WHERE user_id=?',id))break;id=null;}if(!id)fail(503,'ID_UNAVAILABLE','暂时无法分配 ID，请稍后重试。');const accountId=randomUUID();run('INSERT INTO accounts(id,user_id,nickname,password_salt,password_hash,created_at) VALUES(?,?,?,?,?,?)',accountId,id,'用户'+id.slice(-6),salt,derived.toString('hex'),now());run('INSERT INTO user_ids VALUES(?,?)',id,accountId);run('INSERT INTO registrations VALUES(?,?)',input.requestId,accountId);return session(accountById(accountId));});
+  }
+  const id=userId(input.userId,true);limit('login:'+id,8,900000);const a=accountByUserId(id);if(!await verify(a,input.password))fail(401,'BAD_CREDENTIALS','ID 或密码不正确。');const latest=accountById(a.id);if(latest.password_hash!==a.password_hash||latest.password_salt!==a.password_salt)fail(409,'ACCOUNT_CHANGED','账号已更新，请重新登录。');run('DELETE FROM social_limits WHERE key=?','login:'+id);return session(latest);
+ }
+ const a=authenticate(token);
+ if(method==='GET'&&path==='me')return {profile:profile(a,{full:true})};
+ if(method==='POST'&&path==='logout'){fields(input,[]);run('DELETE FROM social_sessions WHERE token_hash=?',hash(token));return {ok:true};}
+ if(method==='POST'&&path==='password'){
+  fields(input,['currentPassword','newPassword']);password(input.newPassword);limit('password:'+a.id,5,900000);if(!await verify(a,input.currentPassword))fail(401,'BAD_PASSWORD','当前账号密码不正确。');const salt=randomBytes(16).toString('hex'),derived=await derive(input.newPassword,salt);return transaction(()=>{if(accountById(a.id).password_hash!==a.password_hash)fail(409,'ACCOUNT_CHANGED','账号已更新，请重新登录。');run('UPDATE accounts SET password_salt=?,password_hash=? WHERE id=?',salt,derived.toString('hex'),a.id);run('DELETE FROM social_sessions WHERE account_id=?',a.id);return session(accountById(a.id));});
+ }
+ if(method==='POST'&&path==='profile'){
+  fields(input,['nickname','bio','avatar','avatarImage','userId','currentPassword','revision']);
+  const name=text(input.nickname,24,'昵称',1),bio=text(input.bio??'',80,'签名'),id=userId(input.userId??a.user_id,(input.userId??a.user_id)===a.user_id);
+  if(!AVATARS.includes(input.avatar)||typeof input.avatarImage!=='string')fail(400,'INVALID_PROFILE','头像设置无效。');if(input.avatarImage)imageData(input.avatarImage,256*1024);
+  if(input.revision!==a.revision)fail(409,'PROFILE_CHANGED','资料已在另一台设备更新，请重新打开后修改。');
+  if(id!==a.user_id){limit('id-password:'+a.id,5,900000);if(!await verify(a,input.currentPassword))fail(401,'BAD_PASSWORD','当前账号密码不正确。');}
+  return transaction(()=>{const latest=accountById(a.id);if(latest.revision!==a.revision||latest.password_hash!==a.password_hash)fail(409,'PROFILE_CHANGED','资料已更新，请重新打开后修改。');const used=one('SELECT account_id FROM user_ids WHERE user_id=?',id);if(used&&used.account_id!==a.id)fail(409,'ID_TAKEN','这个 ID 已被使用，请换一个号码。');if(!used)run('INSERT INTO user_ids VALUES(?,?)',id,a.id);const avatarKey=input.avatarImage?(input.avatarImage===latest.avatar_image&&latest.avatar_key?latest.avatar_key:randomUUID()):'';run('UPDATE accounts SET user_id=?,nickname=?,bio=?,avatar=?,avatar_image=?,avatar_key=?,revision=revision+1 WHERE id=?',id,name,bio,input.avatar,input.avatarImage,avatarKey,a.id);return {profile:profile(accountById(a.id),{full:true})};});
+ }
+ if(method==='GET'&&path==='state')return getState(a);
+ if(method==='GET'&&path==='lookup'){
+  limit('lookup:'+a.id,90,60000);const other=accountByUserId(userId(query.userId,true));if(!other)fail(404,'USER_NOT_FOUND','没有找到这个 ID，请核对数字。');const incoming=one("SELECT id FROM friend_requests WHERE sender=? AND recipient=? AND status='pending'",other.id,a.id),outgoing=one("SELECT id FROM friend_requests WHERE sender=? AND recipient=? AND status='pending'",a.id,other.id);return {profile:profile(other),relationship:other.id===a.id?'self':isFriend(a.id,other.id)?'friend':incoming?'incoming':outgoing?'outgoing':'none',requestId:incoming?.id||outgoing?.id||null};
+ }
+ if(method==='POST'&&path==='friends/request'){
+  fields(input,['userId']);const other=accountByUserId(userId(input.userId,true));if(!other)fail(404,'USER_NOT_FOUND','没有找到这个 ID。');if(other.id===a.id)fail(400,'SELF_FRIEND','不能添加自己为好友。');
+  return transaction(()=>{if(isFriend(a.id,other.id))return {ok:true,relationship:'friend',conversationId:direct(a.id,other.id)};const old=one("SELECT id FROM friend_requests WHERE sender=? AND recipient=? AND status='pending'",a.id,other.id);if(old)return {ok:true,requestId:old.id,relationship:'outgoing'};if(one("SELECT 1 FROM friend_requests WHERE sender=? AND recipient=? AND status='pending'",other.id,a.id))fail(409,'INCOMING_REQUEST','对方已向你发送申请，请在通讯录接受。');limit('friend-request:'+a.id,20,3600000);if(one('SELECT count(*) n FROM friendships WHERE a=? OR b=?',a.id,a.id).n>=200)fail(409,'FRIEND_LIMIT','好友人数已达本版上限。');const id=randomUUID();run("INSERT INTO friend_requests VALUES(?,?,?,'pending',?,?)",id,a.id,other.id,now(),now());return {ok:true,requestId:id,relationship:'outgoing'};});
+ }
+ if(method==='POST'&&path==='friends/respond'){
+  fields(input,['requestId','accept']);if(typeof input.requestId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(input.requestId))fail(400,'INVALID_REQUEST_ID','好友申请标识无效。');if(typeof input.accept!=='boolean')fail(400,'INVALID_ACTION','请选择接受或拒绝。');return transaction(()=>{const r=one('SELECT * FROM friend_requests WHERE id=? AND recipient=?',input.requestId,a.id);if(!r)fail(404,'REQUEST_NOT_FOUND','好友申请不存在。');if(r.status!=='pending'){if(r.status==='accepted'&&input.accept)return {ok:true,conversationId:direct(r.sender,r.recipient)};if(r.status==='rejected'&&!input.accept)return {ok:true};fail(409,'REQUEST_HANDLED','这条申请已经处理。');}run('UPDATE friend_requests SET status=?,updated_at=? WHERE id=?',input.accept?'accepted':'rejected',now(),r.id);if(input.accept){for(const id of [r.sender,r.recipient])if(one('SELECT count(*) n FROM friendships WHERE a=? OR b=?',id,id).n>=200)fail(409,'FRIEND_LIMIT','好友人数已达本版上限。');run('INSERT OR IGNORE INTO friendships VALUES(?,?,?)',...pair(r.sender,r.recipient),now());return {ok:true,conversationId:direct(r.sender,r.recipient)};}return {ok:true};});
+ }
+ if(method==='POST'&&path==='friends/remove'){fields(input,['userId']);const other=accountByUserId(userId(input.userId,true));if(!other)fail(404,'USER_NOT_FOUND','好友不存在。');run('DELETE FROM friendships WHERE a=? AND b=?',...pair(a.id,other.id));return {ok:true};}
+ if(method==='POST'&&path==='groups'){
+  fields(input,['name','memberIds','requestId']);
+  const name=text(input.name,30,'群名称',1);
+  if(typeof input.requestId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(input.requestId))fail(400,'INVALID_REQUEST_ID','建群请求标识无效，请重新打开后重试。');
+  if(!Array.isArray(input.memberIds)||input.memberIds.length>100)fail(400,'GROUP_MEMBERS','请选择 2–49 位不同的好友。');
+  const memberIds=[...new Set(input.memberIds.map(id=>userId(id,true)))].sort();
+  if(memberIds.length<2||memberIds.length>49)fail(400,'GROUP_MEMBERS','请选择 2–49 位不同的好友。');
+  const requestId=input.requestId.toLowerCase(),digest=hash(JSON.stringify({name,memberIds}));
+  return transaction(()=>{
+   const previous=one('SELECT conversation_id,input_digest FROM group_requests WHERE owner_account_id=? AND request_id=?',a.id,requestId);
+   if(previous){if(previous.input_digest!==digest)fail(409,'GROUP_REQUEST_CONFLICT','同一建群请求的内容已改变，请重新创建。');return {conversationId:previous.conversation_id};}
+   limit('group-create:'+a.id,10,3600000);
+   const members=memberIds.map(id=>{const other=accountByUserId(id);if(!other||other.id===a.id)fail(400,'GROUP_MEMBERS','群成员无效。');requireFriend(a.id,other.id);return other.id;});
+   requireChatCapacity([a.id,...members]);
+   const id=randomUUID(),time=now();run("INSERT INTO conversations(id,type,name,owner_id,created_at,updated_at) VALUES(?,'group',?,?,?,?)",id,name,a.id,time,time);
+   for(const member of [a.id,...members])run('INSERT INTO conversation_members(conversation_id,account_id,joined_at) VALUES(?,?,?)',id,member,time);
+   run('INSERT INTO group_requests(request_id,owner_account_id,conversation_id,input_digest) VALUES(?,?,?,?)',requestId,a.id,id,digest);
+   return {conversationId:id};
+  });
+ }
+
+ const route=/^conversations\/([a-f0-9-]{36})\/(messages|read|settings|invite|remove-member|leave|owner)$/.exec(path);
+ if(route){const id=route[1],action=route[2],c=membership(id,a);
+  if(method==='GET'&&action==='messages'){const before=query.before===undefined?Number.MAX_SAFE_INTEGER:Number(query.before);if(!Number.isSafeInteger(before)||before<1)fail(400,'INVALID_CURSOR','消息分页位置无效。');const rows=all('SELECT * FROM messages WHERE conversation_id=? AND id<? AND id>? ORDER BY id DESC LIMIT 51',id,before,c.history_start_id);const more=rows.length>50;return {messages:rows.slice(0,50).reverse().map(r=>message(r)),nextBefore:more?String(rows[49].id):null};}
+  if(method==='POST'&&action==='messages'){
+   fields(input,['clientId','type','text','image','sticker']);if(typeof input.clientId!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(input.clientId))fail(400,'INVALID_CLIENT_ID','消息标识无效，请重试。');
+   const old=one('SELECT * FROM messages WHERE sender=? AND client_id=?',a.id,input.clientId);if(old){if(old.conversation_id!==id||old.type!==input.type||old.text!==(input.type==='text'?String(input.text??'').trim():'')||old.sticker!==(input.type==='sticker'?input.sticker:''))fail(409,'MESSAGE_CONFLICT','重复消息标识与内容不一致。');if(old.type==='image'){const original=one('SELECT bytes FROM social_media WHERE id=?',old.media_id);if(!input.image||hash(original.bytes)!==hash(imageData(input.image.src).bytes))fail(409,'MESSAGE_CONFLICT','重复图片标识与内容不一致。');}return {message:message(old)};}
+   if(c.type==='direct'){const other=one('SELECT account_id FROM conversation_members WHERE conversation_id=? AND account_id<>?',id,a.id);if(!other)fail(403,'FRIEND_REQUIRED','需要先成为好友。');requireFriend(a.id,other.account_id);}
+   let content='',media=null,sticker='';if(input.type==='text')content=text(input.text,4000,'消息',1);else if(input.type==='sticker'){if(!['hug','yay','got-it','cheer','goodnight','thanks','coffee','happy'].includes(input.sticker))fail(400,'INVALID_STICKER','表情不可用。');sticker=input.sticker;}else if(input.type==='image'){if(!input.image||typeof input.image!=='object')fail(400,'INVALID_IMAGE','图片无效。');media={...imageData(input.image.src),name:text(input.image.name??'聊天图片',100,'图片名称',1)};}else fail(400,'MESSAGE_TYPE','暂不支持这种消息类型。');
+   return transaction(()=>{membership(id,a);limit('message:'+a.id,90,60000);if(media){limit('image-daily:'+a.id,100,86400000);const used=one('SELECT coalesce(sum(length(bytes)),0) n FROM social_media WHERE owner_id=?',a.id).n;if(used+media.bytes.length>100*1024*1024)fail(409,'MEDIA_QUOTA','图片存储已达当前上限。');}const mediaId=media?randomUUID():null;if(media)run('INSERT INTO social_media VALUES(?,?,?,?,?,?,?,?,?)',mediaId,id,a.id,media.name,media.mime,media.bytes,media.width,media.height,now());const inserted=run('INSERT INTO messages(conversation_id,sender,client_id,type,text,media_id,sticker,created_at) VALUES(?,?,?,?,?,?,?,?)',id,a.id,input.clientId,input.type,content,mediaId,sticker,now());run('UPDATE conversations SET updated_at=? WHERE id=?',now(),id);return {message:message(one('SELECT * FROM messages WHERE id=?',Number(inserted.lastInsertRowid)))};});
+  }
+  if(method==='POST'&&action==='read'){fields(input,[]);run('UPDATE conversation_members SET last_read_id=coalesce((SELECT max(id) FROM messages WHERE conversation_id=?),0) WHERE conversation_id=? AND account_id=?',id,id,a.id);return {ok:true};}
+  if(method==='POST'&&action==='settings'){fields(input,['pinned','muted','name','note']);return transaction(()=>{if(input.name!==undefined||input.note!==undefined){requireOwner(c,a);const name=input.name===undefined?c.name:text(input.name,30,'群名称',1),note=input.note===undefined?c.note:text(input.note,500,'群公告');run('UPDATE conversations SET name=?,note=?,updated_at=? WHERE id=?',name,note,now(),id);}for(const k of ['pinned','muted'])if(input[k]!==undefined){if(typeof input[k]!=='boolean')fail(400,'INVALID_SETTING','设置格式不正确。');run('UPDATE conversation_members SET '+k+'=? WHERE conversation_id=? AND account_id=?',input[k]?1:0,id,a.id);}return {ok:true};});}
+  if(method==='POST'&&action==='invite'){fields(input,['memberIds']);if(c.type!=='group')fail(400,'GROUP_REQUIRED','仅群聊可邀请成员。');if(!Array.isArray(input.memberIds)||input.memberIds.length<1||input.memberIds.length>49)fail(400,'GROUP_MEMBERS','请选择要邀请的好友。');return transaction(()=>{const existing=all('SELECT account_id FROM conversation_members WHERE conversation_id=?',id).map(r=>r.account_id),add=[...new Set(input.memberIds.map(uid=>{const other=accountByUserId(userId(uid,true));if(!other)fail(404,'USER_NOT_FOUND','成员不存在。');if(other.id!==a.id)requireFriend(a.id,other.id);return other.id;}))].filter(uid=>!existing.includes(uid));requireChatCapacity(add);if(existing.length+add.length>50)fail(409,'GROUP_LIMIT','群聊最多 50 人。');for(const uid of add)run('INSERT INTO conversation_members(conversation_id,account_id,joined_at,last_read_id,history_start_id) VALUES(?,?,?,coalesce((SELECT max(id) FROM messages WHERE conversation_id=?),0),coalesce((SELECT max(id) FROM messages WHERE conversation_id=?),0))',id,uid,now(),id,id);return {ok:true};});}
+  if(method==='POST'&&action==='remove-member'){fields(input,['userId']);requireOwner(c,a);const other=accountByUserId(userId(input.userId,true));if(!other||other.id===a.id)fail(400,'INVALID_MEMBER','不能移除群主，请先转让群主。');run('DELETE FROM conversation_members WHERE conversation_id=? AND account_id=?',id,other.id);return {ok:true};}
+  if(method==='POST'&&action==='owner'){fields(input,['userId']);requireOwner(c,a);const other=accountByUserId(userId(input.userId,true));if(!other||!one('SELECT 1 FROM conversation_members WHERE conversation_id=? AND account_id=?',id,other.id))fail(400,'INVALID_MEMBER','只能转让给当前群成员。');run('UPDATE conversations SET owner_id=?,updated_at=? WHERE id=?',other.id,now(),id);return {ok:true};}
+  if(method==='POST'&&action==='leave'){fields(input,[]);if(c.type!=='group')fail(400,'GROUP_REQUIRED','这不是群聊。');return transaction(()=>{if(c.owner_id===a.id&&one('SELECT count(*) n FROM conversation_members WHERE conversation_id=?',id).n>1)fail(409,'TRANSFER_OWNER','请先转让群主，再退出群聊。');run('DELETE FROM conversation_members WHERE conversation_id=? AND account_id=?',id,a.id);return {ok:true};});}
+ }
+ if(method==='GET'&&/^media\/[a-f0-9-]{36}$/.test(path)){const media=one('SELECT * FROM social_media WHERE id=?',path.slice(6));if(!media)fail(404,'MEDIA_NOT_FOUND','图片不存在。');const member=membership(media.conversation_id,a);if(!one('SELECT 1 FROM messages WHERE media_id=? AND conversation_id=? AND id>?',media.id,media.conversation_id,member.history_start_id))fail(404,'MEDIA_NOT_FOUND','图片不在你可查看的记录中。');return {binary:media.bytes,mime:media.mime};}
+ fail(404,'NOT_FOUND','这个功能入口不存在。');
+ }
+ return {handle,authenticate};
+}

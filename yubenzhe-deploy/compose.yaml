@@ -17,11 +17,13 @@ services:
       PORT: 8080
       PUBLIC_ORIGIN: ${FRONT_ORIGIN:-http://127.0.0.1:18808}
       AUTH_CONFIG_FILE: /run/ybz-secrets/frontend.json
+      SOCIAL_DATABASE_PATH: /social/social.sqlite
       AI_DATABASE_PATH: /workspace/workspaces.sqlite
       AI_PROVIDER: ${AI_PROVIDER:-disabled}
       AI_MODEL: ${AI_MODEL:-}
       AI_API_KEY: ${AI_API_KEY:-}
     volumes:
+      - ./social-state:/social
       - ./ai-state:/workspace
       - ./secrets/frontend.json:/run/ybz-secrets/frontend.json:ro
       - ./public/frontend/downloads:/opt/yubenzhe/public/frontend/downloads:ro

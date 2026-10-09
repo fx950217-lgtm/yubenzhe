@@ -1,4 +1,4 @@
-愚笨者 Android 工程 · 0.10.0（versionCode 10）
+愚笨者 Android 工程 · 0.11.0（versionCode 11）
 
 这是安装到 Android 的早期测试客户端，不是应用商店发行版。
 当前发布包名 app.tongban.wallet.demo，沿用用户提供的原签名，可覆盖升级 0.9.0 并保留数据。也可通过 previewApplicationId 构建单独的测试包。
@@ -7,8 +7,8 @@
 
 范围
 链上功能固定 BSC 测试网与 tBNB，没有主网、真实资金或托管资金服务。
-好友、群聊、朋友圈和红包仍是本机演示，不会向他人发送消息。
-应用只装载打包的本地网页；用户端、私有管理后台和数据库互不接入。
+账号、好友和群消息已连接独立服务器；朋友圈、发现和红包仍是本机体验。
+应用只装载打包的本地网页；消费者只访问独立账号/社交 API，私有管理后台保持隔离。
 不会自动更新、自动收费、开机启动或请求安装其他应用。
 
 原生接口
@@ -24,13 +24,13 @@ Capacitor原生注入提供 Plugins.Name；单独的native-bridge没有registerP
 
 安全配置
 备份、云备份及设备迁移均禁用，应用数据不会通过Android自动备份导出。
-清除应用数据或卸载会删除本机钱包与社交数据，务必自己保留恢复资料。
+清除应用数据或卸载会删除本机钱包与发现体验数据，务必自己保留恢复资料。
 仅声明INTERNET和CAMERA；相机需点击后本次确认及Android系统授权。
 不请求麦克风、定位、通知、广泛存储权限；WebView未知权限默认拒绝。
 相册使用系统选择器；FileProvider只提供应用专属Pictures目录。
 所有构建关闭WebView调试；release额外显式debuggable=false。
 禁用明文和混合内容；系统TLS信任不添加自签证书或用户证书绕过。
-WebView页面仅https://localhost；网络请求只允许固定两个BSC测试网RPC。
+WebView页面仅https://localhost；网络请求只允许固定两个BSC测试网RPC及 https://66.42.56.29/api/social/；头像仅接受固定头像资源路径。
 仅用户点击的testnet.bscscan.com、docs.bnbchain.org、docs.ethers.org、docs.ollama.com，以及ollama.com/download精确下载页可转系统浏览器。
 禁止file/intent/javascript等外部跳转与通用文件桥接路径。
 全窗口启用FLAG_SECURE，禁止截屏、录屏与不安全显示，并保护最近应用预览。

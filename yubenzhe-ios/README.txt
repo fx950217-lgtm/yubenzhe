@@ -1,7 +1,7 @@
-2026-10-09 / 0.10.0 更新
+2026-10-09 / 0.11.0 更新
 已接入 GitHub 手动 macOS 构建流程，编译真实 iOS arm64 应用，执行 ad-hoc 签名与字节校验，输出 Dopamine rootless DEB。浅紫 UI、星环 B 与网页一致。设备安装结果以 ios-build-status.json 为准。原始说明中的“尚未构建”为历史状态。
 
-愚笨者 iOS 工程与越狱安装源 · 0.10.0
+愚笨者 iOS 工程与越狱安装源 · 0.11.0
 
 当前事实
 已准备独立 WKWebView 本地应用工程、iPhone/iPad 图标、JSON 系统文件导出、相机权限判断、后台遮罩和钱包锁定桥接、rootful/rootless DEB 打包器、带 GPG 签名的 APT 源生成器。

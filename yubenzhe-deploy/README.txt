@@ -1,3 +1,12 @@
+0.11.0 账号与多人消息更新
+
+/api/social 使用独立产品账号会话，不复用 AI 验收身份或合成后台。网页会话为 HttpOnly / SameSite=Strict Cookie；固定原生来源使用 bearer。账号、ID 保留表、好友、群、消息和图片保存于独立 social-state/social.sqlite，目录 uid1000 / 0700，数据库0600；不存储钱包密钥。此数据库不可复制到 state 或 ai-state。
+发布需要新增持久目录 /opt/yubenzhe/shared/social-state，在新版本目录链接 social-state；只更新 frontend 容器。保留 .env、AI/admin、Ollama、Caddy 和旧版目录。新服务无自动生成合成账号，测试只使用临时隔离库。
+在线备份：docker compose exec frontend node scripts/backup.mjs /social/social.sqlite /social/backup-YYYYMMDD-HHMM.sqlite。备份成功后转移到既有受保护备份目录并保留0600。恢复前仅停止本项目 frontend 写入，备份现库，校验备份后再人工恢复；禁止自动重建或清空。升级不能修改已应用迁移的 checksum。
+安全与能力边界：6位密码按用户产品要求，服务端 scrypt 加盐及持久限速；ID唯一且保留靓号/曾用ID。群创建和消息发送幂等；成员权限、邀请后历史可见性、私密图片鉴权、密码轮换撤销旧会话均有回归。头像为可分享随机资源URL，只返回图片，替换/删除撤销旧URL。聊天没有端到端加密、推送通知或自助注销。单实例 SQLite 不支持无协调多副本。
+
+以下为历史发布及原始部署说明，以本节和本次发布记录为准。
+
 2026-10-09 更新：前台 0.10.0 已在 https://66.42.56.29 公开提供浅紫界面与 Android 下载；AI/API、管理后台保留身份验证。生产账号体系未接入。
 当前前台发布目录 /opt/yubenzhe/releases/0.10.0，镜像 yubenzhe-public:0.10.0；后台和模型保留原容器。发布前已对两套 SQLite 在线备份，完整性检查通过。Linux Node 24 后端验收 22/22。
 构建网页并 stage 后，使用 compose.yaml + compose.public.yaml 构建、仅更新 frontend（up -d --no-deps frontend）。Caddy IP 证书数据持久保留；不要重新创建账号、数据库或模型状态。旧 0.9.0 目录和镜像保留回滚。

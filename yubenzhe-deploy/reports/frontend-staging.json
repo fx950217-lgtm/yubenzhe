@@ -1,9 +1,10 @@
 {
-  "version": "0.10.0",
-  "stagedAt": "2026-10-09T09:58:10.935Z",
-  "indexSha256": "555013bc381c43879e839edccd456cf9be590db3ab165af740a68bc60ceb0844",
-  "appSha256": "6f080608a28e36abebc3e656576e34840ca19bed8a3673bbb6fec133e639d78c",
-  "consumerConnected": false,
+  "version": "0.11.0",
+  "stagedAt": "2026-10-09T10:33:40.294Z",
+  "indexSha256": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
+  "appSha256": "cf32f62e6caed94e429547a3ad0dd94f6d5677f01f8d7d354955c76812e862eb",
+  "consumerConnected": true,
+  "socialServiceIncluded": true,
   "cloudAIConnected": true,
   "adminEntry": false
 }

@@ -30,6 +30,18 @@ public final class NavigationPolicy {
         URI uri = secureUri(raw);
         return uri != null && RPC_HOSTS.contains(uri.getHost()) && (uri.getPath().isEmpty() || "/".equals(uri.getPath())) && uri.getQuery() == null;
     }
+    public static boolean isSocialApi(String raw) {
+        URI uri = secureUri(raw);
+        if (uri == null || !"66.42.56.29".equals(uri.getHost()) || uri.getFragment() != null) return false;
+        // Match raw paths, so encoded separators or dot segments never widen the API boundary.
+        String path = uri.getRawPath();
+        return path != null && path.matches("/api/social/[A-Za-z0-9_/-]*") && !path.contains("//") && !path.startsWith("/api/social/avatars/");
+    }
+    public static boolean isSocialAvatar(String raw) {
+        URI uri = secureUri(raw);
+        return uri != null && "66.42.56.29".equals(uri.getHost()) && uri.getRawQuery() == null && uri.getFragment() == null &&
+            uri.getRawPath().matches("/api/social/avatars/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}");
+    }
     public static boolean isPrivateBridgePath(String raw) {
         try {
             String path = new URI(raw).getPath();

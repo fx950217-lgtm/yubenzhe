@@ -17,3 +17,4 @@ ai-state
 ollama-state
 AI-OPERATIONS.txt
 *.sqlite*
+social-state/

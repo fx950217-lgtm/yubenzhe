@@ -10,6 +10,9 @@ const project = fileURLToPath(new URL('../', import.meta.url));
 const read = name => readFileSync(path.join(project, name), 'utf8');
 test('fixed stable native versions, local bundled origin, debugging and cleartext off', () => {
   const pkg = JSON.parse(read('package.json'));
+  assert.equal(pkg.version, '0.11.0');
+  assert.match(read('android/app/build.gradle'), /versionCode 11/);
+  assert.match(read('android/app/build.gradle'), /versionName "0\.11\.0"/);
   assert.equal(pkg.dependencies['@capacitor/core'], '8.5.3');
   assert.equal(pkg.dependencies['@capacitor/android'], '8.5.3');
   assert.equal(pkg.devDependencies['@capacitor/cli'], '8.5.3');
@@ -56,4 +59,11 @@ test('native document and navigation policy executes in JVM', () => {
     assert.match(result, /native policy assertions passed/);
     console.log(result.trim());
   } finally { rmSync(output, { recursive: true, force: true }); }
+});
+
+test('social API permission is limited to background requests, not navigation', () => {
+  const client = read('android/app/src/main/java/app/tongban/wallet/demo/SafeWebViewClient.java');
+  assert.match(client, /!request\.isForMainFrame\(\) && \(NavigationPolicy\.isTestnetRpc\(url\) \|\| NavigationPolicy\.isSocialApi\(url\) \|\| NavigationPolicy\.isSocialAvatar\(url\)\)/);
+  const navigation = client.slice(client.indexOf('boolean shouldOverrideUrlLoading'), client.indexOf('WebResourceResponse shouldInterceptRequest'));
+  assert.doesNotMatch(navigation, /isSocialApi|isSocialAvatar/);
 });

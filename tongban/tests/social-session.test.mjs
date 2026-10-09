@@ -71,7 +71,7 @@ test('message plus menu closes before invoking the distinct scanner modes',()=>{
  a=mount({onScanTransfer:()=>{assert.equal(a.root.quickHost.innerHTML,'');calls.push('transfer')},onScan:mode=>{assert.equal(a.root.quickHost.innerHTML,'');calls.push(mode)}});
  try{
   a.click('quick-menu');const markup=a.root.quickHost.innerHTML;
-  assert.ok(markup.indexOf('扫码转账')<markup.indexOf('添加好友'));assert.ok(markup.indexOf('添加好友')<markup.indexOf('扫一扫'));
+  assert.ok(markup.indexOf('扫一扫')<markup.indexOf('添加好友'));assert.ok(markup.indexOf('添加好友')<markup.indexOf('创建群聊'));assert.doesNotMatch(markup,/扫码转账|发起聊天/);assert.equal((markup.match(/role="menuitem"/g)||[]).length,3);
   a.click('soc-scan-transfer');a.click('quick-menu');a.click('soc-scan');
   a.click('soc-add-friend');a.click('soc-scan-friend');assert.deepEqual(calls,['transfer','all','friend']);
  }finally{a.cleanup()}
@@ -81,11 +81,11 @@ test('friend lookup filters existing identities and never grants friendship on p
  const a=mount();
  try{
   const before=JSON.parse(localStorage.getItem(KEY)).friends;
-  a.click('soc-add-friend');assert.match(a.root.innerHTML,/暂不支持跨设备添加好友/);
-  a.input('[data-friend-search]','moon');assert.match(a.root.results.innerHTML,/月亮邮递员/);assert.doesNotMatch(a.root.results.innerHTML,/林一/);
+  a.click('soc-add-friend');assert.match(a.root.innerHTML,/好友 ID/);assert.doesNotMatch(a.root.innerHTML,/搜索昵称|扫描好友码/);
+  a.input('[data-friend-search]','27594638');assert.match(a.root.results.innerHTML,/输入好友 ID/);assert.doesNotMatch(a.root.results.innerHTML,/林一/);
   a.click('profile','moon');assert.match(a.root.innerHTML,/data-action="request-friend"/);
   assert.deepEqual(JSON.parse(localStorage.getItem(KEY)).friends,before);
-  a.cleanup.back();flush();assert.match(a.root.innerHTML,/value="moon"/);
+  a.cleanup.back();flush();assert.match(a.root.innerHTML,/value="27594638"/);
  }finally{a.cleanup()}
 });
 

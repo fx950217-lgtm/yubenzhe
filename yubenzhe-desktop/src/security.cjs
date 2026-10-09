@@ -13,7 +13,7 @@ const LOCAL_FILES = Object.freeze({
 });
 const RPC_HOSTS = new Set(['bsc-testnet-dataseed.bnbchain.org', 'bsc-testnet.bnbchain.org']);
 const EXTERNAL_HOSTS = new Set(['testnet.bscscan.com', 'docs.bnbchain.org', 'docs.ethers.org', 'docs.ollama.com']);
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://bsc-testnet-dataseed.bnbchain.org https://bsc-testnet.bnbchain.org; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'";
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://66.42.56.29/api/social/avatars/; media-src 'self' blob:; connect-src 'self' https://bsc-testnet-dataseed.bnbchain.org https://bsc-testnet.bnbchain.org https://66.42.56.29/api/social/; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'";
 
 function parsed(value) { try { return new URL(value); } catch { return null; } }
 function isLocalUrl(value) {
@@ -30,11 +30,23 @@ function isExternalUrl(value) {
   const url = parsed(value);
   return !!url && url.protocol === 'https:' && (EXTERNAL_HOSTS.has(url.hostname) || url.hostname === 'ollama.com' && /^\/download(?:\/|$)/.test(url.pathname)) && !url.port && !url.username && !url.password;
 }
+function isSocialApiUrl(value) {
+  const url = parsed(value);
+  // Inspect both the original path and parsed authority. URL normalization alone
+  // would silently accept dot-segment and backslash aliases.
+  return typeof value === 'string' && /^https:\/\/66\.42\.56\.29(?::443)?\/api\/social\/[A-Za-z0-9_/-]*(?:\?[^\s#]*)?$/.test(value) &&
+    !!url && !url.port && !url.username && !url.password && !url.hash && !url.pathname.includes('//') && !url.pathname.startsWith('/api/social/avatars/');
+}
+function isSocialAvatarUrl(value) {
+  return typeof value === 'string' && /^https:\/\/66\.42\.56\.29(?::443)?\/api\/social\/avatars\/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/.test(value);
+}
 function isAllowedRequest(value, resourceType) {
   if (localAsset(value)) return true;
   const url = parsed(value);
   if (!url) return false;
   if (url.protocol === 'data:' || url.protocol === 'blob:') return ['image', 'media'].includes(resourceType);
+  if (isSocialAvatarUrl(value)) return resourceType === 'image';
+  if (isSocialApiUrl(value)) return ['xhr', 'fetch'].includes(resourceType);
   return url.protocol === 'https:' && RPC_HOSTS.has(url.hostname) && !url.port && !url.username && !url.password && ['xhr', 'fetch'].includes(resourceType);
 }
 function validCameraRequest(permission, details = {}) {
@@ -51,4 +63,4 @@ function validateJsonExport(value) {
   return { filename, content };
 }
 
-module.exports = { LOCAL_ORIGIN, CSP, isLocalUrl, localAsset, isExternalUrl, isAllowedRequest, validCameraRequest, validateJsonExport };
+module.exports = { LOCAL_ORIGIN, CSP, isLocalUrl, localAsset, isExternalUrl, isSocialApiUrl, isSocialAvatarUrl, isAllowedRequest, validCameraRequest, validateJsonExport };

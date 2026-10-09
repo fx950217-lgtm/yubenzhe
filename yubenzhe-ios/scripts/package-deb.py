@@ -48,7 +48,7 @@ def main():
         if file.is_file():
             mode = 0o755 if os.access(file, os.X_OK) else 0o644
             data_files.append((destination + '/' + file.relative_to(app).as_posix(), file.read_bytes(), mode))
-    control = ('Package: app.yubenzhe.wallet\nName: 愚笨者\nVersion: 0.10.0\n'
+    control = ('Package: app.yubenzhe.wallet\nName: 愚笨者\nVersion: 0.11.0\n'
                f'Architecture: {architecture}\nMaintainer: Yubenzhe\nSection: Applications\n'
                'Depends: firmware (>= 15.4), uikittools\n'
                'Description: Private BSC testnet wallet and familiar-friends social preview.\n'
@@ -62,7 +62,7 @@ def main():
         ('control', control.encode(), 0o644), ('postinst', postinst.encode(), 0o755), ('prerm', prerm.encode(), 0o755)
     ])), ('data.tar.gz', tar_bytes(data_files))])
     a.output.mkdir(parents=True, exist_ok=True)
-    file = a.output / f'app.yubenzhe.wallet_0.10.0_{architecture}.deb'
+    file = a.output / f'app.yubenzhe.wallet_0.11.0_{architecture}.deb'
     file.write_bytes(output)
     print(file)
     print('SHA256 ' + hashlib.sha256(output).hexdigest())

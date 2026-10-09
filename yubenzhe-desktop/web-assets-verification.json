@@ -1,10 +1,10 @@
 {
   "source": "../tongban/dist",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "files": {
-    "index.html": "555013bc381c43879e839edccd456cf9be590db3ab165af740a68bc60ceb0844",
-    "app.js": "6f080608a28e36abebc3e656576e34840ca19bed8a3673bbb6fec133e639d78c",
-    "app.css": "322ba808f52c61190171b59f5625912cfca6c6bd83e252c52bb4919a9ebbd99d",
+    "index.html": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
+    "app.js": "cf32f62e6caed94e429547a3ad0dd94f6d5677f01f8d7d354955c76812e862eb",
+    "app.css": "a284bada155504bc1caac6f59fbe3ba1a1c4152d4acfff21dbe3743cccb3ca36",
     "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
     "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a",

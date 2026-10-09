@@ -36,6 +36,14 @@ public class NativePoliciesTest {
         check(NavigationPolicy.isTestnetRpc("https://bsc-testnet.bnbchain.org/"), "Approved testnet RPC");
         check(!NavigationPolicy.isTestnetRpc("https://bsc-dataseed.bnbchain.org"), "No mainnet RPC");
         check(!NavigationPolicy.isTestnetRpc("https://bsc-testnet.bnbchain.org/path?secret=x"), "No arbitrary RPC paths");
+        for (String allowed : new String[] {"https://66.42.56.29/api/social/", "https://66.42.56.29/api/social/me", "https://66.42.56.29:443/api/social/messages?after=10", "https://66.42.56.29/api/social/conversations/1234-abc/messages"}) check(NavigationPolicy.isSocialApi(allowed), "Social API path allowed: " + allowed);
+        for (String unsafe : new String[] {"http://66.42.56.29/api/social/me", "https://66.42.56.29:8443/api/social/me", "https://user:pass@66.42.56.29/api/social/me", "https://66.42.56.29.evil.test/api/social/me", "https://66.42.56.29/admin", "https://66.42.56.29/api/ai/jobs", "https://66.42.56.29/api/social", "https://66.42.56.29/api/socialevil/me", "https://66.42.56.29/api/social/../admin", "https://66.42.56.29/api/social/%2e%2e/admin", "https://66.42.56.29/api/social/%2fadmin", "https://66.42.56.29/api/social//me", "https://66.42.56.29/api/social/me#fragment", "https://66.42.56.29/api/social/%255cadmin"}) check(!NavigationPolicy.isSocialApi(unsafe), "Reject non-social API path: " + unsafe);
+        String avatar = "https://66.42.56.29/api/social/avatars/6e9596a6-9481-4c35-acef-a0424051a4fb";
+        check(NavigationPolicy.isSocialAvatar(avatar), "Fixed UUID avatar resource");
+        check(!NavigationPolicy.isSocialApi(avatar), "Avatar route is separately constrained");
+        check(!NavigationPolicy.mayOpenExternal(avatar, true), "Avatar cannot navigate app");
+        for (String unsafe : new String[] {avatar + "?v=1", avatar + "#fragment", avatar + "/", avatar.replace("https:", "http:"), avatar.replace("66.42.56.29", "66.42.56.29:444"), avatar.replace("6e9596a6", "not-uuid"), avatar.replace("66.42.56.29", "user@66.42.56.29"), avatar.replace("/avatars/", "/avatars/%2e%2e/")}) check(!NavigationPolicy.isSocialAvatar(unsafe), "Avatar path must be exact");
+        check(!NavigationPolicy.mayOpenExternal("https://66.42.56.29/api/social/me", true), "API permission never grants remote navigation");
         for (String path : new String[] {"/_capacitor_file_/private/key", "/_capacitor_content_/wallet", "/%5Fcapacitor_file_/private/key", "/_capacitor_http_interceptor_?url=https://evil.test"}) check(NavigationPolicy.isPrivateBridgePath("https://localhost" + path), "Private bridge paths blocked");
         String camera = "android.webkit.resource.VIDEO_CAPTURE";
         check(NavigationPolicy.mayUseCamera("https://localhost", new String[] {camera}, true), "User requested local camera");

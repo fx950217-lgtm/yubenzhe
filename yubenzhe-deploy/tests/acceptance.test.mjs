@@ -87,7 +87,7 @@ test('logout revokes session; cookies are HttpOnly Strict; errors do not expose 
  }finally{await f.close()}
 });
 test('authentication config must exist, be valid and be private',()=>{
- const dir=mkdtempSync(join(tmpdir(),'ybz-auth-'));try{assert.throws(()=>readAuthFile());const file=join(dir,'auth.json');writeFileSync(file,JSON.stringify(auth),{mode:0o600});assert.equal(readAuthFile(file).userId,'acceptance-owner');chmodSync(file,0o644);assert.throws(()=>readAuthFile(file),/0600/)}finally{rmSync(dir,{recursive:true,force:true})}
+ const dir=mkdtempSync(join(tmpdir(),'ybz-auth-'));try{assert.throws(()=>readAuthFile());const file=join(dir,'auth.json');writeFileSync(file,JSON.stringify(auth),{mode:0o600});assert.equal(readAuthFile(file).userId,'acceptance-owner');if(process.platform!=='win32'){chmodSync(file,0o644);assert.throws(()=>readAuthFile(file),/0600/)}}finally{rmSync(dir,{recursive:true,force:true})}
 });
 test('public frontend serves pages and downloads without granting a private identity',async()=>{
  const f=await fixture('frontend',true);try{
