@@ -10,9 +10,9 @@ const project = fileURLToPath(new URL('../', import.meta.url));
 const read = name => readFileSync(path.join(project, name), 'utf8');
 test('fixed stable native versions, local bundled origin, debugging and cleartext off', () => {
   const pkg = JSON.parse(read('package.json'));
-  assert.equal(pkg.version, '0.12.1');
-  assert.match(read('android/app/build.gradle'), /versionCode 14/);
-  assert.match(read('android/app/build.gradle'), /versionName "0\.12\.1"/);
+  assert.equal(pkg.version, '0.13.0');
+  assert.match(read('android/app/build.gradle'), /versionCode 15/);
+  assert.match(read('android/app/build.gradle'), /versionName "0\.13\.0"/);
   assert.equal(pkg.dependencies['@capacitor/core'], '8.5.3');
   assert.equal(pkg.dependencies['@capacitor/android'], '8.5.3');
   assert.equal(pkg.devDependencies['@capacitor/cli'], '8.5.3');
@@ -41,12 +41,12 @@ test('manifest keeps minimum permissions, excludes backup/transfer, no broad fil
   assert.match(activity, /FLAG_SECURE/);
   assert.match(activity, /setSupportMultipleWindows\(false\)/);
 });
-test('bundled snapshot contains only seven application assets and matches consumer build', () => {
-  const assets = ['app.css', 'app.js', 'apple-touch-icon.png', 'icon.png', 'icon.svg', 'index.html', 'manifest.webmanifest'];
+test('bundled snapshot contains only nine application assets and matches consumer build', () => {
+  const assets = ['app.css', 'app.js', 'apple-touch-icon.png', 'icon.png', 'icon.svg', 'index.html', 'manifest.webmanifest', 'privacy.html', 'terms.html'];
   assert.deepEqual(readdirSync(path.join(project, 'www')).sort(), [...assets, 'webview-unavailable.html'].sort());
   for (const asset of assets) assert.deepEqual(readFileSync(path.join(project, 'www', asset)), readFileSync(path.resolve(project, '../tongban/dist', asset)));
   const script = read('scripts/copy-web.mjs');
-  assert.match(script, /WEB_ASSETS = \['index\.html', 'app\.js', 'app\.css', 'icon\.png', 'icon\.svg', 'manifest\.webmanifest', 'apple-touch-icon\.png'\]/);
+  assert.match(script, /WEB_ASSETS = \['index\.html', 'app\.js', 'app\.css', 'icon\.png', 'icon\.svg', 'manifest\.webmanifest', 'apple-touch-icon\.png', 'privacy\.html', 'terms\.html'\]/);
 });
 test('native document and navigation policy executes in JVM', () => {
   const javaHome = process.env.JAVA_HOME;

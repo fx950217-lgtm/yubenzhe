@@ -5,6 +5,8 @@ const { CSP, isSocialApiUrl, isSocialAvatarUrl, isLocalUrl, localAsset, isExtern
 
 test('custom origin serves exactly packaged assets, never arbitrary filesystem or admin', () => {
   assert.deepEqual(localAsset('yubenzhe://app/app.js'), ['app.js', 'text/javascript; charset=utf-8']);
+  for (const name of ['privacy.html', 'terms.html']) assert.deepEqual(localAsset('yubenzhe://app/' + name), [name, 'text/html; charset=utf-8']);
+  assert.equal(localAsset('yubenzhe://app/sw.js'), null, 'push worker is not included in native clients');
   for (const url of ['file:///etc/passwd', 'yubenzhe://admin/app.js', 'yubenzhe://app/admin', 'yubenzhe://app/downloads/private.p12', 'yubenzhe://app/%2e%2e/%2fetc/passwd', 'yubenzhe://app/app.js?path=../secrets', 'yubenzhe://user:password@app/app.js', 'yubenzhe://app:3000/index.html']) assert.equal(localAsset(url), null, url);
 });
 test('HTTPS external links require exact allowlisted hostname', () => {

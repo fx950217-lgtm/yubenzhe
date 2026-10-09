@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="same-origin"><title>愚笨者 · 真实社交运营</title><link rel="stylesheet" href="./social-ops.css"></head>
+<body><header class="topbar"><a href="./">返回独立管理端</a><h1>真实社交运营</h1><p>仅处理真实用户的举报与帮助反馈。每次处理都会记录服务端确认的操作者。</p></header>
+<main><section class="queue" aria-labelledby="queue-title"><div class="queue-heading"><h2 id="queue-title">举报与反馈</h2><button id="reload" type="button">刷新</button></div><label for="status-filter">状态</label><select id="status-filter"><option value="pending">待处理</option><option value="resolved">已处理</option><option value="rejected">已驳回</option><option value="all">全部</option></select><p id="list-status" role="status"></p><div id="report-list"></div><p class="hint">每次最多显示 200 条，按创建时间排列。</p></section>
+<section class="details" aria-labelledby="detail-title"><h2 id="detail-title">选择一条记录</h2><p id="operation-status" role="status" aria-live="polite"></p><div id="report-detail"><p class="hint">先查看举报详情与证据，再选择处理方式。</p></div></section></main>
+<noscript>此管理页面需要启用 JavaScript。</noscript><script type="module" src="./social-ops.js"></script></body></html>

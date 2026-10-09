@@ -1,0 +1,8 @@
+[Unit]
+Description=Yubenzhe five-minute health probe
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+[Install]
+WantedBy=timers.target

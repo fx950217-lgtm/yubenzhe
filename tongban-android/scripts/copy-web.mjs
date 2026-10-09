@@ -7,7 +7,7 @@ const source = path.resolve(project, '../tongban/dist');
 const destination = path.join(project, 'www');
 const staging = path.join(project, '.www-staging');
 // Explicit application assets only: never recursively copy installation pages or APKs.
-export const WEB_ASSETS = ['index.html', 'app.js', 'app.css', 'icon.png', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png'];
+export const WEB_ASSETS = ['index.html', 'app.js', 'app.css', 'icon.png', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png', 'privacy.html', 'terms.html'];
 const html = await readFile(path.join(source, 'index.html'), 'utf8');
 if (!html.includes('app.js') || !html.includes('Content-Security-Policy')) throw new Error('网页构建不完整，未复制。');
 for (const entry of WEB_ASSETS) {

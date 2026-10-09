@@ -9,7 +9,8 @@ import { mountSocial, getSocialWalletSummary, getSocialPacketBills, getSocialPeo
 import * as wallet from './wallet.js';
 import { mountLiveSocial } from './live-social.js';
 import { createSocialClient } from './social-client.js';
-import { mountAccountGate, accountSettingsHTML } from './account-ui.js';
+import { mountAccountGate, accountSettingsHTML, mountAccountSecurity } from './account-ui.js';
+import { mountNotificationSettings } from './notification-settings.js';
 import { mountWalletImport, mountWatchWallets } from './wallet-import-ui.js';
 import QRCode from 'qrcode';
 import { mountDiscover, getDiscoverDrafts } from './discover.js';
@@ -33,8 +34,8 @@ let routeOptions={},billReturn={view:'mine',options:{}},walletIntent=null;
 const pageScroll=new Map();
 const app=document.querySelector('#app'),dialog=document.querySelector('#modal');
 const navs=MAIN_NAV;
-let accountLoading=true,accountError='';
-const socialClient=createSocialClient({onChange:profile=>{updateRailProfile();if(!profile&&!accountLoading){wallet.lock();queueMicrotask(()=>layout());}}});
+let accountLoading=true,accountError='',accountWasSignedIn=false;
+const socialClient=createSocialClient({onChange:profile=>{const signedOut=accountWasSignedIn&&!profile;accountWasSignedIn=!!profile;updateRailProfile();if(signedOut&&!accountLoading){wallet.lock();queueMicrotask(()=>layout());}}});
 async function initializeAccount(){accountLoading=true;accountError='';try{await socialClient.initialize()}catch(error){accountError=error.message}finally{accountLoading=false;layout()}}
 function accountReady(profile,created){accountLoading=false;accountError='';layout();toast(socialClient.getStorageWarning()||(created?'账号已创建，你的 ID 是 '+profile.userId:'登录成功'));}
 
@@ -47,13 +48,13 @@ function updateRailProfile(){const p=profile();const el=app.querySelector('.rail
 function layout(){
   socialCleanup?.();socialCleanup=null;document.body.classList.remove('social-chat-open');viewRevision++;
   const s=state(),p=profile();
-  app.innerHTML=`<div class="layout"><aside class="rail"><a class="brand" href="#messages" data-nav="messages"><img src="./icon.png" alt="愚笨者"><span>愚笨者</span></a><nav class="rail-nav" aria-label="主导航">${navHtml()}</nav><div class="rail-bottom"><p class="rail-note"><span class="tiny-tag"><span class="dot"></span> v0.12.1</span></p><button class="self" data-nav="mine"><span class="avatar">${p.avatarImage?`<img src="${esc(p.avatarImage)}" alt="我的头像">`:esc(p.avatar)}</span><span><strong>${esc(p.nickname)}</strong><small>我的个人资料</small></span></button></div></aside><main class="workspace" data-view="${currentView}">${currentView==='wallet'?`<header class="topbar wallet-context-header"><div class="top-actions"><button class="network-pill" data-action="network"><span class="dot"></span>BSC 测试网${icon('chevron')}</button><button class="icon-btn" data-action="notice" aria-label="关于与环境说明">${icon('info')}</button></div></header>`:''}<div class="content-grid"><section class="main-content full-width ${currentView==='wallet'?'wallet-page':'social-main'}" id="page"></section></div></main></div><nav class="bottom-nav" aria-label="手机导航">${navHtml()}</nav>`;
+  app.innerHTML=`<div class="layout"><aside class="rail"><a class="brand" href="#messages" data-nav="messages"><img src="./icon.png" alt="愚笨者"><span>愚笨者</span></a><nav class="rail-nav" aria-label="主导航">${navHtml()}</nav><div class="rail-bottom"><p class="rail-note"><span class="tiny-tag"><span class="dot"></span> v0.13.0</span></p><button class="self" data-nav="mine"><span class="avatar">${p.avatarImage?`<img src="${esc(p.avatarImage)}" alt="我的头像">`:esc(p.avatar)}</span><span><strong>${esc(p.nickname)}</strong><small>我的个人资料</small></span></button></div></aside><main class="workspace" data-view="${currentView}">${currentView==='wallet'?`<header class="topbar wallet-context-header"><div class="top-actions"><button class="network-pill" data-action="network"><span class="dot"></span>BSC 测试网${icon('chevron')}</button><button class="icon-btn" data-action="notice" aria-label="关于与环境说明">${icon('info')}</button></div></header>`:''}<div class="content-grid"><section class="main-content full-width ${currentView==='wallet'?'wallet-page':'social-main'}" id="page"></section></div></main></div><nav class="bottom-nav" aria-label="手机导航">${navHtml()}</nav>`;
   const page=document.querySelector('#page');
   if(['messages','contacts','mine'].includes(currentView)&&!socialClient.getProfile())socialCleanup=mountAccountGate(page,{client:socialClient,onReady:accountReady,onWallet:()=>navigate('wallet'),onRetry:initializeAccount,error:accountError,loading:accountLoading});
   else if(currentView==='wallet')renderWallet(page);
   else if(currentView==='mine')socialCleanup=mountMine(page,{toast,onNavigate:navigate,onAction:mineAction,getWalletStatus:state,getDraftCount:()=>getDiscoverDrafts().length,isNative:isNativeApp(),profileService:socialClient});
   else if(currentView==='bills')socialCleanup=mountBillCenter(page,{toast,sources:{chain:()=>wallet.getRecords(),draft:getPlatformTransferDrafts,demo:getSocialPacketBills},onRefresh:hash=>wallet.getTransactionStatus(hash),onBack:()=>navigate(billReturn.view,billReturn.options)});
-  else if(currentView==='discover'&&!discoverProfileId)socialCleanup=mountDiscover(page,{toast,onNavigate:navigate,onBalance:openPlatform,onProfile:openDiscoverProfile,getWalletAddress:()=>state().address||'',initialRoute:routeOptions.route||'hub',initialOwnMoments:!!routeOptions.own,onRouteChange:route=>{routeOptions={...routeOptions,route};history.replaceState({view:currentView,options:routeOptions},'',location.hash)}});
+  else if(currentView==='discover'&&!discoverProfileId)socialCleanup=mountDiscover(page,{socialClient,onAccount:()=>navigate('messages'),toast,onNavigate:navigate,onBalance:openPlatform,onProfile:openDiscoverProfile,getWalletAddress:()=>state().address||'',initialRoute:routeOptions.route||'hub',initialOwnMoments:!!routeOptions.own,onRouteChange:route=>{routeOptions={...routeOptions,route};history.replaceState({view:currentView,options:routeOptions},'',location.hash)}});
   else if(['messages','contacts'].includes(currentView))socialCleanup=mountLiveSocial(page,{service:socialClient,profile:socialClient.getProfile(),view:currentView,toast,onNavigate:navigate,onScan:openScan,initialProfileId:routeOptions.profileId,onScreenChange:({screen})=>document.body.classList.toggle('social-chat-open',screen==='chat')});
   else socialCleanup=mountSocial(page,{view:currentView,toast,onNavigate:navigate,onTransfer:openTransfer,onScanTransfer:()=>openScan('transfer'),onScan:openScan,onAuthorizePacket:authorizePacket,initialProfileId:discoverProfileId||routeOptions.profileId,initialProfileReturn:currentView,onScreenChange:({screen})=>document.body.classList.toggle('social-chat-open',screen==='chat')});
 }
@@ -85,7 +86,7 @@ function openScan(mode='all'){
     }});
   },()=>{active=false;dispose()});
 }
-function mineAction(action){const actions={'account-settings':accountSettings,install:()=>location.assign('./install.html'),'bill-center':openBillCenter,'profile-updated':updateRailProfile,lock:()=>{wallet.lock();toast('钱包已锁定')},unlock:()=>unlockModal(()=>{socialCleanup?.refresh?.();toast('钱包已解锁')}),create:()=>beginWalletSetup(),export:exportVault,privacy:privacyModal,notice:noticeModal};actions[action]?.()}
+function mineAction(action){const actions={'account-settings':accountSettings,feedback:feedbackModal,install:()=>location.assign('./install.html'),'bill-center':openBillCenter,'profile-updated':updateRailProfile,lock:()=>{wallet.lock();toast('钱包已锁定')},unlock:()=>unlockModal(()=>{socialCleanup?.refresh?.();toast('钱包已解锁')}),create:()=>beginWalletSetup(),export:exportVault,privacy:privacyModal,notice:noticeModal};actions[action]?.()}
 function displayedBalance(){if(!state().exists)return '—';if(hideBalance)return '••••••';if(balance===null)return '—';return Number(balance).toLocaleString('en-US',{maximumFractionDigits:6})}
 function renderWallet(page){
   const s=state(),platform=assetTab==='platform';let cash=null,cashError='';try{cash=getSocialWalletSummary()}catch(error){cashError=error.message}
@@ -181,8 +182,8 @@ function confirmTransferModal(tx){showModal('核对转账',`<div class="transfer
 },()=>wallet.cancelCreation())}
 function transactionResult(result){showModal(result.broadcastUncertain?'广播状态待核实':'交易已提交',`<div class="success-ring">${icon('send')}</div><p class="modal-copy">${result.broadcastUncertain?'网络没有返回明确的广播结果。请先查看链上状态，避免重复转账。':'交易已提交至测试网，等待区块确认。提交并不代表到账。'}</p><div class="address">${esc(result.hash)}</div><a class="primary" href="https://testnet.bscscan.com/tx/${esc(result.hash)}" target="_blank" rel="noopener noreferrer">在 BscScan 查看 ${icon('arrow')}</a><button class="secondary" id="check-tx">刷新确认状态</button><p class="form-error" role="status"></p>`,el=>{el.querySelector('#check-tx').onclick=async e=>{e.target.disabled=true;try{const r=await wallet.getTransactionStatus(result.hash);formError(r.status==='confirmed'?'链上已确认，转账已完成。':r.status==='failed'?'链上执行失败，请查看交易详情。':'仍在等待链上确认，请稍后刷新。');if(currentView==='wallet')renderWallet(document.querySelector('#page'))}catch(err){formError(err)}finally{e.target.disabled=false}}})}
 function recordsModal(){showModal('本机转账记录',`${recordsHtml()}<p class="modal-copy" style="margin-top:18px">完整收支记录以区块浏览器为准。清除本机数据不会删除链上记录。</p>`)}
-function noticeModal(){showModal('关于愚笨者',`<p class="modal-copy">愚笨者 0.12.1 · 把资产握在手里，把朋友放在身边。</p><div class="notice">已接入真实账号、个人头像与数字 ID、好友申请、私聊和群聊，支持文字、图片与表情。账号资料与聊天记录保存在服务器。</div><div class="notice">钱包支持标准助记词、EVM 私钥和 V3 加密备份导入，以及只读地址观察。密钥在本机加密保存；余额与签名转账仅开放 BSC 测试网。</div><div class="notice warn">发现页、榜单、聊天红包与平台余额仍为体验流程。服务商、赏金与发币仅保存草稿；真实充值、提现和资金托管尚未接通。云端 AI 使用免费验收额度。</div><p class="modal-copy">硬件钱包直连签名、WalletConnect、主网、语音视频及应用商店上架尚未开放。聊天通过 HTTPS 传输，目前不是端到端加密。</p>`) }
-function privacyModal(){showModal('隐私与熟人关系',`<div class="notice">申请通过后才能私聊。群成员身份不自动等于好友。</div><p class="modal-copy">账号资料、好友关系与聊天记录存储在服务器，通过 HTTPS 传输，目前不是端到端加密。钱包助记词和私钥只在本机处理，不发送到聊天服务器。</p><div class="transfer-detail"><span>陌生人私聊</span><b>关闭</b></div><div class="transfer-detail"><span>好友验证</span><b>开启</b></div><div class="transfer-detail"><span>资产展示</span><b>默认隐藏</b></div><div class="transfer-detail"><span>加入资产榜</span><b>默认不参与</b></div><p class="modal-copy" style="margin-top:19px">发现页是示例资产榜。正式榜单需用户主动选择公开、验证钱包归属和资产快照。资产多少不能代表信用。</p>`) }
+function noticeModal(){showModal('关于愚笨者',`<p class="modal-copy">愚笨者 0.13.0 · 把资产握在手里，把朋友放在身边。</p><div class="notice">已接入真实账号、个人头像与数字 ID、好友申请、私聊和群聊，支持文字、图片与表情。账号资料与聊天记录保存在服务器。</div><div class="notice">钱包支持标准助记词、EVM 私钥和 V3 加密备份导入，以及只读地址观察。密钥在本机加密保存；余额与签名转账仅开放 BSC 测试网。</div><div class="notice warn">发现页、榜单、聊天红包与平台余额仍为体验流程。服务商、赏金与发币仅保存草稿；真实充值、提现和资金托管尚未接通。云端 AI 使用免费验收额度。</div><p class="modal-copy">硬件钱包直连签名、WalletConnect、主网、语音视频及应用商店上架尚未开放。聊天通过 HTTPS 传输，目前不是端到端加密。</p>`) }
+function privacyModal(){showModal('隐私与熟人关系',`<div class="notice">申请通过后才能私聊。群成员身份不自动等于好友。</div><p class="modal-copy">账号资料、好友关系与聊天记录存储在服务器，通过 HTTPS 传输，目前不是端到端加密。钱包助记词和私钥只在本机处理，不发送到聊天服务器。</p><div class="transfer-detail"><span>陌生人私聊</span><b>关闭</b></div><div class="transfer-detail"><span>好友验证</span><b>开启</b></div><div class="transfer-detail"><span>资产展示</span><b>默认隐藏</b></div><div class="transfer-detail"><span>加入资产榜</span><b>默认不参与</b></div><p class="modal-copy" style="margin-top:19px">朋友圈按好友关系与发布范围控制可见；你可以管理登录设备、拉黑、举报或注销账号。<br><a href="./privacy.html">隐私说明</a> · <a href="./terms.html">用户规则</a></p>`) }
 function exportVault(){if(walletProblem())return;if(!state().exists)return beginWalletSetup(exportVault);unlockModal(async()=>{try{const payload=wallet.exportEncryptedKeystore();const result=await saveJsonFile(payload);toast(result.saved?(result.method!=='browser-download'?'加密备份已保存，请与密码分开保管':'已请求下载加密备份，请检查下载文件'):'已取消保存，没有导出文件')}catch(e){toast(e.message||'备份没有保存，请重试')}})}
 app.addEventListener('click',e=>{const nav=e.target.closest('[data-nav]');if(nav){e.preventDefault();navigate(nav.dataset.nav);return}const action=e.target.closest('[data-action]')?.dataset.action;if(!action)return;const handlers={create:()=>beginWalletSetup(),unlock:()=>unlockModal(()=>layout()),send:openTransfer,receive:receiveModal,copy:copyAddress,records:openBillCenter,refresh:()=>refreshBalance(true),visibility:()=>{hideBalance=!hideBalance;renderWallet(document.querySelector('#page'));if(assetTab==='chain'&&!hideBalance&&balance===null)refreshBalance()},notice:noticeModal,network:()=>showModal('当前网络',`<div class="notice">BSC 测试网 · Chain ID 97 · tBNB</div><p class="modal-copy">目前仅支持 BSC 测试网。其他网络一律不支持，主网暂未开放。测试币无实际价值，不提供跨链切换。</p>`),privacy:privacyModal,cash:openPlatform,'chain-tab':()=>switchAssetTab('chain'),'platform-tab':openPlatform,'watch-wallets':watchWallets,'wallet-compatibility':walletCompatibility,'import-wallet':restoreModal,deposit:()=>platformTransferModal('deposit'),withdraw:()=>platformTransferModal('withdraw'),'platform-rules':platformRules,'platform-records':openBillCenter,lock:()=>{wallet.lock();layout();toast('钱包已锁定')},export:exportVault};handlers[action]?.()});
 window.addEventListener('tongban:wallet-locked',()=>{walletIntent=null;backupPhrase='';if(dialog.open){dialog.close();clearModal()}if(currentView==='wallet')layout()});
@@ -226,9 +227,41 @@ installAndroidControls({onBackground:lockForBackground,onBack:androidBack,onErro
 function accountSettings(){
  const profile=socialClient.getProfile();if(!profile){navigate('mine');return;}
  showModal('账号设置',accountSettingsHTML(profile),el=>{
+  modalCleanup=mountAccountSecurity(el.querySelector('[data-account-security]'),{client:socialClient,onDeleted:()=>{wallet.lock();closeModal();navigate('messages');toast('账号已注销，本机钱包保留并已锁定。')},onRefresh:()=>{updateRailProfile()}});
+  el.querySelector('#account-notifications').onclick=()=>showModal('消息通知','<div id="notification-settings"></div>',body=>{modalCleanup=mountNotificationSettings(body.querySelector('#notification-settings'),{client:socialClient})});
   el.querySelector('#account-copy-id').onclick=async()=>{try{await navigator.clipboard.writeText(profile.userId);toast('用户 ID 已复制')}catch{toast('复制权限不可用，请长按 ID 复制')}};
   el.querySelector('#account-qr').onclick=()=>showModal('我的好友码','<canvas id="my-friend-qr" class="receive-qr" aria-label="我的好友二维码"></canvas><div class="address">ID '+esc(profile.userId)+'</div><p class="modal-copy">对方使用“扫一扫”，或输入这个 ID 添加你为好友。修改 ID 后请使用新的好友码。</p>',qr=>QRCode.toCanvas(qr.querySelector('canvas'),'tongban://friend/'+profile.userId,{width:220,margin:2,color:{dark:'#8053BA',light:'#ffffff'}},error=>{if(error)toast('二维码生成失败，请使用 ID 添加好友')}));
   el.querySelector('form').onsubmit=event=>{event.preventDefault();const form=event.target;busyForm(form,async()=>{if(form.elements.newPassword.value!==form.elements.repeat.value)throw new Error('两次输入的新密码不一致。');if(!/^\d{6}$/.test(form.elements.newPassword.value))throw new Error('新密码需要 6 位数字。');await socialClient.changePassword(form.elements.currentPassword.value,form.elements.newPassword.value);form.reset();if(form.isConnected&&dialog.open)closeModal();toast('账号密码已更新，其他设备需重新登录。')})};
   el.querySelector('#account-logout').onclick=()=>showModal('退出账号','<p class="modal-copy">退出后，可用 ID 和密码重新登录。服务器聊天记录和本机钱包都会保留；钱包会自动锁定。</p><p class="form-error" role="alert"></p><button class="primary" id="confirm-account-logout">确认退出</button>',confirm=>{confirm.querySelector('button#confirm-account-logout').onclick=async event=>{event.target.disabled=true;try{await socialClient.logout();wallet.lock();closeModal();navigate('messages')}catch(error){formError(error);event.target.disabled=false}}});
  });
 }
+
+function feedbackModal(){
+ if(!socialClient.getProfile()){navigate('mine');return;}
+ const requestId=crypto.randomUUID();
+ showModal('问题反馈','<form id="feedback-form"><label class="field">请描述遇到的问题<textarea name="detail" rows="6" minlength="5" maxlength="1000" required placeholder="例如：设备型号、发生步骤和报错文字"></textarea></label><p class="modal-copy">反馈由运营人员查看处理，请勿填写密码、助记词或私钥。</p><p class="form-error" role="alert"></p><button class="primary" type="submit">提交反馈</button></form>',el=>{
+  el.querySelector('form').onsubmit=event=>{event.preventDefault();const form=event.target;busyForm(form,async()=>{
+   const detail=form.elements.detail.value.trim();if(detail.length<5)throw new Error('请至少填写 5 个字，帮助我们定位问题。');
+   const result=await socialClient.authenticatedRequest('reports',{method:'POST',input:{targetType:'feedback',reason:'other',detail,requestId}});
+   if(form.isConnected)showModal('反馈已提交','<p class="modal-copy">已保存到服务器，运营人员可查看并处理。</p><p class="address">'+esc(result.report?.id||result.id||requestId)+'</p>');
+  })};
+ });
+}
+
+let policyViewEpoch=0;
+document.addEventListener('click',event=>{
+ const anchor=event.target.closest?.('a[href]');if(!anchor)return;
+ const href=anchor.getAttribute('href');if(!['./privacy.html','./terms.html'].includes(href))return;
+ event.preventDefault();const title=href.includes('privacy')?'隐私说明':'用户规则';
+ showModal(title,'<div class="policy-document"><p role="status">正在读取…</p></div>',undefined,()=>{policyViewEpoch++});
+ const turn=++policyViewEpoch,target=dialog.querySelector('.policy-document');
+ fetch(href,{credentials:'same-origin',redirect:'error',cache:'no-store'}).then(async response=>{
+  if(!response.ok)throw new Error('说明暂时无法读取，请稍后重试。');const html=await response.text();if(html.length>100000)throw new Error('说明格式无效。');
+  const doc=new DOMParser().parseFromString(html,'text/html'),main=doc.querySelector('main');if(!main)throw new Error('说明格式无效。');
+  if(turn!==policyViewEpoch||!target.isConnected)return;
+  // These are bundled local documents. Keep only presentation elements even if a file is damaged.
+  const allowed=new Set(['H1','H2','H3','P','STRONG','EM','UL','OL','LI','BR','A','SMALL']);
+  function copy(source,parent){for(const child of source.childNodes){if(child.nodeType===3){parent.append(document.createTextNode(child.textContent));continue;}if(child.nodeType!==1)continue;if(!allowed.has(child.tagName)){if(!['SCRIPT','STYLE','IFRAME','OBJECT'].includes(child.tagName))copy(child,parent);continue;}const el=document.createElement(child.tagName.toLowerCase());if(child.tagName==='A'){const link=child.getAttribute('href');if(['./privacy.html','./terms.html'].includes(link))el.setAttribute('href',link);}copy(child,el);parent.append(el);}}
+  target.replaceChildren();copy(main,target);
+ }).catch(error=>{if(turn===policyViewEpoch&&target.isConnected)target.textContent=error.message;});
+});

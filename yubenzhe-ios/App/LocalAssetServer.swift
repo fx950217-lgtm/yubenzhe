@@ -9,7 +9,8 @@ final class LocalAssetServer {
     static let assetTypes = [
         "index.html": "text/html; charset=utf-8", "app.js": "application/javascript; charset=utf-8",
         "app.css": "text/css; charset=utf-8", "icon.svg": "image/svg+xml", "icon.png": "image/png",
-        "manifest.webmanifest": "application/manifest+json", "apple-touch-icon.png": "image/png"
+        "manifest.webmanifest": "application/manifest+json", "apple-touch-icon.png": "image/png",
+        "privacy.html": "text/html; charset=utf-8", "terms.html": "text/html; charset=utf-8"
     ]
     private let queue = DispatchQueue(label: "app.yubenzhe.loopback")
     private var listener: NWListener?

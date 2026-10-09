@@ -1,0 +1,45 @@
+{
+  "scope": "Isolated loopback-only 24 synthetic accounts, 20 concurrent HTTP workers, 3 minute local smoke load; not production capacity or 1000-user test",
+  "startedAt": "2026-10-09T11:46:35.475Z",
+  "durationTargetMs": 180000,
+  "accounts": 24,
+  "concurrency": 20,
+  "productionRequests": 0,
+  "checks": [
+    {
+      "name": "24 accounts and 12 bilateral chats via real HTTP without changing rate limits",
+      "pass": true
+    },
+    {
+      "name": "130 offline messages received exactly once in three forward pages",
+      "pass": true
+    },
+    {
+      "name": "All acknowledged messages persist and duplicate client IDs never create extra messages",
+      "pass": true
+    },
+    {
+      "name": "Private pagination returns every acknowledged message and SQLite integrity is ok",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "pass": true,
+  "elapsedMs": 180271,
+  "requests": 8915,
+  "statusCounts": {
+    "200": 8915
+  },
+  "errorCount": 0,
+  "errorRate": 0,
+  "latencyMs": {
+    "p50": 2.58,
+    "p95": 8.08,
+    "p99": 13.34,
+    "max": 24.62
+  },
+  "maxInflight": 20,
+  "logicalMessages": 1800,
+  "persistedMessages": 1800,
+  "completedAt": "2026-10-09T11:49:36.582Z"
+}

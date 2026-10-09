@@ -32,14 +32,15 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
   const checkOrigin = request => assertSameOrigin(new Request(`${publicURL.origin}/`, { headers: { origin: request.headers.origin || '', 'sec-fetch-site': request.headers['sec-fetch-site'] || '' } }));
   const server = createServer(async (request, response) => {
     response.setHeader('Cache-Control','no-store, private'); response.setHeader('X-Content-Type-Options','nosniff');
-    response.setHeader('Referrer-Policy','no-referrer'); response.setHeader('X-Frame-Options','DENY');
+    response.setHeader('Referrer-Policy','same-origin'); response.setHeader('X-Frame-Options','DENY');
     response.setHeader('Permissions-Policy',role === 'frontend' ? 'camera=(self), microphone=(), geolocation=()' : 'camera=(), microphone=(), geolocation=()');
     response.setHeader('Content-Security-Policy',`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'${role === 'frontend' ? ' https://bsc-testnet-dataseed.bnbchain.org https://bsc-testnet.bnbchain.org' : ''}; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`);
     try {
       const url = new URL(request.url || '/', publicURL.origin);
       if (url.pathname === '/healthz' && request.method === 'GET') {
         if (role === 'admin') database.raw.prepare('SELECT 1').get();
-        json(response,{ok:true,service:role,version:'0.12.1',stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
+        socialService?.health?.();
+        json(response,{ok:true,service:role,version:'0.13.0',stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
       }
       if (request.headers.host !== publicURL.host || url.origin !== publicURL.origin) throw new AdminError(403,'HOST_DENIED','访问地址不匹配，请使用验收地址。');
       if (role === 'frontend' && url.pathname.startsWith('/api/social/')) {
@@ -63,6 +64,21 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       }
       if (url.pathname === '/logout' || url.pathname === '/signout-with-chatgpt') { response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); response.end(gatePage(role,'',true)); return; }
       if (url.pathname.startsWith('/api/')) {
+        if(role==='admin'&&url.pathname.startsWith('/api/admin/social/')){
+          await authorizeAdmin(database,user);
+          if(!socialService?.moderation)throw new AdminError(503,'SOCIAL_UNAVAILABLE','真实社交管理暂不可用。');
+          const actionPath=url.pathname.slice('/api/admin/social/'.length);let result;
+          if(request.method==='GET'&&actionPath==='reports')result={reports:socialService.moderation.list(url.searchParams.get('status')||'pending')};
+          else if(request.method==='GET'&&/^reports\/[a-f0-9-]{36}$/.test(actionPath))result=socialService.moderation.show(actionPath.slice(8));
+          else if(request.method==='POST'&&actionPath==='resolve'){
+            checkOrigin(request);
+            if(request.headers['content-type']?.split(';')[0].trim().toLowerCase()!=='application/json')throw new AdminError(415,'JSON_REQUIRED','操作仅接受 JSON。');
+            let input;try{input=JSON.parse(await body(request,8192))}catch(error){if(error instanceof AdminError)throw error;throw new AdminError(400,'INVALID_JSON','请求内容无效。');}
+            if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(key=>!['reportId','action','reason'].includes(key)))throw new AdminError(400,'INVALID_FIELDS','操作字段无效。');
+            result=socialService.moderation.resolve({...input,actor:user.userId});
+          }else throw new AdminError(404,'NOT_FOUND','管理入口不存在。');
+          json(response,result);return;
+        }
         const aiPrefix=role==='admin'?'/api/admin/ai/':'/api/ai/';
         if(url.pathname.startsWith(aiPrefix)) {
           if(!aiService)throw new AdminError(503,'AI_DATABASE_UNAVAILABLE','工作台存储尚未接通，请稍后重试。');

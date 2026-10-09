@@ -57,10 +57,12 @@ services:
       AI_MODEL: ${AI_MODEL:-}
       AI_API_KEY: ${AI_API_KEY:-}
       DATABASE_PATH: /data/acceptance.sqlite
+      SOCIAL_DATABASE_PATH: /social/social.sqlite
     volumes:
       - ./ai-state:/workspace
       - ./secrets/admin.json:/run/ybz-secrets/admin.json:ro
       - ./state:/data
+      - ./social-state:/social
       - ./backups:/backups
     healthcheck:
       test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]

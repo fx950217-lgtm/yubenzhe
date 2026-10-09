@@ -1,0 +1,61 @@
+import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { password } from './social-validation.mjs';
+import { deleteAccountMoments } from './social-moments.mjs';
+const VERIFY_AGE=5*60*1000;
+const recoveryDigest=(hash,id,code)=>hash('yubenzhe:account-recovery:v1:'+id+':'+code);
+function normalizeCode(value){if(typeof value!=='string'||value.length>160)return '';const code=value.trim().toUpperCase().replace(/^YBZ-/,'').replace(/[\s-]/g,'');return /^[A-F0-9]{48}$/.test(code)?code:'';}
+function equal(a,b){return typeof a==='string'&&typeof b==='string'&&a.length===b.length&&timingSafeEqual(Buffer.from(a),Buffer.from(b));}
+function deviceAgent(value){return typeof value==='string'?value.replace(/[\x00-\x1f\x7f]/g,'').slice(0,256):'';}
+function ipHint(value){if(typeof value!=='string')return '';const v=value.replace(/^::ffff:/,'');if(/^\d{1,3}(\.\d{1,3}){3}$/.test(v))return v.split('.').slice(0,2).join('.')+'.*.*';if(/^[a-f0-9:]+$/i.test(v)&&v.includes(':'))return v.split(':').slice(0,3).join(':')+'::*';return '';}
+function deviceName(ua){const platform=/Android/i.test(ua)?'Android':/iPhone|iPad/i.test(ua)?'iPhone / iPad':/Windows/i.test(ua)?'Windows':/Macintosh|Mac OS/i.test(ua)?'Mac':/Linux/i.test(ua)?'Linux':'设备';const browser=ua.includes('Edg/')?'Edge':ua.includes('Chrome/')?'Chrome':ua.includes('Firefox/')?'Firefox':ua.includes('Safari/')?'Safari':'';return [platform,browser].filter(Boolean).join(' · ');}
+export function createAccountSecurity(ctx){
+ const {db,now,one,all,run,transaction,fail,fields,userId,accountById,accountByUserId,authenticate,verify,derive,limit,hash}=ctx;
+ const exists=name=>!!one("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",name);
+ const passwordDigest=a=>hash(a.password_salt+':'+a.password_hash);
+ function assertActive(a){if(!a||a.deleted_at)fail(401,'ACCOUNT_REQUIRED','账号已注销，请使用其他账号。');}
+ function onSession(tokenHash,{userAgent='',ip=''}={}){run('UPDATE social_sessions SET session_id=?,user_agent=?,ip_hint=?,last_seen_at=? WHERE token_hash=?',randomUUID(),deviceAgent(userAgent),ipHint(ip),now(),tokenHash);}
+ function touchSession(tokenHash){run('UPDATE social_sessions SET last_seen_at=? WHERE token_hash=? AND last_seen_at<?',now(),tokenHash,now()-60000);}
+ async function checkPassword(a,token,value){password(value);limit('login:'+a.user_id,8,900000);if(!await verify(a,value))fail(401,'BAD_PASSWORD','账号密码不正确。');const current=authenticate(token,{allowRestricted:true});if(current.id!==a.id||passwordDigest(current)!==passwordDigest(a))fail(409,'ACCOUNT_CHANGED','账号安全状态已变化，请重新验证。');return current;}
+ function proof(a,token,value){if(typeof value!=='string'||!/^[-_A-Za-z0-9]{43}$/.test(value))fail(403,'VERIFICATION_REQUIRED','请重新验证账号密码。');const row=one('SELECT * FROM account_verifications WHERE token_hash=?',hash(value));if(!row||row.account_id!==a.id||row.session_hash!==hash(token)||row.expires_at<=now()||row.password_digest!==passwordDigest(accountById(a.id)))fail(403,'VERIFICATION_REQUIRED','身份验证已失效，请重新验证。');return row.token_hash;}
+ function consume(a,token,value){run('DELETE FROM account_verifications WHERE token_hash=?',proof(a,token,value));}
+ function sessions(a,token){return all('SELECT session_id,user_agent,ip_hint,created_at,last_seen_at,expires_at,token_hash FROM social_sessions WHERE account_id=? AND expires_at>? ORDER BY created_at DESC,rowid DESC',a.id,now()).map(s=>({id:s.session_id,device:deviceName(s.user_agent),ipHint:s.ip_hint,createdAt:s.created_at,lastSeenAt:s.last_seen_at,expiresAt:s.expires_at,current:equal(s.token_hash,hash(token))}));}
+ async function handlePublic({method,path,input={},ip='unknown'}){
+  if(method!=='POST'||path!=='security/recover')return undefined;
+  fields(input,['userId','recoveryCode','newPassword']);const id=userId(input.userId);password(input.newPassword);limit('recovery-ip:'+hash(ip),20,900000);limit('recovery-id:'+id,8,900000);
+  const account=accountByUserId(id),code=normalizeCode(input.recoveryCode),old=account&&one('SELECT * FROM account_recovery WHERE account_id=?',account.id);
+  if(!account||account.deleted_at||!code||!old||!equal(old.code_hash,recoveryDigest(hash,account.id,code)))fail(401,'INVALID_RECOVERY','ID 或恢复码不正确，或恢复码已失效。');
+  const salt=randomBytes(16).toString('hex'),nextHash=(await derive(input.newPassword,salt)).toString('hex');
+  transaction(()=>{const current=accountById(account.id),latest=one('SELECT * FROM account_recovery WHERE account_id=?',account.id);if(!current||current.deleted_at||!latest||!equal(latest.code_hash,old.code_hash)||passwordDigest(current)!==passwordDigest(account))fail(409,'RECOVERY_CHANGED','恢复码已使用或账号已变化，请重新确认。');
+   run('DELETE FROM account_recovery WHERE account_id=?',account.id);run('UPDATE accounts SET password_salt=?,password_hash=?,revision=revision+1 WHERE id=?',salt,nextHash,account.id);run('DELETE FROM social_sessions WHERE account_id=?',account.id);run('DELETE FROM account_verifications WHERE account_id=?',account.id);
+  });return {recovered:true,requiresLogin:true};
+ }
+ async function handle({method,path,input={},token,account:a}){
+  if(!path.startsWith('security/'))return undefined;
+  if(method==='GET'&&path==='security/status'){const recovery=one('SELECT created_at FROM account_recovery WHERE account_id=?',a.id);return {recoveryEnabled:!!recovery,recoveryCreatedAt:recovery?.created_at??null,sessions:sessions(a,token)};}
+  if(method==='GET'&&path==='security/sessions')return {sessions:sessions(a,token)};
+  if(method==='POST'&&path==='security/verify'){fields(input,['currentPassword']);const current=await checkPassword(a,token,input.currentPassword),verificationToken=randomBytes(32).toString('base64url');run('DELETE FROM account_verifications WHERE expires_at<=? OR session_hash=?',now(),hash(token));run('INSERT INTO account_verifications VALUES(?,?,?,?,?)',hash(verificationToken),a.id,hash(token),passwordDigest(current),now()+VERIFY_AGE);return {verificationToken,expiresAt:now()+VERIFY_AGE};}
+  if(method==='POST'&&path==='security/recovery-code'){fields(input,['verificationToken']);const raw=randomBytes(24).toString('hex').toUpperCase();transaction(()=>{consume(a,token,input.verificationToken);run('INSERT INTO account_recovery VALUES(?,?,?) ON CONFLICT(account_id) DO UPDATE SET code_hash=excluded.code_hash,created_at=excluded.created_at',a.id,recoveryDigest(hash,a.id,raw),now());});return {recoveryCode:'YBZ-'+raw.match(/.{6}/g).join('-'),createdAt:now()};}
+  if(method==='POST'&&path==='security/recovery-code/remove'){fields(input,['verificationToken']);transaction(()=>{consume(a,token,input.verificationToken);run('DELETE FROM account_recovery WHERE account_id=?',a.id);});return {revoked:true};}
+  if(method==='POST'&&path==='security/sessions/revoke'){fields(input,['verificationToken','sessionId','others']);if(input.others!==undefined&&input.others!==true)fail(400,'INVALID_SESSION','请选择需要退出的设备。');if(input.others===true&&input.sessionId!==undefined)fail(400,'INVALID_SESSION','请只选择一种退出方式。');if(!input.others&&(typeof input.sessionId!=='string'||!/^([a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i.test(input.sessionId)))fail(400,'INVALID_SESSION','设备不存在。');
+   return transaction(()=>{proof(a,token,input.verificationToken);const target=!input.others&&one('SELECT token_hash FROM social_sessions WHERE account_id=? AND session_id=?',a.id,input.sessionId);if(!input.others&&!target)fail(404,'SESSION_NOT_FOUND','设备不存在或已经退出。');consume(a,token,input.verificationToken);if(input.others){run('DELETE FROM account_verifications WHERE account_id=? AND session_hash<>?',a.id,hash(token));run('DELETE FROM social_sessions WHERE account_id=? AND token_hash<>?',a.id,hash(token));}else{run('DELETE FROM account_verifications WHERE session_hash=?',target.token_hash);run('DELETE FROM social_sessions WHERE token_hash=?',target.token_hash);}return {revoked:true,currentSessionRevoked:!!target&&equal(target.token_hash,hash(token))};});
+  }
+  if(method==='POST'&&path==='security/delete-account'){fields(input,['currentPassword','confirmation']);if(input.confirmation!=='注销账号')fail(400,'CONFIRMATION_REQUIRED','请输入“注销账号”以确认。');await checkPassword(a,token,input.currentPassword);
+   return transaction(()=>{const owned=one("SELECT c.id FROM conversations c WHERE c.type='group' AND c.owner_id=? AND EXISTS(SELECT 1 FROM conversation_members m WHERE m.conversation_id=c.id AND m.account_id<>?)",a.id,a.id);if(owned)fail(409,'TRANSFER_OWNER','你仍是群主，请先在群设置中转让群主，再注销账号。');
+    run("UPDATE conversations SET name='已结束的群聊',note='',owner_id=NULL,updated_at=? WHERE type='group' AND owner_id=?",now(),a.id);
+    const ownMessages=all('SELECT id,conversation_id FROM messages WHERE sender=?',a.id);for(const m of ownMessages)run("INSERT OR IGNORE INTO message_moderation VALUES(?,'账号注销',?)",m.id,now());
+    run("UPDATE messages SET type='text',text='消息已删除',sticker='',media_id=NULL WHERE sender=?",a.id);run('DELETE FROM social_media WHERE owner_id=?',a.id);
+    for(const id of new Set(ownMessages.map(m=>m.conversation_id)))run('UPDATE conversations SET updated_at=? WHERE id=?',now(),id);
+    const erasedReports=all("SELECT * FROM social_reports WHERE reporter_id=? OR (target_type='user' AND target_id=?) OR (target_type='message' AND target_id IN(SELECT CAST(id AS TEXT) FROM messages WHERE sender=?)) OR (target_type='moment' AND target_id IN(SELECT CAST(id AS TEXT) FROM moments WHERE author_id=?)) OR (target_type='comment' AND target_id IN(SELECT CAST(c.id AS TEXT) FROM moment_comments c JOIN moments p ON p.id=c.post_id WHERE c.author_id=? OR p.author_id=?))",a.id,a.id,a.id,a.id,a.id,a.id);
+    deleteAccountMoments(db,a.id);
+    if(exists('push_jobs'))run('DELETE FROM push_jobs WHERE account_id=?',a.id);if(exists('push_subscriptions'))run('DELETE FROM push_subscriptions WHERE account_id=?',a.id);
+    run('DELETE FROM friendships WHERE a=? OR b=?',a.id,a.id);run('DELETE FROM friend_requests WHERE sender=? OR recipient=?',a.id,a.id);run('DELETE FROM social_blocks WHERE blocker_id=? OR blocked_id=?',a.id,a.id);run('DELETE FROM conversation_members WHERE account_id=?',a.id);run('DELETE FROM registrations WHERE account_id=?',a.id);run('DELETE FROM group_requests WHERE owner_account_id=?',a.id);
+    for(const report of erasedReports){let evidence={};try{const saved=JSON.parse(report.evidence);if(report.target_type==='message'){if(typeof saved.senderId==='string')evidence.senderId=saved.senderId;if(typeof saved.conversationId==='string')evidence.conversationId=saved.conversationId;}}catch{}run("UPDATE social_reports SET detail='',resolution='',evidence=? WHERE id=?",JSON.stringify(evidence),report.id);run("UPDATE social_moderation_audit SET reason='相关账号已注销，原处理说明已清除' WHERE report_id=?",report.id);}
+    run('DELETE FROM account_recovery WHERE account_id=?',a.id);run('DELETE FROM account_verifications WHERE account_id=?',a.id);run('DELETE FROM social_sessions WHERE account_id=?',a.id);
+    run("UPDATE accounts SET nickname='已注销账号',bio='',avatar='🌱',avatar_image='',avatar_key='',official=0,level=1,password_salt=?,password_hash=?,deleted_at=?,revision=revision+1 WHERE id=?",randomBytes(16).toString('hex'),randomBytes(32).toString('hex'),now(),a.id);
+    return {deleted:true,walletUnaffected:true};
+   });
+  }
+  return undefined;
+ }
+ return {handlePublic,handle,assertActive,onSession,touchSession};
+}

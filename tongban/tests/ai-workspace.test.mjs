@@ -107,3 +107,13 @@ test('local inference displays only validated bridge results and does not send a
   const calls=[],h=harness({bridge:{status:async()=>({available:true,models:[{name:'chosen-model'}]}),generate:async value=>{calls.push(value);return {text:'<b>真实本地结果</b>',model:value.model,local:true};},cancel(){}}});
   try{h.click('local-check');await flush();h.click('local-run');await flush();assert.equal(calls.length,1);assert.equal(calls[0].model,'chosen-model');assert.equal(h.calls.length,0);assert.match(h.html,/&lt;b&gt;真实本地结果&lt;\/b&gt;/);assert.doesNotMatch(h.html,/<b>真实本地结果/);}finally{h.feature.cleanup();}
 });
+
+
+test('product account client uses authenticated social API on native or web without legacy-cookie fallback',async()=>{
+ const calls=[];const socialClient={authenticatedRequest:async(path,options)=>{calls.push({path,...options});return {items:[]};}};const client=createAIClient({socialClient,fetcher:()=>assert.fail('No legacy acceptance request')});assert.equal(client.supported(),true);assert.deepEqual(await client.request('/api/ai/workspaces',{method:'POST',body:{name:'合成申请'}}),{items:[]});assert.deepEqual(calls,[{path:'ai/workspaces',method:'POST',input:{name:'合成申请'}}]);await assert.rejects(client.request('/api/admin/ai/workspaces'),error=>error.code==='INVALID_PATH');
+});
+
+test('product account AI client reports login requirements and discards cancelled responses',async()=>{
+ const denied=createAIClient({socialClient:{authenticatedRequest:async()=>{throw Object.assign(new Error('need account'),{code:'ACCOUNT_REQUIRED',status:401});}}});await assert.rejects(denied.request('/api/ai/workspaces'),error=>error.code==='ACCOUNT_REQUIRED'&&/愚笨者账号/.test(error.message));
+ const gate=deferred(),controller=new AbortController(),client=createAIClient({socialClient:{authenticatedRequest:()=>gate.promise}});const pending=client.request('/api/ai/workspaces',{signal:controller.signal});controller.abort();gate.resolve({items:[{id:'old'}]});await assert.rejects(pending,error=>error.name==='AbortError');
+});

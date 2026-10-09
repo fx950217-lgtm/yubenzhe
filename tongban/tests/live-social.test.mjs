@@ -5,7 +5,7 @@ const dataURL = source => 'data:text/javascript;base64,' + Buffer.from(source).t
 const stripCSS = source => source.replace(/import '\.\/[^']+\.css';\n/g, '');
 const mediaURL = dataURL(stripCSS(await readFile(new URL('../src/chat-media.js', import.meta.url), 'utf8')));
 const source = stripCSS(await readFile(new URL('../src/live-social.js', import.meta.url), 'utf8')).replace("'./chat-media.js'", JSON.stringify(mediaURL));
-const { validateFriendId, validateGroup, mergeMessages, safeProfilePhoto, invalidatedConversationIds } = await import(dataURL(source));
+const { validateFriendId, validateGroup, mergeMessages, safeProfilePhoto, invalidatedConversationIds, catchUpMessages } = await import(dataURL(source));
 
 test('friend IDs use exact ASCII digits with the same account length limits', () => {
   for (const input of ['000123', '1234567890123456', ' 73648291 ']) assert.equal(validateFriendId(input), input.trim());
@@ -49,4 +49,18 @@ test('revoked or renewed memberships invalidate cached messages even with the sa
  assert.deepEqual(invalidatedConversationIds(existing, [{ id: 'direct', membershipRevision: '100:0' }, { id: 'group', membershipRevision: '200:23' }]), ['group']);
  assert.deepEqual(invalidatedConversationIds(existing, [{ id: 'direct', membershipRevision: '301:23' }, { id: 'group', membershipRevision: '200:0' }]), ['direct']);
  assert.deepEqual(invalidatedConversationIds([], [{ id: 'new', membershipRevision: '400:0' }]), []);
+});
+
+
+test('catch-up bridges more than fifty offline messages without relying on newest page or optimistic sends',async()=>{
+ const rows=Array.from({length:127},(_,i)=>({id:String(i+11),createdAt:100,text:'消息'+i})),calls=[];const service={async getMessages(id,{after}){calls.push(after);const pending=rows.filter(x=>Number(x.id)>Number(after));return {messages:pending.slice(0,50),hasMore:pending.length>50,nextAfter:pending.length>50?pending[49].id:null};}};
+ const result=await catchUpMessages(service,'chat','10');assert.equal(result.messages.length,127);assert.deepEqual(calls,['10','60','110']);assert.equal(result.cursor,'137');assert.equal(result.hasMore,false);assert.equal(mergeMessages([{id:'200',createdAt:100,text:'own confirmed'}],result.messages).length,128);assert.deepEqual(mergeMessages([], [{id:'10',createdAt:1},{id:'9',createdAt:1}]).map(m=>m.id),['9','10']);
+});
+test('catch-up stops obsolete membership responses and bounds long backlog work per poll',async()=>{
+ let current=true;const aborted=await catchUpMessages({async getMessages(){current=false;return {messages:[{id:'7'}],hasMore:false};}},'chat','1',()=>current);assert.equal(aborted,null);
+ let calls=0;const result=await catchUpMessages({async getMessages(id,{after}){calls++;const idNext=String(Number(after)+1);return {messages:[{id:idNext,createdAt:1}],nextAfter:idNext,hasMore:true};}},'chat','0');assert.equal(calls,10);assert.equal(result.cursor,'10');assert.equal(result.hasMore,true);
+ await assert.rejects(catchUpMessages({async getMessages(){return {messages:[],hasMore:true,nextAfter:'1'};}},'chat','1'),/游标/);
+});
+test('content moderation revisions invalidate visible message caches and open media',()=>{
+ assert.deepEqual(invalidatedConversationIds([{id:'c',membershipRevision:'1',contentRevision:'0'}],[{id:'c',membershipRevision:'1',contentRevision:'1'}]),['c']);
 });

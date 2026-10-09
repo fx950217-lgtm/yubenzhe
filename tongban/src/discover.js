@@ -1,7 +1,7 @@
 import './discover.css';
 import { saveJsonFile } from './native-runtime.js';
 import './discover-v5.css';
-import { createMomentsFeature } from './discover-moments.js';
+import { createLiveMomentsFeature } from './live-moments.js';
 import { createDiscoveryWorkbench } from './discover-workbench.js';
 import { createTokenStudio } from './discover-token.js';
 import { getAddress } from 'ethers';
@@ -231,8 +231,8 @@ export function mountDiscover(container, options = {}) {
   const textarea = (label,name,value='',placeholder='',extra='') => `<label class="disc-field">${label}<textarea name="${name}" placeholder="${esc(placeholder)}" ${extra}>${esc(value)}</textarea></label>`;
   const panelNote = copy => `<p class="disc-note">${copy}</p>`;
 
-  const moments=createMomentsFeature({getData:()=>data,getPeople:people,getMe:me,commit,showDialog,closeDialog,toast,render,onSaved:()=>{if(view!=='moments')go('moments',{ownOnly:true});else render()},onProfile,onShare:share,readImages:readMomentImages,isSafeImage:safeImageData});
-  const shared={getDraft:latestDraft,getDraftMeta,getDraftKey:type=>getDraftMeta(type)?.id||`new:${type}:${newDraftRevisions[type]||0}`,getDrafts:activeDrafts,saveDraft,showDialog,closeDialog,toast,go,onBalance,render};
+  const moments=createLiveMomentsFeature({service:options.socialClient||options.service,onAccount:options.onAccount,getLegacyDrafts:()=>data.posts.filter(post=>post.authorId==='me'),showDialog,closeDialog,toast,render,onSaved:()=>go('moments')});
+  const shared={socialClient:options.socialClient||options.service,onAccount:options.onAccount,getDraft:latestDraft,getDraftMeta,getDraftKey:type=>getDraftMeta(type)?.id||`new:${type}:${newDraftRevisions[type]||0}`,getDrafts:activeDrafts,saveDraft,showDialog,closeDialog,toast,go,onBalance,render};
   const workbench=createDiscoveryWorkbench({...shared,validateDraft:validateServiceDraft});
   const tokenStudio=createTokenStudio({...shared,validateToken:validateTokenDraft,validateService:validateServiceDraft,getWalletAddress});
 
@@ -288,11 +288,11 @@ export function mountDiscover(container, options = {}) {
   function renderHub() {
     const friends=people().filter(p=>p.isFriend),draft=activeDrafts()[0];
     return `<div class="disc-home-top"><div><h2>发现</h2><p class="disc-home-subtitle">和熟悉的人，分享与协作</p></div>${button(`${icon('plus')} 发动态`,'compose','disc-record')}</div>
-      <section class="disc-circle-panel disc-simple-circle" aria-label="朋友圈入口"><button type="button" class="disc-circle-entry" data-disc="moments"><span class="disc-circle-symbol">${icon('moment')}</span><span><strong>朋友圈</strong><small>朋友的近况，自己的生活</small></span><span class="disc-friend-stack" aria-hidden="true">${friends.slice(0,3).map(avatar).join('')}</span>${icon('arrow')}</button>
+      <section class="disc-circle-panel disc-simple-circle" aria-label="朋友圈入口"><button type="button" class="disc-circle-entry" data-disc="moments"><span class="disc-circle-symbol">${icon('moment')}</span><span><strong>朋友圈</strong><small>朋友的近况，自己的生活</small></span>${icon('arrow')}</button>
       </section>
-      <section class="disc-work-list disc-simple-entries" aria-label="发现功能"><button class="disc-work-row" type="button" data-disc="ai"><span class="disc-work-icon purple">${icon('ai')}</span><span><strong>AI 工作台</strong><small>本地安装 · 云端使用</small></span>${icon('arrow')}</button><button class="disc-work-row" type="button" data-disc="services"><span class="disc-work-icon blue">${icon('briefcase')}</span><span><strong>更多服务</strong><small>赏金、服务商、排行榜与发币</small></span>${icon('arrow')}</button></section>
+      <section class="disc-work-list disc-simple-entries" aria-label="发现功能"><button class="disc-work-row" type="button" data-disc="ai"><span class="disc-work-icon purple">${icon('ai')}</span><span><strong>AI 工作台</strong><small>本地安装 · 云端使用</small></span>${icon('arrow')}</button><button class="disc-work-row" type="button" data-disc="drafts"><span class="disc-work-icon blue">${icon('file')}</span><span><strong>本机草稿</strong><small>继续编辑、导出或归档</small></span>${icon('arrow')}</button></section>
       ${draft?`<section class="disc-resume-section disc-compact-resume" aria-label="继续草稿"><div class="disc-section-head"><h3>上次未完成</h3>${button('全部草稿','drafts','disc-text')}</div><button type="button" class="disc-resume-card" data-disc="edit-draft" data-id="${esc(draft.id)}"><span class="disc-resume-icon">${icon('file')}</span><span><small>${names[draft.type]} · ${draftStatus(draft.type)}</small><strong>${esc(draftTitle(draft))}</strong></span>${icon('arrow')}</button></section>`:''}
-      <p class="disc-footnote">朋友圈仅保存在本机；云端 AI 申请单独同步。</p>`;
+      `;
   }
   function renderServices() {
     const entries=[['bounty','flag','赏金任务','整理任务、奖励与交付要求','peach','未开放发布'],['provider','shield','认证服务商','寻找协助，整理服务需求','mint','示例目录'],['rank','rank','排行榜','认识同路的人，先添加好友','blue','示例榜单'],['token','rocket','一键发币','准备自己的趣味代币','purple','未部署']];
@@ -326,6 +326,7 @@ export function mountDiscover(container, options = {}) {
     if (dead) return;
     container.classList.add('disc-root');
     workbench.routeChanged?.(view);
+    moments.routeChanged?.(view,{ownOnly:ownMoments});
     me();
     const renderers={hub:renderHub,services:renderServices,moments:renderMoments,rank:renderRank,provider:renderProvider,ai:renderAI,bounty:renderBounty,token:renderToken,integration:renderIntegration,business:renderBusiness,drafts:renderDrafts,'token-projects':renderTokenProjects};
     const content=(renderers[view] || renderHub)();

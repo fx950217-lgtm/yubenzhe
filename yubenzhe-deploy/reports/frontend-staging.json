@@ -1,8 +1,8 @@
 {
-  "version": "0.12.1",
-  "stagedAt": "2026-10-09T11:18:42.445Z",
+  "version": "0.13.0",
+  "stagedAt": "2026-10-09T11:53:19.588Z",
   "indexSha256": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
-  "appSha256": "46b883fb9cc690d02052469f7f9d1beb1ba693809718937041d19c918cdaa3eb",
+  "appSha256": "5ca6f76737c6e9d2cd07ab4fbbf199122b3f3ae5cd400d9580774f9ca53d893f",
   "consumerConnected": false,
   "socialServiceIncluded": true,
   "cloudAIConnected": true,

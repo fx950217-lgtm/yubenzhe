@@ -20,9 +20,9 @@ export async function handleSocialHTTP({request,response,url,publicURL,service,r
  const bearer=/^Bearer ([-_A-Za-z0-9]{43})$/.exec(request.headers.authorization||'')?.[1];
  const cookie=String(request.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('ybz_social='))?.slice(11)||'';
  let ip=request.socket.remoteAddress||'unknown';if(['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip)){const forwarded=String(request.headers['x-forwarded-for']||'').split(',').at(-1).trim();if(isIP(forwarded))ip=forwarded;}
- const value=await service.handle({method:request.method,path,input,query:Object.fromEntries(url.searchParams),token:bearer||cookie,ip});
+ const value=await service.handle({method:request.method,path,input,query:Object.fromEntries(url.searchParams),token:bearer||cookie,ip,userAgent:String(request.headers['user-agent']||'').slice(0,300)});
  if(value.token){const secure=publicURL.protocol==='https:'?'; Secure':'';response.setHeader('Set-Cookie','ybz_social='+value.token+'; Path=/api/social; HttpOnly; SameSite=Strict; Max-Age=2592000'+secure);if(!native)delete value.token;}
- if(path==='logout')response.setHeader('Set-Cookie','ybz_social=; Path=/api/social; HttpOnly; SameSite=Strict; Max-Age=0'+(publicURL.protocol==='https:'?'; Secure':''));
+ if(path==='logout'||value.deleted===true||value.currentSessionRevoked===true)response.setHeader('Set-Cookie','ybz_social=; Path=/api/social; HttpOnly; SameSite=Strict; Max-Age=0'+(publicURL.protocol==='https:'?'; Secure':''));
  if(value.binary){response.writeHead(200,{'Content-Type':value.mime,'Content-Length':value.binary.length});response.end(value.binary);return;}
  const serialized=JSON.stringify(value),etag='"'+createHash('sha256').update(serialized).digest('hex')+'"';
  if(request.method==='GET'){response.setHeader('ETag',etag);if(request.headers['if-none-match']===etag){response.writeHead(304);response.end();return;}}

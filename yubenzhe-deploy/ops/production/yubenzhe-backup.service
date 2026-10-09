@@ -1,0 +1,7 @@
+[Unit]
+Description=Yubenzhe verified database backup
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+ExecStart=/opt/yubenzhe/ops/backup.sh

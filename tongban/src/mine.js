@@ -46,7 +46,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     return `<section class="mine-home-profile"><span class="mine-avatar" aria-hidden="true">${profile ? avatarContent(profile.avatar, profile.avatarImage) : '🌱'}</span><div class="mine-home-profile-copy"><h2>${profile ? esc(profile.nickname) : '个人资料暂不可用'}</h2>${profile ? '' : '<p>原始资料已保留</p>'}<div class="mine-profile-meta">${identity()}</div>${!remote() && profile ? '<span>本机资料 · ID 尚未云端登记</span>' : ''}</div>${button('edit', `<span>资料</span>${icon('arrow')}`, `aria-label="编辑资料" ${profileError ? 'disabled' : ''}`)}</section>${profileError ? `<div class="mine-inline-error" role="alert">${profileService ? '账号资料暂不可读，请检查网络后重新连接。' : '本机资料无法读取，请检查存储权限。'}${button('retry-profile', '重新读取资料')}</div>` : ''}
       <button type="button" class="mine-assets-entry" data-mine-action="wallet"><span class="mine-assets-symbol">${icon('wallet')}</span><span class="mine-assets-copy"><strong>我的资产</strong><small>钱包与平台余额</small></span><span class="mine-assets-state ${unavailable ? 'is-unavailable' : ''}">${walletLabel}</span>${icon('arrow')}</button>
       <div class="mine-home-shortcuts"><button type="button" class="mine-home-shortcut mine-lilac" data-mine-action="drafts"><span class="mine-shortcut-icon">${icon('draft')}</span><span><strong>草稿</strong><small>${count === '暂不可用' ? '数量暂不可用' : `${count} 份`}</small></span>${icon('arrow')}</button></div>
-      <section class="mine-list mine-home-links" aria-label="个人功能">${row('ai', 'AI 工作台', '', 'order')}${row('bill-center', '账单记录', '', 'bill')}${profileService ? row('account-settings', '账号设置', '登录密码与退出账号', 'lock') : ''}${row('security', '安全设置', '', 'shield')}${row('help', '帮助', '', 'help')}${!isNative?row('install', '安装愚笨者', '手机与电脑', 'wallet'):''}</section>
+      <section class="mine-list mine-home-links" aria-label="个人功能">${row('ai', 'AI 工作台', '', 'order')}${row('bill-center', '账单记录', '', 'bill')}${profileService ? row('account-settings', '账号设置', '密码、恢复码与设备管理', 'lock') : ''}${row('security', '安全设置', '', 'shield')}${row('help', '帮助', '', 'help')}${!isNative?row('install', '安装愚笨者', '手机与电脑', 'wallet'):''}</section>
       <p class="mine-footnote mine-home-footnote">愚笨者 · 0.12.1</p>`;
   }
   function edit() {
@@ -66,14 +66,14 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   }
   function help() {
     return `${heading('帮助与反馈', '先找到原因，再继续下一步')}<div class="mine-help-banner"><span>${icon('help')}</span><div><h3>需要一点帮助？</h3><p>常见问题的处理方法，都放在这里。</p></div></div><section class="mine-faqs" aria-label="常见问题">
-      <details><summary>AI 本地安装和云端使用有什么区别？</summary><p>本地版在电脑安装 Ollama 与模型，Windows 客户端可检查连接并运行已有本地模型；网页端可整理并导出提示词。云端版在服务器网页提交申请，审核和服务配置完成后使用；可查看任务结果和取消任务。当前使用免费验收额度，不扣平台余额；请勿输入助记词、私钥、钱包密码或敏感个人资料。</p><button type="button" class="mine-text-button" data-mine-action="ai">打开 AI 工作台</button></details><details><summary>手机、电脑和网页的数据会同步吗？</summary><p>${remote() ? '账号资料保存在服务器，登录同一账号后可获取。' : '本机资料尚未与云端账号关联。'}钱包密钥与本机草稿不会自动上传。云端 AI 申请和任务保存在服务器，与服务器访问账号关联。安装 App 后需要创建新的测试钱包，或使用你自己的测试钱包助记词恢复。${remote() ? '好友、群聊、聊天文字和图片随账号同步；朋友圈和发现草稿仍为本机体验。' : '未登录时的体验内容只保存在本机。'}导出的加密备份请单独保管。请勿导入存有真实资产的钱包。</p></details>
+      <details><summary>AI 本地安装和云端使用有什么区别？</summary><p>本地版在电脑安装 Ollama 与模型，Windows 客户端可检查连接并运行已有本地模型；网页端可整理并导出提示词。云端版使用账号提交申请，审核和服务配置完成后使用；可查看任务结果和取消任务。当前使用免费验收额度，不扣平台余额；请勿输入助记词、私钥、钱包密码或敏感个人资料。</p><button type="button" class="mine-text-button" data-mine-action="ai">打开 AI 工作台</button></details><details><summary>手机、电脑和网页的数据会同步吗？</summary><p>${remote() ? '账号资料保存在服务器，登录同一账号后可获取。' : '本机资料尚未与云端账号关联。'}钱包密钥与本机草稿不会自动上传。云端 AI 申请和任务保存在服务器，与提交申请的账号关联。安装 App 后需要创建新的测试钱包，或使用你自己的测试钱包助记词恢复。${remote() ? '好友、群聊、聊天文字和图片随账号同步；新发布的朋友圈由服务器保存，旧本机内容和草稿不会自动发布。' : '未登录时的体验内容只保存在本机。'}导出的加密备份请单独保管。请勿导入存有真实资产的钱包。</p></details>
       <details><summary>本机资料和钱包有什么区别？</summary><p>${remote() ? '用户名、ID、头像和签名保存到账号，可在其他设备登录后获取。' : '用户名、ID、头像和签名只保存在当前设备，ID 尚未云端登记。'}钱包管理链上资产，使用独立的本机密码；修改资料不会修改钱包地址。</p></details>
       <details><summary>能使用哪些网络和资产？</summary><p>当前链上功能仅支持 BSC 测试网原生 tBNB。测试币没有实际价值。BSC 主网、其他网络和真实 USDT 充值提现均未开放，请勿转入真实资金。</p><button type="button" class="mine-text-button" data-mine-action="wallet">查看资产页面 ${icon('arrow')}</button></details>
       <details><summary>转账已提交，为什么还没到账？</summary><p>已提交不等于已确认。在账单中心查看最新状态；广播结果不明确时，先核对交易哈希与链上状态，避免重复转账。当前本机记录不代表完整链上收支。</p><button type="button" class="mine-text-button" data-mine-action="bill-center">去账单中心 ${icon('arrow')}</button></details>
       <details><summary>为什么转入、转出余额后金额没变？</summary><p>平台充值、提现和真实资金托管尚未接通。密码验证后只保存未提交草稿，不扣款、不入账。服务接通后也需要重新确认，草稿不会自动执行。</p></details>
-      <details><summary>忘记密码、换手机或卸载 App 怎么办？</summary><p>本机密码不能由平台找回。钱包需使用离线助记词在可信钱包中恢复；当前版本只用于测试，不要导入真实资金钱包。${remote() ? '账号资料可再次登录获取；本机草稿和演示记录不会随账号恢复。' : '本机资料、草稿和演示记录没有云端同步。'}卸载 App 或清除数据前，请保留本机记录。操作前请先保留已有备份。</p><button type="button" class="mine-text-button" data-mine-action="security">打开安全中心 ${icon('arrow')}</button></details>
+      <details><summary>忘记密码、换手机或卸载 App 怎么办？</summary><p>账号密码遗失时，可用事先保存的账号恢复码重设密码；没有恢复码时请通过帮助反馈联系运营，不能凭昵称直接重置。钱包密码不能由账号恢复码找回，钱包需使用离线助记词在可信钱包中恢复；当前版本只用于测试，不要导入真实资金钱包。${remote() ? '账号资料可再次登录获取；本机草稿和演示记录不会随账号恢复。' : '本机资料、草稿和演示记录没有云端同步。'}卸载 App 或清除数据前，请保留本机记录。操作前请先保留已有备份。</p><button type="button" class="mine-text-button" data-mine-action="security">打开安全中心 ${icon('arrow')}</button></details>
       <details><summary>页面显示存储或网络异常怎么办？</summary><p>先检查网络与浏览器存储权限，再重试读取。不要先清除网站数据，也不要连续重复转账。记录读取失败不代表记录不存在；原始数据不会由错误提示自动覆盖。</p></details></section>
-      <section class="mine-support-card"><span class="mine-status-pill">在线支持尚未接通</span><h3>关于问题反馈</h3><p>当前没有在线客服或工单提交功能，页面不会把本机操作显示成已提交反馈。请勿通过任何聊天或反馈发送助记词、私钥和钱包密码。</p></section>`;
+      <section class="mine-support-card"><h3>问题反馈</h3><p>提交使用问题或隐私请求，由运营人员查看处理。请勿发送助记词、私钥和钱包密码。</p>${button('feedback', '提交反馈')}<p><a href="./privacy.html">隐私说明</a> · <a href="./terms.html">用户规则</a></p></section>`;
   }
   function render(focus = false) {
     if (!active) return;
@@ -122,7 +122,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
       const preview = container.querySelector('[data-mine-preview]'); if (preview) preview.textContent = value;
       return;
     }
-    if (['bill-center', 'lock', 'unlock', 'export', 'create', 'account-settings'].includes(name) || name === 'install' && !isNative) action(name);
+    if (['bill-center', 'lock', 'unlock', 'export', 'create', 'account-settings', 'feedback'].includes(name) || name === 'install' && !isNative) action(name);
   }
   function updatePhoto(message) {
     for (const node of container.querySelectorAll('[data-mine-form] input, [data-mine-form] textarea, [data-mine-form] button, .mine-back')) node.disabled = saving;

@@ -1,0 +1,10 @@
+ALTER TABLE accounts ADD COLUMN deleted_at INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE social_sessions ADD COLUMN session_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE social_sessions ADD COLUMN user_agent TEXT NOT NULL DEFAULT '';
+ALTER TABLE social_sessions ADD COLUMN ip_hint TEXT NOT NULL DEFAULT '';
+ALTER TABLE social_sessions ADD COLUMN last_seen_at INTEGER NOT NULL DEFAULT 0;
+UPDATE social_sessions SET session_id=lower(hex(randomblob(16))),last_seen_at=created_at;
+CREATE UNIQUE INDEX social_session_id ON social_sessions(session_id);
+CREATE TABLE account_recovery(account_id TEXT PRIMARY KEY REFERENCES accounts(id),code_hash TEXT NOT NULL,created_at INTEGER NOT NULL);
+CREATE TABLE account_verifications(token_hash TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),session_hash TEXT NOT NULL,password_digest TEXT NOT NULL,expires_at INTEGER NOT NULL);
+CREATE INDEX account_verification_expiry ON account_verifications(expires_at);

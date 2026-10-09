@@ -1,0 +1,7 @@
+CREATE TABLE social_blocks(blocker_id TEXT NOT NULL REFERENCES accounts(id),blocked_id TEXT NOT NULL REFERENCES accounts(id),created_at INTEGER NOT NULL,PRIMARY KEY(blocker_id,blocked_id),CHECK(blocker_id<>blocked_id));
+CREATE INDEX social_blocks_recipient ON social_blocks(blocked_id);
+CREATE TABLE account_restrictions(account_id TEXT PRIMARY KEY REFERENCES accounts(id),state TEXT NOT NULL CHECK(state IN('active','muted','suspended')),reason TEXT NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE message_moderation(message_id INTEGER PRIMARY KEY REFERENCES messages(id),reason TEXT NOT NULL,removed_at INTEGER NOT NULL);
+CREATE TABLE social_reports(id TEXT PRIMARY KEY,reporter_id TEXT NOT NULL REFERENCES accounts(id),request_id TEXT NOT NULL,input_digest TEXT NOT NULL,target_type TEXT NOT NULL CHECK(target_type IN('user','message','group','feedback','moment','comment')),target_id TEXT NOT NULL,reason TEXT NOT NULL,detail TEXT NOT NULL,evidence TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN('pending','resolved','rejected')),resolution TEXT NOT NULL DEFAULT '',created_at INTEGER NOT NULL,resolved_at INTEGER,UNIQUE(reporter_id,request_id));
+CREATE INDEX social_reports_queue ON social_reports(status,created_at);
+CREATE TABLE social_moderation_audit(id TEXT PRIMARY KEY,actor TEXT NOT NULL,report_id TEXT REFERENCES social_reports(id),action TEXT NOT NULL,target_id TEXT NOT NULL,reason TEXT NOT NULL,created_at INTEGER NOT NULL);

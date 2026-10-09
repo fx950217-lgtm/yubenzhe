@@ -12,8 +12,9 @@ const status = value => `<span class="ai-status ${value==='active'||value==='suc
 const optionalId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]+$/.test(value) ? value : '';
 const localMessage = (cause, fallback) => String(cause?.message || fallback).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
 
-export function createAIWorkspace(ctx, { client = createAIClient(), bridge = () => globalThis.YubenzheDesktop?.localAI, exporter = saveJsonFile, schedule = setTimeout, unschedule = clearTimeout } = {}) {
+export function createAIWorkspace(ctx, { client = createAIClient({socialClient:ctx.socialClient}), bridge = () => globalThis.YubenzheDesktop?.localAI, exporter = saveJsonFile, schedule = setTimeout, unschedule = clearTimeout } = {}) {
   let dead=false, active=false, generation=0, controllers=new Set(), timer=null, mode='local', page='list';
+  let loginRequired=false;
   let loading=false,busy='',error='',capabilities=null,items=[],detail=null,cloudLoaded=false,selectedWorkspaceId='';
   let form={name:'',purpose:'content',requirements:''},taskPrompt='',pending=null,confirmCancel=false,needsRefresh=false;
   let localStatus=null,selectedModel='',localResult='',localError='',localRequest=null,includePrompt=false;
@@ -29,9 +30,9 @@ export function createAIWorkspace(ctx, { client = createAIClient(), bridge = () 
     try{return await client.request(path,{...options,signal:controller.signal});}finally{controllers.delete(controller);}
   }
   const valid = token => !dead && active && token===generation;
-  function showError(cause) { error=cause.message || '操作未完成，请重试。';if(cause.status===409){pending=null;confirmCancel=false;needsRefresh=true;error+=' 请刷新详情后重新确认。';} }
+  function showError(cause) { loginRequired=cause.code==='ACCOUNT_REQUIRED'; error=cause.message || '操作未完成，请重试。';if(cause.status===409){pending=null;confirmCancel=false;needsRefresh=true;error+=' 请刷新详情后重新确认。';} }
   async function loadHome() {
-    cancelRequests(); const token=generation;loading=true;error='';page='list';redraw();
+    cancelRequests(); const token=generation;loading=true;error='';loginRequired=false;page='list';redraw();
     try {
       const [caps,workspaces]=await Promise.all([request('/api/ai/capabilities'),request('/api/ai/workspaces')]);
       if(!valid(token))return;
@@ -70,7 +71,7 @@ export function createAIWorkspace(ctx, { client = createAIClient(), bridge = () 
   }
   function newOperation(type,path,body,workspaceId) { return {type,path,body:{...body,requestId:uuid()},workspaceId}; }
   function pendingMatches(type) { return pending?.type===type; }
-  function notice() {return '<p class="ai-note">受限验收期间不扣平台余额。请勿提交助记词、私钥、密码或敏感客户资料。</p>';}
+  function notice() {return '<p class="ai-note">当前试用不扣平台余额。申请与任务归当前账号所有。请勿提交助记词、私钥、密码或敏感客户资料。</p>';}
   function localPage() {
     const native=!!bridge(),nativeWithoutModelBridge=!native&&(isNativeApp()||!!globalThis.webkit?.messageHandlers?.exportJSON),models=localStatus?.models || [],canRun=localStatus?.available && models.some(model=>model.name===selectedModel);
     return `<div class="ai-local"><ol class="ai-steps"><li><span>1</span><div><strong>准备桌面端</strong><p>${native?'当前正在使用桌面端。':nativeWithoutModelBridge?'本地模型请在 Windows 电脑使用；此客户端可先整理和导出提示词。':'安装桌面端后可连接本地模型；网页可先整理提示词。'}</p>${!native&&!nativeWithoutModelBridge?'<a href="./install.html">查看客户端下载</a>':''}</div></li><li><span>2</span><div><strong>安装模型工具，选择模型</strong><p>先到官方安装 Ollama，再按设备性能选择并下载模型。愚笨者不附带推理引擎。</p>${nativeWithoutModelBridge?'<small class="ai-muted">请在电脑上打开 Ollama 官方网站。</small>':'<a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">Ollama 官方下载 ↗</a>'}</div></li><li><span>3</span><div><strong>使用或导出提示词</strong><p>${native?'检查连接后，选择已下载的模型执行任务。':nativeWithoutModelBridge?'在下方整理并导出提示词，之后到 Windows 电脑上使用。':'先在下方整理提示词，再复制到 Ollama 使用。网页不会探测你的本机模型。'}</p></div></li></ol>${native?`<section class="ai-panel"><div class="ai-section-head"><h3>本地模型</h3>${button(busy==='local-status'?'检查中…':'检查连接','local-check',busy?'disabled':'')}</div>${localStatus?.available?models.length?`<label class="ai-field">已安装模型<select name="localModel" data-ai-local ${busy?'disabled':''}><option value="">请选择模型</option>${models.map(model=>`<option value="${e(model.name)}" ${selectedModel===model.name?'selected':''}>${e(model.name)}</option>`).join('')}</select></label>`:'<p class="ai-muted">已连接 Ollama，尚未检测到模型。请在 Ollama 中先下载一个模型，再检查连接。</p>':`<p class="ai-muted">${e(localStatus?.error || '按需检查 Ollama 连接，不会自动下载或安装模型。')}</p>`}</section>`:''}${ctx.renderLocal()}${native?`<div class="ai-local-run">${button(busy==='local-task'?'本地处理中…':'使用当前提示词运行','local-run',!canRun||busy?'disabled':'',true)}${busy==='local-task'?button('取消','local-cancel'):''}<p class="ai-muted">使用你安装的本地模型，不发送到平台云端。</p></div>`:''}${localError?`<p class="ai-error" role="alert">${e(localError)}</p>`:''}${localResult?`<section class="ai-panel"><div class="ai-section-head"><h3>本地模型结果</h3><span class="ai-status ready">本机返回</span></div><pre class="ai-output">${e(localResult)}</pre></section>`:''}<details class="ai-export"><summary>导出本地配置</summary><p class="ai-muted">配置包含本地模型名称和连接地址，不包含 API Key。导入或运行能力由你使用的模型工具决定。</p><label class="ai-check"><input type="checkbox" name="includePrompt" data-ai-local ${includePrompt?'checked':''}>包含当前提示词（可能含私密内容）</label>${button('下载配置 JSON','local-export',busy?'disabled':'')}</details></div>`;
@@ -90,7 +91,7 @@ export function createAIWorkspace(ctx, { client = createAIClient(), bridge = () 
   }
   function cloudPage() {
     if(!client.supported())return '<section class="ai-empty"><strong>请在服务器网页版开通云端</strong><p>在网页版登录后，申请和任务会保存在服务器。当前客户端可以继续使用本地功能。</p></section>';
-    return `${capabilities?`<p class="ai-service-state">${capabilities.cloud.ready?'模型服务已就绪':'模型服务等待配置或验证'} · 验收期间不扣余额</p>`:''}${loading?'<p class="ai-loading" role="status">正在读取服务器数据…</p>':''}${error?`<div class="ai-error" role="alert">${e(error)}<div>${button(pending?'重试同一次请求':'重试读取','retry',busy?'disabled':'')}</div></div>`:''}${page==='list'?cloudList():page==='new'||page==='confirm'?cloudForm():cloudDetail()}${notice()}`;
+    return `${capabilities?`<p class="ai-service-state">${capabilities.cloud.ready?'模型服务已就绪':'模型服务等待配置或验证'} · 验收期间不扣余额</p>`:''}${loading?'<p class="ai-loading" role="status">正在读取服务器数据…</p>':''}${error?`<div class="ai-error" role="alert">${e(error)}<div>${loginRequired&&ctx.onAccount?button('登录产品账号','login'):button(pending?'重试同一次请求':'重试读取','retry',busy?'disabled':'')}</div></div>`:''}${page==='list'?cloudList():page==='new'||page==='confirm'?cloudForm():cloudDetail()}${notice()}`;
   }
   async function checkLocal() {
     if(busy)return;const token=generation;busy='local-status';localError='';redraw();
@@ -117,6 +118,7 @@ export function createAIWorkspace(ctx, { client = createAIClient(), bridge = () 
   function handleAction(action,target) {
     if(dead||!action?.startsWith('ai-'))return false;
     const id=optionalId(target?.dataset?.id);
+    if(action==='ai-login'){ctx.onAccount?.();return true;}
     if(action==='ai-mode') {const next=target.dataset.mode;if(!['local','cloud'].includes(next)||mode===next)return true;cancelRequests();mode=next;error='';localError='';redraw();if(mode==='cloud'&&client.supported())void loadHome();}
     else if(action==='ai-local-check'&&bridge())void checkLocal();
     else if(action==='ai-local-run'&&bridge())void runLocal();

@@ -4,3 +4,5 @@
 @media(max-width:360px){.live-composer form{gap:3px}.live-composer .live-icon{width:30px}.live-composer .live-send{width:34px}.live-composer input[name=message]{padding:0 9px}.live-message>div{max-width:78%}.live-avatar{width:43px;height:43px}.live-conversation,.live-person{gap:10px}.live-dialog{padding:16px}}
 
 .live-media-error small{display:block;font-size:12px;line-height:1.6;color:#9b7967;margin-top:5px}.live-media-error .live-text{padding:8px 0 0;font-size:12px}
+
+.live-message-meta{display:flex;gap:8px;align-items:center}.live-message-action{border:0;background:none;color:#999;font-size:16px;padding:1px 7px;min-height:25px}.live-report-record{padding:16px;border-bottom:1px solid #eee;font-size:14px}.live-report-record>span{float:right;color:#888}.live-report-record p{white-space:pre-wrap;overflow-wrap:anywhere;color:#777}.live-report-record small{color:#999}.live-field select{display:block;width:100%;margin-top:9px;padding:11px 12px;border:1px solid #ddd;border-radius:5px;background:#fff;font:inherit;color:inherit}

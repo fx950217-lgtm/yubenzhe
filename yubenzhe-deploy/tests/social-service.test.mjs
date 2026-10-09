@@ -1,8 +1,9 @@
+import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm,readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, basename } from 'node:path';
 import { openSocialDatabase } from '../server/social-database.mjs';
@@ -303,4 +304,54 @@ test('group creation retries are canonical, content-bound, isolated per owner an
  assert.equal(h.database.raw.prepare('SELECT count(*) n FROM group_requests WHERE request_id=?').get(failedId).n,0);
  assert.equal(h.database.raw.prepare("SELECT count(*) n FROM conversations WHERE type='group'").get().n,2);
  assert.ok((await h.call(a,'POST','groups',{...input,requestId:failedId})).conversationId);
+});
+
+
+test('forward message catch-up returns every offline message with bounded pages and membership fences',async t=>{
+ const h=harness();t.after(h.close);const a=await h.register(),b=await h.register(),c=await h.register();await h.befriend(a,b);await h.befriend(a,c);const {conversationId:id}=await h.call(a,'POST','groups',{requestId:randomUUID(),name:'离线同步',memberIds:[b.profile.userId,c.profile.userId]});
+ const first=await h.send(a,id,'在线时最后一条');const ids=[];for(let i=0;i<127;i++){if(i===80)h.tick(60001);ids.push((await h.send(a,id,'离线期间 '+i)).message.id);}
+ let cursor=first.message.id,result,received=[];do{result=await h.messages(b,id,{after:cursor});assert.ok(result.messages.length<=50);received.push(...result.messages.map(x=>x.id));cursor=result.nextAfter||result.messages.at(-1)?.id||cursor;}while(result.hasMore);assert.deepEqual(received,ids);
+ await h.call(b,'POST','conversations/'+id+'/read',{throughId:ids[49]});assert.equal((await h.call(b,'GET','state')).conversations.find(x=>x.id===id).unread,77);
+ await assert.rejects(h.messages(b,id,{after:'-1'}),expected(400,'INVALID_CURSOR'));await assert.rejects(h.messages(b,id,{before:'20',after:'1'}),expected(400,'INVALID_CURSOR'));
+ await h.call(a,'POST','conversations/'+id+'/remove-member',{userId:c.profile.userId});await h.call(a,'POST','conversations/'+id+'/invite',{memberIds:[c.profile.userId]});assert.deepEqual((await h.messages(c,id,{after:'0'})).messages,[]);const newer=await h.send(b,id,'只看重入后');assert.deepEqual((await h.messages(c,id,{after:'0'})).messages.map(m=>m.id),[newer.message.id]);
+});
+
+test('blocking is bilateral for direct contact, independently reversible, and preserves shared-group history',async t=>{
+ const h=harness();t.after(h.close);const a=await h.register(),b=await h.register(),c=await h.register();const dm=await h.befriend(a,b);await h.befriend(a,c);const {conversationId:group}=await h.call(a,'POST','groups',{requestId:randomUUID(),name:'共同群仍可见',memberIds:[b.profile.userId,c.profile.userId]});
+ await h.call(a,'POST','blocks',{userId:b.profile.userId});assert.equal((await h.call(a,'GET','blocks')).blocked[0].userId,b.profile.userId);assert.equal((await h.call(b,'GET','state')).conversations.find(x=>x.id===dm).blocked,true);
+ for(const [from,to] of [[a,b],[b,a]]){await assert.rejects(h.send(from,dm,'被拦截'),expected(403,'CONTACT_BLOCKED'));await assert.rejects(h.call(from,'POST','friends/request',{userId:to.profile.userId}),expected(403,'CONTACT_BLOCKED'));}
+ await h.call(a,'POST','conversations/'+group+'/remove-member',{userId:b.profile.userId});await assert.rejects(h.call(a,'POST','conversations/'+group+'/invite',{memberIds:[b.profile.userId]}),expected(403,'CONTACT_BLOCKED'));
+ await h.call(b,'POST','blocks',{userId:a.profile.userId});await h.call(a,'POST','blocks/remove',{userId:b.profile.userId});await assert.rejects(h.send(a,dm,'对方仍屏蔽'),expected(403,'CONTACT_BLOCKED'));await h.call(b,'POST','blocks/remove',{userId:a.profile.userId});await h.send(a,dm,'双方解除后恢复');
+ await h.call(a,'POST','conversations/'+group+'/invite',{memberIds:[b.profile.userId]});await h.call(a,'POST','blocks',{userId:b.profile.userId});const shared=await h.send(b,group,'共同群消息');assert.ok((await h.messages(a,group)).messages.some(m=>m.id===shared.message.id));
+});
+
+test('reports are private, idempotent, validated and moderation hides content/media with an auditable revision',async t=>{
+ const h=harness();t.after(h.close);const a=await h.register(),b=await h.register(),c=await h.register(),id=await h.befriend(a,b);const sent=await h.call(b,'POST','conversations/'+id+'/messages',{clientId:randomUUID(),type:'image',image:{src:IMAGE,name:'证据.png'}});const input={targetType:'message',targetId:sent.message.id,reason:'harassment',detail:'隔离测试证据',requestId:randomUUID()};
+ await assert.rejects(h.call(c,'POST','reports',input),expected(404,'CHAT_NOT_FOUND'));const reported=await h.call(a,'POST','reports',input);assert.equal((await h.call(a,'POST','reports',input)).report.id,reported.report.id);await assert.rejects(h.call(a,'POST','reports',{...input,detail:'更改内容'}),expected(409,'REPORT_CONFLICT'));
+ assert.equal((await h.call(c,'GET','reports')).reports.length,0);assert.equal(h.service.moderation.show(reported.report.id).evidence.mediaId,sent.message.image.id);assert.equal(h.service.moderation.list().length,1);await assert.rejects(h.call(a,'GET','admin/reports'),expected(404,'NOT_FOUND'));
+ const before=(await h.call(a,'GET','state')).conversations[0].contentRevision;h.service.moderation.resolve({actor:'test-operator',reportId:reported.report.id,action:'remove-message',reason:'独立测试违规内容处置'});assert.notEqual((await h.call(a,'GET','state')).conversations[0].contentRevision,before);const removed=(await h.messages(a,id)).messages[0];assert.equal(removed.removed,true);assert.equal(removed.image,undefined);await assert.rejects(h.call(a,'GET','media/'+sent.message.image.id),expected(404,'MEDIA_NOT_FOUND'));assert.equal((await h.call(a,'GET','reports')).reports[0].status,'resolved');assert.equal(h.service.moderation.show(reported.report.id).audit.length,1);
+ assert.throws(()=>h.service.moderation.resolve({actor:'test-operator',reportId:reported.report.id,action:'dismiss',reason:'不应二次处置'}),expected(409,'REPORT_HANDLED'));
+ for(const bad of [{...input,targetType:'group',targetId:{}},{...input,targetId:[]},{...input,reason:'unknown'}])await assert.rejects(h.call(a,'POST','reports',{...bad,requestId:randomUUID()}),error=>error.status===400);
+});
+
+test('real account restrictions block publishing and authentication while operator resolution restores access',async t=>{
+ const h=harness();t.after(h.close);const a=await h.register(),b=await h.register(),dm=await h.befriend(a,b);const report=async()=> (await h.call(a,'POST','reports',{targetType:'user',targetId:b.profile.userId,reason:'spam',detail:'真实产品库的合成账号测试',requestId:randomUUID()})).report.id;
+ const act=(reportId,action)=>h.service.moderation.resolve({actor:'isolation-test',reportId,action,reason:'测试限制与恢复流程'});
+ act(await report(),'mute-user');await assert.rejects(h.send(b,dm,'被禁言'),expected(403,'ACCOUNT_RESTRICTED'));assert.ok((await h.messages(b,dm)).messages);act(await report(),'suspend-user');await assert.rejects(h.call(b,'GET','state'),expected(403,'ACCOUNT_SUSPENDED'));await assert.rejects(h.call(null,'POST','login',{userId:b.profile.userId,password:PIN}),expected(403,'ACCOUNT_SUSPENDED'));act(await report(),'restore-user');await h.send(b,dm,'恢复后可发送');
+ const feedback=await h.call(a,'POST','reports',{targetType:'feedback',reason:'other',detail:'需要帮助但没有伪造客服联系方式',requestId:randomUUID()});assert.equal(feedback.report.targetType,'feedback');assert.equal(h.service.moderation.show(feedback.report.id).evidence.constructor,Object);
+});
+
+
+test('original social schema upgrades atomically without clearing accounts and safety records survive restart',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'yubenzhe-social-test-')),filename=join(directory,'social.sqlite');let h,raw;
+ try{raw=new DatabaseSync(filename);const original=await readFile(new URL('../migrations/003-social.sql',import.meta.url),'utf8');raw.exec('CREATE TABLE social_migrations(version INTEGER PRIMARY KEY,checksum TEXT NOT NULL,applied_at INTEGER NOT NULL);');raw.exec(original);raw.prepare('INSERT INTO social_migrations VALUES(1,?,1)').run(createHash('sha256').update(original).digest('hex'));raw.prepare('INSERT INTO accounts(id,user_id,nickname,password_salt,password_hash,created_at) VALUES(?,?,?,?,?,?)').run('prior-account','73918246','保留旧账号','test-salt','00'.repeat(32),1);raw.close();raw=null;
+ h=harness(filename);assert.equal(h.database.raw.prepare('SELECT nickname FROM accounts WHERE id=?').get('prior-account').nickname,'保留旧账号');assert.equal(h.database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,5);const a=await h.register(),b=await h.register();await h.befriend(a,b);await h.call(a,'POST','blocks',{userId:b.profile.userId});const r=(await h.call(a,'POST','reports',{targetType:'user',targetId:b.profile.userId,reason:'spam',detail:'重启保留',requestId:randomUUID()})).report;h.service.moderation.resolve({actor:'migration-test',reportId:r.id,action:'mute-user',reason:'重启持久验证'});h.close();h=null;
+ h=harness(filename);assert.equal((await h.call(a,'GET','blocks')).blocked[0].userId,b.profile.userId);assert.equal((await h.call(a,'GET','reports')).reports[0].status,'resolved');assert.equal(h.service.moderation.show(r.id).audit.length,1);assert.equal(h.database.raw.prepare('PRAGMA integrity_check').get().integrity_check,'ok');h.database.raw.prepare('UPDATE social_migrations SET checksum=? WHERE version=2').run('tampered');h.close();h=null;assert.throws(()=>openSocialDatabase(filename),/checksum mismatch/);
+ }finally{h?.close();raw?.close();const safe=resolve(directory);if(!basename(safe).startsWith('yubenzhe-social-test-')||resolve(join(safe,'..'))!==resolve(tmpdir()))throw new Error('Unexpected cleanup path');await rm(safe,{recursive:true,force:true});}
+});
+
+
+test('revoking a session while PIN verification is pending prevents password or profile writes',async t=>{
+ const h=harness();t.after(h.close);const a=await h.register(),oldHash=h.service.authenticate(a.token).password_hash;const passwordWrite=h.call(a,'POST','password',{currentPassword:PIN,newPassword:NEXT_PIN});await h.call(a,'POST','logout');await assert.rejects(passwordWrite,expected(401,'ACCOUNT_REQUIRED'));assert.equal(h.database.raw.prepare('SELECT password_hash FROM accounts WHERE user_id=?').get(a.profile.userId).password_hash,oldHash);
+ const session=await h.call(null,'POST','login',{userId:a.profile.userId,password:PIN});const profileWrite=h.update(session,{userId:'73928561',currentPassword:PIN});await h.call(session,'POST','logout');await assert.rejects(profileWrite,expected(401,'ACCOUNT_REQUIRED'));assert.equal(h.database.raw.prepare('SELECT user_id FROM accounts WHERE user_id=?').get(a.profile.userId).user_id,a.profile.userId);
 });

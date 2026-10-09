@@ -1,0 +1,7 @@
+[Unit]
+Description=Yubenzhe health and storage probe
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+ExecStart=/opt/yubenzhe/ops/health.sh

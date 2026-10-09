@@ -179,19 +179,19 @@ function mountHarness(t,{route='hub',own=false,data=seedDiscover(),profile}={}) 
   return {container,store,seen,click:(action,extra={})=>handlers.get('click')({target:{closest:()=>({dataset:{disc:action,...extra}})}})};
 }
 
-test('own moments entry shows only my posts and renders the local nickname and emoji safely',t=>{
+test('online moments require login and never publish or display legacy posts as server content',t=>{
   const data=seedDiscover();
   data.posts[0].text='FRIEND_ONLY_MARKER';
   data.posts.unshift({id:'mine',authorId:'me',text:'OWN_POST_MARKER',images:[],likes:[],comments:[],createdAt:Date.now()});
   const app=mountHarness(t,{route:'moments',own:true,data,profile:{version:1,nickname:'<b>小鹿</b>',bio:'<i>今天很好</i>',avatar:'🌊'}});
-  assert.match(app.container.innerHTML,/OWN_POST_MARKER/);
+  const stored=app.store.getItem('tongban.discover.v1');
+  assert.match(app.container.innerHTML,/登录账号/);
+  assert.match(app.container.innerHTML,/查看本机旧内容/);
+  assert.doesNotMatch(app.container.innerHTML,/OWN_POST_MARKER/);
   assert.doesNotMatch(app.container.innerHTML,/FRIEND_ONLY_MARKER/);
-  assert.match(app.container.innerHTML,/&lt;b&gt;小鹿&lt;\/b&gt;/);
   assert.doesNotMatch(app.container.innerHTML,/<b>小鹿<\/b>/);
-  assert.match(app.container.innerHTML,/🌊/);
   assert.deepEqual(app.seen,['moments']);
-  app.click('moment-filter',{filter:'all'});
-  assert.match(app.container.innerHTML,/FRIEND_ONLY_MARKER/);
+  assert.equal(app.store.getItem('tongban.discover.v1'),stored);
 });
 
 test('draft navigation and filters use actual entries and notify route changes',t=>{
@@ -219,15 +219,12 @@ test('draft navigation and filters use actual entries and notify route changes',
   assert.match(app.container.innerHTML,/value="WORK_MARKER"/,'explicit saved selection is remembered per type');
 });
 
-test('discovery keeps three primary destinations and moves secondary services to a reachable page',t=>{
+test('discovery exposes real moments, AI and local drafts without advertising sample services',t=>{
   const app=mountHarness(t),markup=app.container.innerHTML;
-  assert.match(markup,/data-disc="moments"/);assert.match(markup,/data-disc="ai"/);assert.match(markup,/data-disc="services"/);
-  assert.doesNotMatch(markup,/data-disc="(?:bounty|provider|rank|token)"|disc-resume-section/);
-  app.click('services');
-  for(const destination of ['bounty','provider','rank','token'])assert.ok(app.container.innerHTML.includes(`data-disc="${destination}"`));
-  assert.match(app.container.innerHTML,/不扣款|不会提交或扣款/);
-  app.click('rank');assert.deepEqual(app.seen,['hub','services','rank']);
-  assert.match(app.container.innerHTML,/申请好友/);
+  assert.match(markup,/data-disc="moments"/);assert.match(markup,/data-disc="ai"/);assert.match(markup,/data-disc="drafts"/);
+  assert.doesNotMatch(markup,/data-disc="(?:services|bounty|provider|rank|token)"|disc-resume-section|disc-friend-stack/);
+  app.click('drafts');assert.deepEqual(app.seen,['hub','drafts']);
+  assert.match(app.container.innerHTML,/仅保存在本机/);
 });
 
 test('discovery offers a resume card only for a real saved draft',t=>{

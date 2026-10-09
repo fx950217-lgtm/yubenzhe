@@ -10,4 +10,5 @@ mkdirSync(resolve(root,'public/admin'),{recursive:true});
 await build({entryPoints:[resolve(root,'ui/entry.tsx')],bundle:true,format:'esm',target:'es2022',jsx:'automatic',minify:true,sourcemap:false,legalComments:'external',outfile:resolve(root,'public/admin/app.js'),nodePaths:[resolve(source,'node_modules')],alias:{'@/lib/admin-client':resolve(root,'ui/admin-client.ts')},define:{'process.env.NODE_ENV':'"production"'}});
 writeFileSync(resolve(root,'public/admin/index.html'),'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>愚笨者 · 独立验收后台</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>');
 copyFileSync(resolve(source,'public/favicon.svg'),resolve(root,'public/admin/favicon.svg'));
-console.log('Independent admin UI built. Runtime has no npm dependencies.');
+for(const name of ['social-ops.html','social-ops.js','social-ops.css'])copyFileSync(resolve(root,'ui',name),resolve(root,'public/admin',name));
+console.log('Independent admin UI built.');

@@ -24,8 +24,24 @@ function badges(person) { return (Number.isSafeInteger(person?.level) && person.
 function preview(message) { return message?.type === 'image' ? '[图片]' : message?.type === 'sticker' ? '[表情] ' + (getSticker(message.sticker)?.label || '') : message?.text || '还没有消息，打个招呼吧'; }
 function safeReceivedImage(image) { return !!image && (typeof image.src === 'string' && image.src.startsWith('blob:') || isSafeChatImage(image)); }
 export function validateFriendId(value) { const id = String(value || '').trim(); if (!/^\d{6,16}$/.test(id)) throw new Error('请输入 6–16 位数字好友 ID'); return id; }
-export function invalidatedConversationIds(previous, next) { const available = new Map(next.map(item => [item.id, item])); return previous.filter(item => !available.has(item.id) || String(item.membershipRevision ?? '') !== String(available.get(item.id).membershipRevision ?? '')).map(item => item.id); }
-export function mergeMessages(current, incoming) { const byId = new Map(current.map(message => [message.id, message])); for (const message of incoming) if (message && typeof message.id === 'string') byId.set(message.id, message); return [...byId.values()].sort((a, b) => Number(a.createdAt) - Number(b.createdAt) || a.id.localeCompare(b.id)); }
+export function invalidatedConversationIds(previous, next) { const available = new Map(next.map(item => [item.id, item])); return previous.filter(item => !available.has(item.id) || String(item.membershipRevision ?? '') !== String(available.get(item.id).membershipRevision ?? '') || String(item.contentRevision ?? '') !== String(available.get(item.id).contentRevision ?? '')).map(item => item.id); }
+export function mergeMessages(current, incoming) { const byId = new Map(current.map(message => [message.id, message])); for (const message of incoming) if (message && typeof message.id === 'string') byId.set(message.id, message); return [...byId.values()].sort((a, b) => Number(a.createdAt) - Number(b.createdAt) || (/^[0-9]+$/.test(a.id) && /^[0-9]+$/.test(b.id) ? Number(a.id) - Number(b.id) : a.id.localeCompare(b.id))); }
+export async function catchUpMessages(service, id, after, isCurrent = () => true) {
+  let cursor = String(after), values = [], hasMore = false;
+  for (let page = 0; page < 10 && isCurrent(); page++) {
+    const result = await service.getMessages(id, { after: cursor });
+    if (!isCurrent()) return null;
+    if (!Array.isArray(result?.messages)) throw new Error('消息同步结果无效，请重试');
+    values = mergeMessages(values, result.messages);
+    const latest = result.messages.at(-1)?.id;
+    if (latest && Number(latest) > Number(cursor)) cursor = latest;
+    hasMore = Boolean(result.hasMore);
+    if (!hasMore) break;
+    if (!result.nextAfter || Number(result.nextAfter) <= Number(after) || result.nextAfter !== cursor) throw new Error('消息同步游标无效，请重试');
+    after = cursor;
+  }
+  return { messages: values, cursor, hasMore };
+}
 export function validateGroup(name, memberIds, friendIds) { const cleanName = String(name || '').trim(); const ids = [...new Set(memberIds)]; if (!cleanName || cleanName.length > 24) throw new Error('请填写 1–24 字的群聊名称'); if (ids.length < 2 || ids.length > 49) throw new Error('请选择 2–49 位好友，与自己组成群聊'); if (ids.some(id => !friendIds.includes(id))) throw new Error('只能邀请当前好友，请重新选择成员'); return { name: cleanName, memberIds: ids }; }
 
 export async function prepareChatPhoto(file) {
@@ -55,7 +71,7 @@ export function mountLiveSocial(container, options = {}) {
   const root = document.createElement('section'); root.className = 'live-social'; root.setAttribute('aria-label', '好友与消息'); container.append(root);
   let state = { profile: options.profile || null, friends: [], requests: [], outgoingRequests: [], conversations: [] }, loaded = false, loadError = '', networkError = '', disposed = false, loadingState = false;
   let page = { type: 'list', view }, menu = false, modal = null, epoch = 0, lookupSequence = 0, busy = new Set(), timer;
-  const permissionRevisions = new Map(), readThrough = new Map();
+  const permissionRevisions = new Map(), readThrough = new Map(), syncCursors = new Map();
   const messages = new Map(), messageErrors = new Map(), messageLoading = new Set(), olderCursors = new Map(), drafts = draftSession(options.profile?.userId), pending = new Map();
   const selfId = () => state.profile?.userId;
   const conversation = id => state.conversations.find(item => item.id === id);
@@ -64,6 +80,8 @@ export function mountLiveSocial(container, options = {}) {
   const friend = id => state.friends.find(person => person.userId === id);
   const isOwner = item => item?.ownerId === selfId();
   const actionBusy = key => busy.has(key);
+  const blocked = id => (state.blocked || []).some(person => person.userId === id);
+  function safetyButtons(person) { if (!person || person.userId === selfId()) return ''; return '<button class="live-setting" data-action="block-user" data-id="' + esc(person.userId) + '">' + (blocked(person.userId) ? '解除拉黑' : '拉黑用户') + '<span aria-hidden="true">›</span></button><button class="live-setting" data-action="report-user" data-id="' + esc(person.userId) + '">举报用户<span aria-hidden="true">›</span></button>'; }
   function header(label, action = '') { return '<header class="live-header">' + (page.type !== 'list' ? iconButton('back', 'back', '返回') : '') + '<h1>' + esc(label) + '</h1>' + action + '</header>'; }
   function empty(label, detail, action = '') { return '<div class="live-empty">' + icon('group') + '<h3>' + esc(label) + '</h3><p>' + esc(detail) + '</p>' + action + '</div>'; }
   function errorBox(text, action = '') { return text ? '<div class="live-error" role="alert"><span>' + esc(text) + '</span>' + (action ? '<button type="button" data-action="' + action + '">重试</button>' : '') + '</div>' : ''; }
@@ -84,6 +102,8 @@ export function mountLiveSocial(container, options = {}) {
     else if (page.type === 'profile') html = renderProfile();
     else if (page.type === 'requests') html = renderRequests();
     else if (page.type === 'groups') html = renderGroups();
+    else if (page.type === 'blocks') html = header('黑名单') + (state.blocked?.length ? state.blocked.map(person => personRow(person, 'profile')).join('') : empty('黑名单为空', '拉黑后会阻止双方私聊、好友申请及直接群邀请；共同群聊中的消息仍可见。'));
+    else if (page.type === 'reports') html = header('我的举报', iconButton('reports-refresh','search','刷新举报记录')) + errorBox(page.error) + (page.reports ? page.reports.length ? page.reports.map(report => '<article class="live-report-record"><strong>' + esc(({user:'用户举报',message:'消息举报',group:'群聊举报',feedback:'帮助反馈',moment:'动态举报',comment:'评论举报'})[report.targetType] || '举报') + '</strong><span>' + ({pending:'等待处理',resolved:'已处理',rejected:'未采纳'})[report.status] + '</span><p>' + esc(report.detail || '无补充说明') + '</p>' + (report.resolution ? '<p>处理说明：' + esc(report.resolution) + '</p>' : '') + '<small>' + stamp(report.createdAt) + '</small></article>').join('') : empty('还没有举报', '提交后可以在这里查看处理进度。') : '<p class="live-loading">正在读取举报记录…</p>');
     else if (page.type === 'chat') html = renderChat();
     else if (page.type === 'details') html = renderDetails();
     root.innerHTML = html + '<div data-modal-host></div>';
@@ -103,7 +123,7 @@ export function mountLiveSocial(container, options = {}) {
     let content;
     if (contacts) {
       const list = state.friends.filter(person => (nameOf(person) + ' ' + person.userId).toLowerCase().includes(query));
-      content = '<div class="live-contact-tools"><button data-action="requests"><span class="live-contact-tool-icon">' + icon('friend') + '</span><strong>新的朋友</strong>' + (state.requests.length ? '<b>' + state.requests.length + '</b>' : '') + '<span class="live-contact-tool-detail">›</span></button><button data-action="groups"><span class="live-contact-tool-icon">' + icon('group') + '</span><strong>我的群聊</strong><span class="live-contact-tool-detail">' + state.conversations.filter(item => item.type === 'group').length + ' ›</span></button></div><div class="live-section-title">我的好友 · ' + state.friends.length + '</div><div data-list-results>' + (list.length ? list.map(person => personRow(person, 'profile')).join('') : empty(query ? '没有找到好友' : '还没有好友', query ? '试试其他名字或 ID。' : '输入好友的数字 ID，等对方通过后即可聊天。', '<button class="live-primary" data-action="add-friend">添加好友</button>')) + '</div>';
+      content = '<div class="live-contact-tools"><button data-action="requests"><span class="live-contact-tool-icon">' + icon('friend') + '</span><strong>新的朋友</strong>' + (state.requests.length ? '<b>' + state.requests.length + '</b>' : '') + '<span class="live-contact-tool-detail">›</span></button><button data-action="groups"><span class="live-contact-tool-icon">' + icon('group') + '</span><strong>我的群聊</strong><span class="live-contact-tool-detail">' + state.conversations.filter(item => item.type === 'group').length + ' ›</span></button></div><button class="live-setting" data-action="blocks">黑名单<span>›</span></button><button class="live-setting" data-action="reports">我的举报<span>›</span></button><div class="live-section-title">我的好友 · ' + state.friends.length + '</div><div data-list-results>' + (list.length ? list.map(person => personRow(person, 'profile')).join('') : empty(query ? '没有找到好友' : '还没有好友', query ? '试试其他名字或 ID。' : '输入好友的数字 ID，等对方通过后即可聊天。', '<button class="live-primary" data-action="add-friend">添加好友</button>')) + '</div>';
     } else {
       const list = state.conversations.filter(item => title(item).toLowerCase().includes(query)).sort((a, b) => Number(b.pinned) - Number(a.pinned) || Number(b.updatedAt) - Number(a.updatedAt));
       content = '<div data-list-results>' + (list.length ? list.map(item => '<button class="live-conversation' + (item.pinned ? ' is-pinned' : '') + '" data-action="chat" data-id="' + esc(item.id) + '">' + avatar(peer(item), item.type === 'group') + '<span class="live-conversation-copy"><span><strong>' + esc(title(item)) + (item.type === 'group' ? '<small class="live-group-tag">群</small>' : '') + '</strong><time>' + stamp(item.lastMessage?.createdAt) + '</time></span><span><small>' + esc(drafts.get(item.id) ? '[草稿] ' + drafts.get(item.id) : preview(item.lastMessage)) + '</small>' + (item.unread > 0 ? '<b class="live-count">' + Math.min(99, item.unread) + '</b>' : item.muted ? '<small>免打扰</small>' : '') + '</span></span></button>').join('') : empty(query ? '没有找到聊天' : '从一位好友开始', query ? '试试其他聊天名称。' : '添加好友或创建群聊，消息会同步到同账号的设备。', '<button class="live-primary" data-action="add-friend">添加好友</button>')) + '</div>';
@@ -112,18 +132,19 @@ export function mountLiveSocial(container, options = {}) {
   }
   function renderLookup() {
     const result = page.result;
-    return header('添加好友') + '<form data-form="lookup"><label class="live-field">好友 ID<input name="friendId" inputmode="numeric" pattern="[0-9]{6,16}" maxlength="16" required autocomplete="off" value="' + esc(page.userId || '') + '" placeholder="输入至少 6 位数字 ID"/></label><button class="live-primary live-full" type="submit" ' + (actionBusy('lookup') ? 'disabled' : '') + '>' + (actionBusy('lookup') ? '正在查找…' : '查找好友') + '</button></form>' + errorBox(page.error) + (result ? profileCard(result.profile) + relationshipButton(result) : '<p class="live-note">好友 ID 可以在对方的「我的 → 个人资料」中查看。</p>');
+    return header('添加好友') + '<form data-form="lookup"><label class="live-field">好友 ID<input name="friendId" inputmode="numeric" pattern="[0-9]{6,16}" maxlength="16" required autocomplete="off" value="' + esc(page.userId || '') + '" placeholder="输入至少 6 位数字 ID"/></label><button class="live-primary live-full" type="submit" ' + (actionBusy('lookup') ? 'disabled' : '') + '>' + (actionBusy('lookup') ? '正在查找…' : '查找好友') + '</button></form>' + errorBox(page.error) + (result ? profileCard(result.profile) + relationshipButton(result) + safetyButtons(result.profile) : '<p class="live-note">好友 ID 可以在对方的「我的 → 个人资料」中查看。</p>');
   }
   function profileCard(person) { return '<section class="live-profile-card">' + avatar(person) + '<h2>' + esc(nameOf(person)) + badges(person) + '</h2><p>ID：' + esc(person.userId) + '</p><p>' + esc(person.bio || '这个人还没有填写个性签名。') + '</p></section>'; }
   function relationshipButton(result) {
     const relationship = result.relationship, person = result.profile;
+    if (blocked(person.userId)) return '<p class="live-note">你已拉黑此用户。共同群聊中的消息仍可见。</p>';
     if (relationship === 'self') return '<p class="live-note">这是你自己的账号。</p>';
     if (relationship === 'friend') return '<button class="live-primary live-full" data-action="friend-chat" data-id="' + esc(person.userId) + '">发消息</button>';
     if (relationship === 'outgoing') return '<p class="live-note" role="status">好友申请已发送，等待对方通过。</p>';
     if (relationship === 'incoming' && result.requestId) return '<button class="live-primary live-full" data-action="accept" data-id="' + esc(result.requestId) + '">通过好友申请</button>';
     return '<button class="live-primary live-full" data-action="request-friend" data-id="' + esc(person.userId) + '" ' + (actionBusy('request-friend') ? 'disabled' : '') + '>添加好友</button><p class="live-note">对方通过申请后，才会开启聊天。</p>';
   }
-  function renderProfile() { const result = page.result || (friend(page.userId) ? { profile: friend(page.userId), relationship: 'friend' } : null); return header('个人资料') + errorBox(result ? page.error : '') + (result ? profileCard(result.profile) + relationshipButton(result) : page.error ? errorBox(page.error, 'profile-retry') : '<p class="live-loading">正在读取资料…</p>'); }
+  function renderProfile() { const result = page.result || (friend(page.userId) ? { profile: friend(page.userId), relationship: 'friend' } : null); return header('个人资料') + errorBox(result ? page.error : '') + (result ? profileCard(result.profile) + relationshipButton(result) + safetyButtons(result.profile) : page.error ? errorBox(page.error, 'profile-retry') : '<p class="live-loading">正在读取资料…</p>'); }
   function renderRequests() { return header('新的朋友') + errorBox(page.error) + '<div class="live-section-title">收到的申请</div>' + (state.requests.length ? state.requests.map(request => '<article class="live-request">' + avatar(request.from) + '<div><strong>' + esc(nameOf(request.from)) + '</strong><small>ID：' + esc(request.from.userId) + '</small><time>' + stamp(request.createdAt) + '</time></div><div><button class="live-primary" data-action="accept" data-id="' + esc(request.id) + '" ' + (actionBusy('request:' + request.id) ? 'disabled' : '') + '>通过</button><button class="live-text" data-action="reject" data-id="' + esc(request.id) + '" ' + (actionBusy('request:' + request.id) ? 'disabled' : '') + '>忽略</button></div></article>').join('') : empty('没有新的申请', '收到好友申请后会显示在这里。')) + '<div class="live-section-title">已发出的申请</div>' + (state.outgoingRequests?.length ? state.outgoingRequests.map(request => '<article class="live-request">' + avatar(request.to) + '<div><strong>' + esc(nameOf(request.to)) + '</strong><small>ID：' + esc(request.to.userId) + '</small></div><small>等待通过</small></article>').join('') : '<p class="live-note">没有等待通过的申请。</p>'); }
   function renderGroups() { const groups = state.conversations.filter(item => item.type === 'group'); return header('我的群聊', iconButton('create-group', 'plus', '创建群聊')) + (groups.length ? groups.map(item => '<button class="live-person" data-action="chat" data-id="' + esc(item.id) + '">' + avatar(null, true) + '<span><strong>' + esc(item.name) + '</strong><small>' + item.members.length + ' 位成员</small></span></button>').join('') : empty('还没有群聊', '选择至少两位好友，共同创建一个群聊。', '<button class="live-primary" data-action="create-group">创建群聊</button>')); }
   function renderMessage(message, item) {
@@ -131,7 +152,7 @@ export function mountLiveSocial(container, options = {}) {
     let content = '<p class="live-bubble">' + esc(message.text) + '</p>';
     if (message.type === 'image') content = safeReceivedImage(message.image) ? '<button class="live-photo-message" data-action="view-image" data-id="' + esc(message.id) + '"><img loading="lazy" src="' + esc(message.image.src) + '" alt="' + esc(message.image.name || '聊天照片') + '"/></button>' : '<div class="live-bubble live-media-error"><span>照片暂时无法加载</span><small>' + esc(message.mediaError || '请检查网络后重试。') + '</small><button type="button" class="live-text" data-action="retry-image" data-id="' + esc(message.id) + '" ' + (messageLoading.has(item.id) ? 'disabled' : '') + '>重新加载照片</button></div>';
     if (message.type === 'sticker') { const sticker = getSticker(message.sticker); content = sticker ? '<div class="live-sticker"><span>' + sticker.emoji + '</span><small>' + esc(sticker.label) + '</small></div>' : '<p class="live-bubble">表情暂不支持</p>'; }
-    return '<article class="live-message' + (mine ? ' is-mine' : '') + '" data-message-id="' + esc(message.id) + '">' + avatar(person || { nickname: '已离群用户' }) + '<div>' + (item.type === 'group' && !mine ? '<small class="live-sender">' + esc(person ? nameOf(person) : '已离群用户') + '</small>' : '') + content + '<time>' + stamp(message.createdAt) + '</time></div></article>';
+    return '<article class="live-message' + (mine ? ' is-mine' : '') + '" data-message-id="' + esc(message.id) + '">' + avatar(person || { nickname: '已离群用户' }) + '<div>' + (item.type === 'group' && !mine ? '<small class="live-sender">' + esc(person ? nameOf(person) : '已离群用户') + '</small>' : '') + content + '<div class="live-message-meta"><time>' + stamp(message.createdAt) + '</time>' + (!mine && !message.removed ? '<button type="button" class="live-message-action" data-action="report-message" data-id="' + esc(message.id) + '" aria-label="举报此消息">···</button>' : '') + '</div></div></article>';
   }
   function renderChat() {
     const item = conversation(page.id);
@@ -142,16 +163,18 @@ export function mountLiveSocial(container, options = {}) {
   function renderDetails() {
     const item = conversation(page.id); if (!item) return header('聊天详情') + empty('聊天已不可用', '请返回消息列表。');
     const group = item.type === 'group';
-    return header('聊天详情') + '<section class="live-profile-card">' + avatar(peer(item), group) + '<h2>' + esc(title(item)) + '</h2><p>' + (group ? item.members.length + ' 位成员' : 'ID：' + esc(peer(item)?.userId)) + '</p></section>' + (group ? '<div class="live-section-title">群成员</div><div class="live-members">' + item.members.map(person => '<button data-action="profile" data-id="' + esc(person.userId) + '">' + avatar(person) + '<strong>' + esc(nameOf(person)) + '</strong><small>' + (person.userId === item.ownerId ? '群主' : person.userId === selfId() ? '我' : '成员') + '</small></button>').join('') + '</div><button class="live-setting" data-action="invite-members">邀请好友进群<span>›</span></button>' + (isOwner(item) ? '<button class="live-setting" data-action="edit-group">群名与公告<span>编辑 ›</span></button><button class="live-setting" data-action="manage-members">管理群成员<span>›</span></button><button class="live-setting" data-action="transfer-owner">转让群主<span>›</span></button>' : '') : personRow(peer(item), 'profile')) + '<button class="live-setting" data-action="search-chat">查找聊天内容<span>›</span></button>' + [['pinned', '置顶聊天'], ['muted', '消息免打扰']].map(([key, label]) => '<button class="live-setting" data-action="toggle" data-key="' + key + '" role="switch" aria-checked="' + !!item[key] + '">' + label + '<span class="live-switch' + (item[key] ? ' is-on' : '') + '"></span></button>').join('') + '<p class="live-note">聊天消息由服务器保存并在同账号设备间同步；新加入或重新入群只能查看本次入群后的消息。当前未提供端到端加密，红包与托管资金尚未开通。</p><button class="live-danger live-full" data-action="' + (group ? 'leave-group' : 'remove-friend') + '">' + (group ? '退出群聊' : '删除好友') + '</button>';
+    return header('聊天详情') + '<section class="live-profile-card">' + avatar(peer(item), group) + '<h2>' + esc(title(item)) + '</h2><p>' + (group ? item.members.length + ' 位成员' : 'ID：' + esc(peer(item)?.userId)) + '</p></section>' + (group ? '<div class="live-section-title">群成员</div><div class="live-members">' + item.members.map(person => '<button data-action="profile" data-id="' + esc(person.userId) + '">' + avatar(person) + '<strong>' + esc(nameOf(person)) + '</strong><small>' + (person.userId === item.ownerId ? '群主' : person.userId === selfId() ? '我' : '成员') + '</small></button>').join('') + '</div><button class="live-setting" data-action="invite-members">邀请好友进群<span>›</span></button>' + (isOwner(item) ? '<button class="live-setting" data-action="edit-group">群名与公告<span>编辑 ›</span></button><button class="live-setting" data-action="manage-members">管理群成员<span>›</span></button><button class="live-setting" data-action="transfer-owner">转让群主<span>›</span></button>' : '') : personRow(peer(item), 'profile')) + '<button class="live-setting" data-action="search-chat">查找聊天内容<span>›</span></button>' + [['pinned', '置顶聊天'], ['muted', '消息免打扰']].map(([key, label]) => '<button class="live-setting" data-action="toggle" data-key="' + key + '" role="switch" aria-checked="' + !!item[key] + '">' + label + '<span class="live-switch' + (item[key] ? ' is-on' : '') + '"></span></button>').join('') + (group ? '<button class="live-setting" data-action="report-group" data-id="' + esc(item.id) + '">举报群聊<span>›</span></button>' : safetyButtons(peer(item))) + '<p class="live-note">聊天消息由服务器保存并在同账号设备间同步；新加入或重新入群只能查看本次入群后的消息。当前未提供端到端加密，红包与托管资金尚未开通。</p><button class="live-danger live-full" data-action="' + (group ? 'leave-group' : 'remove-friend') + '">' + (group ? '退出群聊' : '删除好友') + '</button>';
   }
   function openModal(type, values = {}) { menu = false; modal = { type, ...values }; renderMenu(); renderModal(); }
   function renderModal() {
     const host = root.querySelector('[data-modal-host]'); if (!host) return; if (!modal) { host.innerHTML = ''; return; }
     const item = conversation(modal.conversationId), selected = modal.selected || [], disabled = modal.busy ? 'disabled' : '';
     let label = '', content = '';
-    if (['group', 'invite'].includes(modal.type)) {
+    if (modal.type === 'report') {
+      label = '提交举报'; content = '<form data-form="report"><p class="live-note">举报将保存到服务器供运营审核，请如实描述。提交后可在通讯录的“我的举报”查看进度。</p><label class="live-field">举报原因<select name="reportReason">' + [['spam','垃圾广告'],['harassment','骚扰辱骂'],['fraud','诈骗'],['illegal','违法内容'],['other','其他']].map(([value,label]) => '<option value="' + value + '"' + (modal.reason === value ? ' selected' : '') + '>' + label + '</option>').join('') + '</select></label><label class="live-field">补充说明<textarea name="reportDetail" maxlength="1000" rows="4" placeholder="描述具体情况（选填）">' + esc(modal.detail || '') + '</textarea></label>' + errorBox(modal.error) + '<button class="live-primary live-full" type="submit" ' + disabled + '>' + (modal.busy ? '正在提交…' : '提交举报') + '</button></form>';
+    } else if (['group', 'invite'].includes(modal.type)) {
       label = modal.type === 'group' ? '创建群聊' : '邀请好友进群';
-      const available = state.friends.filter(person => modal.type === 'group' || !item?.members.some(member => member.userId === person.userId));
+      const available = state.friends.filter(person => !blocked(person.userId)).filter(person => modal.type === 'group' || !item?.members.some(member => member.userId === person.userId));
       const filtered = available.filter(person => (nameOf(person) + ' ' + person.userId).toLowerCase().includes(String(modal.query || '').toLowerCase()));
       content = available.length ? '<form data-form="' + modal.type + '">' + (modal.type === 'group' ? '<label class="live-field">群聊名称<input name="groupName" maxlength="24" value="' + esc(modal.name || '') + '" required placeholder="给群聊起个名字"/></label>' : '') + '<label class="live-field">选择好友<input name="memberQuery" type="search" value="' + esc(modal.query || '') + '" placeholder="搜索好友"/></label><p class="live-note" data-selection-count>已选择 ' + selected.length + ' 位' + (modal.type === 'group' ? '，至少选择 2 位好友' : '') + '</p><div class="live-select-members">' + (filtered.length ? filtered.map(person => '<label>' + avatar(person) + '<span><strong>' + esc(nameOf(person)) + '</strong><small>ID：' + esc(person.userId) + '</small></span><input type="checkbox" name="memberIds" value="' + esc(person.userId) + '" ' + (selected.includes(person.userId) ? 'checked ' : '') + disabled + '/></label>').join('') : '<p class="live-note">没有匹配的好友。</p>') + '</div>' + errorBox(modal.error) + '<button class="live-primary live-full" type="submit" ' + disabled + '>' + (modal.busy ? '正在保存…' : label) + '</button></form>' : empty(modal.type === 'group' ? '需要先添加好友' : '好友都在群里了', modal.type === 'group' ? '至少添加两位好友，再创建群聊。' : '添加新的好友后再邀请。', '<button class="live-primary" data-action="add-friend">添加好友</button>');
     } else if (modal.type === 'edit-group') {
@@ -183,7 +206,7 @@ export function mountLiveSocial(container, options = {}) {
         const next = await service.getState(); if (disposed) return;
         if (!next?.profile?.userId || !Array.isArray(next.friends) || !Array.isArray(next.conversations) || !Array.isArray(next.requests)) throw new Error('消息服务返回了不完整的数据，请重试');
         const signature = JSON.stringify(next), changed = signature !== snapshotSignature || !loaded || !!loadError || !!networkError;
-        for (const id of invalidatedConversationIds(state.conversations, next.conversations)) { permissionRevisions.set(id, (permissionRevisions.get(id) || 0) + 1); messages.delete(id); messageErrors.delete(id); olderCursors.delete(id); pending.delete(id); readThrough.delete(id); }
+        for (const id of invalidatedConversationIds(state.conversations, next.conversations)) { permissionRevisions.set(id, (permissionRevisions.get(id) || 0) + 1); messages.delete(id); messageErrors.delete(id); olderCursors.delete(id); pending.delete(id); readThrough.delete(id); syncCursors.delete(id); if (['gallery','photo'].includes(modal?.type) && modal.conversationId === id) modal = null; }
         state = next; loaded = true; loadError = ''; networkError = ''; snapshotSignature = signature;
         if (page.result?.profile) { const updated = state.friends.find(person => person.userId === page.result.profile.userId); if (updated) page.result = { profile: updated, relationship: 'friend' }; else if (page.result.relationship === 'friend') page.result.relationship = 'none'; }
         if (changed && !composing) render();
@@ -199,18 +222,21 @@ export function mountLiveSocial(container, options = {}) {
     const cached = messages.get(id) || [], retryIndex = retryMessageId ? cached.findIndex(message => message.id === retryMessageId) : -1;
     const before = retryIndex >= 0 ? cached[retryIndex + 1]?.id : older ? olderCursors.get(id) : undefined;
     try {
-      const result = await service.getMessages(id, before ? { before } : {}); if (disposed || !conversation(id) || permissionRevision !== (permissionRevisions.get(id) || 0)) return;
+      const catchingUp = !older && !retryMessageId && syncCursors.has(id);
+      const current = () => !disposed && !!conversation(id) && permissionRevision === (permissionRevisions.get(id) || 0);
+      const result = catchingUp ? await catchUpMessages(service, id, syncCursors.get(id), current) : await service.getMessages(id, before ? { before } : {}); if (!current() || !result) return;
+      if (catchingUp) syncCursors.set(id, result.cursor); else if (!older && !retryMessageId) syncCursors.set(id, result.messages.at(-1)?.id || String(conversation(id)?.historyStartId || 0));
       messageLoading.delete(id); const firstLoad = !messages.has(id);
       if (!Array.isArray(result?.messages)) throw new Error('消息内容读取失败');
       const beforeList = messages.get(id) || [], merged = mergeMessages(beforeList, result.messages);
       const changed = JSON.stringify(merged) !== JSON.stringify(beforeList) || !!messageErrors.get(id);
       messages.set(id, merged); messageErrors.delete(id);
       if (modal?.type === 'gallery' && modal.conversationId === id) { const refreshed = merged.find(message => message.id === modal.messageId); if (safeReceivedImage(refreshed?.image)) { modal.image = refreshed.image; modal.error = ''; } else modal.error = refreshed?.mediaError || '照片暂时无法加载，请重试。'; }
-      if (older || !olderCursors.has(id)) olderCursors.set(id, result.nextBefore || null);
+      if (!catchingUp && (older || !olderCursors.has(id))) olderCursors.set(id, result.nextBefore || null);
       if (page.type === 'chat' && page.id === id) {
         if ((changed || older || firstLoad) && !composing) { const list = root.querySelector('[data-messages]'), previousHeight = list?.scrollHeight || 0, previousTop = list?.scrollTop || 0; render(); if (older) { const after = root.querySelector('[data-messages]'); if (after) after.scrollTop = previousTop + after.scrollHeight - previousHeight; } }
-        const latestId = merged.at(-1)?.id;
-        if (!globalThis.document?.hidden && latestId && readThrough.get(id) !== latestId) { try { await service.markRead(id); if (!disposed && permissionRevision === (permissionRevisions.get(id) || 0)) readThrough.set(id, latestId); } catch { /* A read receipt never blocks opening or sending a message. */ } }
+        const latestId = syncCursors.get(id) || merged.at(-1)?.id;
+        if (!globalThis.document?.hidden && latestId && readThrough.get(id) !== latestId) { try { await service.markRead(id, { throughId: latestId }); if (!disposed && permissionRevision === (permissionRevisions.get(id) || 0)) readThrough.set(id, latestId); } catch { /* A read receipt never blocks opening or sending a message. */ } }
       }
     } catch (error) { messageLoading.delete(id); if (staleResponse(error)) return; if (!disposed && conversation(id) && permissionRevision === (permissionRevisions.get(id) || 0)) { messageErrors.set(id, error.message || '消息读取失败，请重试'); if (page.type === 'chat' && page.id === id && !composing) render(); } }
     finally { messageLoading.delete(id); }
@@ -227,6 +253,7 @@ export function mountLiveSocial(container, options = {}) {
       else toast(message);
     } finally { busy.delete(key); if (context?.modal) context.modal.busy = false; if (!disposed) render(); }
   }
+  async function loadReports() { const destination = page; try { const result = await service.getReports(); if (!disposed && page === destination) { destination.reports = result.reports; destination.error = ''; render(); } } catch(error) { if (!disposed && page === destination && !staleResponse(error)) { destination.error = error.message; render(); } } }
   async function lookup(id, destination = page) {
     if (busy.has('lookup')) return;
     let userId;
@@ -240,6 +267,7 @@ export function mountLiveSocial(container, options = {}) {
   async function openFriendChat(id) { let item = state.conversations.find(value => value.type === 'direct' && value.members.some(member => member.userId === id)); if (!item) { await refresh(true); if (disposed) return; item = state.conversations.find(value => value.type === 'direct' && value.members.some(member => member.userId === id)); } if (item) openChat(item.id); else toast('好友聊天尚未同步，请稍后重试'); }
   async function send(id, payload, retry = false) {
     if (disposed || !conversation(id)) return;
+    if (conversation(id).blocked) { toast('当前无法向此用户发送私聊消息，请先检查黑名单'); return; }
     const permissionRevision = permissionRevisions.get(id) || 0;
     let operation = pending.get(id);
     if (operation && (!retry || !operation.error)) return;
@@ -279,6 +307,11 @@ export function mountLiveSocial(container, options = {}) {
     else if (action === 'profile-retry') void lookup(page.userId);
     else if (action === 'requests') navigate({ type: 'requests' });
     else if (action === 'groups') navigate({ type: 'groups' });
+    else if (action === 'blocks') navigate({ type: 'blocks' });
+    else if (action === 'reports') { navigate({ type: 'reports' }); void loadReports(); }
+    else if (action === 'reports-refresh') void loadReports();
+    else if (['report-user','report-message','report-group'].includes(action)) openModal('report', { targetType: action.slice(7), targetId: id, reason: 'spam', detail: '', requestId: uid() });
+    else if (action === 'block-user') openModal('confirm', { label: blocked(id) ? '解除拉黑' : '拉黑用户', detail: blocked(id) ? '解除后，如果仍是好友即可恢复私聊。' : '将阻止双方私聊、好友申请和直接群邀请，共同群聊中的消息仍可见。', operation: blocked(id) ? 'unblock' : 'block', userId: id });
     else if (action === 'chat') openChat(id);
     else if (action === 'friend-chat') void openFriendChat(id);
     else if (action === 'request-friend') {
@@ -304,7 +337,7 @@ export function mountLiveSocial(container, options = {}) {
     } else if (action === 'remove-friend') { const item = conversation(page.id); if (item) openModal('confirm', { label: '删除好友', detail: '删除后将停止直接聊天；重新添加需要对方再次通过。', operation: 'remove', userId: peer(item)?.userId }); }
     else if (action === 'confirm-operation' && modal?.type === 'confirm') {
       const targetModal = modal;
-      void perform('confirm', () => targetModal.operation === 'leave' ? service.leaveGroup(targetModal.conversationId) : targetModal.operation === 'remove-member' ? service.removeMember(targetModal.conversationId, targetModal.userId) : service.removeFriend(targetModal.userId), () => { if (modal === targetModal) { modal = null; if (targetModal.operation !== 'remove-member') page = { type: 'list', view }; } toast(targetModal.label + '成功'); }, { modal: targetModal });
+      void perform('confirm', () => targetModal.operation === 'block' ? service.blockUser(targetModal.userId) : targetModal.operation === 'unblock' ? service.unblockUser(targetModal.userId) : targetModal.operation === 'leave' ? service.leaveGroup(targetModal.conversationId) : targetModal.operation === 'remove-member' ? service.removeMember(targetModal.conversationId, targetModal.userId) : service.removeFriend(targetModal.userId), () => { if (modal === targetModal) { modal = null; if (!['remove-member','block','unblock'].includes(targetModal.operation)) page = { type: 'list', view }; } toast(targetModal.label + '成功'); }, { modal: targetModal });
     } else if (action === 'emoji' && page.type === 'chat') { page.emoji = !page.emoji; render(); }
     else if (action === 'pick-emoji' && page.type === 'chat' && EMOJI_GROUPS.some(group => group.emojis.includes(target.dataset.emoji))) {
       const input = root.querySelector('[name="message"]'), value = drafts.get(page.id) || '', start = input?.selectionStart ?? value.length, end = input?.selectionEnd ?? start, next = value.slice(0, start) + target.dataset.emoji + value.slice(end);
@@ -328,16 +361,19 @@ export function mountLiveSocial(container, options = {}) {
     else if (name === 'friendId' && page.type === 'lookup') { page.userId = value; const stale = page.result || page.error || busy.has('lookup'); page.result = null; page.error = ''; lookupSequence++; busy.delete('lookup'); if (stale) render(); }
     else if (name === 'groupName' && modal) modal.name = value;
     else if (name === 'groupNote' && modal) modal.note = value;
+    else if (name === 'reportDetail' && modal) modal.detail = value;
     else if (name === 'memberQuery' && modal) { modal.query = value; const selection = event.target.selectionStart; renderModal(); const input = root.querySelector('[name="memberQuery"]'); input?.focus(); input?.setSelectionRange(selection, selection); }
   }
   function onChange(event) {
-    if (event.target.matches('[data-chat-photo]')) { void choosePhoto(event.target.files?.[0]); event.target.value = ''; }
+    if (event.target.name === 'reportReason' && modal) modal.reason = event.target.value;
+    else if (event.target.matches('[data-chat-photo]')) { void choosePhoto(event.target.files?.[0]); event.target.value = ''; }
     else if (event.target.name === 'memberIds' && modal && !modal.busy) { const ids = new Set(modal.selected || []); if (event.target.checked) ids.add(event.target.value); else ids.delete(event.target.value); modal.selected = [...ids]; const count = root.querySelector('[data-selection-count]'); if (count) count.textContent = '已选择 ' + ids.size + ' 位' + (modal.type === 'group' ? '，至少选择 2 位好友' : ''); }
   }
   function onSubmit(event) {
     const form = event.target.closest('[data-form]'); if (!form || !root.contains(form)) return; event.preventDefault();
     const values = new FormData(form), type = form.dataset.form;
-    if (type === 'lookup') void lookup(values.get('friendId'));
+    if (type === 'report' && modal?.type === 'report') { const target = modal; target.reason = String(values.get('reportReason')); target.detail = String(values.get('reportDetail') || ''); const fingerprint = JSON.stringify([target.reason,target.detail]); if (target.submittedFingerprint && target.submittedFingerprint !== fingerprint) target.requestId = uid(); target.submittedFingerprint = fingerprint; void perform('report', () => service.submitReport({ targetType: target.targetType, targetId: target.targetId, reason: target.reason, detail: target.detail, requestId: target.requestId }), () => { if (modal === target) modal = null; toast('举报已提交，可在我的举报查看进度'); }, { modal: target }); }
+    else if (type === 'lookup') void lookup(values.get('friendId'));
     else if (type === 'message' && page.type === 'chat') { const text = String(values.get('message') || '').trim(); if (text && text.length <= 2000) void send(page.id, { type: 'text', text }); }
     else if (type === 'group' && modal?.type === 'group') {
       const target = modal; let input;

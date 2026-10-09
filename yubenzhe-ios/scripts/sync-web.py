@@ -2,7 +2,7 @@
 """Copy only checked local frontend assets; never include downloads or admin."""
 import argparse, hashlib, json, pathlib, shutil
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSETS = ('index.html', 'app.js', 'app.css', 'icon.png', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png')
+ASSETS = ('index.html', 'app.js', 'app.css', 'icon.png', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png', 'privacy.html', 'terms.html')
 p = argparse.ArgumentParser()
 p.add_argument('--source', type=pathlib.Path, default=ROOT.parent / 'tongban' / 'dist')
 a = p.parse_args()
@@ -26,4 +26,4 @@ for file in destination.iterdir():
 for name in ASSETS: shutil.copyfile(source / name, destination / name)
 manifest = {name: hashlib.sha256((destination / name).read_bytes()).hexdigest() for name in ASSETS}
 (ROOT / 'web-snapshot.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8', newline='\n')
-print('Copied seven frontend assets. No installers or admin included.')
+print(f'Copied {len(ASSETS)} frontend assets. No installers, admin, or web push worker included.')

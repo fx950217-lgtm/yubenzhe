@@ -156,8 +156,11 @@ test('wallet management acts on the wallet while orders and help do not invent l
   assert.match(app.container.innerHTML, /没有真实订单/);
   assert.match(app.container.innerHTML, /草稿不会自动成为订单/);
   app.click('help');
-  assert.match(app.container.innerHTML, /在线支持尚未接通/);
-  assert.match(app.container.innerHTML, /没有在线客服或工单提交功能/);
+  assert.match(app.container.innerHTML, /提交反馈/);
+  assert.match(app.container.innerHTML, /运营人员查看处理/);
+  assert.doesNotMatch(app.container.innerHTML, /没有在线客服或工单提交功能/);
+  app.click('feedback');
+  assert.deepEqual(app.calls.at(-1), ['action', 'feedback']);
   app.cleanup();
 });
 

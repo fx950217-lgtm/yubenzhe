@@ -8,6 +8,8 @@ def obj(key, **value):
     objects[identifier] = value
     return identifier
 sources, resources, files = [], [], []
+# The Web folder resource includes privacy.html and terms.html from sync-web.py.
+# sw.js is web-only; native clients do not register a push service worker.
 for name in ['AppDelegate.swift','LocalAssetServer.swift','BrowserViewController.swift','bridge.js','Web','Assets.xcassets','PrivacyInfo.xcprivacy','Info.plist']:
     filetype = ('sourcecode.swift' if name.endswith('.swift') else 'sourcecode.javascript' if name.endswith('.js') else 'folder.assetcatalog' if name.endswith('xcassets') else 'folder' if name == 'Web' else 'text.plist.xml')
     ref = obj('file:'+name, isa='PBXFileReference', lastKnownFileType=filetype, path=name, sourceTree='<group>')
@@ -25,7 +27,7 @@ frameworks = obj('frameworks', isa='PBXFrameworksBuildPhase', buildActionMask=21
 project_configs, target_configs = [], []
 for name in ['Debug','Release']:
     project_settings = {'SDKROOT':'iphoneos','IPHONEOS_DEPLOYMENT_TARGET':'15.4','SWIFT_VERSION':'5.0','CLANG_ENABLE_MODULES':'YES','CLANG_ENABLE_OBJC_ARC':'YES','ENABLE_BITCODE':'NO','ONLY_ACTIVE_ARCH':'NO','ARCHS':'$(ARCHS_STANDARD)','SWIFT_STRICT_CONCURRENCY':'minimal','SWIFT_OPTIMIZATION_LEVEL':'-O' if name=='Release' else '-Onone','DEBUG_INFORMATION_FORMAT':'dwarf-with-dsym' if name=='Release' else 'dwarf'}
-    target_settings = {'PRODUCT_NAME':'Yubenzhe','PRODUCT_BUNDLE_IDENTIFIER':'app.yubenzhe.wallet','INFOPLIST_FILE':'App/Info.plist','GENERATE_INFOPLIST_FILE':'NO','TARGETED_DEVICE_FAMILY':'1,2','ASSETCATALOG_COMPILER_APPICON_NAME':'AppIcon','CODE_SIGN_STYLE':'Automatic','CURRENT_PROJECT_VERSION':'15','MARKETING_VERSION':'0.12.1','LD_RUNPATH_SEARCH_PATHS':'$(inherited) @executable_path/Frameworks','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator','SUPPORTS_MACCATALYST':'NO','SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD':'NO','SWIFT_EMIT_LOC_STRINGS':'YES'}
+    target_settings = {'PRODUCT_NAME':'Yubenzhe','PRODUCT_BUNDLE_IDENTIFIER':'app.yubenzhe.wallet','INFOPLIST_FILE':'App/Info.plist','GENERATE_INFOPLIST_FILE':'NO','TARGETED_DEVICE_FAMILY':'1,2','ASSETCATALOG_COMPILER_APPICON_NAME':'AppIcon','CODE_SIGN_STYLE':'Automatic','CURRENT_PROJECT_VERSION':'16','MARKETING_VERSION':'0.13.0','LD_RUNPATH_SEARCH_PATHS':'$(inherited) @executable_path/Frameworks','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator','SUPPORTS_MACCATALYST':'NO','SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD':'NO','SWIFT_EMIT_LOC_STRINGS':'YES'}
     project_configs.append(obj('project-config:'+name, isa='XCBuildConfiguration', buildSettings=project_settings, name=name))
     target_configs.append(obj('target-config:'+name, isa='XCBuildConfiguration', buildSettings=target_settings, name=name))
 project_list = obj('project-configs', isa='XCConfigurationList', buildConfigurations=project_configs, defaultConfigurationIsVisible=0, defaultConfigurationName='Release')

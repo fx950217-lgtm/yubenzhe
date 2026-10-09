@@ -7,10 +7,16 @@ export function cloudAccessSupported(environment = globalThis) {
     environment.Capacitor?.getPlatform?.() !== 'android' && !!location &&
     (location.protocol === 'https:' || (location.protocol === 'http:' && ['localhost','127.0.0.1','[::1]'].includes(location.hostname)));
 }
-export function createAIClient({ fetcher = (...args) => globalThis.fetch(...args), supported = () => cloudAccessSupported() } = {}) {
+export function createAIClient({ socialClient, fetcher = (...args) => globalThis.fetch(...args), supported = () => socialClient ? true : cloudAccessSupported() } = {}) {
   return { supported, async request(path, { method = 'GET', body, signal } = {}) {
     if (!supported()) throw new AIServiceError('请在服务器网页版开通云端。当前客户端不会跨域传递你的验收身份。', 'SERVER_WEB_REQUIRED');
     if (!/^\/api\/ai\/[a-z0-9/_-]+$/.test(path)) throw new AIServiceError('服务地址无效。', 'INVALID_PATH');
+    if(socialClient){
+      if(typeof socialClient.authenticatedRequest!=='function')throw new AIServiceError('账号服务尚未连接。','ACCOUNT_REQUIRED',401);
+      if(signal?.aborted)throw new DOMException('请求已取消','AbortError');
+      try{const value=await socialClient.authenticatedRequest('ai/'+path.slice('/api/ai/'.length),{method,input:body});if(signal?.aborted)throw new DOMException('请求已取消','AbortError');if(!value||typeof value!=='object'||Array.isArray(value))throw new AIServiceError('服务器返回内容不完整，请重试。','INVALID_RESPONSE');return value;}
+      catch(error){if(error.name==='AbortError'||error instanceof AIServiceError)throw error;throw new AIServiceError(error.code==='ACCOUNT_REQUIRED'?'请先登录你的愚笨者账号，再使用云端工作台。':error.message||'工作台连接未完成，请重试。',error.code||'SERVICE_ERROR',error.status||0);}
+    }
     let response;
     try { response = await fetcher(path, { method, credentials: 'same-origin', redirect: 'error', cache: 'no-store', signal, headers: { Accept: 'application/json', ...(body ? {'Content-Type':'application/json'} : {}) }, ...(body ? {body:JSON.stringify(body)} : {}) }); }
     catch (error) { if (error.name === 'AbortError') throw error; throw new AIServiceError('连接没有完成。请重试；重复提交会沿用同一次请求，避免重复创建。', 'NETWORK_ERROR'); }

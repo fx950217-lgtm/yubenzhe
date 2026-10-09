@@ -131,7 +131,7 @@ const timeLabel=draft=>Number.isFinite(draft.updatedAt||draft.createdAt)?new Dat
 export function createDiscoveryWorkbench(ctx) {
   let dead=false,category='全部',aiCategory='全部',local={},pendingPreview=null;
   const buffers=new Map();
-  const aiWorkspace=createAIWorkspace({render:()=>ctx.render(),toast:message=>ctx.toast(message),renderLocal:aiPage,getLocalDraft:()=>sync('ai')});
+  const aiWorkspace=createAIWorkspace({socialClient:ctx.socialClient,onAccount:ctx.onAccount,render:()=>ctx.render(),toast:message=>ctx.toast(message),renderLocal:aiPage,getLocalDraft:()=>sync('ai')});
   const readDraft=type=>ctx.getDraft(type)||{};
   const draftKey=type=>JSON.stringify([type,ctx.getDraftKey?.(type)||type]);
   function sync(type) {
