@@ -75,14 +75,14 @@ test('web installation entry navigates while the installed app omits it and hand
   assert.equal(native.cleanup.back(),false);native.cleanup();
 });
 
-test('personal center labels local identity and forwards own moments, drafts, and bills precisely', () => {
+test('personal center labels local identity and forwards drafts and bills without duplicate moments', () => {
   const app = harness();
   assert.match(app.container.innerHTML, /本机资料/);
-  assert.match(app.container.innerHTML, /愚笨者 · 0.12.0/);
+  assert.match(app.container.innerHTML, /愚笨者 · 0.12.1/);
   assert.match(app.container.innerHTML, /<small>3 份<\/small>/);
-  app.click('moments'); app.click('drafts'); app.click('bill-center'); app.click('ai');
+  assert.doesNotMatch(app.container.innerHTML, /data-mine-action="moments"/);
+  app.click('drafts'); app.click('bill-center'); app.click('ai');
   assert.deepEqual(app.calls, [
-    ['navigate', 'discover', { route: 'moments', own: true }],
     ['navigate', 'discover', { route: 'drafts' }], ['action', 'bill-center'], ['navigate', 'discover', { route: 'ai' }],
   ]);
   app.cleanup();
@@ -204,7 +204,7 @@ test('assets are the first home destination and route to the existing wallet wit
   Object.defineProperty(wallet, 'balance', { get() { throw new Error('home must not read balances'); } });
   const app = harness({ wallet }), html = app.container.innerHTML;
   assert.match(html, /我的资产/); assert.match(html, /钱包与平台余额/); assert.match(html, /钱包已创建/);
-  const order = ['wallet', 'moments', 'drafts', 'bill-center', 'security', 'help'].map(action => html.indexOf(`data-mine-action="${action}"`));
+  const order = ['wallet', 'drafts', 'bill-center', 'security', 'help'].map(action => html.indexOf(`data-mine-action="${action}"`));
   assert.ok(order.every((position, i) => position >= 0 && (i === 0 || position > order[i - 1])));
   assert.doesNotMatch(html, /data-mine-action="orders"|服务订单|0\.00|tBNB|USDT|0x1111111111111111111111111111111111111111/);
   app.click('wallet'); assert.deepEqual(app.calls, [['navigate', 'wallet']]); app.cleanup();

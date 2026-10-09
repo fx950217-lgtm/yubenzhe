@@ -5,7 +5,6 @@ import { prepareProfilePhoto } from './profile-photo.js';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const paths = {
   back: 'M15 5l-7 7 7 7', arrow: 'M9 5l7 7-7 7', edit: 'M14 5l5 5 M4 20l4-1L20 7l-3-3L5 16Z',
-  moments: 'M12 3v4 M12 17v4 M3 12h4 M17 12h4 M5.6 5.6l2.8 2.8 M15.6 15.6l2.8 2.8 M5.6 18.4l2.8-2.8 M15.6 8.4l2.8-2.8',
   draft: 'M6 3h8l4 4v14H6Z M14 3v5h4 M9 12h6 M9 16h4', bill: 'M5 3h14v18l-3-2-4 2-4-2-3 2Z M8 8h8 M8 12h8',
   order: 'M4 7h16v14H4Z M8 7V5a4 4 0 0 1 8 0v2 M8 12h8', shield: 'M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6Z M8 12l3 3 5-6',
   help: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M9.5 8a2.5 2.5 0 1 1 3 4v2 M12.5 17h.01', wallet: 'M4 7h15v14H4V4h12v3 M19 11h-5v5h5',
@@ -46,9 +45,9 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     const walletLabel = unavailable ? '钱包状态暂不可用' : state.exists ? '钱包已创建' : '尚未创建钱包';
     return `<section class="mine-home-profile"><span class="mine-avatar" aria-hidden="true">${profile ? avatarContent(profile.avatar, profile.avatarImage) : '🌱'}</span><div class="mine-home-profile-copy"><h2>${profile ? esc(profile.nickname) : '个人资料暂不可用'}</h2>${profile ? '' : '<p>原始资料已保留</p>'}<div class="mine-profile-meta">${identity()}</div>${!remote() && profile ? '<span>本机资料 · ID 尚未云端登记</span>' : ''}</div>${button('edit', `<span>资料</span>${icon('arrow')}`, `aria-label="编辑资料" ${profileError ? 'disabled' : ''}`)}</section>${profileError ? `<div class="mine-inline-error" role="alert">${profileService ? '账号资料暂不可读，请检查网络后重新连接。' : '本机资料无法读取，请检查存储权限。'}${button('retry-profile', '重新读取资料')}</div>` : ''}
       <button type="button" class="mine-assets-entry" data-mine-action="wallet"><span class="mine-assets-symbol">${icon('wallet')}</span><span class="mine-assets-copy"><strong>我的资产</strong><small>钱包与平台余额</small></span><span class="mine-assets-state ${unavailable ? 'is-unavailable' : ''}">${walletLabel}</span>${icon('arrow')}</button>
-      <div class="mine-home-shortcuts"><button type="button" class="mine-home-shortcut mine-mint" data-mine-action="moments"><span class="mine-shortcut-icon">${icon('moments')}</span><span><strong>朋友圈</strong><small>我的动态</small></span>${icon('arrow')}</button><button type="button" class="mine-home-shortcut mine-lilac" data-mine-action="drafts"><span class="mine-shortcut-icon">${icon('draft')}</span><span><strong>草稿</strong><small>${count === '暂不可用' ? '数量暂不可用' : `${count} 份`}</small></span>${icon('arrow')}</button></div>
+      <div class="mine-home-shortcuts"><button type="button" class="mine-home-shortcut mine-lilac" data-mine-action="drafts"><span class="mine-shortcut-icon">${icon('draft')}</span><span><strong>草稿</strong><small>${count === '暂不可用' ? '数量暂不可用' : `${count} 份`}</small></span>${icon('arrow')}</button></div>
       <section class="mine-list mine-home-links" aria-label="个人功能">${row('ai', 'AI 工作台', '', 'order')}${row('bill-center', '账单记录', '', 'bill')}${profileService ? row('account-settings', '账号设置', '登录密码与退出账号', 'lock') : ''}${row('security', '安全设置', '', 'shield')}${row('help', '帮助', '', 'help')}${!isNative?row('install', '安装愚笨者', '手机与电脑', 'wallet'):''}</section>
-      <p class="mine-footnote mine-home-footnote">愚笨者 · 0.12.0</p>`;
+      <p class="mine-footnote mine-home-footnote">愚笨者 · 0.12.1</p>`;
   }
   function edit() {
     if (!profile) return `${heading('个人资料', '资料暂不可用')}<div class="mine-info mine-warning" role="alert">资料暂不可用，当前不能覆盖原始资料。</div>${button('retry-profile', '返回并重新读取')}`;
@@ -104,7 +103,6 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     if (saving && ['home', 'edit', 'avatar', 'choose-photo', 'remove-photo'].includes(name)) { toast('资料正在保存，请稍候。'); return; }
     if (['home', 'edit', 'security', 'orders', 'help'].includes(name)) { open(name); return; }
     if (name === 'retry-profile') { open('home'); return; }
-    if (name === 'moments') { onNavigate('discover', { route: 'moments', own: true }); return; }
     if (name === 'ai') { onNavigate('discover', { route: 'ai' }); return; }
     if (name === 'drafts') { onNavigate('discover', { route: 'drafts' }); return; }
     if (name === 'wallet') { onNavigate('wallet'); return; }

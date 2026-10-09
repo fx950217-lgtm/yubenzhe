@@ -57,12 +57,12 @@ class PackagingChecks(unittest.TestCase):
     def test_app_and_build_version_are_checked_before_packaging(self):
         with tempfile.TemporaryDirectory() as directory:
             app = pathlib.Path(directory)/'Yubenzhe.app'; app.mkdir()
-            info = {'CFBundleIdentifier':'app.yubenzhe.wallet', 'CFBundleShortVersionString':'0.12.0', 'CFBundleVersion':'14', 'CFBundleExecutable':'Yubenzhe'}
+            info = {'CFBundleIdentifier':'app.yubenzhe.wallet', 'CFBundleShortVersionString':'0.12.1', 'CFBundleVersion':'15', 'CFBundleExecutable':'Yubenzhe'}
             (app/'Info.plist').write_bytes(plistlib.dumps(info)); (app/'Yubenzhe').write_bytes(self.binary())
             web = app/'Web'; web.mkdir()
             for name in ('index.html','app.js','app.css','icon.png','icon.svg','manifest.webmanifest','apple-touch-icon.png'):
                 (web/name).write_bytes(b'fixture')
-            self.assertEqual(verify_app(app, verify_signature=False)['CFBundleVersion'], '14')
+            self.assertEqual(verify_app(app, verify_signature=False)['CFBundleVersion'], '15')
             for key, wrong in (('CFBundleVersion','11'), ('CFBundleShortVersionString','0.10.0')):
                 changed = dict(info); changed[key] = wrong; (app/'Info.plist').write_bytes(plistlib.dumps(changed))
                 with self.assertRaisesRegex(ValueError, 'Unexpected app'): verify_app(app, verify_signature=False)
@@ -88,12 +88,12 @@ class PackagingChecks(unittest.TestCase):
         self.assertFalse(info.get('NSAppTransportSecurity',{}).get('NSAllowsArbitraryLoads',False))
         self.assertNotIn('NSMicrophoneUsageDescription',info)
         self.assertEqual(info['CFBundleDisplayName'],'愚笨者')
-        self.assertEqual(info['CFBundleShortVersionString'], '0.12.0')
-        self.assertEqual(info['CFBundleVersion'], '14')
+        self.assertEqual(info['CFBundleShortVersionString'], '0.12.1')
+        self.assertEqual(info['CFBundleVersion'], '15')
         for obj in objects.values():
             settings = obj.get('buildSettings', {})
             if 'MARKETING_VERSION' in settings:
-                self.assertEqual(settings['MARKETING_VERSION'], '0.12.0')
-                self.assertEqual(settings['CURRENT_PROJECT_VERSION'], '14')
+                self.assertEqual(settings['MARKETING_VERSION'], '0.12.1')
+                self.assertEqual(settings['CURRENT_PROJECT_VERSION'], '15')
 
 if __name__=='__main__':unittest.main()

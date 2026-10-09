@@ -30,7 +30,7 @@ function pe(file) {
   for (const [file, sha256] of Object.entries(expected.files)) assert.equal(hash(asar.extractFile(archive, `web/${file}`)), sha256, file);
   for (const file of ['main.cjs', 'preload.cjs', 'security.cjs', 'local-ai.cjs']) assert.deepEqual(asar.extractFile(archive, `src/${file}`), fs.readFileSync(path.join(root, 'src', file)), file);
   const pkg = JSON.parse(asar.extractFile(archive, 'package.json').toString());
-  assert.equal(pkg.version, '0.12.0'); assert.equal(pkg.productName, '愚笨者');
+  assert.equal(pkg.version, '0.12.1'); assert.equal(pkg.productName, '愚笨者');
   const runtimePath = path.join(dist, 'win-unpacked/Yubenzhe.exe');
   const runtime = pe(runtimePath); assert.equal(runtime.machine, 0x8664);
   const fuses = await getCurrentFuseWire(runtimePath);
@@ -39,14 +39,14 @@ function pe(file) {
   assert.equal(fuses[FuseV1Options.EnableNodeCliInspectArguments], 48);
   assert.equal(fuses[FuseV1Options.OnlyLoadAppFromAsar], 49);
   const files = {};
-  for (const filename of ['yubenzhe-0.12.0-windows-x64-setup.exe', 'yubenzhe-0.12.0-windows-x64.zip']) {
+  for (const filename of ['yubenzhe-0.12.1-windows-x64-setup.exe', 'yubenzhe-0.12.1-windows-x64.zip']) {
     const bytes = fs.readFileSync(path.join(dist, filename));
     files[filename] = { bytes: bytes.length, sha256: hash(bytes) };
   }
-  const installer = pe(path.join(dist, 'yubenzhe-0.12.0-windows-x64-setup.exe'));
+  const installer = pe(path.join(dist, 'yubenzhe-0.12.1-windows-x64-setup.exe'));
   assert.equal(installer.certificateBytes, 0, 'This private release has no Authenticode certificate');
   const result = {
-    productName: '愚笨者', version: '0.12.0', platform: 'Windows x64',
+    productName: '愚笨者', version: '0.12.1', platform: 'Windows x64',
     electronVersion: '44.7.0', electronBuilderVersion: '26.15.3',
     distribution: 'private-preview', storePublished: false, codeSigned: false,
     checks: { packagedAssetsMatchSource: true, packagedNativeBridgeMatchesSource: true, noAdminOrPrivateSigningMaterial: true, windowsRuntimePE64: true, securityFusesVerified: true, unitAndHostTests: 23, actualWindowsDeviceTested: false, installerRunOnWindows: false, actualLocalModelRunOnWindows: false },

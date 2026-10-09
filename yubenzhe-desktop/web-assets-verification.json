@@ -1,9 +1,9 @@
 {
   "source": "../tongban/dist",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "files": {
     "index.html": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
-    "app.js": "2641c2c5390d08c2822adc960627b9c193558854c86e2b6d91e43a266af0713b",
+    "app.js": "46b883fb9cc690d02052469f7f9d1beb1ba693809718937041d19c918cdaa3eb",
     "app.css": "d79810c35787756bfb70c0ed226b76aa0df924d1dc7d5efb6a501b83c7e3094e",
     "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
