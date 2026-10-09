@@ -1,0 +1,28 @@
+{
+  "version": "0.9.0",
+  "verifiedAt": "2026-10-09T02:47:36.564443+00:00",
+  "testCommand": "node --test tests/acceptance.test.mjs tests/ai-workspace.test.mjs",
+  "testsPassed": 20,
+  "testsFailed": 0,
+  "legacyTestsPreserved": 8,
+  "newAIHttpAndAdapterTests": 12,
+  "transport": "real loopback HTTP with separate authenticated frontend/admin sessions",
+  "database": "separate SQLite file opened by both role services; synthetic admin database unchanged",
+  "providerResponses": "injected fixtures only; no paid external inference",
+  "coverage": [
+    "authentication and identity isolation",
+    "same origin, strict input fields and body size",
+    "persistent applications and approval state machine",
+    "request idempotency and optimistic versions",
+    "readiness and unconfigured fail-closed behavior",
+    "expired readiness auto-refresh for active owner with 60-second failure cooldown",
+    "daily UTC and provider concurrency quotas",
+    "failure accounting and sanitized errors",
+    "cancel/pause/approval races and discard of late output",
+    "interrupted task recovery without automatic retry",
+    "fixed provider hosts and bounded timeout/body/output limits",
+    "Ollama thinking disabled and 512 output limit"
+  ],
+  "realModelInferenceVerifiedHere": false,
+  "remoteDeploymentPerformedByThisAgent": false
+}

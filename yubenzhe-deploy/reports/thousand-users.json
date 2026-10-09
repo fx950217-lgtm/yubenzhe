@@ -1,0 +1,864 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-08T01:25:42.426Z",
+  "startedAt": "2026-10-08T01:24:28.770Z",
+  "summary": {
+    "syntheticUsers": 1000,
+    "workerThreads": 16,
+    "passed": 15,
+    "failed": 0,
+    "checks": 15,
+    "assertions": 273244,
+    "status": "passed_with_limitations",
+    "seed": 20261008,
+    "realUsers": 0,
+    "productionReady": false,
+    "networkRequests": 0,
+    "realFundsUsed": false
+  },
+  "cohorts": [
+    {
+      "id": "careful",
+      "label": "谨慎新手",
+      "users": 300,
+      "description": "低频领取与到期场景",
+      "synthetic": true,
+      "basis": "测试假设，非用户调研或运营数据",
+      "workload": "所有角色运行同一组功能回归，不按人设推断留存或需求",
+      "plannedFrontendPackets": 1200,
+      "plannedCustodyPackets": 900
+    },
+    {
+      "id": "friends",
+      "label": "熟人往来",
+      "users": 250,
+      "description": "普通红包与已有好友权限",
+      "synthetic": true,
+      "basis": "测试假设，非用户调研或运营数据",
+      "workload": "所有角色运行同一组功能回归，不按人设推断留存或需求",
+      "plannedFrontendPackets": 1000,
+      "plannedCustodyPackets": 750
+    },
+    {
+      "id": "collaboration",
+      "label": "群协作",
+      "users": 200,
+      "description": "群资格、成员快照与等额红包",
+      "synthetic": true,
+      "basis": "测试假设，非用户调研或运营数据",
+      "workload": "所有角色运行同一组功能回归，不按人设推断留存或需求",
+      "plannedFrontendPackets": 800,
+      "plannedCustodyPackets": 600
+    },
+    {
+      "id": "active",
+      "label": "红包活跃",
+      "users": 150,
+      "description": "随机红包与多次领取尝试",
+      "synthetic": true,
+      "basis": "测试假设，非用户调研或运营数据",
+      "workload": "所有角色运行同一组功能回归，不按人设推断留存或需求",
+      "plannedFrontendPackets": 600,
+      "plannedCustodyPackets": 450
+    },
+    {
+      "id": "retry",
+      "label": "重复请求",
+      "users": 80,
+      "description": "重试与幂等键冲突",
+      "synthetic": true,
+      "basis": "测试假设，非用户调研或运营数据",
+      "workload": "所有角色运行同一组功能回归，不按人设推断留存或需求",
+      "plannedFrontendPackets": 320,
+      "plannedCustodyPackets": 240
+    },
+    {
+      "id": "boundary",
+      "label": "边界探测",
+      "users": 20,
+      "description": "金额与权限异常输入",
+      "synthetic": true,
+      "basis": "测试假设，非用户调研或运营数据",
+      "workload": "所有角色运行同一组功能回归，不按人设推断留存或需求",
+      "plannedFrontendPackets": 80,
+      "plannedCustodyPackets": 60
+    }
+  ],
+  "checks": [
+    {
+      "id": "synthetic_accounts",
+      "title": "创建 1,000 个独立 SQLite 合成账号和测试资金",
+      "status": "pass",
+      "assertions": 3002,
+      "details": [
+        {
+          "accounts": 1000,
+          "fixtureCredits": 1000,
+          "unit": "test_atomic_unit"
+        }
+      ],
+      "durationMs": 1909.683
+    },
+    {
+      "id": "social_permissions",
+      "title": "1,000 个角色的好友、群聊与邀请权限",
+      "status": "pass",
+      "assertions": 9001,
+      "details": [
+        {
+          "actors": 1000,
+          "permissionDecisions": 6000,
+          "scope": "existing pure helpers; not registration or cross-device messaging"
+        }
+      ],
+      "durationMs": 78.504
+    },
+    {
+      "id": "frontend_packet_semantics",
+      "title": "普通、群等额、随机、指定红包及 24 小时边界",
+      "status": "pass",
+      "assertions": 60527,
+      "details": [
+        {
+          "actorViews": 1000,
+          "packets": 4000,
+          "nativeExclusive": true,
+          "sharedProductionLedger": false
+        }
+      ],
+      "durationMs": 8408.681
+    },
+    {
+      "id": "custody_workload",
+      "title": "1,000 账号发送普通、等额与随机红包并重复请求",
+      "status": "pass",
+      "assertions": 16816,
+      "details": [
+        {
+          "actors": 1000,
+          "createdPackets": 3000,
+          "backendTypes": [
+            "ordinary",
+            "group_equal",
+            "group_random"
+          ],
+          "claims": 4746
+        }
+      ],
+      "durationMs": 35602.03
+    },
+    {
+      "id": "custody_invalid_inputs",
+      "title": "金额、人数、普通自领和幂等键边界拒绝",
+      "status": "pass",
+      "assertions": 18,
+      "details": [
+        "托管账本尚无独立 exclusive 类型；指定群成员语义只在前端红包纯模型验证。"
+      ],
+      "durationMs": 1379.267
+    },
+    {
+      "id": "custody_large_integer",
+      "title": "超过 JavaScript 安全整数的金额保持精确",
+      "status": "pass",
+      "assertions": 3,
+      "details": [],
+      "durationMs": 10.535
+    },
+    {
+      "id": "custody_rollback",
+      "title": "深层失败回滚冻结、凭证、幂等与领取记录",
+      "status": "pass",
+      "assertions": 6,
+      "details": [],
+      "durationMs": 3336.999
+    },
+    {
+      "id": "custody_max_snapshot",
+      "title": "100 人资格快照和发送者群内自领",
+      "status": "pass",
+      "assertions": 101,
+      "details": [
+        "成员名单是可信调用方输入；本账本不验证真实群关系。"
+      ],
+      "durationMs": 270.476
+    },
+    {
+      "id": "ledger_before_race",
+      "title": "并发前复式记账和余额核对",
+      "status": "pass",
+      "assertions": 78633,
+      "details": [
+        {
+          "label": "before_concurrency",
+          "accounts": 4004,
+          "userAccounts": 1000,
+          "packets": 3003,
+          "transactions": 8852,
+          "postings": 17704,
+          "assets": "9007200305519833",
+          "available": "9007200304881314",
+          "frozen": "638519",
+          "unit": "test_atomic_unit"
+        }
+      ],
+      "durationMs": 438.415
+    },
+    {
+      "id": "worker_last_slot",
+      "title": "16 个真实 worker 同步争抢最后名额（8 轮）",
+      "status": "pass",
+      "assertions": 52,
+      "details": [
+        {
+          "workerThreads": 16,
+          "rounds": 9,
+          "claimRequests": 144,
+          "synchronization": "SharedArrayBuffer + Atomics wait/notify barrier; SQLite serializes writers",
+          "productionConcurrentUsers": 0
+        }
+      ],
+      "durationMs": 6683.513
+    },
+    {
+      "id": "expiry_refunds",
+      "title": "到期仅退剩余正数、重复退款不重复记账、已领完不标退款",
+      "status": "pass",
+      "assertions": 13365,
+      "details": [
+        {
+          "refundedPackets": 1834,
+          "fullyClaimedPreserved": 1178,
+          "amountAtomic": "638519"
+        }
+      ],
+      "durationMs": 11762.842
+    },
+    {
+      "id": "final_ledger_conservation",
+      "title": "最终逐凭证、逐账户、逐红包守恒与非负余额",
+      "status": "pass",
+      "assertions": 91711,
+      "details": [
+        {
+          "label": "final",
+          "accounts": 4013,
+          "userAccounts": 1000,
+          "packets": 3012,
+          "transactions": 10712,
+          "postings": 21424,
+          "assets": "9007200305519833",
+          "available": "9007200305519833",
+          "frozen": "0",
+          "unit": "test_atomic_unit"
+        }
+      ],
+      "durationMs": 974.195
+    },
+    {
+      "id": "reopen_persistence",
+      "title": "关闭重开数据库后 1,000 账号余额与凭证保持一致",
+      "status": "pass",
+      "assertions": 2,
+      "details": [
+        {
+          "reopenedAccounts": 1000,
+          "processRestart": false
+        }
+      ],
+      "durationMs": 2520.515
+    },
+    {
+      "id": "consumer_sources_unchanged",
+      "title": "被测产品源码只读，临时测试数据库已清理",
+      "status": "pass",
+      "assertions": 3,
+      "details": [
+        {
+          "files": [
+            "server/custody-ledger.mjs",
+            "src/social.js",
+            "src/redpacket-model.js"
+          ],
+          "tempDatabaseRemoved": true,
+          "networkRequests": 0,
+          "productionDataTouched": false
+        }
+      ],
+      "durationMs": 4.488
+    },
+    {
+      "id": "reproducible_scenario_plan",
+      "title": "复跑使用相同固定种子、角色和账本场景",
+      "status": "pass",
+      "assertions": 4,
+      "details": [
+        "随机分配、UUID、并发胜者和耗时允许变化；不修改或丢弃首轮证据。"
+      ],
+      "durationMs": 2.287
+    }
+  ],
+  "metrics": {
+    "runtime": {
+      "node": "v24.19.0",
+      "platform": "darwin",
+      "arch": "x64",
+      "logicalCpus": 8
+    },
+    "syntheticAccountCount": 1000,
+    "syntheticGroupCount": 50,
+    "frontendActorViews": 1000,
+    "networkRequests": 0,
+    "realFundsUsed": false,
+    "beforeConcurrency": {
+      "label": "before_concurrency",
+      "accounts": 4004,
+      "userAccounts": 1000,
+      "packets": 3003,
+      "transactions": 8852,
+      "postings": 17704,
+      "assets": "9007200305519833",
+      "available": "9007200304881314",
+      "frozen": "638519",
+      "unit": "test_atomic_unit"
+    },
+    "refunds": {
+      "refundedPackets": 1834,
+      "fullyClaimedPreserved": 1178,
+      "amountAtomic": "638519"
+    },
+    "finalLedger": {
+      "label": "final",
+      "accounts": 4013,
+      "userAccounts": 1000,
+      "packets": 3012,
+      "transactions": 10712,
+      "postings": 21424,
+      "assets": "9007200305519833",
+      "available": "9007200305519833",
+      "frozen": "0",
+      "unit": "test_atomic_unit"
+    },
+    "operations": [
+      {
+        "layer": "custody",
+        "operation": "createAccount",
+        "calls": 2000,
+        "successes": 2000,
+        "rejections": 0,
+        "errorCodes": {},
+        "latencyMs": {
+          "samples": 2000,
+          "p50": 0.567,
+          "p95": 1.601,
+          "p99": 2.364,
+          "max": 29.287,
+          "mean": 0.658
+        }
+      },
+      {
+        "layer": "custody",
+        "operation": "getBalance",
+        "calls": 6929,
+        "successes": 6929,
+        "rejections": 0,
+        "errorCodes": {},
+        "latencyMs": {
+          "samples": 6929,
+          "p50": 0.169,
+          "p95": 0.564,
+          "p99": 0.967,
+          "max": 9.332,
+          "mean": 0.233
+        }
+      },
+      {
+        "layer": "socialHelper",
+        "operation": "canChat",
+        "calls": 6000,
+        "successes": 6000,
+        "rejections": 0,
+        "errorCodes": {},
+        "latencyMs": {
+          "samples": 6000,
+          "p50": 0,
+          "p95": 0.001,
+          "p99": 0.002,
+          "max": 0.355,
+          "mean": 0.001
+        }
+      },
+      {
+        "layer": "socialHelper",
+        "operation": "inviteFriendsToGroup",
+        "calls": 2000,
+        "successes": 1000,
+        "rejections": 1000,
+        "errorCodes": {
+          "Error": 1000
+        },
+        "latencyMs": {
+          "samples": 2000,
+          "p50": 0.024,
+          "p95": 0.047,
+          "p99": 0.132,
+          "max": 0.934,
+          "mean": 0.02
+        }
+      },
+      {
+        "layer": "frontendModel",
+        "operation": "buildPacketDraft",
+        "calls": 5000,
+        "successes": 4000,
+        "rejections": 1000,
+        "errorCodes": {
+          "Error": 1000
+        },
+        "latencyMs": {
+          "samples": 5000,
+          "p50": 0.031,
+          "p95": 0.107,
+          "p99": 0.211,
+          "max": 1.6,
+          "mean": 0.045
+        }
+      },
+      {
+        "layer": "frontendModel",
+        "operation": "createDemoPacket",
+        "calls": 4000,
+        "successes": 4000,
+        "rejections": 0,
+        "errorCodes": {},
+        "latencyMs": {
+          "samples": 4000,
+          "p50": 0.415,
+          "p95": 0.875,
+          "p99": 1.272,
+          "max": 60.178,
+          "mean": 0.491
+        }
+      },
+      {
+        "layer": "frontendModel",
+        "operation": "claimDemoPacket",
+        "calls": 15096,
+        "successes": 5548,
+        "rejections": 9548,
+        "errorCodes": {
+          "Error": 9548
+        },
+        "latencyMs": {
+          "samples": 15096,
+          "p50": 0.153,
+          "p95": 0.621,
+          "p99": 1.026,
+          "max": 3.622,
+          "mean": 0.251
+        }
+      },
+      {
+        "layer": "frontendModel",
+        "operation": "settleExpired",
+        "calls": 3000,
+        "successes": 3000,
+        "rejections": 0,
+        "errorCodes": {},
+        "latencyMs": {
+          "samples": 3000,
+          "p50": 0.056,
+          "p95": 0.126,
+          "p99": 0.388,
+          "max": 1.855,
+          "mean": 0.071
+        }
+      },
+      {
+        "layer": "custody",
+        "operation": "createPacket",
+        "calls": 6181,
+        "successes": 6012,
+        "rejections": 169,
+        "errorCodes": {
+          "IDEMPOTENCY_CONFLICT": 150,
+          "INVALID_AMOUNT": 9,
+          "ORDINARY_SELF_RECIPIENT": 1,
+          "UNKNOWN_ACCOUNT": 1,
+          "DUPLICATE_RECIPIENT": 1,
+          "INVALID_RECIPIENTS": 1,
+          "EQUAL_AMOUNT_NOT_DIVISIBLE": 1,
+          "AMOUNT_BELOW_MINIMUM": 1,
+          "INVALID_IDEMPOTENCY_KEY": 1,
+          "INVALID_PACKET_TYPE": 1,
+          "ERR_SQLITE_ERROR": 1,
+          "INSUFFICIENT_BALANCE": 1
+        },
+        "latencyMs": {
+          "samples": 6181,
+          "p50": 0.72,
+          "p95": 5.87,
+          "p99": 13.204,
+          "max": 210.57,
+          "mean": 2.499
+        }
+      },
+      {
+        "layer": "custody",
+        "operation": "claim",
+        "calls": 12524,
+        "successes": 7189,
+        "rejections": 5335,
+        "errorCodes": {
+          "NOT_ELIGIBLE": 3000,
+          "ALREADY_CLAIMED": 2333,
+          "ERR_SQLITE_ERROR": 1,
+          "PACKET_EXPIRED": 1
+        },
+        "latencyMs": {
+          "samples": 12524,
+          "p50": 0.584,
+          "p95": 2.994,
+          "p99": 4.913,
+          "max": 325.634,
+          "mean": 1.436
+        }
+      },
+      {
+        "layer": "custody",
+        "operation": "getPacket",
+        "calls": 6031,
+        "successes": 6031,
+        "rejections": 0,
+        "errorCodes": {},
+        "latencyMs": {
+          "samples": 6031,
+          "p50": 0.187,
+          "p95": 0.533,
+          "p99": 1.261,
+          "max": 142.678,
+          "mean": 0.281
+        }
+      },
+      {
+        "layer": "custody",
+        "operation": "refundDue",
+        "calls": 5,
+        "successes": 5,
+        "rejections": 0,
+        "errorCodes": {},
+        "latencyMs": {
+          "samples": 5,
+          "p50": 3.292,
+          "p95": 3674.634,
+          "p99": 3674.634,
+          "max": 3674.634,
+          "mean": 1337.266
+        }
+      },
+      {
+        "layer": "custody",
+        "operation": "refundExpired",
+        "calls": 4847,
+        "successes": 3668,
+        "rejections": 1179,
+        "errorCodes": {
+          "NOT_EXPIRED": 1,
+          "PACKET_FULLY_CLAIMED": 1178
+        },
+        "latencyMs": {
+          "samples": 4847,
+          "p50": 0.33,
+          "p95": 1.486,
+          "p99": 2.376,
+          "max": 441.416,
+          "mean": 0.642
+        }
+      }
+    ],
+    "concurrency": {
+      "workerThreads": 16,
+      "maxSimultaneouslyReleased": 16,
+      "rounds": 9,
+      "totalRequests": 144,
+      "lastSlotRaceRounds": 8,
+      "lastSlotWinners": 8,
+      "latencyMs": {
+        "samples": 144,
+        "p50": 85.298,
+        "p95": 660.752,
+        "p99": 766.923,
+        "max": 774.152,
+        "mean": 173.75
+      },
+      "roundResults": [
+        {
+          "kind": "last_slot",
+          "round": 1,
+          "workers": 16,
+          "requests": 16,
+          "successfulResponses": 1,
+          "uniqueCredits": 1,
+          "expectedRejections": 15,
+          "rejectionCode": "PACKET_EMPTY",
+          "winner": "u0984",
+          "remainingBefore": "647",
+          "wallMs": 131.884,
+          "startSkewMs": 10.888,
+          "latencyMs": {
+            "samples": 16,
+            "p50": 26.767,
+            "p95": 130.615,
+            "p99": 130.615,
+            "max": 130.615,
+            "mean": 43.001
+          }
+        },
+        {
+          "kind": "last_slot",
+          "round": 2,
+          "workers": 16,
+          "requests": 16,
+          "successfulResponses": 1,
+          "uniqueCredits": 1,
+          "expectedRejections": 15,
+          "rejectionCode": "PACKET_EMPTY",
+          "winner": "u0986",
+          "remainingBefore": "44",
+          "wallMs": 459.999,
+          "startSkewMs": 0.763,
+          "latencyMs": {
+            "samples": 16,
+            "p50": 37.88,
+            "p95": 459.454,
+            "p99": 459.454,
+            "max": 459.454,
+            "mean": 110.8
+          }
+        },
+        {
+          "kind": "last_slot",
+          "round": 3,
+          "workers": 16,
+          "requests": 16,
+          "successfulResponses": 1,
+          "uniqueCredits": 1,
+          "expectedRejections": 15,
+          "rejectionCode": "PACKET_EMPTY",
+          "winner": "u0983",
+          "remainingBefore": "535",
+          "wallMs": 765.801,
+          "startSkewMs": 0.409,
+          "latencyMs": {
+            "samples": 16,
+            "p50": 111.862,
+            "p95": 765.262,
+            "p99": 765.262,
+            "max": 765.262,
+            "mean": 232.421
+          }
+        },
+        {
+          "kind": "last_slot",
+          "round": 4,
+          "workers": 16,
+          "requests": 16,
+          "successfulResponses": 1,
+          "uniqueCredits": 1,
+          "expectedRejections": 15,
+          "rejectionCode": "PACKET_EMPTY",
+          "winner": "u0983",
+          "remainingBefore": "231",
+          "wallMs": 765.614,
+          "startSkewMs": 0.453,
+          "latencyMs": {
+            "samples": 16,
+            "p50": 116.073,
+            "p95": 764.929,
+            "p99": 764.929,
+            "max": 764.929,
+            "mean": 233.31
+          }
+        },
+        {
+          "kind": "last_slot",
+          "round": 5,
+          "workers": 16,
+          "requests": 16,
+          "successfulResponses": 1,
+          "uniqueCredits": 1,
+          "expectedRejections": 15,
+          "rejectionCode": "PACKET_EMPTY",
+          "winner": "u0994",
+          "remainingBefore": "849",
+          "wallMs": 775.175,
+          "startSkewMs": 0.527,
+          "latencyMs": {
+            "samples": 16,
+            "p50": 120.983,
+            "p95": 774.152,
+            "p99": 774.152,
+            "max": 774.152,
+            "mean": 238.659
+          }
+        },
+        {
+          "kind": "last_slot",
+          "round": 6,
+          "workers": 16,
+          "requests": 16,
+          "successfulResponses": 1,
+          "uniqueCredits": 1,
+          "expectedRejections": 15,
+          "rejectionCode": "PACKET_EMPTY",
+          "winner": "u0983",
+          "remainingBefore": "843",
+          "wallMs": 768.145,
+          "startSkewMs": 0.688,
+          "latencyMs": {
+            "samples": 16,
+            "p50": 115.068,
+            "p95": 766.923,
+            "p99": 766.923,
+            "max": 766.923,
+            "mean": 231.799
+          }
+        },
+        {
+          "kind": "last_slot",
+          "round": 7,
+          "workers": 16,
+          "requests": 16,
+          "successfulResponses": 1,
+          "uniqueCredits": 1,
+          "expectedRejections": 15,
+          "rejectionCode": "PACKET_EMPTY",
+          "winner": "u0982",
+          "remainingBefore": "304",
+          "wallMs": 668.082,
+          "startSkewMs": 0.548,
+          "latencyMs": {
+            "samples": 16,
+            "p50": 91.693,
+            "p95": 667.066,
+            "p99": 667.066,
+            "max": 667.066,
+            "mean": 188.035
+          }
+        },
+        {
+          "kind": "last_slot",
+          "round": 8,
+          "workers": 16,
+          "requests": 16,
+          "successfulResponses": 1,
+          "uniqueCredits": 1,
+          "expectedRejections": 15,
+          "rejectionCode": "PACKET_EMPTY",
+          "winner": "u0982",
+          "remainingBefore": "345",
+          "wallMs": 556.274,
+          "startSkewMs": 0.609,
+          "latencyMs": {
+            "samples": 16,
+            "p50": 57.976,
+            "p95": 555.139,
+            "p99": 555.139,
+            "max": 555.139,
+            "mean": 144.436
+          }
+        },
+        {
+          "kind": "same_key_replay",
+          "round": 9,
+          "workers": 16,
+          "requests": 16,
+          "successfulResponses": 16,
+          "uniqueCredits": 1,
+          "expectedRejections": 0,
+          "wallMs": 553.14,
+          "latencyMs": {
+            "samples": 16,
+            "p50": 58.015,
+            "p95": 552.347,
+            "p99": 552.347,
+            "max": 552.347,
+            "mean": 141.289
+          }
+        }
+      ],
+      "measurement": "claim function time including SQLite lock wait, excludes worker startup and network"
+    },
+    "totalMeasuredFunctionCalls": 73757,
+    "expectedRejectedCalls": 18351,
+    "frontendPackets": 4000,
+    "socialPermissionDecisions": 6000,
+    "elapsedMs": 73654.504,
+    "peakParentRssBytes": 722665472,
+    "latencyScope": "本机函数调用延迟；批量调用串行执行，不是 HTTP、端到端或 1,000 人同时在线吞吐量。",
+    "timingAnomalies": [],
+    "priorRun": {
+      "file": "run-history/first-results.json",
+      "generatedAt": "2026-10-08T00:37:58.333Z",
+      "passed": 14,
+      "failed": 0,
+      "elapsedMs": 1858639.293,
+      "largestObservedOperationMs": 1799099.234,
+      "repeatedBecause": "首轮单次串行操作出现约 30 分钟计时离群值；保留原始数据后复跑核对，原因未定位"
+    }
+  },
+  "limitations": [
+    "1,000 是固定种子的合成参与者数；只有 16 个本机 worker 同步执行领取请求，不是 1,000 个真实生产并发用户。",
+    "真实 worker 共用一台机器上的临时 SQLite；BEGIN IMMEDIATE 串行化写事务。未覆盖多节点、网络延迟、数据库故障切换或持续压力。",
+    "现有社交界面只有 7 个静态示例身份，会过滤其他 ID。1,000 角色只调用现有纯权限 helper，未完成真实注册、登录、好友申请送达或跨设备聊天测试。",
+    "前端红包发送者固定为 me，测试按每个角色建立隔离视角；其 4,000 个红包不构成一个共享多人生产账本。",
+    "托管账本支持 ordinary/group_equal/group_random，没有独立群专属 exclusive 类型；指定群成员规则仅在前端纯模型验证，尚未接入服务端群权限。",
+    "托管 API 假定调用方已验证身份和群成员快照，本身不证明真实好友/群关系。测试不证明登录鉴权或端到端权限安全。",
+    "假资金由测试夹具直接写入独立临时数据库的平衡凭证，单位是 test_atomic_unit，不代表 tBNB、USDT、链上储备或可提现资产。",
+    "不联网、不使用钱包密钥、不连接 BSC、不发送消息、不发真钱；未验证充值确认、重组、提现对账、托管签名、密码授权、浏览器兼容或上架要求。",
+    "固定 seed 保证角色、群关系和场景计划可重建；账本密码学随机分配、UUID、并发胜者与耗时会变化。复现目标是不变量和场景覆盖，而非逐字相同结果。",
+    "延迟为本机函数耗时，包含 SQLite 等锁；不是线上 SLA。单次短跑不能推断长期稳定性、真实留存、市场需求或主网可用。",
+    "首轮记录到单次 createPacket 约 1799 秒的计时离群值，原因未定位。首轮完整结果保留在 run-history；当前为复跑结果，不能将复跑用于掩盖首轮异常。"
+  ],
+  "recommendations": [
+    {
+      "priority": "P0",
+      "title": "先补身份与成员授权边界",
+      "detail": "服务端从已验证会话推导 userId，并从真实关系表生成好友/群快照；增加跨账户伪造、撤权和跨设备集成测试。"
+    },
+    {
+      "priority": "P0",
+      "title": "统一前端与托管红包规则",
+      "detail": "在服务端实现群专属红包及对应群权限，将前端演示与账本接口分离标识后再接入，禁止客户端自报成员或余额。"
+    },
+    {
+      "priority": "P0",
+      "title": "真实资金功能继续保持关闭",
+      "detail": "完成充值幂等、链确认/重组、提现状态机、密钥托管与储备对账前，不接收或托管真实资金。"
+    },
+    {
+      "priority": "P1",
+      "title": "在预生产环境做分级并发与故障测试",
+      "detail": "接入真实数据库、认证与 HTTP 后，从小并发逐级压测，覆盖超时重试、服务崩溃、数据库恢复和退款调度；以业务成功率与延迟预算验收。"
+    },
+    {
+      "priority": "P1",
+      "title": "开展小规模真人熟人群试点",
+      "detail": "合成测试不能替代易用性与信任验证；观察无需红包补贴也能完成的协作闭环及问题反馈。"
+    }
+  ],
+  "reproducibility": {
+    "seed": 20261008,
+    "personaPlanSha256": "754ffaf8588f8bfafd5c3b3b88f313ae9069c04ffd88a2f8f682512578e60d4b",
+    "sourceSha256": {
+      "server/custody-ledger.mjs": "c7a38a716d9001ab0c665059200909670bc77e33b0dd2eb68c2e23e38a1aae3e",
+      "src/social.js": "8c55f3f89c26d4b412eae6c91a824115af635a275af80bc2074493f85ae97dc1",
+      "src/redpacket-model.js": "85b4d8436245d0013e55988838e6088bf5cdf21f801660fd7528622344aa830c"
+    },
+    "command": "/Users/linhlinh/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node work/thousand-user-test/run.mjs",
+    "scope": "run from project workspace root; no dependency installation required",
+    "database": "new temporary file per run, removed on completion",
+    "randomness": "fixed persona/frontend PRNG; custody crypto randomness and scheduler remain real",
+    "runnerSha256": "7fde9605a3aefa78cf2e93aaf6c683364d4d5dcd72a6848c3baa8e6c03414e00"
+  }
+}

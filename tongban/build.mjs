@@ -1,0 +1,13 @@
+import { build } from 'esbuild';
+import { mkdir, copyFile, writeFile, cp } from 'node:fs/promises';
+await mkdir('dist',{recursive:true});
+await build({entryPoints:['src/app.js'],bundle:true,minify:true,outdir:'dist',entryNames:'app',target:['es2022','safari15.4'],format:'esm',legalComments:'eof'});
+await copyFile('src/index.html','dist/index.html');
+await copyFile('src/icon.svg','dist/icon.svg');
+await copyFile('src/apple-touch-icon.png','dist/apple-touch-icon.png');
+await copyFile('src/manifest.webmanifest','dist/manifest.webmanifest');
+await writeFile('dist/_headers', '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Permissions-Policy: camera=(self), microphone=(), geolocation=()\n  Cache-Control: no-store\n/downloads/*.apk\n  Content-Type: application/vnd.android.package-archive\n  Content-Disposition: attachment\n');
+await copyFile('src/install.html','dist/install.html');
+await copyFile('src/install-qr.svg','dist/install-qr.svg');
+await cp('releases','dist/downloads',{recursive:true});
+console.log('Built Yubenzhe application');

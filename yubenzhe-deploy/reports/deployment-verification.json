@@ -1,0 +1,78 @@
+{
+  "version": "0.8.0",
+  "generatedAt": "2026-10-09T01:25:44.370Z",
+  "node": "v24.19.0",
+  "stage": "deployed-private-singapore",
+  "httpIntegrationTests": {
+    "passed": 8,
+    "failed": 0,
+    "covers": [
+      "owner authentication and identity-header spoof rejection",
+      "1000 synthetic users only after explicit setup",
+      "same-origin and exact-host mutation protection",
+      "idempotent status actions, audit and financial/role denial",
+      "persistent SQLite reopening, transaction rollback and online backup integrity",
+      "frontend/admin route isolation and path traversal rejection",
+      "logout and private authentication-file permissions",
+      "authenticated Windows EXE downloads and iOS nested status document"
+    ]
+  },
+  "adminUi": {
+    "built": true,
+    "dependencies": {
+      "react": "19.2.6",
+      "react-dom": "19.2.6",
+      "lucide-react": "1.31.0",
+      "esbuild": "0.25.10"
+    }
+  },
+  "frontend": {
+    "staged": true,
+    "stagedAt": "2026-10-09T01:34:21.850Z",
+    "consumerConnected": false,
+    "adminEntry": false
+  },
+  "docker": {
+    "executedLocally": false,
+    "executedOnSingaporeServer": true
+  },
+  "remote": {
+    "deployed": true,
+    "serverVerification": "yubenzhe-singapore-verification.json",
+    "existingApplicationPreserved": true,
+    "newPublicPorts": false
+  },
+  "liveMoneyEnabled": false,
+  "liveSocialConnected": false,
+  "upstream": [
+    {
+      "source": "tongban-admin/lib/admin/core.mjs",
+      "destination": "upstream/admin/core.mjs",
+      "sourceSha256": "e9cd2a77b8d7e27105ba5d476216f276a12a085a4aca57694ad4bd6cfb5861b0",
+      "snapshotSha256": "e9cd2a77b8d7e27105ba5d476216f276a12a085a4aca57694ad4bd6cfb5861b0"
+    },
+    {
+      "source": "tongban-admin/lib/admin/seed.mjs",
+      "destination": "upstream/admin/seed.mjs",
+      "sourceSha256": "c41f9de427c2f34a9580ff020bede425a881ddb8212aa78f8bcd2778f901b80c",
+      "snapshotSha256": "c41f9de427c2f34a9580ff020bede425a881ddb8212aa78f8bcd2778f901b80c"
+    },
+    {
+      "source": "tongban-admin/drizzle/0000_tired_titanium_man.sql",
+      "destination": "migrations/001-admin.sql",
+      "sourceSha256": "73936872c3a8f423af484286d8fd54b4f9f216ac1bcb54d2396c790f38854205",
+      "snapshotSha256": "73936872c3a8f423af484286d8fd54b4f9f216ac1bcb54d2396c790f38854205"
+    },
+    {
+      "source": "tongban-admin/reports/thousand-users.json",
+      "destination": "reports/thousand-users.json",
+      "sourceSha256": "1857acbefae3c782d63d6f2ed7e65d288080fe90082e18222ef4994b7948dbcd",
+      "snapshotSha256": "1857acbefae3c782d63d6f2ed7e65d288080fe90082e18222ef4994b7948dbcd"
+    }
+  ],
+  "uiTransformations": [
+    "同伴 → 愚笨者",
+    "local acceptance credential wording",
+    "logout → local session revocation endpoint"
+  ]
+}

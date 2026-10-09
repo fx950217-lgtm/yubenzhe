@@ -1,0 +1,29 @@
+{
+  "version": "0.9.0",
+  "time": "2026-10-09T02:50:42.054Z",
+  "checks": [
+    "Both services require authentication; 0.9.0 health confirmed.",
+    "Consumer application persisted; independent admin approved and activated after model readiness.",
+    "Real server-hosted Ollama model generated text; task output and usage persisted.",
+    "Front/admin see the same durable workspace, task, daily quota and audit trail.",
+    "No admin API entry on consumer service."
+  ],
+  "paidAPI": false,
+  "realFunds": false,
+  "workspaceId": "ws-f3258f75-4a6a-4bf0-b99a-b58bb3a8a0c9",
+  "persistedAfterRestart": true,
+  "inferenceElapsedMs": 8552,
+  "taskId": "task-a611f88f-4ed8-42e3-8fd3-e61f19e11dbb",
+  "output": "周末咖啡聚会邀请！快来和我一起享受轻松时光吧！✨",
+  "usage": {
+    "inputTokens": 191,
+    "outputTokens": 16
+  },
+  "auditCount": 5,
+  "quota": {
+    "date": "2026-10-09",
+    "limit": 10,
+    "used": 1,
+    "remaining": 9
+  }
+}

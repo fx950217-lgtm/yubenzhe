@@ -1,0 +1,27 @@
+{
+  "appId": "app.tongban.wallet.demo",
+  "appName": "愚笨者",
+  "webDir": "www",
+  "loggingBehavior": "none",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "cleartext": false,
+    "errorPath": "webview-unavailable.html"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false,
+    "captureInput": false,
+    "minWebViewVersion": 105
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": false },
+    "CapacitorCookies": { "enabled": false },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "LIGHT",
+      "hidden": false
+    }
+  }
+}

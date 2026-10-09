@@ -1,0 +1,15 @@
+# Optional fragment only. DO NOT replace any existing server's Caddyfile.
+# Fill two different DNS names and a trusted operator IP/CIDR before importing.
+# This is NOT used by default. Default deployment is loopback + SSH tunnel.
+{$YBZ_FRONT_HOST} {
+  @denied not remote_ip {$YBZ_OPERATOR_CIDR}
+  respond @denied "Private acceptance" 403
+  reverse_proxy 127.0.0.1:18808
+  header X-Robots-Tag "noindex, nofollow"
+}
+{$YBZ_ADMIN_HOST} {
+  @denied not remote_ip {$YBZ_OPERATOR_CIDR}
+  respond @denied "Private acceptance" 403
+  reverse_proxy 127.0.0.1:18809
+  header X-Robots-Tag "noindex, nofollow"
+}

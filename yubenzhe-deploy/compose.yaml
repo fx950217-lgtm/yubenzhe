@@ -1,0 +1,93 @@
+name: yubenzhe-acceptance
+services:
+  frontend:
+    image: yubenzhe-private:${RELEASE_TAG:-0.9.0}
+    build: .
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 100
+    mem_limit: 192m
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    ports: ["127.0.0.1:${FRONT_PORT:-18808}:8080"]
+    environment:
+      ROLE: frontend
+      BIND_HOST: 0.0.0.0
+      PORT: 8080
+      PUBLIC_ORIGIN: ${FRONT_ORIGIN:-http://127.0.0.1:18808}
+      AUTH_CONFIG_FILE: /run/ybz-secrets/frontend.json
+      AI_DATABASE_PATH: /workspace/workspaces.sqlite
+      AI_PROVIDER: ${AI_PROVIDER:-disabled}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+    volumes:
+      - ./ai-state:/workspace
+      - ./secrets/frontend.json:/run/ybz-secrets/frontend.json:ro
+      - ./public/frontend/downloads:/opt/yubenzhe/public/frontend/downloads:ro
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  admin:
+    image: yubenzhe-private:${RELEASE_TAG:-0.9.0}
+    build: .
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 100
+    mem_limit: 384m
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    ports: ["127.0.0.1:${ADMIN_PORT:-18809}:8080"]
+    environment:
+      ROLE: admin
+      BIND_HOST: 0.0.0.0
+      PORT: 8080
+      PUBLIC_ORIGIN: ${ADMIN_ORIGIN:-http://127.0.0.1:18809}
+      AUTH_CONFIG_FILE: /run/ybz-secrets/admin.json
+      AI_DATABASE_PATH: /workspace/workspaces.sqlite
+      AI_PROVIDER: ${AI_PROVIDER:-disabled}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      DATABASE_PATH: /data/acceptance.sqlite
+    volumes:
+      - ./ai-state:/workspace
+      - ./secrets/admin.json:/run/ybz-secrets/admin.json:ro
+      - ./state:/data
+      - ./backups:/backups
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  ollama:
+    image: ${OLLAMA_IMAGE:-ollama/ollama@sha256:684d8674b4315fa18f4f0e973a118ec2652ed96f67563277839985175858e0ba}
+    profiles: [local-model]
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    cpus: "1.0"
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    pids_limit: 100
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_MAX_QUEUE: "2"
+      OLLAMA_CONTEXT_LENGTH: "4096"
+      OLLAMA_KEEP_ALIVE: 2m
+    volumes:
+      - ./ollama-state:/root/.ollama
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}

@@ -1,0 +1,31 @@
+{
+  "name": "愚笨者",
+  "version": "0.8.0",
+  "sourceProjectReady": true,
+  "nativeCompiled": false,
+  "deviceVerified": false,
+  "installPackages": [],
+  "blocker": "Full Xcode and iPhoneOS SDK are absent from this Mac.",
+  "minimumIOS": "15.4",
+  "designedPackageLayouts": [
+    "rootful",
+    "rootless"
+  ],
+  "checks": {
+    "pythonPackagingTests": 10,
+    "javascriptBridgeTests": 4,
+    "actualSharedRuntimeIntegration": true,
+    "plistSyntax": true,
+    "shellSyntax": true,
+    "finalFrozenWebAssetsByteIdentical": true
+  },
+  "webSnapshot": {
+    "index.html": "2a8d8d2c2bc13f73f98d1162d81a0bed70231f9abeae25176a4d20598767b4a4",
+    "app.js": "2e1c0cee480ad58892c5d4a41a7bad219ffd55f86247c887c446d594e44811c7",
+    "app.css": "6228cb5cc89b674458813415bace9910c46fcc8f024e80ee9b7d9ce0f8263e1a",
+    "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
+    "manifest.webmanifest": "1ff704c7ca4572033217d036e9c06ba7c8678e650c8a7982284d9a50733991d9",
+    "apple-touch-icon.png": "e0ce0efd3a6f53efffdf4cfe62bfa711f48eb3a35d461f667327b52c3fb11437"
+  },
+  "webSnapshotVerifiedAt": "2026-10-09T01:33:05.740361+00:00"
+}

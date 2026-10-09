@@ -1,0 +1,17 @@
+{
+  "filename": "yubenzhe-0.9.0-android.apk",
+  "version": "0.9.0",
+  "versionCode": 9,
+  "appId": "app.tongban.wallet.demo",
+  "minimumAndroid": "7.0 (API 24)",
+  "targetApi": 36,
+  "sizeBytes": 3477310,
+  "sha256": "caf164a01fad87cecdc8a225b3ab6a0f9e9a89fe7586c3d9c48f65f1e5859f91",
+  "permissions": [
+    "android.permission.INTERNET",
+    "android.permission.CAMERA",
+    "app.tongban.wallet.demo.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+  ],
+  "signature": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): true\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1\nSigner #1 certificate DN: CN=Tongban Preview, OU=Testing, O=Tongban Preview\nSigner #1 certificate SHA-256 digest: 3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d\nSigner #1 certificate SHA-1 digest: ce772c987f452b52a3ae2ee3cb913fea73c34300\nSigner #1 certificate MD5 digest: 24600cdceebf568b210a303c10adef4c\nSigner #1 key algorithm: RSA\nSigner #1 key size (bits): 3072\nSigner #1 public key SHA-256 digest: 746d9afb2c133981834cfc7b6f2944007ade9617f866a8ddb0e90d7ca301c06c\nSigner #1 public key SHA-1 digest: 9e4124ebdde6593644f6907fae9f68e2d15198cd\nSigner #1 public key MD5 digest: f8d028d91db20a5dce288f307c8ea35b\n",
+  "verification": "Build, signature, embedded asset equality, permissions and packaged configuration verified. No device or emulator test performed."
+}

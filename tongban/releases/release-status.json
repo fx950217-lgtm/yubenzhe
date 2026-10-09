@@ -1,0 +1,60 @@
+{
+  "name": "愚笨者",
+  "version": "0.9.0",
+  "environment": "private-server-acceptance",
+  "publiclyLaunched": false,
+  "appStorePublished": false,
+  "chainId": 97,
+  "realFundsSupported": false,
+  "walletAndSocialCloudSync": false,
+  "android": {
+    "built": true,
+    "versionName": "0.9.0",
+    "versionCode": 9,
+    "appId": "app.tongban.wallet.demo",
+    "signature": "existing-internal",
+    "signatureSHA256": "3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d",
+    "deviceVerified": false
+  },
+  "windows": {
+    "built": true,
+    "architecture": "x64",
+    "signed": false,
+    "deviceVerified": false
+  },
+  "ios": {
+    "sourceReady": true,
+    "sourceVersion": "0.8.0",
+    "built": false,
+    "installableDeb": false,
+    "reason": "Xcode and iPhoneOS SDK unavailable"
+  },
+  "ai": {
+    "webWorkspacePersistence": true,
+    "windowsLocalOllamaBridge": true,
+    "windowsLocalExecutionDeviceVerified": false,
+    "nativePrivateCloudConnection": false
+  },
+  "files": [
+    {
+      "filename": "yubenzhe-0.9.0-android.apk",
+      "sizeBytes": 3477310,
+      "sha256": "caf164a01fad87cecdc8a225b3ab6a0f9e9a89fe7586c3d9c48f65f1e5859f91"
+    },
+    {
+      "filename": "yubenzhe-0.9.0-windows-x64-setup.exe",
+      "sizeBytes": 111543027,
+      "sha256": "1ba53cd72cd7780ea037d872fa55a7d1a045e4575395bc8bbfb54e5f05c37aeb"
+    },
+    {
+      "filename": "yubenzhe-0.9.0-windows-x64.zip",
+      "sizeBytes": 153377387,
+      "sha256": "b5de1fa1c7ed06706fc0909f44055e39682985e0e9fe6c86859ccb33dd6b660e"
+    },
+    {
+      "filename": "yubenzhe-ios-source-v0.8.0.zip",
+      "sizeBytes": 371691,
+      "sha256": "7dd14022a15af3d9685660a0f8bfc26a3858c4cb5ee2d7aa74dedf5d7dbbd94e"
+    }
+  ]
+}

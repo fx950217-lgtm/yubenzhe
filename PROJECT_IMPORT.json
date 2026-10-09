@@ -1,0 +1,28 @@
+{
+  "project": "愚笨者",
+  "version": "0.9.0",
+  "importedAt": "2026-10-09",
+  "sourceArchive": "yubenzhe-source-v0.9.0.zip",
+  "sourceArchiveSha256": "8950d5350d1bbd0e9345040e0fa7106557d337d5e20116e47a6c5aec5f95bf98",
+  "originalArchiveEntries": 301,
+  "manifestSourceFilesVerified": 299,
+  "sourceBytesExtracted": 5965392,
+  "sourceFilesChanged": false,
+  "safeExtraction": "passed",
+  "originalManifestSha256": "fcb65bfe905c934c3d5440741ab48e017dd7be5b057e581376b5fcb15f47e0f8",
+  "sensitiveFilenameCheck": "passed_without_reading_fixture_content",
+  "networkUsed": false,
+  "privateCredentialsRead": false,
+  "gitInitializedByThisImport": false,
+  "gitCommittedByThisImport": false,
+  "uploadedByThisImport": false,
+  "deployedByThisImport": false,
+  "addedFiles": [
+    "AGENTS.md",
+    "README.md",
+    "PROJECT_CONTEXT.md",
+    ".gitignore",
+    "scripts/check-project.mjs",
+    "PROJECT_IMPORT.json"
+  ]
+}

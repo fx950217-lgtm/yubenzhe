@@ -1,0 +1,76 @@
+愚笨者 0.9.0 · AI 工作台真实服务说明
+
+当前能力
+前台登录使用的是受邀验收身份，不是产品注册。申请、审核、工作区状态、任务文本、模型实际输出、失败和审计均写入独立 SQLite；不使用浏览器本地数据伪装云端。社交、钱包测试网及旧后台1000人合成样本仍保持原边界。
+未配置模型时可以提交申请；批准后进入 awaiting_configuration。管理员完成连接验证并激活后才接收任务。任务只保存真实模型结果，未完成、超时或接口错误记录为 failed。模型没有工具、命令、网页浏览、钱包、平台余额或权限管理能力。
+
+数据库与运行目录
+两服务共同挂载 ./ai-state:/workspace，使用 /workspace/workspaces.sqlite；旧后台继续使用 ./state/acceptance.sqlite，不共用迁移。新目录设700，所有者1000:1000；数据库文件600，WAL/FULL同步与立即事务保护额度、幂等和状态。
+运行目录 ai-state、ollama-state、secrets、state、backups 以及 .env 不进入镜像/部署源码归档。应用日志不记录请求正文、供应商错误正文、密钥或输出。
+在线备份可复用已有工具：
+docker compose exec admin node scripts/backup.mjs /workspace/workspaces.sqlite /backups/workspaces-YYYYMMDD-HHMM.sqlite
+备份包含用户提供的任务文字和输出，应按私人业务数据保管。恢复工作台库须先停止 frontend 和 admin 两个写入者；先保留当前库和 WAL/SHM，不删除旧库。不得直接复制正在写入的 SQLite 主文件代替在线备份。
+
+模型配置（二选一，默认禁用）
+AI_PROVIDER=disabled：明确未配置，无模型调用。
+AI_PROVIDER=openai：必须同时设置 AI_MODEL 为账户可使用的实际模型，以及服务端 AI_API_KEY；不预置模型名或密钥。地址固定 https://api.openai.com/v1，不接受前端或环境注入的代理URL，禁止跳转。单次输出上限1000 tokens，30秒超时，全局最多2个任务。可直接运行start时用AI_API_KEY_FILE指向0600的本机密钥文件；Compose示例使用服务器私有.env提供环境值。密钥不写进网页、JS、请求参数、日志、Git或共享截图；不要打印包含密钥的Compose展开配置。
+AI_PROVIDER=ollama：同时设 AI_MODEL=qwen3:0.6b。仅连接固定内部 http://ollama:11434，不能指定其他主机、端口或模型。使用 local-model profile，自行核对官方镜像后固定digest；当前示例digest对应主任务已验证下载的0.34.0。服务无宿主公开端口，1CPU/1536MiB，无额外swap，单模型/单并发。模型文件需要运营者先下载，应用不会隐式下载或改模型。请求关闭thinking，num_predict=512、num_ctx=4096，超时90秒。轻量模型用于验收，不能据此承诺复杂推理质量或生产容量。
+只有部署负责人可以改变这些服务器设置；管理员网页不能读取、提交或修改API key。
+
+启动/开通本机云端模型（已获部署授权后）
+在服务器私有.env选择ollama和qwen3:0.6b，并填写已校验的OLLAMA_IMAGE。只对本项目运行docker compose --profile local-model up -d ollama，然后在容器内拉取指定模型，再启动/更新frontend、admin。下载/进程健康不等于已经生成内容，实际任务要单独验收。
+模型连接检查：OpenAI只调用GET模型详情；Ollama只调用GET /api/tags确认模型已安装，不生成内容，不消耗工作台调用次数。管理员初次激活和恢复时会重新验证。连接状态缓存10分钟；已active工作区的所属验收身份读取capabilities或提交任务时会自动刷新过期状态，同进程请求合并，失败后依据共享lastCheckedAt冷却60秒。未配置或连接不通过不执行推理，也不会凭过期健康状态运行。
+
+用量和取消
+UTC每日每工作区10次、每验收身份20次、全站50次免费验收尝试；并发上限随供应商显示。失败/取消仍占一次，避免持续重试或断网触发重复推理；不扣真实平台余额，不产生充值提现。
+任务提交先以running状态写库并返回202，然后异步调用模型。工作区暂停/关闭或用户取消后，迟到结果不会写成成功。进程中断或执行超限会记为failed，不自动重试。取消只能停止本服务等待并尽力中止供应商请求，不能承诺供应商已执行工作免费。
+申请用途固定 content / customer_service / research；任务文字、需求和模型输出不能修改用途、模型、host、额度、状态或身份。输出只是文本，前台须转义显示，不执行HTML/脚本/命令。
+
+接口要点
+会话Cookie沿用两服务各自登录；不接受用户ID请求头。所有POST只接收同源application/json；变更须requestId幂等、version乐观锁（创建/只读连接检查不需要version）。重试相同请求必须保留同requestId和完整内容。409需要刷新状态后重新确认；超时不能直接换requestId重复提交。
+前台：
+GET /api/ai/capabilities
+GET /api/ai/workspaces
+POST /api/ai/workspaces {name,purpose,requirements,requestId}
+GET /api/ai/workspaces/:id → {workspace,tasks,quota}
+POST /api/ai/workspaces/:id/actions {action:"cancel",version,requestId}
+POST /api/ai/workspaces/:id/tasks {prompt,version:工作区版本,requestId} →202 {task}
+GET /api/ai/tasks/:id → {task}
+POST /api/ai/tasks/:id/cancel {version:任务版本,requestId}
+后台（独立登录和来源）：
+GET /api/admin/ai/capabilities
+POST /api/admin/ai/readiness {requestId} → {capabilities}
+GET /api/admin/ai/workspaces?status=可选状态
+GET /api/admin/ai/workspaces/:id
+POST /api/admin/ai/workspaces/:id/actions {action,reason,version,requestId}
+GET /api/admin/ai/tasks?workspaceId=可选工作区ID
+GET /api/admin/ai/tasks/:id
+GET /api/admin/ai/audit?workspaceId=可选工作区ID
+后台action：approve pending_review→awaiting_configuration；reject pending_review→rejected；activate awaiting_configuration→active；pause active→paused；resume paused→active；close active/paused/awaiting_configuration→closed。用户cancel仅pending_review/awaiting_configuration→cancelled。
+列表最多100条、审计200条，表示近期记录，不冒充全库总计。非本人工作区/任务返回404；前台无后台接口/导航。
+
+现场验收示例（保持前后台各自Cookie和Origin）
+1. 前台 POST /api/ai/workspaces
+{"name":"云端内容助手","purpose":"content","requirements":"帮助起草简短中文内容，输出供人工确认的草稿。","requestId":"sg-acceptance-create-001"}
+记录返回workspace.id和version。
+2. 后台 POST /api/admin/ai/workspaces/返回ID/actions
+{"action":"approve","reason":"管理员确认此次服务器验收申请","version":1,"requestId":"sg-acceptance-approve-001"}
+3. 后台 POST /api/admin/ai/readiness
+{"requestId":"sg-acceptance-readiness-001"}
+确认capabilities.cloud.ready为true，不把HTTP200当ready。
+4. 后台 POST /api/admin/ai/workspaces/返回ID/actions
+{"action":"activate","reason":"模型连接已验证，开通受限验收","version":2,"requestId":"sg-acceptance-activate-001"}
+5. 前台 POST /api/ai/workspaces/返回ID/tasks
+{"prompt":"只回复：愚笨者云端工作台已连接。不要添加解释。","version":3,"requestId":"sg-acceptance-task-001"}
+6. 前台轮询 GET /api/ai/tasks/返回任务ID，直到succeeded/failed/cancelled。只有succeeded且output是服务实际结果才算推理成功。按返回版本值操作，不依赖示例中的固定版本。新的验收轮次须使用不同requestId；同一轮不确定结果须保留原ID。
+
+验证记录
+本地HTTP集成测试使用测试注入的供应商响应，覆盖真实HTTP鉴权/数据库/幂等/状态机/额度/取消与并发；不是实际模型质量验收，不发送外部付费API请求。真实新加坡模型验收由主任务记录。
+
+官方接口依据
+https://developers.openai.com/api/docs/guides/text
+https://developers.openai.com/api/reference/resources/models/methods/retrieve
+https://docs.ollama.com/api/chat
+https://docs.ollama.com/api/tags
+https://docs.ollama.com/capabilities/thinking
+https://docs.ollama.com/modelfile

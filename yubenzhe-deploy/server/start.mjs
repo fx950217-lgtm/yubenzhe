@@ -1,0 +1,17 @@
+import { resolve } from 'node:path';
+import { readAuthFile } from './auth.mjs';
+import { openDatabase } from './sqlite-adapter.mjs';
+import { createAcceptanceServer } from './server.mjs';
+import { openAiDatabase } from './ai-database.mjs';
+import { createAiProvider } from './ai-provider.mjs';
+import { createAiService } from './ai-service.mjs';
+process.umask(0o077);
+const role=process.env.ROLE, port=Number(process.env.PORT || 8080), host=process.env.BIND_HOST || '127.0.0.1';
+if (!Number.isInteger(port) || port<1 || port>65535) throw new Error('Invalid PORT.');
+const authConfig=readAuthFile(process.env.AUTH_CONFIG_FILE);
+const database=role==='admin' ? openDatabase(process.env.DATABASE_PATH || './state/acceptance.sqlite') : null;
+const aiDatabase=openAiDatabase(process.env.AI_DATABASE_PATH || './ai-state/workspaces.sqlite');
+const aiService=createAiService({database:aiDatabase,provider:createAiProvider()});
+const server=createAcceptanceServer({aiService,role,origin:process.env.PUBLIC_ORIGIN,authConfig,database,staticRoot:resolve(process.env.STATIC_ROOT || `./public/${role}`)});
+server.listen(port,host,()=>console.log(`${role} private-acceptance 0.9.0 listening on ${host}:${port}`));
+for(const signal of ['SIGTERM','SIGINT']) process.once(signal,()=>{server.close(async()=>{await aiService.close();aiDatabase.close();database?.close();process.exit(0)});setTimeout(()=>process.exit(1),12000).unref()});

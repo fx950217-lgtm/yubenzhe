@@ -1,0 +1,8 @@
+secrets/
+state/
+backups/
+.env
+node_modules/
+*.tar
+*.tar.gz
+*.zip

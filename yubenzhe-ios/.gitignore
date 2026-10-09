@@ -1,0 +1,13 @@
+build/
+packages/
+repo/
+__pycache__/
+*.pyc
+*.p12
+*.mobileprovision
+*.key
+*.pem
+*.ipa
+*.deb
+.DS_Store
+xcuserdata/
