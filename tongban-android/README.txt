@@ -1,7 +1,7 @@
 愚笨者 Android 工程 · 0.10.0（versionCode 10）
 
 这是安装到 Android 的早期测试客户端，不是应用商店发行版。
-默认工程包名 app.tongban.wallet.demo；本次独立测试包使用 app.tongban.wallet.lilac，与旧版并存，不迁移旧版本机数据。
+当前发布包名 app.tongban.wallet.demo，沿用用户提供的原签名，可覆盖升级 0.9.0 并保留数据。也可通过 previewApplicationId 构建单独的测试包。
 支持 Android 7.0 / API 24 及以上；Android System WebView / Chrome 需105及以上。
 目前没有在 Android 实机上验收相机、键盘、系统保存窗口或后台恢复。
 
@@ -45,7 +45,7 @@ node scripts/copy-web.mjs
 node node_modules/@capacitor/cli/bin/capacitor sync android
 node --test tests/*.test.mjs
 cd android
-./gradlew -PpreviewApplicationId=app.tongban.wallet.lilac assembleRelease
+./gradlew assembleRelease
 release默认没有发行签名；需要主任务使用独立测试密钥签署和核验APK。
 签名密钥、密码、SDK local.properties均不可打进源代码包或网页。
 没有开发者账户、生产签名、商店提交或公开上架。

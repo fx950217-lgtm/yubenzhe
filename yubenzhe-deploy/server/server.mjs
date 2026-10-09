@@ -6,7 +6,7 @@ import { createAuthentication } from './auth.mjs';
 import { AdminError, assertSameOrigin, authorizeAdmin, setupAdmin, getBootstrap, listRecords, getRecord, applyAction, listAudit } from '../upstream/admin/core.mjs';
 
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const types = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon','.woff2':'font/woff2','.webmanifest':'application/manifest+json','.apk':'application/vnd.android.package-archive','.exe':'application/octet-stream','.zip':'application/zip','.txt':'text/plain; charset=utf-8' };
+const types = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon','.woff2':'font/woff2','.webmanifest':'application/manifest+json','.apk':'application/vnd.android.package-archive','.deb':'application/vnd.debian.binary-package','.exe':'application/octet-stream','.zip':'application/zip','.txt':'text/plain; charset=utf-8' };
 function json(response, value, status = 200) { response.writeHead(status, { 'Content-Type':'application/json; charset=utf-8' }); response.end(JSON.stringify(value)); }
 function redirect(response, location = '/') { response.writeHead(303, { Location: location }); response.end(); }
 function gatePage(role, error = '', logout = false) {
@@ -98,7 +98,7 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       if (!file.startsWith(staticBase + sep) || name.split('/').some(part => part.startsWith('.')) || /[\\\0]/.test(name)) throw new AdminError(404,'NOT_FOUND','页面不存在。');
       let resolved, info; try { resolved = await realpath(file); info = await stat(resolved); } catch { throw new AdminError(404,'NOT_FOUND','页面不存在。'); }
       if (!resolved.startsWith(staticBase + sep) || !info.isFile() || !types[extname(file)]) throw new AdminError(404,'NOT_FOUND','页面不存在。');
-      if (['.exe','.apk','.zip'].includes(extname(file))) response.setHeader('Content-Disposition',`attachment; filename="${basename(file).replace(/[^a-zA-Z0-9._-]/g,'_')}"; filename*=UTF-8''${encodeURIComponent(basename(file)).replace(/['()*]/g,c=>`%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`);
+      if (['.exe','.apk','.zip','.deb'].includes(extname(file))) response.setHeader('Content-Disposition',`attachment; filename="${basename(file).replace(/[^a-zA-Z0-9._-]/g,'_')}"; filename*=UTF-8''${encodeURIComponent(basename(file)).replace(/['()*]/g,c=>`%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`);
       response.writeHead(200,{'Content-Type':types[extname(file)],'Content-Length':info.size});
       if (request.method === 'HEAD') response.end(); else createReadStream(resolved).on('error',() => response.destroy()).pipe(response);
     } catch (error) {

@@ -1,14 +1,14 @@
-愚笨者 Windows 客户端 0.9.0
+愚笨者 Windows 客户端 0.10.0
 
 用途
 独立安装的 Windows x64 桌面客户端。本轮是供团队查看最终界面与服务器联调的内部验收版本，尚未公开上线或提交 Microsoft Store。
 钱包仍仅连接 BSC 测试网；聊天、朋友圈、红包和平台余额属于本机演示数据，不支持真实托管资金或跨设备同步。
 
 安装
-优先运行 yubenzhe-0.9.0-windows-x64-setup.exe。安装到当前用户目录，无需管理员权限。
+优先运行 yubenzhe-0.10.0-windows-x64-setup.exe。安装到当前用户目录，无需管理员权限。
 免安装版解压 ZIP 后运行 Yubenzhe.exe。不要仅从 ZIP 中拖出单个 EXE，其余运行文件也必须保留。
 支持 Windows 10/11 64 位电脑。此构建无 Windows 代码签名证书；请先核对下载来源及 SHA256，并遵循系统安全提示，不要关闭安全防护。
-本轮只完成编译、安装包结构、安全边界及代码测试，尚未在 Windows 真机验收。
+本轮已完成编译、签名状态/安全边界核验及 21 项测试；已在当前 Windows 电脑安装并启动，安装资源与构建一致。相机、文件导出和本地模型运行仍需完整设备验收。
 
 数据与使用
 本机钱包和聊天数据保存在当前 Windows 用户的愚笨者应用数据中，与网站、安卓以及其他电脑相互独立。
@@ -30,7 +30,7 @@ web-assets-verification.json 记录打包前端文件 SHA256，release-verificat
 
 原生接口
 window.YubenzheDesktop.platform = 'windows'
-window.YubenzheDesktop.version = '0.9.0'
+window.YubenzheDesktop.version = '0.10.0'
 saveJson({filename, mimeType:'application/json', content}) -> Promise<{saved:boolean, method:'desktop'}>
 onBackground(callback) -> unsubscribe 函数
 接口没有任意文件读写、命令执行、process、Node.js 或 Electron 对象。

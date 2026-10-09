@@ -11,26 +11,34 @@
     "built": true,
     "versionName": "0.10.0",
     "versionCode": 10,
-    "appId": "app.tongban.wallet.lilac",
-    "signature": "independent-preview",
-    "signatureSHA256": "cd8934cc20428e3926abde3774ef19d10b6e2a23a66f798179b613c93093b361",
+    "appId": "app.tongban.wallet.demo",
+    "signature": "original-preview",
+    "signatureSHA256": "3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d",
     "emulatorLaunchVerified": true,
-    "deviceVerified": false,
-    "coexistsWith": "app.tongban.wallet.demo"
+    "emulatorUpgradeVerified": true,
+    "deviceVerified": false
   },
   "windows": {
     "built": true,
+    "version": "0.10.0",
     "architecture": "x64",
     "signed": false,
-    "deviceVerified": false,
-    "version": "0.9.0"
+    "installedOnWindows": true,
+    "launchVerified": true,
+    "deviceVerified": false
   },
   "ios": {
     "sourceReady": true,
-    "sourceVersion": "0.8.0",
-    "built": false,
-    "installableDeb": false,
-    "reason": "Xcode and iPhoneOS SDK unavailable"
+    "sourceVersion": "0.10.0",
+    "built": true,
+    "installableDeb": true,
+    "layout": "rootless",
+    "minimumIOS": "15.4",
+    "deviceVerified": false,
+    "installedOnDevice": true,
+    "build": 11,
+    "launchVerified": true,
+    "userScreenConfirmed": false
   },
   "ai": {
     "webWorkspacePersistence": true,
@@ -39,6 +47,26 @@
     "nativePrivateCloudConnection": false
   },
   "files": [
+    {
+      "filename": "app.yubenzhe.wallet_0.10.0_iphoneos-arm64.deb",
+      "sizeBytes": 2340682,
+      "sha256": "7542be91a8737da4d77ad94cd1929dca116c098bde027d50aef6e1706b0f6cd5"
+    },
+    {
+      "filename": "yubenzhe-0.10.0-android.apk",
+      "sizeBytes": 4108218,
+      "sha256": "904319f10d9f5887c6c0e5135e547a2262115df0d0d3ceee71f9548f472e1108"
+    },
+    {
+      "filename": "yubenzhe-0.10.0-windows-x64-setup.exe",
+      "sizeBytes": 112317403,
+      "sha256": "1935ac6134c410c73eaa5c1d3bf892008bea8375bfeff9344b5d44e33e17894e"
+    },
+    {
+      "filename": "yubenzhe-0.10.0-windows-x64.zip",
+      "sizeBytes": 153895838,
+      "sha256": "ab590bd2c61a2d4fc32acd133cc57fc9f3aca40ecc460a3c1979de2cea8aed90"
+    },
     {
       "filename": "yubenzhe-0.10.0-lilac-android.apk",
       "sizeBytes": 4108218,

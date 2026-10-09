@@ -16,5 +16,5 @@ for (const file of files) {
   await copyFile(path.join(source, file), path.join(target, file));
   hashes[file] = createHash('sha256').update(bytes).digest('hex');
 }
-await writeFile(path.join(root, 'web-assets-verification.json'), JSON.stringify({ source: '../tongban/dist', version: '0.9.0', files: hashes }, null, 2) + '\n');
-console.log('Copied 6 consumer assets; download/admin assets excluded.');
+await writeFile(path.join(root, 'web-assets-verification.json'), JSON.stringify({ source: '../tongban/dist', version: JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).version, files: hashes }, null, 2) + '\n');
+console.log(`Copied ${files.length} consumer assets; download/admin assets excluded.`);
