@@ -31,3 +31,11 @@ test('scan results look up a numeric account without creating a friendship',asyn
  let finish;ctx.socialClient.lookup=()=>new Promise(resolve=>{finish=resolve});const pending=scanner.onResult({kind:'friend',id:'827364'});
  ctx.dialog.open=false;const length=calls.length;finish({profile:{userId:'827364'}});await pending;await scanner.onResult({kind:'address',address});assert.equal(calls.length,length);
 });
+
+test('wallet unlock refreshes the visible wallet before continuing a transfer or export',async()=>{
+ const events=[];let pending;const form={elements:{password:{value:'synthetic-wallet-password-011'}},reset(){events.push('reset')}};
+ const ctx={esc:String,short:String,currentView:'wallet',walletProblem:()=>false,state:()=>({exists:true,unlocked:false}),showModal:(_title,_html,setup)=>setup({querySelector:()=>form}),busyForm:(_form,job)=>{pending=job()},wallet:{unlock:async()=>events.push('unlock')},closeModal:()=>events.push('close'),layout:()=>events.push('layout')};
+ vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function unlockModal('),source.indexOf('\nasync function copyAddress')),ctx);
+ ctx.unlockModal(()=>events.push('continue'));form.onsubmit({preventDefault(){},target:form});await pending;
+ assert.deepEqual(events,['reset','unlock','close','layout','continue']);
+});
