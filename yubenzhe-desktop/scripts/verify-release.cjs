@@ -49,7 +49,7 @@ function pe(file) {
     productName: '愚笨者', version: '0.11.0', platform: 'Windows x64',
     electronVersion: '44.7.0', electronBuilderVersion: '26.15.3',
     distribution: 'private-preview', storePublished: false, codeSigned: false,
-    checks: { packagedAssetsMatchSource: true, packagedNativeBridgeMatchesSource: true, noAdminOrPrivateSigningMaterial: true, windowsRuntimePE64: true, securityFusesVerified: true, unitAndHostTests: 21, actualWindowsDeviceTested: false, installerRunOnWindows: false, actualLocalModelRunOnWindows: false },
+    checks: { packagedAssetsMatchSource: true, packagedNativeBridgeMatchesSource: true, noAdminOrPrivateSigningMaterial: true, windowsRuntimePE64: true, securityFusesVerified: true, unitAndHostTests: 23, actualWindowsDeviceTested: false, installerRunOnWindows: false, actualLocalModelRunOnWindows: false },
     files, webAssets: expected.files,
   };
   fs.writeFileSync(path.join(root, 'release-verification.json'), JSON.stringify(result, null, 2) + '\n');

@@ -12,7 +12,7 @@ const target=resolve(root,'public/frontend');
 if(source===target || source.startsWith(target+'/'))throw new Error('Source must be outside the output folder.');
 rmSync(target,{recursive:true,force:true});mkdirSync(target,{recursive:true});
 cpSync(source,target,{recursive:true,filter:path=>!['.DS_Store','.env'].some(part=>path.split('/').includes(part))});
-writeFileSync(resolve(root,'reports/frontend-staging.json'),JSON.stringify({version:'0.11.0',stagedAt:new Date().toISOString(),indexSha256:createHash('sha256').update(index).digest('hex'),appSha256:createHash('sha256').update(app).digest('hex'),consumerConnected:true,socialServiceIncluded:true,cloudAIConnected:true,adminEntry:false},null,2));
+writeFileSync(resolve(root,'reports/frontend-staging.json'),JSON.stringify({version:'0.11.0',stagedAt:new Date().toISOString(),indexSha256:createHash('sha256').update(index).digest('hex'),appSha256:createHash('sha256').update(app).digest('hex'),consumerConnected:false,socialServiceIncluded:true,cloudAIConnected:true,adminEntry:false},null,2));
 const verificationFile=resolve(root,'reports/deployment-verification.json');
-if(existsSync(verificationFile)){const verification=JSON.parse(readFileSync(verificationFile,'utf8'));verification.frontend={staged:true,stagedAt:new Date().toISOString(),consumerConnected:true,socialServiceIncluded:true,cloudAIConnected:true,adminEntry:false};writeFileSync(verificationFile,JSON.stringify(verification,null,2)+'\n')}
+if(existsSync(verificationFile)){const verification=JSON.parse(readFileSync(verificationFile,'utf8'));verification.frontend={staged:true,stagedAt:new Date().toISOString(),consumerConnected:false,socialServiceIncluded:true,cloudAIConnected:true,adminEntry:false};writeFileSync(verificationFile,JSON.stringify(verification,null,2)+'\n')}
 console.log('Built frontend staged separately; cloud AI API is separate from synthetic admin records; no admin link was added.');
