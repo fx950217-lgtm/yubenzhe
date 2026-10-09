@@ -29,6 +29,12 @@ def macho_ios_arm64_bytes(raw):
 def macho_ios_arm64(binary):
     return macho_ios_arm64_bytes(binary.read_bytes())
 
+def verify_preview_entitlements(entitlements):
+    expected = {'application-identifier': EXPECTED_ID,
+                'com.apple.private.security.container-required': EXPECTED_ID}
+    if entitlements != expected:
+        raise ValueError('Preview signature must contain only the app identity and its required container')
+
 def verify_app(app, expected_manifest=None, verify_signature=True):
     app = pathlib.Path(app).resolve()
     if not app.is_dir() or app.suffix != '.app': raise ValueError('A compiled .app directory is required')
@@ -50,4 +56,6 @@ def verify_app(app, expected_manifest=None, verify_signature=True):
                 raise ValueError('Web asset does not match the recorded build: ' + name)
     if verify_signature:
         subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True, capture_output=True)
+        signed = subprocess.run(['codesign', '-d', '--entitlements', ':-', str(app)], check=True, capture_output=True)
+        verify_preview_entitlements(plistlib.loads(signed.stdout))
     return info

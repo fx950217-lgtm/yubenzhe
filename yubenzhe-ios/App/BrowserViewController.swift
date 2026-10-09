@@ -10,6 +10,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var temporaryExport: URL?
     private var loaded = false
     private var failedClosed = false
+    private var startupTimeout: DispatchWorkItem?
+    private var contentRestartCount = 0
     private let externalHosts: Set<String> = ["testnet.bscscan.com", "docs.bnbchain.org", "docs.ethers.org"]
 
     override func viewDidLoad() {
@@ -54,10 +56,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             return
         }
         protectPersistentFiles()
+        armStartupTimeout()
+        NSLog("Yubenzhe startup: starting local service")
         server = LocalAssetServer(root: root)
         server?.start { [weak self] result in
             switch result {
-            case .success: self?.webView.load(URLRequest(url: URL(string: LocalAssetServer.origin + "/index.html")!))
+            case .success:
+                NSLog("Yubenzhe startup: local service ready")
+                self?.loadAppPage()
             case .failure: self?.fail("本机应用服务未能启动，请关闭并重新打开。")
             }
         }
@@ -87,11 +93,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        loaded = true
+        NSLog("Yubenzhe startup: page loaded")
         protectPersistentFiles()
         webView.evaluateJavaScript("Boolean(window.isSecureContext && window.crypto && window.crypto.subtle && window.YubenzheNative)") { [weak self] value, error in
             guard let self else { return }
             if error != nil || value as? Bool != true { self.fail("系统网页组件不支持安全钱包功能，请更新 iOS 后重试。"); return }
+            self.loaded = true
             self.resumeSafely()
         }
     }
@@ -111,7 +118,37 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         present(alert, animated: true)
     }
 
-    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { loaded = false; privacyCover.isHidden = false; webView.reload() }
+    private func loadAppPage() {
+        guard !failedClosed else { return }
+        webView.load(URLRequest(url: URL(string: LocalAssetServer.origin + "/index.html")!))
+    }
+
+    private func armStartupTimeout() {
+        startupTimeout?.cancel()
+        let timeout = DispatchWorkItem { [weak self] in
+            guard let self, !self.failedClosed, UIApplication.shared.applicationState == .active else { return }
+            self.fail("应用启动超时，请关闭后重试。如果仍停留在此处，请更新安装包。")
+        }
+        startupTimeout = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 25, execute: timeout)
+    }
+
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        loaded = false
+        privacyCover.isHidden = false
+        guard !failedClosed else { return }
+        guard contentRestartCount < 1 else {
+            fail("系统网页组件未能启动，请更新安装包后重试。")
+            return
+        }
+        contentRestartCount += 1
+        NSLog("Yubenzhe startup: restarting web content once")
+        loadAppPage()
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        if (error as NSError).code != NSURLErrorCancelled { fail("应用页面加载失败，请关闭后重试。") }
+    }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         if (error as NSError).code != NSURLErrorCancelled { fail("应用页面未能打开，请重新启动。") }
     }
@@ -169,11 +206,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     func resumeSafely() {
-        guard isViewLoaded, loaded, !failedClosed, UIApplication.shared.applicationState == .active else { return }
+        guard isViewLoaded, !failedClosed, UIApplication.shared.applicationState == .active else { return }
+        guard loaded else { armStartupTimeout(); return }
         webView.evaluateJavaScript("window.__ybAppState && window.__ybAppState(false)") { [weak self] result, error in
             guard let self else { return }
             guard error == nil, result as? Bool == true else { self.fail("钱包锁定组件未就绪，请关闭应用后重试。"); return }
             guard !self.failedClosed, UIApplication.shared.applicationState == .active else { return }
+            self.startupTimeout?.cancel()
+            NSLog("Yubenzhe startup: ready")
             self.webView.isUserInteractionEnabled = true
             self.privacyCover.isHidden = true
         }
@@ -194,6 +234,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func fail(_ message: String) {
         failedClosed = true
+        startupTimeout?.cancel()
+        NSLog("Yubenzhe startup failed: %@", message)
         webView?.isUserInteractionEnabled = false
         webView?.stopLoading()
         webView?.setCameraCaptureState(.none)
@@ -201,5 +243,5 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         privacyCover.text = message
         privacyCover.isHidden = false
     }
-    deinit { server?.stop() }
+    deinit { startupTimeout?.cancel(); server?.stop() }
 }

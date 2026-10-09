@@ -1,7 +1,7 @@
 import gzip, importlib.util, io, pathlib, plistlib, struct, sys, tarfile, tempfile, unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from verify_app import macho_ios_arm64
+from verify_app import macho_ios_arm64, verify_preview_entitlements
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, ROOT / 'scripts' / path)
@@ -10,6 +10,17 @@ package = load('package', 'package-deb.py')
 repo = load('repo', 'build-repo.py')
 
 class PackagingChecks(unittest.TestCase):
+    def test_preview_entitlements_require_identity_and_own_container(self):
+        good = {'application-identifier': 'app.yubenzhe.wallet',
+                'com.apple.private.security.container-required': 'app.yubenzhe.wallet'}
+        verify_preview_entitlements(good)
+        self.assertEqual(plistlib.loads((ROOT/'App/Preview.entitlements').read_bytes()), good)
+        for bad in ({}, {'application-identifier': 'app.yubenzhe.wallet'},
+                    dict(good, **{'application-identifier': 'another.app'}),
+                    dict(good, **{'com.apple.private.security.container-required': False}),
+                    dict(good, **{'com.apple.private.security.no-sandbox': True}),
+                    dict(good, **{'platform-application': True})):
+            with self.assertRaises(ValueError): verify_preview_entitlements(bad)
     def binary(self, platform=2, cpu=0x0100000C):
         return struct.pack('<8I',0xFEEDFACF,cpu,0,2,1,24,0,0)+struct.pack('<6I',0x32,24,platform,0x0f0400,0x110000,0)
     def check_binary(self, data):

@@ -29,7 +29,7 @@ jobs:
         working-directory: yubenzhe-ios
         run: |
           APP=build/DerivedData/Build/Products/Release-iphoneos/Yubenzhe.app
-          codesign --force --sign - --timestamp=none "$APP"
+          codesign --force --sign - --timestamp=none --entitlements App/Preview.entitlements "$APP"
           python3 scripts/package-deb.py --app "$APP" --scheme rootless
           shasum -a 256 packages/*.deb > packages/SHA256SUMS.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
