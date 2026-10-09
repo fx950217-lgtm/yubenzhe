@@ -1,4 +1,11 @@
-2026-10-09 / 0.12.0（build 14）简洁界面版
+2026-10-09 / 0.12.1（build 15）入口小修
+
+0.12.1 仅移除“我”页面中重复的朋友圈入口，朋友圈统一保留在“发现”。其他界面沿用 0.12.0 的白灰背景、紫色强调、系统 sans-serif 黑灰字体、扁平列表与简洁底栏；浅紫星环 B 应用图标不变。
+0.12.1 已部署并完成客户端覆盖安装和启动检查，Android versionCode 14、iOS build 15，源码提交 e54ff57e906ca650900112864210a1e130d54a47。新加坡前台已切换至 /opt/yubenzhe/releases/0.12.1，下载区 25 个文件 SHA-256 全部通过。Android 14 已安装启动；Windows 安装器退出码为 0，安装 ASAR 与构建产物一致且客户端已启动；iOS build 15 经 macOS workflow 37922714334 构建成功，0.12.1 DEB 安装成功，日志确认 page loaded / ready。
+本轮通过 mine + discover 的 36 项相关网页测试、14 项布局检查、Android 5 项测试 / 85 条断言、Windows 23 项检查及 iOS 13 项 Python + 4 项桥接检查；在 360px / 1280px 两种尺寸额外确认“我”页面朋友圈入口为 0、“发现”入口为 1。未新增用户在手机上肉眼确认画面，完整实体设备功能验收仍未完成。0.12.0 的 270 项全量网页测试及安装验收保留为历史基线，不计为本轮全量重跑。 详细记录见 ../yubenzhe-deploy/reports/ui-0121-verification.json。 实际发布范围见 ios-build-status.json 和 ../tongban/releases/release-status.json。
+本次只调整入口展示，不改变朋友圈业务、账号服务或钱包能力。
+
+0.12.0（build 14）历史编译与安装验收
 
 0.12.0 参考微信官方 App Store 的消息列表与群聊截图，改为白色列表、浅灰背景和紫色重点操作；使用系统 sans-serif 字体与黑灰文字，主标题 18px、会话名称 17px、正文 16px。页面采用扁平分组列表、细分隔线、小圆角与简洁底部导航，减少大卡片、阴影和装饰文字。浅紫星环 B 应用图标保留，网络标识和说明仍只在钱包资产页显示。
 界面参考：https://apps.apple.com/cn/app/wechat/id414478124 。
@@ -11,11 +18,11 @@
 本次仅同步顶部 UI：移除全局 B /“愚笨者”品牌行及重复页标题，各页面保留自己的标题、搜索和“＋”等操作；BSC 测试网标识及说明按钮仅在钱包资产页。浅紫 UI 与星环 B 应用图标保持不变。
 0.11.0 build 12 历史验收：已编译并安装至 Dopamine iPhone X，日志确认 ready，用户确认可见账号登录页；完整设备功能验收尚未完成。原始说明中的“尚未构建”为历史状态。
 
-愚笨者 iOS 工程与越狱安装源 · 当前源码 0.12.0（build 14）
+愚笨者 iOS 工程与越狱安装源 · 当前源码 0.12.1（build 15）
 
 当前事实
 已准备独立 WKWebView 本地应用工程、iPhone/iPad 图标、JSON 系统文件导出、相机权限判断、后台遮罩和钱包锁定桥接、rootful/rootless DEB 打包器、带 GPG 签名的 APT 源生成器。
-当前 Windows 本机无 Xcode；0.12.0 build 14 已通过 GitHub macOS 编译、rootless DEB 发布与 Dopamine iPhone X 安装，启动日志及本地页面资源检查通过。0.11.1 的已编译安装结果仅为上方历史记录。实际状态以 ios-build-status.json 的对应版本记录为准；本轮未新增用户在手机上肉眼确认画面，应用商店与完整设备功能验收尚未完成。脚本拒绝把网页 ZIP、假二进制或模拟器应用当安装包。
+当前 Windows 本机无 Xcode；0.12.1 build 15 已由 GitHub macOS workflow 37922714334 构建成功，rootless DEB 已发布并完成 0.12.1 安装，启动日志确认 page loaded / ready。0.12.0 build 14 已通过的 macOS 编译、rootless DEB 发布、Dopamine iPhone X 安装和启动资源检查，以及 0.11.1 的结果，均保留为上方历史验收。实际状态以 ios-build-status.json 的对应版本记录为准；应用商店与完整设备功能验收尚未完成。脚本拒绝把网页 ZIP、假二进制或模拟器应用当安装包。
 “通用”按 iPhone/iPad arm64、iOS 15.4 起设计；越狱设备分别使用 rootful / rootless 安装布局。不能覆盖所有系统、越狱工具、roothide 或已迁移 jbroot。最终兼容性须按实际设备测试。
 
 先在 iPhone 使用

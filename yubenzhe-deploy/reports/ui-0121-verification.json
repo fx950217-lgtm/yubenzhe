@@ -1,0 +1,269 @@
+{
+  "version": "0.12.1",
+  "sourceCommit": "e54ff57e906ca650900112864210a1e130d54a47",
+  "change": "Removed duplicate Moments entry from Mine; kept Moments in Discover.",
+  "baseUIVerification": "ui-012-verification.json",
+  "relevantWebTests": 36,
+  "layout": {
+    "pass": true,
+    "checks": [
+      {
+        "view": "messages",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "contacts",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "discover",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "mine",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 1,
+        "railBrand": 1,
+        "contentTop": 62,
+        "networkTotal": 1,
+        "noticeTotal": 1,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "actionsWidth": 158.046875,
+        "actionsHeight": 32,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet/chain-tab",
+        "width": 360,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      },
+      {
+        "view": "wallet/platform-tab",
+        "width": 360,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      },
+      {
+        "view": "messages",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "contacts",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 1,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "discover",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "mine",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 1,
+        "railBrand": 1,
+        "contentTop": 68,
+        "networkTotal": 1,
+        "noticeTotal": 1,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "actionsWidth": 164.046875,
+        "actionsHeight": 32,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet/chain-tab",
+        "width": 1280,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      },
+      {
+        "view": "wallet/platform-tab",
+        "width": 1280,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      }
+    ],
+    "errors": []
+  },
+  "momentsEntryCounts": {
+    "mine": 0,
+    "discover": 1,
+    "widths": [
+      360,
+      1280
+    ]
+  },
+  "androidTests": 5,
+  "androidAssertions": 85,
+  "windowsTests": 23,
+  "iosPythonTests": 13,
+  "deployed": true,
+  "productionAccountsCreatedByTests": false,
+  "server": "66.42.56.29",
+  "releaseDirectory": "/opt/yubenzhe/releases/0.12.1",
+  "health": {
+    "ok": true,
+    "service": "frontend",
+    "version": "0.12.1",
+    "stage": "public-preview"
+  },
+  "publicAssets": {
+    "app.js": "46b883fb9cc690d02052469f7f9d1beb1ba693809718937041d19c918cdaa3eb",
+    "app.css": "d79810c35787756bfb70c0ed226b76aa0df924d1dc7d5efb6a501b83c7e3094e"
+  },
+  "downloadsSHA256Verified": 25,
+  "artifacts": [
+    {
+      "filename": "yubenzhe-0.12.1-android.apk",
+      "sizeBytes": 4145082,
+      "sha256": "7e974592d423575952a6e9d4585a53d80ed6e6949400435f18ff1816226f5627"
+    },
+    {
+      "filename": "yubenzhe-0.12.1-windows-x64-setup.exe",
+      "sizeBytes": 112344855,
+      "sha256": "ff1e484163c714868391e0493fc08b2b08ccf65710405c296d790fbcdbc88477"
+    },
+    {
+      "filename": "yubenzhe-0.12.1-windows-x64.zip",
+      "sizeBytes": 153931095,
+      "sha256": "6935f8e55e13c723c4bcee2905c8c728c4770470a9de954e0fde3936b9badbda"
+    },
+    {
+      "filename": "app.yubenzhe.wallet_0.12.1_iphoneos-arm64.deb",
+      "sizeBytes": 2378208,
+      "sha256": "ab4c104291dd74c92c0bf6ef87dd10d9c4a2bc24486b720d05c428c45f07a2aa"
+    }
+  ],
+  "android": {
+    "installed": true,
+    "versionCode": 14,
+    "launchVerified": true
+  },
+  "windows": {
+    "installed": true,
+    "installedAsarMatchesBuild": true,
+    "launchVerified": true
+  },
+  "ios": {
+    "installed": true,
+    "build": 15,
+    "launchVerified": true,
+    "pageLoaded": true,
+    "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37922714334",
+    "userVisualConfirmationForThisBuild": false
+  },
+  "fullPhysicalFunctionality": false
+}

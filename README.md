@@ -1,10 +1,14 @@
 # 愚笨者
 
-熟人社交、测试网钱包和 AI 协作项目。当前网页与客户端源码为 **0.12.0 简洁界面版**。0.12.0 参考微信官方 App Store 的消息列表与群聊截图，改为白色列表、浅灰背景和紫色重点操作；使用系统 sans-serif 字体与黑灰文字，主标题 18px、会话名称 17px、正文 16px。页面采用扁平分组列表、细分隔线、小圆角与简洁底部导航，减少大卡片、阴影和装饰文字。浅紫星环 B 应用图标保留，网络标识和说明仍只在钱包资产页显示。 独立账号、在线好友与群聊及标准钱包导入沿用 0.11.0；发现、平台余额和红包仍为体验功能。
+熟人社交、测试网钱包和 AI 协作项目。当前网页与客户端源码为 **0.12.1 简洁界面小修版**。仅移除“我”中重复的朋友圈入口，朋友圈统一保留在“发现”；其他风格沿用 0.12.0。0.12.0 参考微信官方 App Store 的消息列表与群聊截图，改为白色列表、浅灰背景和紫色重点操作；使用系统 sans-serif 字体与黑灰文字，主标题 18px、会话名称 17px、正文 16px。页面采用扁平分组列表、细分隔线、小圆角与简洁底部导航，减少大卡片、阴影和装饰文字。浅紫星环 B 应用图标保留，网络标识和说明仍只在钱包资产页显示。 独立账号、在线好友与群聊及标准钱包导入沿用 0.11.0；发现、平台余额和红包仍为体验功能。
 
 [微信官方界面参考](https://apps.apple.com/cn/app/wechat/id414478124) · [打开网页版](https://66.42.56.29/) · [下载安装包](https://66.42.56.29/install.html)。
 
-**0.12.0 已部署并完成各客户端发布、覆盖安装与启动检查**；Android versionCode 13，iOS build 14。Android versionCode 13 已用原签名执行 -r 覆盖安装并启动（本轮 PID 2777）；Windows 0.12.0 安装器退出码为 0，安装 ASAR 与构建产物一致且进程运行；iOS build 14 的 0.12.0 DEB 已安装，启动日志包含 starting local service、page loaded、ready，手机本地 HTML/JS/CSS 均返回 200。 实际版本和检查范围见 [0.12.0 验收记录](yubenzhe-deploy/reports/ui-012-verification.json)、[发布状态 JSON](tongban/releases/release-status.json) 和 [iOS 构建状态](yubenzhe-ios/ios-build-status.json)。
+**0.12.1 已完成发布、覆盖安装与启动检查。** 0.12.1 已部署并完成客户端覆盖安装和启动检查，Android versionCode 14、iOS build 15，源码提交 e54ff57e906ca650900112864210a1e130d54a47。新加坡前台已切换至 /opt/yubenzhe/releases/0.12.1，下载区 25 个文件 SHA-256 全部通过。Android 14 已安装启动；Windows 安装器退出码为 0，安装 ASAR 与构建产物一致且客户端已启动；iOS build 15 经 macOS workflow 37922714334 构建成功，0.12.1 DEB 安装成功，日志确认 page loaded / ready。
+
+本轮通过 mine + discover 的 36 项相关网页测试、14 项布局检查、Android 5 项测试 / 85 条断言、Windows 23 项检查及 iOS 13 项 Python + 4 项桥接检查；在 360px / 1280px 两种尺寸额外确认“我”页面朋友圈入口为 0、“发现”入口为 1。未新增用户在手机上肉眼确认画面，完整实体设备功能验收仍未完成。0.12.0 的 270 项全量网页测试及安装验收保留为历史基线，不计为本轮全量重跑。 详细记录见 [0.12.1 验收记录](yubenzhe-deploy/reports/ui-0121-verification.json)。 最新实际状态见 [发布状态 JSON](tongban/releases/release-status.json) 和 [iOS 构建状态](yubenzhe-ios/ios-build-status.json)。
+
+**0.12.0 历史验收：已部署并完成各客户端发布、覆盖安装与启动检查**；Android versionCode 13，iOS build 14。Android versionCode 13 已用原签名执行 -r 覆盖安装并启动（本轮 PID 2777）；Windows 0.12.0 安装器退出码为 0，安装 ASAR 与构建产物一致且进程运行；iOS build 14 的 0.12.0 DEB 已安装，启动日志包含 starting local service、page loaded、ready，手机本地 HTML/JS/CSS 均返回 200。 实际版本和检查范围见 [0.12.0 验收记录](yubenzhe-deploy/reports/ui-012-verification.json)、[发布状态 JSON](tongban/releases/release-status.json) 和 [iOS 构建状态](yubenzhe-ios/ios-build-status.json)。
 
 新加坡 /opt/yubenzhe/releases/0.12.0 已部署，公网 HTTPS /healthz 返回 200 且版本为 0.12.0；网页 JS/CSS 与四端快照一致，下载区 21 个文件 SHA-256 全部通过。后台、代理和模型容器 ID 未变。
 
@@ -18,7 +22,7 @@
 
 代码源：[私有 GitHub 仓库](https://github.com/fx950217-lgtm/yubenzhe)。产品决策和交接索引：[云端资料中心](https://chatgpt.com/space/page_6ac8849de8908191aa82fc7c575142e8)。两者权限和内容分别管理；资料中心不会自动同步代码。服务器应用数据、访问凭证和数据库备份另行保存，不随 Git 克隆。
 
-代码接入：既有源码已推送到私有 GitHub，本轮 0.12.0 构建源码提交为 `9c87fe4c345d1e726a5d9e5f40791a9795bc6f6a`，iOS macOS workflow `37922166794` 成功；307 个文件的核对属于最初交接记录，历史 0.11.1 构建源码提交为 `8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7`。用户已选择先使用 GitHub；Codex Cloud 环境尚未创建，下次继续配置时先指导手机身份验证器绑定。
+代码接入：0.12.1 源码已提交，提交为 `e54ff57e906ca650900112864210a1e130d54a47`；既有源码已推送到私有 GitHub，历史 0.12.0 构建源码提交为 `9c87fe4c345d1e726a5d9e5f40791a9795bc6f6a`，iOS macOS workflow `37922166794` 成功；307 个文件的核对属于最初交接记录，历史 0.11.1 构建源码提交为 `8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7`。用户已选择先使用 GitHub；Codex Cloud 环境尚未创建，下次继续配置时先指导手机身份验证器绑定。
 
 [0.9.0 内部验收包下载](https://github.com/fx950217-lgtm/yubenzhe/releases/tag/v0.9.0)包含 Android APK、Windows 安装版和便携版、iOS 源码及校验清单。它是私有预发布，该 0.9.0 发布的 iOS 附件仅提供源码；当前 iOS 安装状态见上述新版记录。当前浏览器登录的 ChatGPT 账号无法打开原资料中心；查看本仓库中的说明不依赖该资料中心的访问权限。
 

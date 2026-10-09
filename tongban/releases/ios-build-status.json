@@ -1,7 +1,7 @@
 {
   "name": "愚笨者",
-  "version": "0.12.0",
-  "build": 14,
+  "version": "0.12.1",
+  "build": 15,
   "sourceProjectReady": true,
   "nativeCompiled": true,
   "deviceVerified": false,
@@ -18,13 +18,13 @@
   "layout": "Dopamine rootless",
   "architecture": "iphoneos-arm64",
   "bundleId": "app.yubenzhe.wallet",
-  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37922166794",
-  "sourceCommit": "9c87fe4c345d1e726a5d9e5f40791a9795bc6f6a",
+  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37922714334",
+  "sourceCommit": "e54ff57e906ca650900112864210a1e130d54a47",
   "installPackages": [
     {
-      "filename": "app.yubenzhe.wallet_0.12.0_iphoneos-arm64.deb",
-      "sizeBytes": 2378320,
-      "sha256": "372fcf62727be79304d1e9da2ee3c4048b5b187b3170bf0f4b9d3c10b3314d26"
+      "filename": "app.yubenzhe.wallet_0.12.1_iphoneos-arm64.deb",
+      "sizeBytes": 2378208,
+      "sha256": "ab4c104291dd74c92c0bf6ef87dd10d9c4a2bc24486b720d05c428c45f07a2aa"
     }
   ],
   "checks": {
@@ -41,12 +41,12 @@
   "startupFix": "Missing ad-hoc app identity prevented WebKit launch. Build 11 declares the app identity and its required container; adds one retry and a bounded startup timeout.",
   "webSnapshot": {
     "index.html": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
-    "app.js": "2641c2c5390d08c2822adc960627b9c193558854c86e2b6d91e43a266af0713b",
+    "app.js": "46b883fb9cc690d02052469f7f9d1beb1ba693809718937041d19c918cdaa3eb",
     "app.css": "d79810c35787756bfb70c0ed226b76aa0df924d1dc7d5efb6a501b83c7e3094e",
     "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
     "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a",
     "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec"
   },
-  "startupEvidence": "Build 14 USB upgrade succeeded. Device logs recorded starting local service, page loaded and ready; local HTML/JS/CSS returned 200. No new user visual confirmation for this build."
+  "startupEvidence": "Build 15 USB upgrade succeeded. Device logs recorded page loaded and ready. No new user visual confirmation for this build."
 }

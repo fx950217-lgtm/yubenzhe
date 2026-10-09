@@ -1,4 +1,11 @@
-愚笨者 Windows 客户端 0.12.0
+愚笨者 Windows 客户端 0.12.1
+
+0.12.1 仅移除“我”页面中重复的朋友圈入口，朋友圈统一保留在“发现”。其他界面沿用 0.12.0 的白灰背景、紫色强调、系统 sans-serif 黑灰字体、扁平列表与简洁底栏；浅紫星环 B 应用图标不变。
+0.12.1 已部署并完成客户端覆盖安装和启动检查，Android versionCode 14、iOS build 15，源码提交 e54ff57e906ca650900112864210a1e130d54a47。新加坡前台已切换至 /opt/yubenzhe/releases/0.12.1，下载区 25 个文件 SHA-256 全部通过。Android 14 已安装启动；Windows 安装器退出码为 0，安装 ASAR 与构建产物一致且客户端已启动；iOS build 15 经 macOS workflow 37922714334 构建成功，0.12.1 DEB 安装成功，日志确认 page loaded / ready。
+本轮通过 mine + discover 的 36 项相关网页测试、14 项布局检查、Android 5 项测试 / 85 条断言、Windows 23 项检查及 iOS 13 项 Python + 4 项桥接检查；在 360px / 1280px 两种尺寸额外确认“我”页面朋友圈入口为 0、“发现”入口为 1。未新增用户在手机上肉眼确认画面，完整实体设备功能验收仍未完成。0.12.0 的 270 项全量网页测试及安装验收保留为历史基线，不计为本轮全量重跑。 详细记录见 ../yubenzhe-deploy/reports/ui-0121-verification.json。 实际发布范围见 release-verification.json 和 ../tongban/releases/release-status.json。
+本次只调整入口展示，不改变朋友圈业务、账号服务或钱包能力。
+
+0.12.0 历史安装与验收
 
 0.12.0 参考微信官方 App Store 的消息列表与群聊截图，改为白色列表、浅灰背景和紫色重点操作；使用系统 sans-serif 字体与黑灰文字，主标题 18px、会话名称 17px、正文 16px。页面采用扁平分组列表、细分隔线、小圆角与简洁底部导航，减少大卡片、阴影和装饰文字。浅紫星环 B 应用图标保留，网络标识和说明仍只在钱包资产页显示。
 界面参考：https://apps.apple.com/cn/app/wechat/id414478124 。
@@ -15,7 +22,7 @@
 钱包仍仅连接 BSC 测试网；账号、好友、群聊及图片随账号同步；朋友圈、红包和平台余额仍为本机体验，不支持真实托管资金。
 
 安装
-优先运行已发布并完成校验的 yubenzhe-0.12.0-windows-x64-setup.exe；下载文件可对照发布状态 JSON 与 SHA-256 清单核验。安装到当前用户目录，无需管理员权限。
+优先运行已发布并完成校验的 yubenzhe-0.12.1-windows-x64-setup.exe；本机已覆盖安装并启动，0.12.0 保留为上一版安装记录。下载文件以发布状态 JSON 中的对应版本及 SHA-256 清单为准。安装到当前用户目录，无需管理员权限。
 免安装版解压 ZIP 后运行 Yubenzhe.exe。不要仅从 ZIP 中拖出单个 EXE，其余运行文件也必须保留。
 支持 Windows 10/11 64 位电脑。此构建无 Windows 代码签名证书；请先核对下载来源及 SHA256，并遵循系统安全提示，不要关闭安全防护。
 0.11.0 历史验收已完成编译、签名状态/安全边界核验及 23 项测试，并在当前 Windows 电脑安装启动，安装资源与当时构建一致。相机、文件导出和本地模型运行仍需完整设备验收。
@@ -40,7 +47,7 @@ web-assets-verification.json 记录打包前端文件 SHA256，release-verificat
 
 原生接口
 window.YubenzheDesktop.platform = 'windows'
-window.YubenzheDesktop.version = '0.12.0'
+window.YubenzheDesktop.version = '0.12.1'
 saveJson({filename, mimeType:'application/json', content}) -> Promise<{saved:boolean, method:'desktop'}>
 onBackground(callback) -> unsubscribe 函数
 接口没有任意文件读写、命令执行、process、Node.js 或 Electron 对象。
