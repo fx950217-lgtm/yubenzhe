@@ -1,6 +1,6 @@
 {
   "name": "愚笨者",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "environment": "public-ui-preview",
   "publiclyLaunched": false,
   "appStorePublished": false,
@@ -9,8 +9,8 @@
   "walletAndSocialCloudSync": false,
   "android": {
     "built": true,
-    "versionName": "0.11.0",
-    "versionCode": 11,
+    "versionName": "0.11.1",
+    "versionCode": 12,
     "appId": "app.tongban.wallet.demo",
     "signature": "original-preview",
     "signatureSHA256": "3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d",
@@ -20,7 +20,7 @@
   },
   "windows": {
     "built": true,
-    "version": "0.11.0",
+    "version": "0.11.1",
     "architecture": "x64",
     "signed": false,
     "installedOnWindows": true,
@@ -29,16 +29,16 @@
   },
   "ios": {
     "sourceReady": true,
-    "sourceVersion": "0.11.0",
+    "sourceVersion": "0.11.1",
     "built": true,
     "installableDeb": true,
     "layout": "rootless",
     "minimumIOS": "15.4",
     "deviceVerified": false,
     "installedOnDevice": true,
-    "build": 12,
+    "build": 13,
     "launchVerified": true,
-    "userScreenConfirmed": true
+    "userScreenConfirmed": false
   },
   "ai": {
     "webWorkspacePersistence": true,
@@ -47,6 +47,26 @@
     "nativePrivateCloudConnection": false
   },
   "files": [
+    {
+      "filename": "yubenzhe-0.11.1-android.apk",
+      "sizeBytes": 4136890,
+      "sha256": "27fe4997d9fa1d21c00e31ba9f9b75f48b44f2292685be557e30f2783748062a"
+    },
+    {
+      "filename": "yubenzhe-0.11.1-windows-x64-setup.exe",
+      "sizeBytes": 112340707,
+      "sha256": "e57cb24c523e7d439d6238a88f3dd1c17f46257f99075a2046b9c2bf6cd147b0"
+    },
+    {
+      "filename": "yubenzhe-0.11.1-windows-x64.zip",
+      "sizeBytes": 153925723,
+      "sha256": "5f2cfe4084a5742020dfd27b2fa4d21c7f9e94fb8d7586811b5a714339415d19"
+    },
+    {
+      "filename": "app.yubenzhe.wallet_0.11.1_iphoneos-arm64.deb",
+      "sizeBytes": 2371840,
+      "sha256": "e906f4a5ffb5f0b9d61b7c2bbf6ccc5ca305bf21624cbdec5a8967dd4b686025"
+    },
     {
       "filename": "yubenzhe-0.11.0-android.apk",
       "sizeBytes": 4136890,
@@ -117,5 +137,5 @@
   "scope": "Independent live accounts, profiles, friends and group messages; discovery and platform balances remain local preview. Standard EVM wallet import and address watching; BSC testnet only.",
   "socialCloudSync": true,
   "walletKeyCloudSync": false,
-  "sourceCommit": "0e5cca5dd759972e09a9b6dbaf51e7031dee157c"
+  "sourceCommit": "8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7"
 }

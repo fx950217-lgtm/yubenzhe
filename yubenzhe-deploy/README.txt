@@ -1,7 +1,9 @@
-0.11.1 界面修订发布准备中
+0.11.1 界面修订已部署
 
 本次仅调整消费者顶部 UI：移除全局 B /“愚笨者”品牌行和重复页标题，非资产页保留自己的标题、搜索和“＋”等操作；BSC 测试网标识及说明按钮仅在钱包资产页。浅紫星环 B 应用图标保留，不改变账号 API、钱包网络或持久数据路径。
-网页发布及各端安装准备中，Android versionCode 12、iOS build 13；实际状态以 ../tongban/releases/release-status.json、各平台验收 JSON 和本目录对应版本发布报告为准。以下 0.11.0 记录仅说明已完成的历史验收。
+0.11.1 发布目录 /opt/yubenzhe/releases/0.11.1，公网 /healthz 返回 200 且版本正确；网页 app.js 与 Android、Windows、iOS 快照 SHA-256 一致，下载区 17 个文件校验通过。后台、代理和 Ollama 容器 ID 未变。
+Android 原签名包已在模拟器覆盖安装为 0.11.1 / code 12 并启动；Windows 安装器退出码 0，安装 ASAR 与产物校验一致且新进程运行；iOS build 13 已安装，启动日志 ready，手机本地 index/js/css 均返回 200。本轮未新增 iPhone 画面的用户确认，完整物理设备功能验收仍未完成。
+本轮顶部 UI 14 项检查、相关网页测试 20 项、Android 5 项测试 / 85 条断言及 iOS 13 项 Python 检查通过。源码提交 8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7，iOS macOS workflow 37919888198 成功；实际记录见 reports/ui-0111-verification.json、../tongban/releases/release-status.json 和各平台验收 JSON。以下 0.11.0 记录仅说明历史验收，不计为 0.11.1 全量重跑。
 
 0.11.0 历史现网验收：0.11.0 已部署至 /opt/yubenzhe/releases/0.11.0，frontend 健康；后台、Ollama 和 Caddy 保持原容器。Linux 服务端50项通过，下载文件SHA-256全部一致。既有持久目录直接位于 /opt/yubenzhe 下，只有新增 social-state 位于 /opt/yubenzhe/shared 下。完整记录见 reports/social-011-verification.json。
 

@@ -1,7 +1,8 @@
 愚笨者 0.11.1 界面修订（以下旧版本记录保留用于追溯）
 
 本次仅调整顶部界面：移除全局 B /“愚笨者”品牌行和重复页标题，非资产页直接保留自己的标题、搜索和“＋”等操作；BSC 测试网标识与说明按钮仅显示在钱包资产页（#mine/assets）。浅紫色调和星环 B 应用图标保留，钱包仍固定 BSC 测试网。
-0.11.1 网页发布及各端安装准备中；Android versionCode 12，iOS build 13。实际状态以 releases/release-status.json 和各平台验收 JSON 的对应版本记录为准，不沿用 0.11.0 的安装结论。
+0.11.1 网页已部署，公网健康检查为 200 且版本正确；Android versionCode 12 已在模拟器原签名覆盖安装启动，Windows 已在当前电脑覆盖安装启动，iOS build 13 已安装并由日志确认 ready。本轮未新增 iPhone 画面的用户确认，完整物理设备功能仍未全部验收。实际范围见 releases/release-status.json、各平台验收 JSON 和 ../yubenzhe-deploy/reports/ui-0111-verification.json。
+本轮顶部 UI 14 项检查与相关网页测试 20 项通过，四端 app.js SHA-256 一致，下载区 17 个文件校验通过。0.11.0 完整功能测试保留为历史基线，不计为本轮全量重跑。
 
 0.11.0 功能与历史验收范围
 

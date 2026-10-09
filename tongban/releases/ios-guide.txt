@@ -1,6 +1,6 @@
-愚笨者 iOS 0.11.0 · build 12
+愚笨者 iOS 0.11.1 · build 13
 已通过 macOS 原生编译、ad-hoc 签名与本地资源校验。设备安装/启动状态见 ios-build-status.json。
-安装包：app.yubenzhe.wallet_0.11.0_iphoneos-arm64.deb
-SHA256：aaf8e1d4fafac2822216521dc909808d9afc3d7daa7968e7337a9f3413105c72
+安装包：app.yubenzhe.wallet_0.11.1_iphoneos-arm64.deb
+SHA256：e906f4a5ffb5f0b9d61b7c2bbf6ccc5ca305bf21624cbdec5a8967dd4b686025
 适用于已具备兼容 Dopamine rootless 环境的 arm64 iPhone，最低 iOS 15.4。普通 iPhone 可使用 HTTPS 网页版。
 使用现有包管理器安装；升级前关闭愚笨者，保留已有应用数据。钱包密钥不随账号同步。

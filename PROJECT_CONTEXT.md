@@ -1,12 +1,12 @@
 # 项目上下文
 
-交接日期：2026-10-09。原始交接基线：愚笨者 0.9.0；当前网页与各客户端源码：0.11.1（界面修订，发布与安装准备中）。此文件记录交接时事实，不自动代表后续线上状态。
+交接日期：2026-10-09。原始交接基线：愚笨者 0.9.0；当前网页与各客户端源码：0.11.1（界面修订，已部署并完成本轮安装与启动检查）。此文件记录交接时事实，不自动代表后续线上状态。
 
 ## 项目位置与接入状态
 
 代码源是私有仓库 https://github.com/fx950217-lgtm/yubenzhe ，产品与交接资料位于 https://chatgpt.com/space/page_6ac8849de8908191aa82fc7c575142e8 。仓库和资料中心分别管理权限，资料上传不自动同步代码。
 
-源码已推送到该私有 GitHub 仓库，并核对远端提交及 307 个文件。Codex Cloud 环境尚未发布，按当前交接记录确认，不能据此认定已有云端构建或运行环境。服务器应用数据、模型配置、访问凭证和备份单独保管，不包含在仓库里。
+源码已推送到该私有 GitHub 仓库；307 个文件的核对属于最初交接记录，0.11.1 构建源码提交为 `8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7`。Codex Cloud 环境尚未发布，按当前交接记录确认，不能据此认定已有云端构建或运行环境。服务器应用数据、模型配置、访问凭证和备份单独保管，不包含在仓库里。
 
 用户于 2026-10-09 选择先使用 GitHub，Codex Cloud 暂缓。下次用户说“继续配置云端”时，先教其在手机绑定身份验证器，由用户本人完成绑定和验证码确认，再继续连接仓库和创建环境；不设置定时提醒。当前浏览器登录的 ChatGPT 账号无法打开原资料中心，未修改其分享权限；代码与继续开发所需说明可直接在 GitHub 读取。
 
@@ -53,7 +53,7 @@
 
 网页先构建，再同步原生快照。服务器使用 Node 24；管理 UI 从 `yubenzhe-deploy/ui` 重建，依赖取自相邻 `tongban-admin`。Android wrapper JAR 与 Windows `build/icon.ico` 是必要输入，保留；其余构建输出和工具链不带入源码。
 
-现有验收服务器已于 2026-10-09 按用户要求迁移至 Vultr 新加坡独立实例 **Yubenzhe Singapore**，运维地址 `66.42.56.29`，项目目录 `/opt/yubenzhe`，本次界面修订前的已验收前台发布 `/opt/yubenzhe/releases/0.11.0`；后台、模型和反代保留原容器，旧版 0.9.0 可回滚。规格 2 vCPU / 4GB / 100GB NVMe，Ubuntu 24.04，实例 $24/月 + 自动备份 $4.80/月。原 `45.76.163.5` 保留 LoveMart；原机愚笨者三个容器已停止，项目文件及迁移前备份保留用于回滚，未修改 LoveMart。东京 Yuqi 实例未变更。
+现有验收服务器已于 2026-10-09 按用户要求迁移至 Vultr 新加坡独立实例 **Yubenzhe Singapore**，运维地址 `66.42.56.29`，项目目录 `/opt/yubenzhe`，当前前台版本为 0.11.1，发布目录 `/opt/yubenzhe/releases/0.11.1`；`/opt/yubenzhe/releases/0.11.0` 是前一版验收路径；后台、模型和反代保留原容器，旧版 0.9.0 可回滚。规格 2 vCPU / 4GB / 100GB NVMe，Ubuntu 24.04，实例 $24/月 + 自动备份 $4.80/月。原 `45.76.163.5` 保留 LoveMart；原机愚笨者三个容器已停止，项目文件及迁移前备份保留用于回滚，未修改 LoveMart。东京 Yuqi 实例未变更。
 
 迁移验收：66 个发布文件 SHA-256 一致，应用镜像保持 `sha256:c4eea64aa375665fe8ad70b3d186fb59e523a895a77b5a6d245cd29334f1a2ad`；停写后两套 SQLite 文件校验值一致，迁移后完整性及各表记录数一致；前后台 `/healthz` 通过，`qwen3:0.6b` 完成真实生成。保持前后台仅绑定回环地址及内部 Ollama；新机使用专用 SSH 密钥，凭证不入仓库。
 
@@ -65,11 +65,15 @@
 
 首次进入设置 6 位数字密码，自动分配随机用户名与 ID；进入后在“我的 → 个人资料”修改用户名和 ID。自定义 ID 至少 6 位数字，系统保留靓号；登录采用 ID + 密码，密码归账号设置管理。钱包独立创建或导入，创建钱包时才生成助记词；跨钱包恢复需兼容助记词标准、网络和派生路径。账号等级与平台授予的官方认证标志分开。0.11.0 已实现独立账号服务、ID 唯一性/保留号码、个人资料修改和密码轮换。钱包无须先创建账号，账号无须生成钱包。
 
-## 0.11.1 界面修订与发布准备
+## 0.11.1 界面修订与发布记录
 
 本次为纯 UI 调整：去掉全局顶部品牌行和重复标题，非资产页直接保留各自标题、搜索和“＋”等操作；仅钱包资产页（`#mine/assets`）显示 BSC 测试网标识及说明按钮。浅紫色调和星环 B 应用图标保留，不改变账号服务、钱包网络或资金能力。
 
-当前网页与客户端源码版本为 0.11.1；Android versionCode 12，iOS build 13。新版发布与安装准备中，不能把 0.11.0 的构建、安装或用户确认结果当作新版验收。实际版本、安装状态与校验结果以 `tongban/releases/release-status.json`、该目录各平台验收 JSON、`yubenzhe-desktop/release-verification.json` 和 `yubenzhe-ios/ios-build-status.json` 的对应版本记录为准。
+当前网页与客户端版本为 0.11.1；Android versionCode 12，iOS build 13。公网 `/healthz` 返回 200 且版本为 0.11.1；网页、Android、Windows 和 iOS 的 app.js SHA-256 一致，下载区 17 个文件 SHA-256 校验通过。后台、代理和 Ollama 容器 ID 未变。
+
+Android 已用原签名执行覆盖安装，核对版本 0.11.1 / code 12，并成功启动。Windows 安装器退出码为 0，安装后的 ASAR 与构建产物校验一致，新客户端进程运行。iOS build 13 已在 Dopamine iPhone X 安装，日志包含 starting local service、page loaded、ready，手机本地 index/js/css 均返回 200；本轮未要求用户肉眼确认画面，完整物理设备功能验收仍为未完成。
+
+本轮独立完成顶部 UI 14 项检查、相关网页测试 20 项、Android 5 项测试 / 85 条断言及 iOS 13 项 Python 检查。源码提交 `8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7`，iOS macOS workflow `37919888198` 构建成功。0.11.0 完整功能测试及用户确认仅作为历史基线，不计为本轮全量重跑。详情见 `yubenzhe-deploy/reports/ui-0111-verification.json`；安装与校验记录见 `tongban/releases/release-status.json`、该目录各平台验收 JSON、`yubenzhe-desktop/release-verification.json` 和 `yubenzhe-ios/ios-build-status.json`。
 
 ## 0.11.0 历史验收与数据路径
 
@@ -87,4 +91,4 @@
 
 ## 从新设备继续的提示词
 
-> 继续愚笨者项目。当前目录应为 https://github.com/fx950217-lgtm/yubenzhe 私有仓库的克隆；先核对 Git 远端和当前版本，读取根目录 AGENTS.md、PROJECT_CONTEXT.md 和相关子项目 README.txt，再运行 scripts/check-project.mjs 核对交接状态。当前网页、Android、Windows 和 iOS 源码为 0.11.1（发布与安装准备中，各端实际状态以对应版本 JSON 为准）：真实云端 AI 与合成后台样本分开；账号与好友/群消息使用独立 social-state；发现/平台余额/红包仍为本机演示，钱包仅 BSC 测试网。不要假定本设备已有凭证、SDK、模型或服务器连接，也不要把资料中心当自动同步或已配置的 Codex Cloud 环境。请先确认当前代码与我这次目标相关的实现，再完成我指定的工作并运行必要测试。部署、付费和真实资金操作按本次明确授权执行。
+> 继续愚笨者项目。当前目录应为 https://github.com/fx950217-lgtm/yubenzhe 私有仓库的克隆；先核对 Git 远端和当前版本，读取根目录 AGENTS.md、PROJECT_CONTEXT.md 和相关子项目 README.txt，再运行 scripts/check-project.mjs 核对交接状态。当前网页、Android、Windows 和 iOS 源码为 0.11.1（已部署并完成本轮安装与启动检查，完整功能验收范围以对应版本 JSON 为准）：真实云端 AI 与合成后台样本分开；账号与好友/群消息使用独立 social-state；发现/平台余额/红包仍为本机演示，钱包仅 BSC 测试网。不要假定本设备已有凭证、SDK、模型或服务器连接，也不要把资料中心当自动同步或已配置的 Codex Cloud 环境。请先确认当前代码与我这次目标相关的实现，再完成我指定的工作并运行必要测试。部署、付费和真实资金操作按本次明确授权执行。

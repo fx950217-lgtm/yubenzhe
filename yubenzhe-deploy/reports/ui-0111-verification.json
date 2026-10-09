@@ -1,0 +1,301 @@
+{
+  "version": "0.11.1",
+  "sourceCommit": "8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7",
+  "changes": [
+    "Network and environment controls render only in wallet assets.",
+    "Removed global top brand row and duplicate title; social pages begin with their own title, search and actions."
+  ],
+  "headerBrowser": {
+    "pass": true,
+    "checks": [
+      {
+        "view": "messages",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 28,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "contacts",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 28,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "discover",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 22,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "mine",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 28,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 1,
+        "railBrand": 1,
+        "contentTop": 76,
+        "networkTotal": 1,
+        "noticeTotal": 1,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "actionsWidth": 140.53125,
+        "actionsHeight": 34,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet/chain-tab",
+        "width": 360,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      },
+      {
+        "view": "wallet/platform-tab",
+        "width": 360,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      },
+      {
+        "view": "messages",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 42,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "contacts",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 42,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "discover",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 28,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "mine",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 34,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 1,
+        "railBrand": 1,
+        "contentTop": 84,
+        "networkTotal": 1,
+        "noticeTotal": 1,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "actionsWidth": 180.046875,
+        "actionsHeight": 40,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet/chain-tab",
+        "width": 1280,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      },
+      {
+        "view": "wallet/platform-tab",
+        "width": 1280,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      }
+    ],
+    "errors": []
+  },
+  "relevantWebTests": 20,
+  "androidTests": 5,
+  "androidAssertions": 85,
+  "iosPythonTests": 13,
+  "priorFeatureVerification": "social-011-verification.json",
+  "walletNetwork": 97,
+  "productionAccountsCreatedByTests": false,
+  "deployed": true,
+  "server": "66.42.56.29",
+  "releaseDirectory": "/opt/yubenzhe/releases/0.11.1",
+  "onlineAssetSHA256": "b7a4193fc8da416e1db6ff9fa405804e14480e0769a5b71356e9ce7b1e694800",
+  "publicChecks": [
+    {
+      "endpoint": "/healthz",
+      "status": 200,
+      "body": "{\"ok\":true,\"service\":\"frontend\",\"version\":\"0.11.1\",\"stage\":\"public-preview\"}"
+    },
+    {
+      "endpoint": "/api/social/me",
+      "status": 401,
+      "body": "{\"error\":\"请登录你的愚笨者账号。\",\"code\":\"ACCOUNT_REQUIRED\"}"
+    },
+    {
+      "endpoint": "/api/ai/models",
+      "status": 401,
+      "body": "{\"error\":\"验收会话已失效，请刷新页面重新登录。\",\"code\":\"SIGN_IN_REQUIRED\"}"
+    },
+    {
+      "endpoint": "/api/admin/session",
+      "status": 401,
+      "body": "{\"error\":\"验收会话已失效，请刷新页面重新登录。\",\"code\":\"SIGN_IN_REQUIRED\"}"
+    }
+  ],
+  "nativeCORS": [
+    {
+      "origin": "https://localhost",
+      "status": 204,
+      "allowed": "https://localhost"
+    },
+    {
+      "origin": "http://127.0.0.1:45931",
+      "status": 204,
+      "allowed": "http://127.0.0.1:45931"
+    },
+    {
+      "origin": "yubenzhe://app",
+      "status": 204,
+      "allowed": "yubenzhe://app"
+    }
+  ],
+  "downloadChecksumsVerified": true,
+  "otherContainersUnchanged": true,
+  "backedUpSocialBeforeDeployment": true,
+  "artifacts": [
+    {
+      "filename": "yubenzhe-0.11.1-android.apk",
+      "sizeBytes": 4136890,
+      "sha256": "27fe4997d9fa1d21c00e31ba9f9b75f48b44f2292685be557e30f2783748062a"
+    },
+    {
+      "filename": "yubenzhe-0.11.1-windows-x64-setup.exe",
+      "sizeBytes": 112340707,
+      "sha256": "e57cb24c523e7d439d6238a88f3dd1c17f46257f99075a2046b9c2bf6cd147b0"
+    },
+    {
+      "filename": "yubenzhe-0.11.1-windows-x64.zip",
+      "sizeBytes": 153925723,
+      "sha256": "5f2cfe4084a5742020dfd27b2fa4d21c7f9e94fb8d7586811b5a714339415d19"
+    },
+    {
+      "filename": "app.yubenzhe.wallet_0.11.1_iphoneos-arm64.deb",
+      "sizeBytes": 2371840,
+      "sha256": "e906f4a5ffb5f0b9d61b7c2bbf6ccc5ca305bf21624cbdec5a8967dd4b686025"
+    }
+  ],
+  "android": {
+    "installed": true,
+    "versionCode": 12,
+    "emulatorLaunchVerified": true,
+    "physicalDeviceVerified": false
+  },
+  "windows": {
+    "installed": true,
+    "launchVerified": true,
+    "installedAsarMatchesBuild": true,
+    "fullPhysicalFunctionality": false
+  },
+  "ios": {
+    "installed": true,
+    "build": 13,
+    "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37919888198",
+    "launchVerified": true,
+    "webPageLoaded": true,
+    "startupCoverDismissed": true,
+    "userVisualConfirmationForThisBuild": false,
+    "fullPhysicalFunctionality": false
+  },
+  "scope": "UI-only patch. Full feature regression results belong to 0.11.0; this release reran 14 browser layout checks, 20 relevant web tests and native packaging checks.",
+  "serverHealth": "healthy"
+}

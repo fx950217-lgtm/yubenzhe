@@ -1,6 +1,7 @@
 愚笨者 Android 工程 · 0.11.1（versionCode 12）
 
-0.11.1 安装准备中，实际构建、签名及设备安装结果以 ../tongban/releases/android-verification.json 和 release-status.json 的对应版本记录为准。0.11.0（versionCode 11）原签名包已在模拟器覆盖安装启动，这是历史验收，不代表 0.11.1 已安装。
+0.11.1 原签名包已在模拟器覆盖安装，核对 versionName 0.11.1 / versionCode 12，并成功启动（本轮记录 PID 2615）。打包网页 app.js 与网页、Windows 和 iOS 的 SHA-256 一致。实际构建、签名及安装结果见 ../tongban/releases/android-verification.json 和 ../tongban/releases/release-status.json。
+本轮 Android 5 项测试 / 85 条断言通过；共享网页的顶部 UI 14 项检查及相关测试 20 项通过。未完成实体 Android 手机的完整功能验收。0.11.0（versionCode 11）原签名包的模拟器覆盖安装启动记录保留为历史验收。
 本次仅同步顶部 UI：移除全局 B /“愚笨者”品牌行及重复页标题，各页面保留自己的标题、搜索和“＋”等操作；BSC 测试网标识及说明按钮仅在钱包资产页。应用图标保持浅紫星环 B。
 
 这是安装到 Android 的早期测试客户端，不是应用商店发行版。

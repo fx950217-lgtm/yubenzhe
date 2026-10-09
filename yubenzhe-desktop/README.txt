@@ -1,14 +1,14 @@
 愚笨者 Windows 客户端 0.11.1
 
-0.11.1 安装准备中，实际构建与安装结果以 release-verification.json 和 ../tongban/releases/release-status.json 的对应版本记录为准。
+0.11.1 已在当前 Windows 电脑覆盖安装：安装器退出码为 0，安装 ASAR 与构建产物 SHA-256 一致，新客户端进程运行。打包网页 app.js 与其余三端快照一致；共享网页的顶部 UI 14 项检查及相关测试 20 项通过。完整设备功能仍未全部验收，实际范围见 release-verification.json、../tongban/releases/release-status.json 和 ../yubenzhe-deploy/reports/ui-0111-verification.json。
 本次仅同步顶部 UI：移除全局 B /“愚笨者”品牌行及重复页标题，各页面保留自己的标题、搜索和“＋”等操作；BSC 测试网标识及说明按钮仅在钱包资产页。应用图标保持浅紫星环 B。
 
 用途
-独立安装的 Windows x64 桌面客户端。本轮是供团队查看最终界面与服务器联调的内部验收版本，尚未公开上线或提交 Microsoft Store。
+独立安装的 Windows x64 桌面客户端。本轮为公开体验版本，未上架 Microsoft Store。
 钱包仍仅连接 BSC 测试网；账号、好友、群聊及图片随账号同步；朋友圈、红包和平台余额仍为本机体验，不支持真实托管资金。
 
 安装
-0.11.1 安装包发布并完成校验后，优先运行 yubenzhe-0.11.1-windows-x64-setup.exe。安装到当前用户目录，无需管理员权限。
+优先运行已发布并完成校验的 yubenzhe-0.11.1-windows-x64-setup.exe。安装到当前用户目录，无需管理员权限。
 免安装版解压 ZIP 后运行 Yubenzhe.exe。不要仅从 ZIP 中拖出单个 EXE，其余运行文件也必须保留。
 支持 Windows 10/11 64 位电脑。此构建无 Windows 代码签名证书；请先核对下载来源及 SHA256，并遵循系统安全提示，不要关闭安全防护。
 0.11.0 历史验收已完成编译、签名状态/安全边界核验及 23 项测试，并在当前 Windows 电脑安装启动，安装资源与当时构建一致。相机、文件导出和本地模型运行仍需完整设备验收。

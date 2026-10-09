@@ -2,7 +2,9 @@
 
 熟人社交、测试网钱包和 AI 协作项目。当前网页与客户端源码为 **0.11.1 浅紫界面修订版**。本次仅整理顶部界面：移除全局 B /“愚笨者”品牌行和重复页标题，各页面直接保留自己的标题、搜索及“＋”等操作；“BSC 测试网”和说明按钮仅在钱包资产页显示。应用图标继续使用浅紫星环 B。独立账号、在线好友与群聊及标准钱包导入沿用 0.11.0；发现和平台资金流程仍为体验功能。
 
-[打开网页版](https://66.42.56.29/) · [下载安装包](https://66.42.56.29/install.html)。**0.11.1 发布与安装准备中**：Android versionCode 12，iOS build 13。实际发布版本及各端安装、验收结果以 [发布状态 JSON](tongban/releases/release-status.json)、各端验收 JSON 和 [iOS 构建状态](yubenzhe-ios/ios-build-status.json) 为准；报告中的旧版本记录不代表新版已经安装。
+[打开网页版](https://66.42.56.29/) · [下载安装包](https://66.42.56.29/install.html)。**0.11.1 已部署并完成本轮安装与启动检查**：Android versionCode 12 已用原签名在模拟器覆盖升级；Windows 已在当前电脑覆盖安装启动；iOS build 13 已在 Dopamine iPhone X 安装，启动日志确认页面 ready。本轮未新增 iPhone 画面的用户确认，也未完成全部物理设备功能验收。实际版本和检查范围见 [0.11.1 验收记录](yubenzhe-deploy/reports/ui-0111-verification.json)、[发布状态 JSON](tongban/releases/release-status.json) 和 [iOS 构建状态](yubenzhe-ios/ios-build-status.json)。
+
+0.11.1 独立完成顶部 UI 14 项检查及相关网页测试 20 项；四端 app.js SHA-256 一致，下载区 17 个文件校验通过。下述 0.11.0 完整功能验收作为历史基线保留，不计为本轮全量重跑。
 
 0.11.0 历史验收：Android 原签名包已在模拟器覆盖升级；Windows 已在当前电脑安装启动；iOS build 12 已在 Dopamine iPhone X 安装，用户确认可见账号登录页。完整范围见 [0.11.0 验收记录](yubenzhe-deploy/reports/social-011-verification.json)。
 
@@ -10,16 +12,16 @@
 
 代码源：[私有 GitHub 仓库](https://github.com/fx950217-lgtm/yubenzhe)。产品决策和交接索引：[云端资料中心](https://chatgpt.com/space/page_6ac8849de8908191aa82fc7c575142e8)。两者权限和内容分别管理；资料中心不会自动同步代码。服务器应用数据、访问凭证和数据库备份另行保存，不随 Git 克隆。
 
-当前接入状态：源码已推送到私有 GitHub，并核对远端提交及 307 个文件。用户已选择先使用 GitHub；Codex Cloud 环境尚未创建，下次继续配置时先指导手机身份验证器绑定。
+当前接入状态：源码已推送到私有 GitHub；307 个文件的核对属于最初交接记录，0.11.1 构建源码提交为 `8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7`。用户已选择先使用 GitHub；Codex Cloud 环境尚未创建，下次继续配置时先指导手机身份验证器绑定。
 
-[0.9.0 内部验收包下载](https://github.com/fx950217-lgtm/yubenzhe/releases/tag/v0.9.0)包含 Android APK、Windows 安装版和便携版、iOS 源码及校验清单。它是私有预发布，iOS 尚无可安装版本。当前浏览器登录的 ChatGPT 账号无法打开原资料中心；查看本仓库中的说明不依赖该资料中心的访问权限。
+[0.9.0 内部验收包下载](https://github.com/fx950217-lgtm/yubenzhe/releases/tag/v0.9.0)包含 Android APK、Windows 安装版和便携版、iOS 源码及校验清单。它是私有预发布，该 0.9.0 发布的 iOS 附件仅提供源码；当前 iOS 安装状态见上述新版记录。当前浏览器登录的 ChatGPT 账号无法打开原资料中心；查看本仓库中的说明不依赖该资料中心的访问权限。
 
 | 目录 | 内容 |
 | --- | --- |
 | `tongban` | 手机网页、在线社交、测试网钱包、AI 工作台及测试 |
 | `tongban-android` | Android 工程、Gradle wrapper、网页快照 |
 | `yubenzhe-desktop` | Windows/Electron 工程、本地 Ollama 桥 |
-| `yubenzhe-ios` | iOS 源码；仍需 Xcode 编译和设备验证 |
+| `yubenzhe-ios` | Swift 工程、macOS 构建与 DEB 打包；完整设备功能仍待验收 |
 | `yubenzhe-deploy` | 独立服务器前台门禁、管理后台、SQLite、AI 服务与运维脚本 |
 | `tongban-admin` | 仅保留重建管理界面所需的依赖清单、锁文件与图标 |
 

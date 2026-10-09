@@ -1,13 +1,13 @@
 {
   "name": "愚笨者",
-  "version": "0.11.0",
-  "build": 12,
+  "version": "0.11.1",
+  "build": 13,
   "sourceProjectReady": true,
   "nativeCompiled": true,
   "deviceVerified": false,
   "installedOnDevice": true,
   "launchVerified": true,
-  "userScreenConfirmed": true,
+  "userScreenConfirmed": false,
   "device": {
     "model": "iPhone X",
     "os": "iOS 16.7.12",
@@ -18,13 +18,13 @@
   "layout": "Dopamine rootless",
   "architecture": "iphoneos-arm64",
   "bundleId": "app.yubenzhe.wallet",
-  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37918577047",
-  "sourceCommit": "0e5cca5dd759972e09a9b6dbaf51e7031dee157c",
+  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37919888198",
+  "sourceCommit": "8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7",
   "installPackages": [
     {
-      "filename": "app.yubenzhe.wallet_0.11.0_iphoneos-arm64.deb",
-      "sizeBytes": 2371886,
-      "sha256": "aaf8e1d4fafac2822216521dc909808d9afc3d7daa7968e7337a9f3413105c72"
+      "filename": "app.yubenzhe.wallet_0.11.1_iphoneos-arm64.deb",
+      "sizeBytes": 2371840,
+      "sha256": "e906f4a5ffb5f0b9d61b7c2bbf6ccc5ca305bf21624cbdec5a8967dd4b686025"
     }
   ],
   "checks": {
@@ -41,12 +41,12 @@
   "startupFix": "Missing ad-hoc app identity prevented WebKit launch. Build 11 declares the app identity and its required container; adds one retry and a bounded startup timeout.",
   "webSnapshot": {
     "index.html": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
-    "app.js": "515211b81ea00ae4b38bee6b915ef85fadc915bca827498d4b3cd18818d54ec0",
-    "app.css": "a284bada155504bc1caac6f59fbe3ba1a1c4152d4acfff21dbe3743cccb3ca36",
+    "app.js": "b7a4193fc8da416e1db6ff9fa405804e14480e0769a5b71356e9ce7b1e694800",
+    "app.css": "4d34312f3ef09e8ddf80156e5e508dda6e3e36407343b4b63a7f0867c79c5ba6",
     "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
-    "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec",
-    "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a"
+    "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a",
+    "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec"
   },
-  "startupEvidence": "Device local server returned the final asset sizes. User confirmed the 6-digit password/login page on the iPhone."
+  "startupEvidence": "Build 13 USB installation succeeded. Device logs recorded starting local service, page loaded and ready. Device local index.html/app.js/app.css returned 200. The user confirmed the login page on prior build 12; build 13 has no new user visual confirmation."
 }
