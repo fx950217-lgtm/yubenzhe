@@ -14,7 +14,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 0.97, green: 0.98, blue: 0.96, alpha: 1)
+        view.backgroundColor = UIColor(red: 252/255, green: 250/255, blue: 1, alpha: 1)
         let content = WKUserContentController()
         if let url = Bundle.main.url(forResource: "bridge", withExtension: "js"), let js = try? String(contentsOf: url, encoding: .utf8) {
             content.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true))

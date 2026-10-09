@@ -2,7 +2,7 @@
 """Copy only checked local frontend assets; never include downloads or admin."""
 import argparse, hashlib, json, pathlib, shutil
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSETS = ('index.html', 'app.js', 'app.css', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png')
+ASSETS = ('index.html', 'app.js', 'app.css', 'icon.png', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png')
 p = argparse.ArgumentParser()
 p.add_argument('--source', type=pathlib.Path, default=ROOT.parent / 'tongban' / 'dist')
 a = p.parse_args()
@@ -11,8 +11,8 @@ for name in ASSETS:
     file = source / name
     if not file.is_file() or file.is_symlink():
         raise SystemExit('Missing regular application asset: ' + name)
-html = (source / 'index.html').read_text()
-js = (source / 'app.js').read_text()
+html = (source / 'index.html').read_text(encoding='utf-8')
+js = (source / 'app.js').read_text(encoding='utf-8')
 if 'Content-Security-Policy' not in html or '愚笨者' not in html:
     raise SystemExit('Expected branded, policy-protected frontend build.')
 if 'YubenzheNative' not in js:
@@ -25,5 +25,5 @@ for file in destination.iterdir():
     if file.is_file(): file.unlink()
 for name in ASSETS: shutil.copyfile(source / name, destination / name)
 manifest = {name: hashlib.sha256((destination / name).read_bytes()).hexdigest() for name in ASSETS}
-(ROOT / 'web-snapshot.json').write_text(json.dumps(manifest, indent=2) + '\n')
-print('Copied six frontend assets. No installers or admin included.')
+(ROOT / 'web-snapshot.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8', newline='\n')
+print('Copied seven frontend assets. No installers or admin included.')

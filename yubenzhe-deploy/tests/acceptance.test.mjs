@@ -14,10 +14,10 @@ import { setupAdmin, applyAction, getRecord } from '../upstream/admin/core.mjs';
 const password='Synthetic-password-ONLY-3274!';
 const auth=await passwordRecord('owner',password);
 const owner={userId:auth.userId,displayName:auth.displayName};
-async function fixture(role='admin') {
+async function fixture(role='admin', publicFrontend=false) {
  const dir=mkdtempSync(join(tmpdir(),'ybz-acceptance-'));writeFileSync(join(dir,'index.html'),'<h1>受限验收</h1>');
  const db=role==='admin'?openDatabase(join(dir,'acceptance.sqlite')):null;
- const origin='http://127.0.0.1:18809';const server=createAcceptanceServer({role,origin,authConfig:auth,database:db,staticRoot:dir});
+ const origin='http://127.0.0.1:18809';const server=createAcceptanceServer({role,origin,publicFrontend,authConfig:auth,database:db,staticRoot:dir});
  server.listen(0,'127.0.0.1');await once(server,'listening');const base=`http://127.0.0.1:${server.address().port}`;
  const request=(path,options={})=>new Promise((resolve,reject)=>{const req=httpRequest(base+path,{method:options.method || 'GET',headers:{Host:'127.0.0.1:18809',...options.headers}},res=>{const chunks=[];res.on('data',chunk=>chunks.push(chunk));res.on('end',()=>{const headers=new Headers();for(const [key,value] of Object.entries(res.headers)){if(value!==undefined)headers.set(key,Array.isArray(value)?value.join(', '):value)}resolve(new Response(Buffer.concat(chunks),{status:res.statusCode,headers}))})});req.on('error',reject);req.end(options.body?.toString())});
  async function login(){const result=await request('/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({username:'owner',password})});assert.equal(result.status,303);return result.headers.get('set-cookie').split(';')[0]}
@@ -88,4 +88,24 @@ test('logout revokes session; cookies are HttpOnly Strict; errors do not expose 
 });
 test('authentication config must exist, be valid and be private',()=>{
  const dir=mkdtempSync(join(tmpdir(),'ybz-auth-'));try{assert.throws(()=>readAuthFile());const file=join(dir,'auth.json');writeFileSync(file,JSON.stringify(auth),{mode:0o600});assert.equal(readAuthFile(file).userId,'acceptance-owner');chmodSync(file,0o644);assert.throws(()=>readAuthFile(file),/0600/)}finally{rmSync(dir,{recursive:true,force:true})}
+});
+test('public frontend serves pages and downloads without granting a private identity',async()=>{
+ const f=await fixture('frontend',true);try{
+  const page=await f.request('/');assert.equal(page.status,200);assert.equal(await page.text(),'<h1>受限验收</h1>');
+  writeFileSync(join(f.dir,'app.apk'),Buffer.from([1,2,3]));
+  const download=await f.request('/app.apk');assert.equal(download.status,200);assert.match(download.headers.get('content-disposition'),/attachment/);
+  for(const path of ['/api/ai/workspaces','/api/admin/bootstrap']) assert.equal((await f.request(path)).status,401);
+  for(const path of ['/.env','/%2e%2e%2fserver%2fstart.mjs']) assert.equal((await f.request(path)).status,404);
+  assert.equal((await f.request('/',{method:'POST'})).status,405);
+  assert.equal((await f.request('/',{headers:{Host:'attacker.example'}})).status,403);
+  assert.match(await (await f.request('/login')).text(),/name="password"/);
+  assert.equal((await (await f.request('/healthz')).json()).stage,'public-preview');
+ }finally{await f.close()}
+});
+test('public frontend flag never opens the admin role',async()=>{
+ const f=await fixture('admin',true);try{
+  assert.match(await (await f.request('/')).text(),/name="password"/);
+  assert.equal((await f.request('/api/admin/bootstrap')).status,401);
+  assert.equal((await (await f.request('/healthz')).json()).stage,'private-acceptance');
+ }finally{await f.close()}
 });

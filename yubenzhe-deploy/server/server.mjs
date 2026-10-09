@@ -19,7 +19,7 @@ async function body(request,limit=16384) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-export function createAcceptanceServer({ role, origin, authConfig, database, aiService = null, staticRoot, reportFile = new URL('../reports/thousand-users.json', import.meta.url) }) {
+export function createAcceptanceServer({ role, origin, authConfig, database, aiService = null, publicFrontend = false, staticRoot, reportFile = new URL('../reports/thousand-users.json', import.meta.url) }) {
   if (!['admin','frontend'].includes(role)) throw new Error('ROLE must be admin or frontend.');
   const publicURL = new URL(origin);
   if (!['http:','https:'].includes(publicURL.protocol) || publicURL.pathname !== '/' || publicURL.search || publicURL.hash || publicURL.username || publicURL.password) throw new Error('PUBLIC_ORIGIN must be a single origin.');
@@ -37,7 +37,7 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       const url = new URL(request.url || '/', publicURL.origin);
       if (url.pathname === '/healthz' && request.method === 'GET') {
         if (role === 'admin') database.raw.prepare('SELECT 1').get();
-        json(response,{ok:true,service:role,version:'0.9.0',stage:'private-acceptance'}); return;
+        json(response,{ok:true,service:role,version:'0.10.0',stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
       }
       if (request.headers.host !== publicURL.host || url.origin !== publicURL.origin) throw new AdminError(403,'HOST_DENIED','访问地址不匹配，请使用验收地址。');
       if (url.pathname === '/login' && request.method === 'POST') {
@@ -52,7 +52,9 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       const user = auth.user(request);
       if (!user) {
         if (url.pathname.startsWith('/api/')) { json(response,{error:'验收会话已失效，请刷新页面重新登录。',code:'SIGN_IN_REQUIRED'},401); return; }
-        response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); response.end(gatePage(role)); return;
+        if (role !== 'frontend' || !publicFrontend || url.pathname === '/login') {
+          response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); response.end(gatePage(role)); return;
+        }
       }
       if (url.pathname === '/logout' || url.pathname === '/signout-with-chatgpt') { response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); response.end(gatePage(role,'',true)); return; }
       if (url.pathname.startsWith('/api/')) {

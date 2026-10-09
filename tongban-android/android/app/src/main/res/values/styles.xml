@@ -18,7 +18,7 @@
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/tongban_splash</item>
-        <item name="windowSplashScreenBackground">#F7F9F5</item>
+        <item name="windowSplashScreenBackground">#FCFAFF</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/tongban_launcher</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>

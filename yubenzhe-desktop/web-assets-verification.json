@@ -2,11 +2,12 @@
   "source": "../tongban/dist",
   "version": "0.9.0",
   "files": {
-    "index.html": "2a8d8d2c2bc13f73f98d1162d81a0bed70231f9abeae25176a4d20598767b4a4",
-    "app.js": "2390eae42041f04a153a12573b55a78f3c78d979839454e0d8b242c37daea46f",
-    "app.css": "de4f4b3ac5bbea07728ef153ad9702639c4d0f1d9e866341c00e5efaf661b03c",
+    "index.html": "555013bc381c43879e839edccd456cf9be590db3ab165af740a68bc60ceb0844",
+    "app.js": "6f080608a28e36abebc3e656576e34840ca19bed8a3673bbb6fec133e639d78c",
+    "app.css": "322ba808f52c61190171b59f5625912cfca6c6bd83e252c52bb4919a9ebbd99d",
+    "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
-    "apple-touch-icon.png": "e0ce0efd3a6f53efffdf4cfe62bfa711f48eb3a35d461f667327b52c3fb11437",
-    "manifest.webmanifest": "1ff704c7ca4572033217d036e9c06ba7c8678e650c8a7982284d9a50733991d9"
+    "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a",
+    "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec"
   }
 }

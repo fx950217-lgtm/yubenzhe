@@ -1,7 +1,7 @@
 {
   "name": "愚笨者",
-  "version": "0.9.0",
-  "environment": "private-server-acceptance",
+  "version": "0.10.0",
+  "environment": "public-ui-preview",
   "publiclyLaunched": false,
   "appStorePublished": false,
   "chainId": 97,
@@ -9,18 +9,21 @@
   "walletAndSocialCloudSync": false,
   "android": {
     "built": true,
-    "versionName": "0.9.0",
-    "versionCode": 9,
-    "appId": "app.tongban.wallet.demo",
-    "signature": "existing-internal",
-    "signatureSHA256": "3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d",
-    "deviceVerified": false
+    "versionName": "0.10.0",
+    "versionCode": 10,
+    "appId": "app.tongban.wallet.lilac",
+    "signature": "independent-preview",
+    "signatureSHA256": "cd8934cc20428e3926abde3774ef19d10b6e2a23a66f798179b613c93093b361",
+    "emulatorLaunchVerified": true,
+    "deviceVerified": false,
+    "coexistsWith": "app.tongban.wallet.demo"
   },
   "windows": {
     "built": true,
     "architecture": "x64",
     "signed": false,
-    "deviceVerified": false
+    "deviceVerified": false,
+    "version": "0.9.0"
   },
   "ios": {
     "sourceReady": true,
@@ -36,6 +39,11 @@
     "nativePrivateCloudConnection": false
   },
   "files": [
+    {
+      "filename": "yubenzhe-0.10.0-lilac-android.apk",
+      "sizeBytes": 4108218,
+      "sha256": "3634ad6c80bc7cc57115c77a51c9446536ee73cdf8d95ba8395a9aba22307730"
+    },
     {
       "filename": "yubenzhe-0.9.0-android.apk",
       "sizeBytes": 3477310,
@@ -56,5 +64,7 @@
       "sizeBytes": 371691,
       "sha256": "7dd14022a15af3d9685660a0f8bfc26a3858c4cb5ee2d7aa74dedf5d7dbbd94e"
     }
-  ]
+  ],
+  "publicPreview": true,
+  "scope": "Approved bright lilac UI and orbit B; social/profile remain local demo. Production accounts, random/custom IDs, reserved IDs, levels and official badges are pending backend integration."
 }

@@ -69,7 +69,7 @@ test('web installation entry navigates while the installed app omits it and hand
 test('personal center labels local identity and forwards own moments, drafts, and bills precisely', () => {
   const app = harness();
   assert.match(app.container.innerHTML, /本机资料/);
-  assert.match(app.container.innerHTML, /愚笨者 · 0.9.0 · 仅支持 BSC 测试网/);
+  assert.match(app.container.innerHTML, /愚笨者 · 0.10.0 · 仅支持 BSC 测试网/);
   assert.match(app.container.innerHTML, /3 份 · 未提交/);
   app.click('moments'); app.click('drafts'); app.click('bill-center'); app.click('ai');
   assert.deepEqual(app.calls, [

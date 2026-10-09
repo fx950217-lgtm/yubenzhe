@@ -110,7 +110,7 @@ test('each conversation retains its unsent draft through internal navigation and
 test('switching conversations preserves drafts and returns directly to the original list', () => {
   const a = mount();
   try {
-    a.click('filter', 'friends'); a.input('[data-search]', '咖啡');
+    a.input('[data-search]', '咖啡');
     a.click('open-chat', 'lin'); a.input('[name=message]', '林一未发送');
     a.click('open-chat', 'ke'); a.input('[name=message]', '可可未发送');
     a.click('open-chat', 'lin'); assert.match(a.root.innerHTML, /value="林一未发送"/);
@@ -136,12 +136,13 @@ test('sidebar return opens messages even when chat began from contacts', () => {
   } finally { a.cleanup(); }
 });
 
-test('list search, filter and scroll restore after leaving chat and after tab remount', () => {
+test('list search and scroll restore without the removed friend/group filter', () => {
   const a = mount();
   try {
-    a.click('filter', 'friends'); a.input('[data-search]', '咖啡'); window.scrollY = 126; a.container.scrollTop = 52;
+    assert.doesNotMatch(a.root.innerHTML, /aria-label="消息筛选"/);
+    a.input('[data-search]', '咖啡'); window.scrollY = 126; a.container.scrollTop = 52;
     a.click('open-chat', 'lin'); a.cleanup.back(); flush();
-    assert.match(a.root.innerHTML, /value="咖啡"/); assert.match(a.root.innerHTML, /aria-selected="true" class="is-active" data-action="filter" data-id="friends"/);
+    assert.match(a.root.innerHTML, /value="咖啡"/); assert.doesNotMatch(a.root.innerHTML, /data-action="filter"/);
     assert.equal(window.scrollY, 126); assert.equal(a.container.scrollTop, 52);
     a.cleanup();
     const b = mount();

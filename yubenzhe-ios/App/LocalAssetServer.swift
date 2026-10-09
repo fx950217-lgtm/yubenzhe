@@ -8,7 +8,7 @@ final class LocalAssetServer {
     static let origin = "http://127.0.0.1:\(port)"
     static let assetTypes = [
         "index.html": "text/html; charset=utf-8", "app.js": "application/javascript; charset=utf-8",
-        "app.css": "text/css; charset=utf-8", "icon.svg": "image/svg+xml",
+        "app.css": "text/css; charset=utf-8", "icon.svg": "image/svg+xml", "icon.png": "image/png",
         "manifest.webmanifest": "application/manifest+json", "apple-touch-icon.png": "image/png"
     ]
     private let queue = DispatchQueue(label: "app.yubenzhe.loopback")

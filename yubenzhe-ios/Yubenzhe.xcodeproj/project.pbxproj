@@ -298,9 +298,9 @@
 				<key>CODE_SIGN_STYLE</key>
 				<string>Automatic</string>
 				<key>CURRENT_PROJECT_VERSION</key>
-				<string>8</string>
+				<string>10</string>
 				<key>MARKETING_VERSION</key>
-				<string>0.8.0</string>
+				<string>0.10.0</string>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
 				<string>$(inherited) @executable_path/Frameworks</string>
 				<key>SUPPORTED_PLATFORMS</key>
@@ -368,9 +368,9 @@
 				<key>CODE_SIGN_STYLE</key>
 				<string>Automatic</string>
 				<key>CURRENT_PROJECT_VERSION</key>
-				<string>8</string>
+				<string>10</string>
 				<key>MARKETING_VERSION</key>
-				<string>0.8.0</string>
+				<string>0.10.0</string>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
 				<string>$(inherited) @executable_path/Frameworks</string>
 				<key>SUPPORTED_PLATFORMS</key>

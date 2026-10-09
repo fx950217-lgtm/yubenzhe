@@ -286,10 +286,9 @@ export function mountDiscover(container, options = {}) {
     setup?.(dialog);
   }
   function renderHub() {
-    const friends=people().filter(p=>p.isFriend),recent=posts().filter(p=>p.authorId!=='me').slice(0,1),draft=activeDrafts()[0];
+    const friends=people().filter(p=>p.isFriend),draft=activeDrafts()[0];
     return `<div class="disc-home-top"><div><h2>发现</h2><p class="disc-home-subtitle">和熟悉的人，分享与协作</p></div>${button(`${icon('plus')} 发动态`,'compose','disc-record')}</div>
       <section class="disc-circle-panel disc-simple-circle" aria-label="朋友圈入口"><button type="button" class="disc-circle-entry" data-disc="moments"><span class="disc-circle-symbol">${icon('moment')}</span><span><strong>朋友圈</strong><small>朋友的近况，自己的生活</small></span><span class="disc-friend-stack" aria-hidden="true">${friends.slice(0,3).map(avatar).join('')}</span>${icon('arrow')}</button>
-        <div class="disc-circle-recent">${recent.map(p=>`<button type="button" data-disc="moments">${avatar(person(p.authorId))}<span><strong>${esc(person(p.authorId)?.name||'好友')}<small>${p.migrated?'本机旧动态':relativeTime(p.createdAt)}</small></strong><p>${esc(p.text)}</p></span></button>`).join('') || '<p class="disc-circle-empty">写一条动态，记录今天的小事。</p>'}</div>
       </section>
       <section class="disc-work-list disc-simple-entries" aria-label="发现功能"><button class="disc-work-row" type="button" data-disc="ai"><span class="disc-work-icon purple">${icon('ai')}</span><span><strong>AI 工作台</strong><small>本地安装 · 云端使用</small></span>${icon('arrow')}</button><button class="disc-work-row" type="button" data-disc="services"><span class="disc-work-icon blue">${icon('briefcase')}</span><span><strong>更多服务</strong><small>赏金、服务商、排行榜与发币</small></span>${icon('arrow')}</button></section>
       ${draft?`<section class="disc-resume-section disc-compact-resume" aria-label="继续草稿"><div class="disc-section-head"><h3>上次未完成</h3>${button('全部草稿','drafts','disc-text')}</div><button type="button" class="disc-resume-card" data-disc="edit-draft" data-id="${esc(draft.id)}"><span class="disc-resume-icon">${icon('file')}</span><span><small>${names[draft.type]} · ${draftStatus(draft.type)}</small><strong>${esc(draftTitle(draft))}</strong></span>${icon('arrow')}</button></section>`:''}

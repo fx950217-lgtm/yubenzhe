@@ -3,6 +3,7 @@ import { mkdir, copyFile, writeFile, cp } from 'node:fs/promises';
 await mkdir('dist',{recursive:true});
 await build({entryPoints:['src/app.js'],bundle:true,minify:true,outdir:'dist',entryNames:'app',target:['es2022','safari15.4'],format:'esm',legalComments:'eof'});
 await copyFile('src/index.html','dist/index.html');
+await copyFile('src/icon.png','dist/icon.png');
 await copyFile('src/icon.svg','dist/icon.svg');
 await copyFile('src/apple-touch-icon.png','dist/apple-touch-icon.png');
 await copyFile('src/manifest.webmanifest','dist/manifest.webmanifest');

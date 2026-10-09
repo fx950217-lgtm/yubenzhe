@@ -1,3 +1,9 @@
+2026-10-09 更新：前台 0.10.0 已在 https://66.42.56.29 公开提供浅紫界面与 Android 下载；AI/API、管理后台保留身份验证。生产账号体系未接入。
+当前前台发布目录 /opt/yubenzhe/releases/0.10.0，镜像 yubenzhe-public:0.10.0；后台和模型保留原容器。发布前已对两套 SQLite 在线备份，完整性检查通过。Linux Node 24 后端验收 22/22。
+构建网页并 stage 后，使用 compose.yaml + compose.public.yaml 构建、仅更新 frontend（up -d --no-deps frontend）。Caddy IP 证书数据持久保留；不要重新创建账号、数据库或模型状态。旧 0.9.0 目录和镜像保留回滚。
+
+以下为原始 0.9.0 受限验收搭建说明，默认门禁行为仍保留；PUBLIC_FRONTEND=true 仅开放前台静态资源。
+
 愚笨者 0.9.0 · 受限服务器验收部署包
 
 状态与范围

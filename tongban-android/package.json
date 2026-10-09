@@ -1,6 +1,6 @@
 {
   "name": "tongban-android-preview",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "description": "愚笨者 Android 应用",
   "packageManager": "pnpm@11.19.0",

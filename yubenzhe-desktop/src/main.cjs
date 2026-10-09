@@ -63,7 +63,7 @@ async function initialize() {
   isolatedSession.setDevicePermissionHandler(() => false);
   window = new BrowserWindow({
     width: 1180, height: 820, minWidth: 800, minHeight: 620, show: false,
-    title: '愚笨者', backgroundColor: '#f7f9f5', autoHideMenuBar: true,
+    title: '愚笨者', backgroundColor: '#FCFAFF', autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'), session: isolatedSession,
       contextIsolation: true, nodeIntegration: false, nodeIntegrationInWorker: false,

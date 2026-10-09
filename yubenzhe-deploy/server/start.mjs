@@ -12,6 +12,6 @@ const authConfig=readAuthFile(process.env.AUTH_CONFIG_FILE);
 const database=role==='admin' ? openDatabase(process.env.DATABASE_PATH || './state/acceptance.sqlite') : null;
 const aiDatabase=openAiDatabase(process.env.AI_DATABASE_PATH || './ai-state/workspaces.sqlite');
 const aiService=createAiService({database:aiDatabase,provider:createAiProvider()});
-const server=createAcceptanceServer({aiService,role,origin:process.env.PUBLIC_ORIGIN,authConfig,database,staticRoot:resolve(process.env.STATIC_ROOT || `./public/${role}`)});
-server.listen(port,host,()=>console.log(`${role} private-acceptance 0.9.0 listening on ${host}:${port}`));
+const server=createAcceptanceServer({aiService,role,origin:process.env.PUBLIC_ORIGIN,publicFrontend:process.env.PUBLIC_FRONTEND === 'true',authConfig,database,staticRoot:resolve(process.env.STATIC_ROOT || `./public/${role}`)});
+server.listen(port,host,()=>console.log(`${role} ${role === 'frontend' && process.env.PUBLIC_FRONTEND === 'true' ? 'public-preview' : 'private-acceptance'} 0.10.0 listening on ${host}:${port}`));
 for(const signal of ['SIGTERM','SIGINT']) process.once(signal,()=>{server.close(async()=>{await aiService.close();aiDatabase.close();database?.close();process.exit(0)});setTimeout(()=>process.exit(1),12000).unref()});

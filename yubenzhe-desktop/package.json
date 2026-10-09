@@ -1,11 +1,13 @@
 {
   "name": "yubenzhe-desktop",
   "productName": "愚笨者",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "愚笨者桌面客户端，钱包与熟人社交",
   "private": true,
   "main": "src/main.cjs",
-  "author": { "name": "愚笨者" },
+  "author": {
+    "name": "愚笨者"
+  },
   "license": "UNLICENSED",
   "scripts": {
     "sync:web": "node scripts/copy-web.mjs",
@@ -27,10 +29,30 @@
       "onlyLoadAppFromAsar": true
     },
     "npmRebuild": false,
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["src/*.cjs", "web/*", "package.json"],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/*.cjs",
+      "web/*",
+      "package.json"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }, { "target": "zip", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.ico",
       "executableName": "Yubenzhe",
       "signExecutable": false,
@@ -46,7 +68,10 @@
       "shortcutName": "愚笨者",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
-      "installerLanguages": ["zh_CN", "en_US"],
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
       "displayLanguageSelector": true,
       "artifactName": "yubenzhe-${version}-windows-x64-setup.exe"
     }

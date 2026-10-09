@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-09",
+  "selectedTheme": "晨雾浅紫",
+  "themeUserApproved": true,
+  "logoVariant": "silver pearl B with lavender orbital ring and pale lavender tile",
+  "mode": "built-in image_gen edit",
+  "source": "yubenzhe-orbit-b.png",
+  "asset": "orbit-b-lilac.png",
+  "prompt": "Use case: style-transfer. Asset type: final mobile app icon for 愚笨者, compatible with the selected bright pale lavender UI. Input image 1 is the EDIT TARGET, the already approved orbit-ring capital B logo. Change only its colors, materials and lighting to a fresh, bright lavender-and-pearl palette. Preserve the distinctive capital B silhouette, ribbon-like polished metal structure, exact diagonal elliptical orbital ring, centered composition and rounded-square app tile. The tile must be luminous pale lavender (roughly #EEE7FC to #DCCCF5), the B pearl silver/white with lavender mid-tone edges (#8053BA) for readable small-size contrast, and the thin orbital ring pearl white with soft lavender edge highlights. Soft daylight studio lighting, elegant subtle 3D depth, clean premium future-tech, gentle luminous highlights, no dark or navy background and no dark scene. Transparent outside the rounded-square tile, crisp silhouette. One single square icon only, no presentation board, no captions, no extra letters, no slogan, no watermark. Retain clear unmistakable uppercase B at small sizes; keep the front ring visible without obscuring the letter.",
+  "palette": {
+    "background": "#FCFAFF",
+    "surface": "#FFFFFF",
+    "accent": "#8053BA",
+    "tint": "#F0E6FC",
+    "text": "#443754",
+    "border": "#E8E0F4"
+  },
+  "status": "Integrated into web 0.10.0 and independently signed Android 0.10.0 preview; user approved as current final design.",
+  "webAsset": "tongban/src/icon.png",
+  "nativeAsset": "tongban-android/android/app/src/main/res/drawable-nodpi/orbit_b_lilac.png"
+}

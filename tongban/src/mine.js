@@ -42,7 +42,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
       <button type="button" class="mine-assets-entry" data-mine-action="wallet"><span class="mine-assets-symbol">${icon('wallet')}</span><span class="mine-assets-copy"><strong>我的资产</strong><small>钱包与平台余额</small></span><span class="mine-assets-state ${unavailable ? 'is-unavailable' : ''}">${walletLabel}</span>${icon('arrow')}</button>
       <div class="mine-home-shortcuts"><button type="button" class="mine-home-shortcut mine-mint" data-mine-action="moments"><span class="mine-shortcut-icon">${icon('moments')}</span><span><strong>朋友圈</strong><small>我的动态</small></span>${icon('arrow')}</button><button type="button" class="mine-home-shortcut mine-lilac" data-mine-action="drafts"><span class="mine-shortcut-icon">${icon('draft')}</span><span><strong>草稿</strong><small>${count === '暂不可用' ? '数量暂不可用' : `${count} 份 · 未提交`}</small></span>${icon('arrow')}</button></div>
       <section class="mine-list mine-home-links" aria-label="个人功能">${row('ai', '我的 AI 工作台', '本地安装与云端进度', 'order')}${row('bill-center', '账单记录', '', 'bill')}${row('security', '安全设置', '', 'shield')}${row('help', '帮助', '', 'help')}${!isNative?row('install', '安装愚笨者', '手机与电脑', 'wallet'):''}</section>
-      <p class="mine-footnote mine-home-footnote">愚笨者 · 0.9.0 · 仅支持 BSC 测试网</p>`;
+      <p class="mine-footnote mine-home-footnote">愚笨者 · 0.10.0 · 仅支持 BSC 测试网</p>`;
   }
   function edit() {
     if (!profile) return `${heading('编辑资料', '仅保存在当前设备')}<div class="mine-info mine-warning" role="alert">资料暂不可用，当前不能覆盖原始资料。</div>${button('retry-profile', '返回并重新读取')}`;

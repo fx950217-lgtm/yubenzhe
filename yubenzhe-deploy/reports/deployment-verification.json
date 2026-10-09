@@ -28,8 +28,9 @@
   },
   "frontend": {
     "staged": true,
-    "stagedAt": "2026-10-09T01:34:21.850Z",
+    "stagedAt": "2026-10-09T09:28:31.065Z",
     "consumerConnected": false,
+    "cloudAIConnected": true,
     "adminEntry": false
   },
   "docker": {

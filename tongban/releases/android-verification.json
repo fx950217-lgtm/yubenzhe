@@ -1,17 +1,21 @@
 {
-  "filename": "yubenzhe-0.9.0-android.apk",
-  "version": "0.9.0",
-  "versionCode": 9,
-  "appId": "app.tongban.wallet.demo",
+  "filename": "yubenzhe-0.10.0-lilac-android.apk",
+  "version": "0.10.0",
+  "versionCode": 10,
+  "appId": "app.tongban.wallet.lilac",
   "minimumAndroid": "7.0 (API 24)",
   "targetApi": 36,
-  "sizeBytes": 3477310,
-  "sha256": "caf164a01fad87cecdc8a225b3ab6a0f9e9a89fe7586c3d9c48f65f1e5859f91",
+  "sizeBytes": 4108218,
+  "sha256": "3634ad6c80bc7cc57115c77a51c9446536ee73cdf8d95ba8395a9aba22307730",
+  "signature": "Verifies\r\nVerified using v1 scheme (JAR signing): false\r\nVerified using v2 scheme (APK Signature Scheme v2): true\r\nVerified using v3 scheme (APK Signature Scheme v3): true\r\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\r\nVerified using v4 scheme (APK Signature Scheme v4): false\r\nVerified for SourceStamp: false\r\nNumber of signers: 1\r\nSigner #1 certificate DN: CN=Yubenzhe Lilac Preview, OU=Testing, O=Yubenzhe\r\nSigner #1 certificate SHA-256 digest: cd8934cc20428e3926abde3774ef19d10b6e2a23a66f798179b613c93093b361\r\nSigner #1 certificate SHA-1 digest: e4c31fd1f47ffe899e3d2a04774f0949bd7598f4\r\nSigner #1 certificate MD5 digest: d5fedb234cb37a97597f1a406a3d7312\r\nSigner #1 key algorithm: RSA\r\nSigner #1 key size (bits): 3072\r\nSigner #1 public key SHA-256 digest: 611d2a471cf3b9d8d015c1600ba78d6c8da49777745ad8c0540264402cdc604b\r\nSigner #1 public key SHA-1 digest: 2d11953d857760d62412f67bdd70a7d50464ce73\r\nSigner #1 public key MD5 digest: 38c535665e7f92b641fdcdf58e812bd6\r\n",
+  "signatureType": "independent-preview-key",
+  "coexistsWith": "app.tongban.wallet.demo",
   "permissions": [
     "android.permission.INTERNET",
     "android.permission.CAMERA",
-    "app.tongban.wallet.demo.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+    "app.tongban.wallet.lilac.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
   ],
-  "signature": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): true\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1\nSigner #1 certificate DN: CN=Tongban Preview, OU=Testing, O=Tongban Preview\nSigner #1 certificate SHA-256 digest: 3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d\nSigner #1 certificate SHA-1 digest: ce772c987f452b52a3ae2ee3cb913fea73c34300\nSigner #1 certificate MD5 digest: 24600cdceebf568b210a303c10adef4c\nSigner #1 key algorithm: RSA\nSigner #1 key size (bits): 3072\nSigner #1 public key SHA-256 digest: 746d9afb2c133981834cfc7b6f2944007ade9617f866a8ddb0e90d7ca301c06c\nSigner #1 public key SHA-1 digest: 9e4124ebdde6593644f6907fae9f68e2d15198cd\nSigner #1 public key MD5 digest: f8d028d91db20a5dce288f307c8ea35b\n",
-  "verification": "Build, signature, embedded asset equality, permissions and packaged configuration verified. No device or emulator test performed."
+  "verification": "Release build, signature v2/v3, bundled assets, permissions and emulator install/launch verified. Browser UI checked at 360px and desktop. Native screen capture restricted by FLAG_SECURE.",
+  "emulatorLaunchVerified": true,
+  "physicalDeviceVerified": false
 }

@@ -36,12 +36,12 @@ def verify_app(app, expected_manifest=None, verify_signature=True):
         if item.is_symlink(): raise ValueError('Symlink not allowed in this dependency-free app')
     with (app / 'Info.plist').open('rb') as file: info = plistlib.load(file)
     if info.get('CFBundleIdentifier') != EXPECTED_ID: raise ValueError('Incorrect app bundle identifier')
-    if info.get('CFBundleShortVersionString') != '0.8.0': raise ValueError('Unexpected app version')
+    if info.get('CFBundleShortVersionString') != '0.10.0': raise ValueError('Unexpected app version')
     executable = info.get('CFBundleExecutable', '')
     if not executable or pathlib.PurePath(executable).name != executable: raise ValueError('Unsafe executable path')
     macho_ios_arm64(app / executable)
     web = app / 'Web'
-    expected_names = {'index.html', 'app.js', 'app.css', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png'}
+    expected_names = {'index.html', 'app.js', 'app.css', 'icon.png', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png'}
     if {x.name for x in web.iterdir()} != expected_names: raise ValueError('Unexpected or missing web asset')
     if expected_manifest:
         checksums = json.loads(pathlib.Path(expected_manifest).read_text())

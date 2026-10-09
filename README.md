@@ -1,6 +1,8 @@
 # 愚笨者
 
-熟人社交、测试网钱包和 AI 协作项目。当前交接基线为 **0.9.0，受限验收阶段**。
+熟人社交、测试网钱包和 AI 协作项目。当前网页与 Android 为 **0.10.0 浅紫公开体验版**，产品账号与多人社交仍待后端接入。
+
+[打开网页版](https://66.42.56.29/) · [下载 Android 浅紫测试版](https://66.42.56.29/downloads/yubenzhe-0.10.0-lilac-android.apk)。Android 使用独立测试包名，与旧版并存；Windows 仍为 0.9.0，iOS 尚无安装包。
 
 先读 [项目上下文](PROJECT_CONTEXT.md) 和 [协作约定](AGENTS.md)。详细重建顺序保留在原始 [源码包说明](README.txt)。
 
@@ -23,7 +25,7 @@
 
 1. 登录同一 GitHub 账号 `fx950217-lgtm`，即可访问上述私有仓库；团队成员使用自己的获授权账号。
 2. 要继续开发，在新设备克隆该仓库并用 Codex 打开 `yubenzhe` 文件夹。每次换设备前提交并推送要同步的代码，换设备后先同步已提交代码；未提交或未推送的改动不会自动同步。保持各子项目同级，并阅读根目录说明。
-3. 准备 Node 24 与各 `package.json` 指定的 pnpm，在项目根运行 `node scripts/check-project.mjs`。它核对原快照哈希、必须文件及禁带材料，不联网。
+3. 准备 Node 24 与各 `package.json` 指定的 pnpm，在项目根运行 `node scripts/check-project.mjs --allow-changes`。它核对原始 0.9.0 快照的必需文件并允许已提交源码变更，检查、必须文件及禁带材料，不联网。
 4. 在准备开发的子项目执行 `pnpm install --frozen-lockfile`，再运行该项目测试。网页使用 `pnpm test`、`pnpm build`。
 5. 原生重建先构建 `tongban/dist`，再运行对应同步脚本；环境要求见各子项目 `README.txt`。Android 需要 JDK 21/SDK 36，iOS 需要完整 Xcode。
 6. 重建服务器管理界面前，还需安装 `tongban-admin` 的锁定依赖。服务器运行与部署步骤见 `yubenzhe-deploy/README.txt`，不要复用示例口令。

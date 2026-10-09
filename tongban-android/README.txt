@@ -1,7 +1,7 @@
-愚笨者 Android 工程 · 0.9.0（versionCode 9）
+愚笨者 Android 工程 · 0.10.0（versionCode 10）
 
 这是安装到 Android 的早期测试客户端，不是应用商店发行版。
-暂定包名 app.tongban.wallet.demo，不表示域名或商标所有权。
+默认工程包名 app.tongban.wallet.demo；本次独立测试包使用 app.tongban.wallet.lilac，与旧版并存，不迁移旧版本机数据。
 支持 Android 7.0 / API 24 及以上；Android System WebView / Chrome 需105及以上。
 目前没有在 Android 实机上验收相机、键盘、系统保存窗口或后台恢复。
 
@@ -45,13 +45,13 @@ node scripts/copy-web.mjs
 node node_modules/@capacitor/cli/bin/capacitor sync android
 node --test tests/*.test.mjs
 cd android
-./gradlew assembleRelease
+./gradlew -PpreviewApplicationId=app.tongban.wallet.lilac assembleRelease
 release默认没有发行签名；需要主任务使用独立测试密钥签署和核验APK。
 签名密钥、密码、SDK local.properties均不可打进源代码包或网页。
 没有开发者账户、生产签名、商店提交或公开上架。
 
 网页更新
-copy-web仅复制../tongban/dist的index.html、app.js、app.css、icon.svg、manifest.webmanifest、apple-touch-icon.png，
+copy-web仅复制../tongban/dist的index.html、app.js、app.css、icon.png、icon.svg、manifest.webmanifest、apple-touch-icon.png，
 并加本工程的webview-unavailable.html；不会复制install.html、downloads、APK、后台或账户文件。
 复制后须运行cap sync android，再重新构建签名；不会远程热更新已安装客户端。
 SystemBars采用官方CSS Insets，网页应使用--safe-area-inset-*与env()回退。
@@ -71,3 +71,5 @@ https://developer.android.com/training/data-storage/shared/documents-files
 
 0.9 AI 入口
 安卓仅显示设备能力说明与本机草稿功能。电脑本地模型需在 Windows 版使用，安卓不会连接电脑端口或自动下载模型。云端工作区通过受限网页版申请并由管理员审核；安卓安装包不绕过网站认证直接连接云端服务。不会向模型发送钱包密钥、助记词或密码。
+
+0.10.0 验证：网页 218 项用例（最终版本断言已单独复测）、Android 4 项测试及 55 条原生策略断言通过；release 编译、v2/v3 签名、模拟器安装和启动通过。截图受 FLAG_SECURE 保护，视觉检查在浏览器完成；未完成实体手机验收。

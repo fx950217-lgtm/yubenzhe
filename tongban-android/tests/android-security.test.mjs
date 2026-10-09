@@ -38,12 +38,12 @@ test('manifest keeps minimum permissions, excludes backup/transfer, no broad fil
   assert.match(activity, /FLAG_SECURE/);
   assert.match(activity, /setSupportMultipleWindows\(false\)/);
 });
-test('bundled snapshot contains only six application assets and matches consumer build', () => {
-  const assets = ['app.css', 'app.js', 'apple-touch-icon.png', 'icon.svg', 'index.html', 'manifest.webmanifest'];
+test('bundled snapshot contains only seven application assets and matches consumer build', () => {
+  const assets = ['app.css', 'app.js', 'apple-touch-icon.png', 'icon.png', 'icon.svg', 'index.html', 'manifest.webmanifest'];
   assert.deepEqual(readdirSync(path.join(project, 'www')).sort(), [...assets, 'webview-unavailable.html'].sort());
   for (const asset of assets) assert.deepEqual(readFileSync(path.join(project, 'www', asset)), readFileSync(path.resolve(project, '../tongban/dist', asset)));
   const script = read('scripts/copy-web.mjs');
-  assert.match(script, /WEB_ASSETS = \['index\.html', 'app\.js', 'app\.css', 'icon\.svg', 'manifest\.webmanifest', 'apple-touch-icon\.png'\]/);
+  assert.match(script, /WEB_ASSETS = \['index\.html', 'app\.js', 'app\.css', 'icon\.png', 'icon\.svg', 'manifest\.webmanifest', 'apple-touch-icon\.png'\]/);
 });
 test('native document and navigation policy executes in JVM', () => {
   const javaHome = process.env.JAVA_HOME;

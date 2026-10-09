@@ -362,7 +362,7 @@ export function mountSocial(container, options = {}) {
   }
 
   function renderMessages() {
-    return `<section class="soc-messages-page">${header('消息', '', quickActions())}${localBanner(true)}${searchBox('搜索好友、群聊或消息')}<div class="soc-tabs" role="tablist" aria-label="消息筛选">${[['all', '全部'], ['friends', '好友'], ['groups', '群聊']].map(([id, name]) => `<button role="tab" aria-selected="${screen.filter === id}" class="${screen.filter === id ? 'is-active' : ''}" data-action="filter" data-id="${id}">${name}</button>`).join('')}</div><div class="soc-list" data-search-results>${conversationList()}</div></section>`;
+    return `<section class="soc-messages-page">${header('消息', '每一次回应，都有回响。', quickActions())}${localBanner(true)}${searchBox('搜索好友、群聊或消息')}<div class="soc-list" data-search-results>${conversationList()}</div></section>`;
   }
 
   function contactList() {
@@ -451,7 +451,7 @@ export function mountSocial(container, options = {}) {
     else if (screen.type === 'friend-details') html = renderFriendDetails();
     else html = screen.view === 'contacts' ? renderContacts() : screen.view === 'discover' ? renderDiscover() : renderMessages();
     if (screen.type === 'chat') html = `<div class="soc-desktop-layout"><aside class="soc-desktop-conversations" aria-label="会话列表"><div class="soc-desktop-list-heading"><strong>消息</strong><button type="button" data-action="back-list">返回列表</button></div>${searchBox('搜索好友、群聊或消息')}<div class="soc-list" data-search-results>${conversationList()}</div></aside>${html}</div>`;
-    else if (screen.type === 'list' && screen.view === 'messages') html = `<div class="soc-desktop-layout">${html}<section class="soc-desktop-welcome"><img src="./icon.svg" alt=""><h2>熟悉的人，安心的往来</h2><p>选择一段对话，继续你们的故事。</p><span>愚笨者 · 让连接更简单</span></section></div>`;
+    else if (screen.type === 'list' && screen.view === 'messages') html = `<div class="soc-desktop-layout">${html}<section class="soc-desktop-welcome"><img src="./icon.png" alt=""><h2>熟悉的人，安心的往来</h2><p>选择一段对话，继续你们的故事。</p><span>愚笨者 · 让连接更简单</span></section></div>`;
     root.innerHTML = `${storageError || profileError ? `<p class="soc-state-error" role="alert">${esc([storageError, profileError].filter(Boolean).join(' '))}</p>` : ''}${html}<div data-modal-host></div>`;
     renderedScreen = screen;
     const rendered = screen;
