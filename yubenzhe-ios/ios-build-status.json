@@ -1,7 +1,7 @@
 {
   "name": "愚笨者",
-  "version": "0.12.1",
-  "build": 15,
+  "version": "0.13.0",
+  "build": 16,
   "sourceProjectReady": true,
   "nativeCompiled": true,
   "deviceVerified": false,
@@ -18,13 +18,13 @@
   "layout": "Dopamine rootless",
   "architecture": "iphoneos-arm64",
   "bundleId": "app.yubenzhe.wallet",
-  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37922714334",
-  "sourceCommit": "e54ff57e906ca650900112864210a1e130d54a47",
+  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37926392645",
+  "sourceCommit": "7eb1605747bdb6680f95c619ab9a591fb874218e",
   "installPackages": [
     {
-      "filename": "app.yubenzhe.wallet_0.12.1_iphoneos-arm64.deb",
-      "sizeBytes": 2378208,
-      "sha256": "ab4c104291dd74c92c0bf6ef87dd10d9c4a2bc24486b720d05c428c45f07a2aa"
+      "filename": "app.yubenzhe.wallet_0.13.0_iphoneos-arm64.deb",
+      "sizeBytes": 2387726,
+      "sha256": "29892a39666f4ec3cbc5a8b97c38bdd5aeef78dcea1caf392d0bff563a1fffe8"
     }
   ],
   "checks": {
@@ -41,12 +41,14 @@
   "startupFix": "Missing ad-hoc app identity prevented WebKit launch. Build 11 declares the app identity and its required container; adds one retry and a bounded startup timeout.",
   "webSnapshot": {
     "index.html": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
-    "app.js": "46b883fb9cc690d02052469f7f9d1beb1ba693809718937041d19c918cdaa3eb",
-    "app.css": "d79810c35787756bfb70c0ed226b76aa0df924d1dc7d5efb6a501b83c7e3094e",
+    "app.js": "5ca6f76737c6e9d2cd07ab4fbbf199122b3f3ae5cd400d9580774f9ca53d893f",
+    "app.css": "cc59d468d0df64a51f685a6311a4c0b070ef82cd95cbbc9b5b3626d0bf165e84",
     "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
+    "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec",
     "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a",
-    "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec"
+    "privacy.html": "e300ba2623d6ef7989dff40565cd89327ef282a79d35d8ed8e0331cad308fffa",
+    "terms.html": "793e250463b1709882c8723a7edd37fb19bfac009d1a57751da94627bd710965"
   },
-  "startupEvidence": "Build 15 USB upgrade succeeded. Device logs recorded page loaded and ready. No new user visual confirmation for this build."
+  "startupEvidence": "Build 16 USB upgrade succeeded; all nine installed web assets match the build. Device logs recorded starting local service, page loaded and ready. No new user visual confirmation for this build."
 }

@@ -76,5 +76,13 @@
     "同伴 → 愚笨者",
     "local acceptance credential wording",
     "logout → local session revocation endpoint"
-  ]
+  ],
+  "currentRelease": {
+    "version": "0.13.0",
+    "report": "release-013-verification.json",
+    "frontendDeployed": true,
+    "adminDeployed": true,
+    "publicHealth200": true,
+    "threeDatabaseBackupRestorePassed": true
+  }
 }

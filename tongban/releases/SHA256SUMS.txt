@@ -1,3 +1,7 @@
+c09d1db97ea7c78af416b4ca6270f55ac34f71887a3bf43ab7821b3ccc7ef912  yubenzhe-0.13.0-android.apk
+898f19c9bfe7124dc53f218c0c19aa67f5cd19d55b6706c7cc9c4b1ff17871fb  yubenzhe-0.13.0-windows-x64-setup.exe
+ca2182c1db71d17863886805090dc1b8454102d9d83e65d961aa2d410461bc78  yubenzhe-0.13.0-windows-x64.zip
+29892a39666f4ec3cbc5a8b97c38bdd5aeef78dcea1caf392d0bff563a1fffe8  app.yubenzhe.wallet_0.13.0_iphoneos-arm64.deb
 7e974592d423575952a6e9d4585a53d80ed6e6949400435f18ff1816226f5627  yubenzhe-0.12.1-android.apk
 ff1e484163c714868391e0493fc08b2b08ccf65710405c296d790fbcdbc88477  yubenzhe-0.12.1-windows-x64-setup.exe
 6935f8e55e13c723c4bcee2905c8c728c4770470a9de954e0fde3936b9badbda  yubenzhe-0.12.1-windows-x64.zip

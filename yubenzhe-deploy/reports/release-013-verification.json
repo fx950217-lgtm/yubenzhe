@@ -1,0 +1,278 @@
+{
+  "version": "0.13.0",
+  "verifiedAt": "2026-10-09T12:02:30.921Z",
+  "buildSourceCommit": "7eb1605747bdb6680f95c619ab9a591fb874218e",
+  "releaseStage": "public-preview",
+  "formallyLaunched": false,
+  "tests": {
+    "frontend": {
+      "passed": 299,
+      "failed": 0
+    },
+    "backendWindows": {
+      "passed": 101,
+      "failed": 0
+    },
+    "backendLinuxImage": {
+      "passed": 101,
+      "failed": 0
+    },
+    "fullAppBrowserFlows": {
+      "passed": 16,
+      "productionDataUsed": false
+    },
+    "policyBrowserChecks": {
+      "passed": 9,
+      "widths": [
+        320,
+        390
+      ],
+      "writeRequests": 0
+    },
+    "android": {
+      "tests": 5,
+      "assertions": 85
+    },
+    "windows": {
+      "tests": 23
+    },
+    "ios": {
+      "python": 13,
+      "bridge": 4
+    }
+  },
+  "load": {
+    "scope": "Isolated loopback-only 24 synthetic accounts, 20 concurrent HTTP workers, 3 minute local smoke load; not production capacity or 1000-user test",
+    "startedAt": "2026-10-09T11:46:35.475Z",
+    "durationTargetMs": 180000,
+    "accounts": 24,
+    "concurrency": 20,
+    "productionRequests": 0,
+    "checks": [
+      {
+        "name": "24 accounts and 12 bilateral chats via real HTTP without changing rate limits",
+        "pass": true
+      },
+      {
+        "name": "130 offline messages received exactly once in three forward pages",
+        "pass": true
+      },
+      {
+        "name": "All acknowledged messages persist and duplicate client IDs never create extra messages",
+        "pass": true
+      },
+      {
+        "name": "Private pagination returns every acknowledged message and SQLite integrity is ok",
+        "pass": true
+      }
+    ],
+    "errors": [],
+    "pass": true,
+    "elapsedMs": 180271,
+    "requests": 8915,
+    "statusCounts": {
+      "200": 8915
+    },
+    "errorCount": 0,
+    "errorRate": 0,
+    "latencyMs": {
+      "p50": 2.58,
+      "p95": 8.08,
+      "p99": 13.34,
+      "max": 24.62
+    },
+    "maxInflight": 20,
+    "logicalMessages": 1800,
+    "persistedMessages": 1800,
+    "completedAt": "2026-10-09T11:49:36.582Z"
+  },
+  "production": {
+    "host": "66.42.56.29",
+    "release": "/opt/yubenzhe/releases/0.13.0",
+    "frontendImage": "yubenzhe-public:0.13.0",
+    "adminImage": "yubenzhe-public:0.13.0",
+    "frontendHealth": 200,
+    "adminHealth": 200,
+    "privateAdminReportsAuthenticated": 200,
+    "privateAdminLogout": 303,
+    "anonymousSocialApi": 401,
+    "proxyAndModelRecreated": false,
+    "backup": {
+      "ok": true,
+      "snapshot": "snapshot-20261009T115442783Z-a9806403",
+      "databases": [
+        "social",
+        "ai",
+        "admin"
+      ]
+    },
+    "restoreDrillPassed": true,
+    "database": {
+      "ok": true,
+      "databases": {
+        "social": {
+          "integrity": "ok",
+          "foreignKeyErrors": 0,
+          "priorRowsRetained": true,
+          "counts": {
+            "accounts": 2,
+            "conversation_members": 0,
+            "conversations": 0,
+            "friend_requests": 0,
+            "friendships": 0,
+            "group_requests": 0,
+            "messages": 0,
+            "registrations": 2,
+            "social_limits": 2,
+            "social_media": 0,
+            "social_migrations": 5,
+            "social_sessions": 2,
+            "user_ids": 2
+          }
+        },
+        "ai": {
+          "integrity": "ok",
+          "foreignKeyErrors": 0,
+          "priorRowsRetained": true,
+          "counts": {
+            "ai_audit": 7,
+            "ai_migrations": 1,
+            "ai_provider_health": 1,
+            "ai_requests": 6,
+            "ai_tasks": 1,
+            "ai_workspaces": 1
+          }
+        },
+        "admin": {
+          "integrity": "ok",
+          "foreignKeyErrors": 0,
+          "priorRowsRetained": true,
+          "counts": {
+            "admin_audit": 1,
+            "admin_records": 1284,
+            "admin_settings": 1,
+            "deployment_migrations": 1
+          }
+        }
+      },
+      "migrations": 5,
+      "checksumsMatch": true
+    },
+    "scheduledBackup": {
+      "enabled": true,
+      "frequency": "hourly",
+      "retentionDays": 14,
+      "location": "same-server",
+      "offsiteRestoreVerified": false
+    },
+    "healthProbe": {
+      "enabled": true,
+      "frequencyMinutes": 5,
+      "externalAlertDelivery": false
+    },
+    "push": {
+      "configured": true,
+      "realBrowserEndToEnd": false,
+      "nativePush": false
+    },
+    "preflightFixes": [
+      "Backup container now runs as the application UID 1000, with owned 0700 destination and 0600 snapshot files.",
+      "Source SQLite connections remain read-only while source mounts allow WAL reader auxiliary files. A failed pre-migration rehearsal automatically restarted the old services; the corrected stopped-writer backup and restore passed."
+    ]
+  },
+  "clients": {
+    "android": {
+      "version": "0.13.0",
+      "code": 15,
+      "emulatorUpgrade": true,
+      "launched": true,
+      "signedApkAssetsMatch": true,
+      "physicalDeviceFullTest": false
+    },
+    "windows": {
+      "version": "0.13.0",
+      "installerExitCode": 0,
+      "installedAsarMatches": true,
+      "launched": true,
+      "codeSigned": false,
+      "fullDeviceTest": false
+    },
+    "ios": {
+      "version": "0.13.0",
+      "build": 16,
+      "workflow": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37926392645",
+      "installed": true,
+      "assetCount": 9,
+      "installedAssetsMatch": true,
+      "startupEvents": [
+        "starting local service",
+        "page loaded",
+        "ready"
+      ],
+      "userScreenConfirmed": false,
+      "fullDeviceTest": false
+    }
+  },
+  "files": [
+    {
+      "filename": "yubenzhe-0.13.0-android.apk",
+      "sizeBytes": 4153416,
+      "sha256": "c09d1db97ea7c78af416b4ca6270f55ac34f71887a3bf43ab7821b3ccc7ef912"
+    },
+    {
+      "filename": "yubenzhe-0.13.0-windows-x64-setup.exe",
+      "sizeBytes": 112352992,
+      "sha256": "898f19c9bfe7124dc53f218c0c19aa67f5cd19d55b6706c7cc9c4b1ff17871fb"
+    },
+    {
+      "filename": "yubenzhe-0.13.0-windows-x64.zip",
+      "sizeBytes": 153939660,
+      "sha256": "ca2182c1db71d17863886805090dc1b8454102d9d83e65d961aa2d410461bc78"
+    },
+    {
+      "filename": "app.yubenzhe.wallet_0.13.0_iphoneos-arm64.deb",
+      "sizeBytes": 2387726,
+      "sha256": "29892a39666f4ec3cbc5a8b97c38bdd5aeef78dcea1caf392d0bff563a1fffe8"
+    }
+  ],
+  "remaining": [
+    "Operator legal name, public support contact and initial markets",
+    "App Store and Android distribution credentials/review; Windows code signing",
+    "Native push, real browser push and full physical-device acceptance",
+    "End-to-end encrypted chat",
+    "Mainnet, real-money services and independent security review",
+    "Hardware wallet signing integration",
+    "Offsite restore validation and external alert delivery"
+  ],
+  "downloads": {
+    "newFilesUploadedAndHashed": 4,
+    "allManifestFilesVerified": 29
+  },
+  "publicAssets": {
+    "/privacy.html": {
+      "status": 200,
+      "sha256": "e300ba2623d6ef7989dff40565cd89327ef282a79d35d8ed8e0331cad308fffa",
+      "matchesLocal": true
+    },
+    "/terms.html": {
+      "status": 200,
+      "sha256": "793e250463b1709882c8723a7edd37fb19bfac009d1a57751da94627bd710965",
+      "matchesLocal": true
+    },
+    "/sw.js": {
+      "status": 200,
+      "sha256": "3acc33c24695926a89bf85e9267e4dbf5e50836c08317fa3b5aa243663b3ba1d",
+      "matchesLocal": true
+    },
+    "/app.js": {
+      "status": 200,
+      "sha256": "5ca6f76737c6e9d2cd07ab4fbbf199122b3f3ae5cd400d9580774f9ca53d893f",
+      "matchesLocal": true
+    },
+    "/app.css": {
+      "status": 200,
+      "sha256": "cc59d468d0df64a51f685a6311a4c0b070ef82cd95cbbc9b5b3626d0bf165e84",
+      "matchesLocal": true
+    }
+  }
+}
