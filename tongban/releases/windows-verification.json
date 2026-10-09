@@ -1,6 +1,6 @@
 {
   "productName": "愚笨者",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "platform": "Windows x64",
   "electronVersion": "44.7.0",
   "electronBuilderVersion": "26.15.3",
@@ -21,23 +21,23 @@
     "processLaunchVerified": true
   },
   "files": {
-    "yubenzhe-0.11.1-windows-x64-setup.exe": {
-      "bytes": 112340707,
-      "sha256": "e57cb24c523e7d439d6238a88f3dd1c17f46257f99075a2046b9c2bf6cd147b0"
+    "yubenzhe-0.12.0-windows-x64-setup.exe": {
+      "bytes": 112345027,
+      "sha256": "36a253aca3bcc45f458f95f98693be47190058ed72178dd06d75fac2304126a3"
     },
-    "yubenzhe-0.11.1-windows-x64.zip": {
-      "bytes": 153925723,
-      "sha256": "5f2cfe4084a5742020dfd27b2fa4d21c7f9e94fb8d7586811b5a714339415d19"
+    "yubenzhe-0.12.0-windows-x64.zip": {
+      "bytes": 153931220,
+      "sha256": "816bf99f9053402ae91e72e1303a296a49f4ca01b4e8f69307936a3d8d8c1a1f"
     }
   },
   "webAssets": {
     "index.html": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
-    "app.js": "b7a4193fc8da416e1db6ff9fa405804e14480e0769a5b71356e9ce7b1e694800",
-    "app.css": "4d34312f3ef09e8ddf80156e5e508dda6e3e36407343b4b63a7f0867c79c5ba6",
+    "app.js": "2641c2c5390d08c2822adc960627b9c193558854c86e2b6d91e43a266af0713b",
+    "app.css": "d79810c35787756bfb70c0ed226b76aa0df924d1dc7d5efb6a501b83c7e3094e",
     "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
     "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a",
     "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec"
   },
-  "installedAsarSHA256": "e598f776f9d178f5bbda7cec618dfa48a5ed3a80f76e8cfce46f225a5fb71cd3"
+  "installedAsarSHA256": "b5454a0bff1f571aeb547310de21efb7be228deb84a17842f848c06e500859bf"
 }

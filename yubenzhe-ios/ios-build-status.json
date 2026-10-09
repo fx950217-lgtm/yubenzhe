@@ -1,7 +1,7 @@
 {
   "name": "愚笨者",
-  "version": "0.11.1",
-  "build": 13,
+  "version": "0.12.0",
+  "build": 14,
   "sourceProjectReady": true,
   "nativeCompiled": true,
   "deviceVerified": false,
@@ -18,13 +18,13 @@
   "layout": "Dopamine rootless",
   "architecture": "iphoneos-arm64",
   "bundleId": "app.yubenzhe.wallet",
-  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37919888198",
-  "sourceCommit": "8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7",
+  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37922166794",
+  "sourceCommit": "9c87fe4c345d1e726a5d9e5f40791a9795bc6f6a",
   "installPackages": [
     {
-      "filename": "app.yubenzhe.wallet_0.11.1_iphoneos-arm64.deb",
-      "sizeBytes": 2371840,
-      "sha256": "e906f4a5ffb5f0b9d61b7c2bbf6ccc5ca305bf21624cbdec5a8967dd4b686025"
+      "filename": "app.yubenzhe.wallet_0.12.0_iphoneos-arm64.deb",
+      "sizeBytes": 2378320,
+      "sha256": "372fcf62727be79304d1e9da2ee3c4048b5b187b3170bf0f4b9d3c10b3314d26"
     }
   ],
   "checks": {
@@ -41,12 +41,12 @@
   "startupFix": "Missing ad-hoc app identity prevented WebKit launch. Build 11 declares the app identity and its required container; adds one retry and a bounded startup timeout.",
   "webSnapshot": {
     "index.html": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
-    "app.js": "b7a4193fc8da416e1db6ff9fa405804e14480e0769a5b71356e9ce7b1e694800",
-    "app.css": "4d34312f3ef09e8ddf80156e5e508dda6e3e36407343b4b63a7f0867c79c5ba6",
+    "app.js": "2641c2c5390d08c2822adc960627b9c193558854c86e2b6d91e43a266af0713b",
+    "app.css": "d79810c35787756bfb70c0ed226b76aa0df924d1dc7d5efb6a501b83c7e3094e",
     "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
     "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a",
     "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec"
   },
-  "startupEvidence": "Build 13 USB installation succeeded. Device logs recorded starting local service, page loaded and ready. Device local index.html/app.js/app.css returned 200. The user confirmed the login page on prior build 12; build 13 has no new user visual confirmation."
+  "startupEvidence": "Build 14 USB upgrade succeeded. Device logs recorded starting local service, page loaded and ready; local HTML/JS/CSS returned 200. No new user visual confirmation for this build."
 }

@@ -1,6 +1,6 @@
 {
   "name": "愚笨者",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "environment": "public-ui-preview",
   "publiclyLaunched": false,
   "appStorePublished": false,
@@ -9,8 +9,8 @@
   "walletAndSocialCloudSync": false,
   "android": {
     "built": true,
-    "versionName": "0.11.1",
-    "versionCode": 12,
+    "versionName": "0.12.0",
+    "versionCode": 13,
     "appId": "app.tongban.wallet.demo",
     "signature": "original-preview",
     "signatureSHA256": "3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d",
@@ -20,7 +20,7 @@
   },
   "windows": {
     "built": true,
-    "version": "0.11.1",
+    "version": "0.12.0",
     "architecture": "x64",
     "signed": false,
     "installedOnWindows": true,
@@ -29,14 +29,14 @@
   },
   "ios": {
     "sourceReady": true,
-    "sourceVersion": "0.11.1",
+    "sourceVersion": "0.12.0",
     "built": true,
     "installableDeb": true,
     "layout": "rootless",
     "minimumIOS": "15.4",
     "deviceVerified": false,
     "installedOnDevice": true,
-    "build": 13,
+    "build": 14,
     "launchVerified": true,
     "userScreenConfirmed": false
   },
@@ -47,6 +47,26 @@
     "nativePrivateCloudConnection": false
   },
   "files": [
+    {
+      "filename": "yubenzhe-0.12.0-android.apk",
+      "sizeBytes": 4145082,
+      "sha256": "a353e2b0ae5ccff19b2a0716481c08b344d19f364f82a95953084e9b4d2cb5bd"
+    },
+    {
+      "filename": "yubenzhe-0.12.0-windows-x64-setup.exe",
+      "sizeBytes": 112345027,
+      "sha256": "36a253aca3bcc45f458f95f98693be47190058ed72178dd06d75fac2304126a3"
+    },
+    {
+      "filename": "yubenzhe-0.12.0-windows-x64.zip",
+      "sizeBytes": 153931220,
+      "sha256": "816bf99f9053402ae91e72e1303a296a49f4ca01b4e8f69307936a3d8d8c1a1f"
+    },
+    {
+      "filename": "app.yubenzhe.wallet_0.12.0_iphoneos-arm64.deb",
+      "sizeBytes": 2378320,
+      "sha256": "372fcf62727be79304d1e9da2ee3c4048b5b187b3170bf0f4b9d3c10b3314d26"
+    },
     {
       "filename": "yubenzhe-0.11.1-android.apk",
       "sizeBytes": 4136890,
@@ -137,5 +157,5 @@
   "scope": "Independent live accounts, profiles, friends and group messages; discovery and platform balances remain local preview. Standard EVM wallet import and address watching; BSC testnet only.",
   "socialCloudSync": true,
   "walletKeyCloudSync": false,
-  "sourceCommit": "8aba0bcee1b7a6c1d41b42e1c0b5f49f2d5bb9c7"
+  "sourceCommit": "9c87fe4c345d1e726a5d9e5f40791a9795bc6f6a"
 }

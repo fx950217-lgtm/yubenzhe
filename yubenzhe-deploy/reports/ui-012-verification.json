@@ -1,0 +1,527 @@
+{
+  "version": "0.12.0",
+  "sourceCommit": "9c87fe4c345d1e726a5d9e5f40791a9795bc6f6a",
+  "reference": "https://apps.apple.com/cn/app/wechat/id414478124",
+  "changes": [
+    "White and light gray grouped lists with restrained lilac accents.",
+    "System sans-serif typography: 18px page headings, 17px conversation names, 16px body.",
+    "Compact navigation, flat profile rows and smaller avatar/bubble corners."
+  ],
+  "webTests": 270,
+  "layout": {
+    "pass": true,
+    "checks": [
+      {
+        "view": "messages",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "contacts",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "discover",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "mine",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet",
+        "width": 360,
+        "mobileBrand": 0,
+        "topbar": 1,
+        "railBrand": 1,
+        "contentTop": 62,
+        "networkTotal": 1,
+        "noticeTotal": 1,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "actionsWidth": 158.046875,
+        "actionsHeight": 32,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet/chain-tab",
+        "width": 360,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      },
+      {
+        "view": "wallet/platform-tab",
+        "width": 360,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      },
+      {
+        "view": "messages",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "contacts",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 1,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "discover",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "mine",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 0,
+        "railBrand": 1,
+        "contentTop": 0,
+        "networkTotal": 0,
+        "noticeTotal": 0,
+        "networkVisible": 0,
+        "noticeVisible": 0,
+        "actionsWidth": 0,
+        "actionsHeight": 0,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet",
+        "width": 1280,
+        "mobileBrand": 0,
+        "topbar": 1,
+        "railBrand": 1,
+        "contentTop": 68,
+        "networkTotal": 1,
+        "noticeTotal": 1,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "actionsWidth": 164.046875,
+        "actionsHeight": 32,
+        "overflow": false,
+        "pass": true
+      },
+      {
+        "view": "wallet/chain-tab",
+        "width": 1280,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      },
+      {
+        "view": "wallet/platform-tab",
+        "width": 1280,
+        "networkVisible": 1,
+        "noticeVisible": 1,
+        "pass": true
+      }
+    ],
+    "errors": []
+  },
+  "interaction": {
+    "pass": true,
+    "readOnly": true,
+    "checks": [
+      {
+        "stage": "list typography",
+        "width": 320,
+        "typography": {
+          "title": "18px",
+          "headerHeight": 50,
+          "name": "17px",
+          "preview": "14px",
+          "time": "12px",
+          "avatar": 52,
+          "avatarRadius": "6px",
+          "row": 76
+        },
+        "pass": true
+      },
+      {
+        "stage": "messages",
+        "width": 320,
+        "overflow": false,
+        "scrollWidth": 320,
+        "pass": true
+      },
+      {
+        "stage": "menu",
+        "width": 320,
+        "overflow": false,
+        "scrollWidth": 320,
+        "pass": true
+      },
+      {
+        "stage": "add-friend",
+        "width": 320,
+        "overflow": false,
+        "scrollWidth": 320,
+        "pass": true
+      },
+      {
+        "stage": "group-dialog",
+        "width": 320,
+        "overflow": false,
+        "scrollWidth": 320,
+        "pass": true
+      },
+      {
+        "stage": "contacts",
+        "width": 320,
+        "overflow": false,
+        "scrollWidth": 320,
+        "pass": true
+      },
+      {
+        "stage": "friend-profile",
+        "width": 320,
+        "overflow": false,
+        "scrollWidth": 320,
+        "pass": true
+      },
+      {
+        "stage": "edit-profile",
+        "width": 320,
+        "overflow": false,
+        "scrollWidth": 320,
+        "pass": true
+      },
+      {
+        "stage": "chat",
+        "width": 320,
+        "overflow": false,
+        "scrollWidth": 320,
+        "pass": true
+      },
+      {
+        "stage": "chat input/send hit test",
+        "width": 320,
+        "input": {
+          "width": 189,
+          "height": 40,
+          "top": 732,
+          "bottom": 772,
+          "inViewport": true,
+          "uncovered": true
+        },
+        "send": {
+          "width": 36,
+          "height": 40,
+          "top": 732,
+          "bottom": 772,
+          "inViewport": true,
+          "uncovered": true
+        },
+        "pass": true
+      },
+      {
+        "stage": "list typography",
+        "width": 390,
+        "typography": {
+          "title": "18px",
+          "headerHeight": 50,
+          "name": "17px",
+          "preview": "14px",
+          "time": "12px",
+          "avatar": 52,
+          "avatarRadius": "6px",
+          "row": 76
+        },
+        "pass": true
+      },
+      {
+        "stage": "messages",
+        "width": 390,
+        "overflow": false,
+        "scrollWidth": 390,
+        "pass": true
+      },
+      {
+        "stage": "menu",
+        "width": 390,
+        "overflow": false,
+        "scrollWidth": 390,
+        "pass": true
+      },
+      {
+        "stage": "add-friend",
+        "width": 390,
+        "overflow": false,
+        "scrollWidth": 390,
+        "pass": true
+      },
+      {
+        "stage": "group-dialog",
+        "width": 390,
+        "overflow": false,
+        "scrollWidth": 390,
+        "pass": true
+      },
+      {
+        "stage": "contacts",
+        "width": 390,
+        "overflow": false,
+        "scrollWidth": 390,
+        "pass": true
+      },
+      {
+        "stage": "friend-profile",
+        "width": 390,
+        "overflow": false,
+        "scrollWidth": 390,
+        "pass": true
+      },
+      {
+        "stage": "edit-profile",
+        "width": 390,
+        "overflow": false,
+        "scrollWidth": 390,
+        "pass": true
+      },
+      {
+        "stage": "chat",
+        "width": 390,
+        "overflow": false,
+        "scrollWidth": 390,
+        "pass": true
+      },
+      {
+        "stage": "chat input/send hit test",
+        "width": 390,
+        "input": {
+          "width": 238,
+          "height": 40,
+          "top": 732,
+          "bottom": 772,
+          "inViewport": true,
+          "uncovered": true
+        },
+        "send": {
+          "width": 40,
+          "height": 40,
+          "top": 732,
+          "bottom": 772,
+          "inViewport": true,
+          "uncovered": true
+        },
+        "pass": true
+      }
+    ],
+    "errors": []
+  },
+  "androidTests": 5,
+  "androidAssertions": 85,
+  "windowsTests": 23,
+  "iosPackagingTests": 13,
+  "productionWritesByTests": false,
+  "walletNetwork": 97,
+  "deployed": true,
+  "server": "66.42.56.29",
+  "releaseDirectory": "/opt/yubenzhe/releases/0.12.0",
+  "publicChecks": [
+    {
+      "endpoint": "/healthz",
+      "status": 200,
+      "body": "{\"ok\":true,\"service\":\"frontend\",\"version\":\"0.12.0\",\"stage\":\"public-preview\"}"
+    },
+    {
+      "endpoint": "/api/social/me",
+      "status": 401,
+      "body": "{\"error\":\"请登录你的愚笨者账号。\",\"code\":\"ACCOUNT_REQUIRED\"}"
+    },
+    {
+      "endpoint": "/api/ai/models",
+      "status": 401,
+      "body": "{\"error\":\"验收会话已失效，请刷新页面重新登录。\",\"code\":\"SIGN_IN_REQUIRED\"}"
+    },
+    {
+      "endpoint": "/api/admin/session",
+      "status": 401,
+      "body": "{\"error\":\"验收会话已失效，请刷新页面重新登录。\",\"code\":\"SIGN_IN_REQUIRED\"}"
+    }
+  ],
+  "onlineAssets": {
+    "app.js": {
+      "sha256": "2641c2c5390d08c2822adc960627b9c193558854c86e2b6d91e43a266af0713b",
+      "match": true
+    },
+    "app.css": {
+      "sha256": "d79810c35787756bfb70c0ed226b76aa0df924d1dc7d5efb6a501b83c7e3094e",
+      "match": true
+    }
+  },
+  "nativeCORS": [
+    {
+      "origin": "https://localhost",
+      "status": 204,
+      "allowed": "https://localhost"
+    },
+    {
+      "origin": "http://127.0.0.1:45931",
+      "status": 204,
+      "allowed": "http://127.0.0.1:45931"
+    },
+    {
+      "origin": "yubenzhe://app",
+      "status": 204,
+      "allowed": "yubenzhe://app"
+    }
+  ],
+  "downloadsSHA256Verified": 21,
+  "artifacts": [
+    {
+      "filename": "yubenzhe-0.12.0-android.apk",
+      "sizeBytes": 4145082,
+      "sha256": "a353e2b0ae5ccff19b2a0716481c08b344d19f364f82a95953084e9b4d2cb5bd"
+    },
+    {
+      "filename": "yubenzhe-0.12.0-windows-x64-setup.exe",
+      "sizeBytes": 112345027,
+      "sha256": "36a253aca3bcc45f458f95f98693be47190058ed72178dd06d75fac2304126a3"
+    },
+    {
+      "filename": "yubenzhe-0.12.0-windows-x64.zip",
+      "sizeBytes": 153931220,
+      "sha256": "816bf99f9053402ae91e72e1303a296a49f4ca01b4e8f69307936a3d8d8c1a1f"
+    },
+    {
+      "filename": "app.yubenzhe.wallet_0.12.0_iphoneos-arm64.deb",
+      "sizeBytes": 2378320,
+      "sha256": "372fcf62727be79304d1e9da2ee3c4048b5b187b3170bf0f4b9d3c10b3314d26"
+    }
+  ],
+  "otherContainersUnchanged": true,
+  "socialOnlineBackupPassed": true,
+  "iosBuildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37922166794",
+  "android": {
+    "installed": true,
+    "versionCode": 13,
+    "launchVerified": true,
+    "fullPhysicalFunctionality": false
+  },
+  "windows": {
+    "installed": true,
+    "installedAsarMatchesBuild": true,
+    "launchVerified": true,
+    "fullPhysicalFunctionality": false
+  },
+  "ios": {
+    "installed": true,
+    "build": 14,
+    "launchVerified": true,
+    "webPageLoaded": true,
+    "userVisualConfirmationForThisBuild": false,
+    "fullPhysicalFunctionality": false
+  },
+  "serverHealth": "healthy",
+  "downloads": [
+    {
+      "filename": "yubenzhe-0.12.0-android.apk",
+      "status": 200,
+      "bytes": 4145082,
+      "match": true
+    },
+    {
+      "filename": "yubenzhe-0.12.0-windows-x64-setup.exe",
+      "status": 200,
+      "bytes": 112345027,
+      "match": true
+    },
+    {
+      "filename": "yubenzhe-0.12.0-windows-x64.zip",
+      "status": 200,
+      "bytes": 153931220,
+      "match": true
+    },
+    {
+      "filename": "app.yubenzhe.wallet_0.12.0_iphoneos-arm64.deb",
+      "status": 200,
+      "bytes": 2378320,
+      "match": true
+    }
+  ]
+}

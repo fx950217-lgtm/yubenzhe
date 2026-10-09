@@ -1,4 +1,11 @@
-愚笨者 Android 工程 · 0.11.1（versionCode 12）
+愚笨者 Android 工程 · 0.12.0（versionCode 13）
+
+0.12.0 参考微信官方 App Store 的消息列表与群聊截图，改为白色列表、浅灰背景和紫色重点操作；使用系统 sans-serif 字体与黑灰文字，主标题 18px、会话名称 17px、正文 16px。页面采用扁平分组列表、细分隔线、小圆角与简洁底部导航，减少大卡片、阴影和装饰文字。浅紫星环 B 应用图标保留，网络标识和说明仍只在钱包资产页显示。
+界面参考：https://apps.apple.com/cn/app/wechat/id414478124 。
+0.12.0 / versionCode 13 APK 已发布，并用原签名执行 -r 覆盖安装至模拟器，启动成功（本轮 PID 2777）；网页 JS/CSS 与四端快照一致，下载区 21 个文件 SHA-256 全部通过。构建源码提交 9c87fe4c345d1e726a5d9e5f40791a9795bc6f6a。实际版本、签名和安装结果见 ../tongban/releases/android-verification.json、../tongban/releases/release-status.json 和 ../yubenzhe-deploy/reports/ui-012-verification.json。
+本轮通过网页 270 项测试、14 项手机/桌面布局检查（360px / 1280px）、20 项交互检查（320px / 390px）、Android 5 项测试 / 85 条断言、Windows 23 项检查、iOS 13 项 Python 检查及 macOS 工作流内 4 项桥接检查。未新增用户在手机上肉眼确认画面，完整实体设备功能验收仍未完成。发现只调整界面，业务能力与数据范围不变；账号和在线社交沿用现有服务，钱包仍仅支持 BSC 测试网。
+
+0.11.1 历史安装与验收（versionCode 12）
 
 0.11.1 原签名包已在模拟器覆盖安装，核对 versionName 0.11.1 / versionCode 12，并成功启动（本轮记录 PID 2615）。打包网页 app.js 与网页、Windows 和 iOS 的 SHA-256 一致。实际构建、签名及安装结果见 ../tongban/releases/android-verification.json 和 ../tongban/releases/release-status.json。
 本轮 Android 5 项测试 / 85 条断言通过；共享网页的顶部 UI 14 项检查及相关测试 20 项通过。未完成实体 Android 手机的完整功能验收。0.11.0（versionCode 11）原签名包的模拟器覆盖安装启动记录保留为历史验收。

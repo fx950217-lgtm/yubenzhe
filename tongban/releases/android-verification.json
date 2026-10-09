@@ -1,6 +1,6 @@
 {
-  "version": "0.11.1",
-  "versionCode": 12,
+  "version": "0.12.0",
+  "versionCode": 13,
   "appId": "app.tongban.wallet.demo",
   "signature": "original-preview",
   "signatureSHA256": "3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d",
@@ -14,8 +14,8 @@
     "physicalDeviceVerified": false
   },
   "file": {
-    "filename": "yubenzhe-0.11.1-android.apk",
-    "sizeBytes": 4136890,
-    "sha256": "27fe4997d9fa1d21c00e31ba9f9b75f48b44f2292685be557e30f2783748062a"
+    "filename": "yubenzhe-0.12.0-android.apk",
+    "sizeBytes": 4145082,
+    "sha256": "a353e2b0ae5ccff19b2a0716481c08b344d19f364f82a95953084e9b4d2cb5bd"
   }
 }

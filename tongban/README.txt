@@ -1,4 +1,13 @@
-愚笨者 0.11.1 界面修订（以下旧版本记录保留用于追溯）
+愚笨者 0.12.0 简洁界面版
+
+0.12.0 参考微信官方 App Store 的消息列表与群聊截图，改为白色列表、浅灰背景和紫色重点操作；使用系统 sans-serif 字体与黑灰文字，主标题 18px、会话名称 17px、正文 16px。页面采用扁平分组列表、细分隔线、小圆角与简洁底部导航，减少大卡片、阴影和装饰文字。浅紫星环 B 应用图标保留，网络标识和说明仍只在钱包资产页显示。
+界面参考：https://apps.apple.com/cn/app/wechat/id414478124 。
+0.12.0 网页与各客户端已发布并完成覆盖安装和启动检查，Android versionCode 13、iOS build 14。新加坡 /opt/yubenzhe/releases/0.12.0 已部署，公网 HTTPS /healthz 返回 200 且版本为 0.12.0；网页 JS/CSS 与四端快照一致，下载区 21 个文件 SHA-256 全部通过。后台、代理和模型容器 ID 未变。
+Android versionCode 13 已用原签名执行 -r 覆盖安装并启动（本轮 PID 2777）；Windows 0.12.0 安装器退出码为 0，安装 ASAR 与构建产物一致且进程运行；iOS build 14 的 0.12.0 DEB 已安装，启动日志包含 starting local service、page loaded、ready，手机本地 HTML/JS/CSS 均返回 200。
+构建源码提交 9c87fe4c345d1e726a5d9e5f40791a9795bc6f6a，iOS macOS workflow 37922166794 成功。 实际范围见 ../yubenzhe-deploy/reports/ui-012-verification.json、releases/release-status.json 和各平台验收 JSON 的对应版本记录。
+本轮通过网页 270 项测试、14 项手机/桌面布局检查（360px / 1280px）、20 项交互检查（320px / 390px）、Android 5 项测试 / 85 条断言、Windows 23 项检查、iOS 13 项 Python 检查及 macOS 工作流内 4 项桥接检查。未新增用户在手机上肉眼确认画面，完整实体设备功能验收仍未完成。发现只调整界面，业务能力与数据范围不变；账号和在线社交沿用现有服务，钱包仍仅支持 BSC 测试网。
+
+0.11.1 历史界面修订与验收（不计为当前版本安装结果）
 
 本次仅调整顶部界面：移除全局 B /“愚笨者”品牌行和重复页标题，非资产页直接保留自己的标题、搜索和“＋”等操作；BSC 测试网标识与说明按钮仅显示在钱包资产页（#mine/assets）。浅紫色调和星环 B 应用图标保留，钱包仍固定 BSC 测试网。
 0.11.1 网页已部署，公网健康检查为 200 且版本正确；Android versionCode 12 已在模拟器原签名覆盖安装启动，Windows 已在当前电脑覆盖安装启动，iOS build 13 已安装并由日志确认 ready。本轮未新增 iPhone 画面的用户确认，完整物理设备功能仍未全部验收。实际范围见 releases/release-status.json、各平台验收 JSON 和 ../yubenzhe-deploy/reports/ui-0111-verification.json。
