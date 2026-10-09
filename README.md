@@ -6,7 +6,7 @@
 
 代码源：[私有 GitHub 仓库](https://github.com/fx950217-lgtm/yubenzhe)。产品决策和交接索引：[云端资料中心](https://chatgpt.com/space/page_6ac8849de8908191aa82fc7c575142e8)。两者权限和内容分别管理；资料中心不会自动同步代码。服务器应用数据、访问凭证和数据库备份另行保存，不随 Git 克隆。
 
-当前接入状态：私有远端已创建，正在准备首次本地提交。源码上传由主任务完成后核对远端提交；Codex Cloud 环境尚未建立。
+当前接入状态：源码已推送到私有 GitHub，并核对远端提交及 307 个文件。Codex Cloud 环境尚未发布，按当前交接记录确认。
 
 | 目录 | 内容 |
 | --- | --- |
@@ -19,8 +19,8 @@
 
 新设备开始
 
-1. 获得私有仓库访问权限并完成本机 Git 认证；首次上传验收完成后，运行 `git clone https://github.com/fx950217-lgtm/yubenzhe.git`。
-2. 在 Codex 中打开克隆得到的 `yubenzhe` 文件夹作为项目，并阅读根目录说明。保持各子项目同级；不要只打开或搬走其中一份源码。
+1. 登录同一 GitHub 账号 `fx950217-lgtm`，即可访问上述私有仓库；团队成员使用自己的获授权账号。
+2. 要继续开发，在新设备的 Codex 中连接 GitHub，克隆该仓库并打开 `yubenzhe` 文件夹。每次换设备前提交并推送要同步的代码，换设备后先同步已提交代码；未提交或未推送的改动不会自动同步。保持各子项目同级，并阅读根目录说明。
 3. 准备 Node 24 与各 `package.json` 指定的 pnpm，在项目根运行 `node scripts/check-project.mjs`。它核对原快照哈希、必须文件及禁带材料，不联网。
 4. 在准备开发的子项目执行 `pnpm install --frozen-lockfile`，再运行该项目测试。网页使用 `pnpm test`、`pnpm build`。
 5. 原生重建先构建 `tongban/dist`，再运行对应同步脚本；环境要求见各子项目 `README.txt`。Android 需要 JDK 21/SDK 36，iOS 需要完整 Xcode。
