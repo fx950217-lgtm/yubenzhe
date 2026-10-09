@@ -1,0 +1,234 @@
+/* Personal pages: flat groups, readable system type, restrained purple accents. */
+.mine-page{
+  --mine-background:#ededed;
+  --mine-divider:#ededed;
+  --mine-secondary:#888;
+  --mine-accent:#8053ba;
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:0 0 16px;
+  color:#191919;
+  background:var(--mine-background);
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  font-size:16px;
+  line-height:1.5;
+}
+.mine-page button,.mine-page input,.mine-page textarea{font-family:inherit;letter-spacing:0}
+.mine-page button{font-size:16px;font-weight:400}
+.mine-page h2,.mine-page h3{letter-spacing:0;font-weight:500}
+.mine-page h2{font-size:20px}
+.mine-page h3{font-size:16px}
+.mine-page small{font-size:13px;color:var(--mine-secondary)}
+.mine-page .mine-home-profile{
+  margin:0 0 8px;
+  padding:28px 20px;
+  min-height:128px;
+  gap:16px;
+  border:0;
+  border-radius:0;
+  background:#fff;
+  box-shadow:none;
+  overflow:visible;
+}
+.mine-page .mine-avatar,.mine-page .mine-home-profile>.mine-avatar{
+  width:64px;height:64px;flex:0 0 64px;border-radius:8px;
+  border:0;box-shadow:none;background:#f0edf3;font-size:32px;
+}
+.mine-page .mine-home-profile-copy{min-width:0}
+.mine-page .mine-home-profile-copy h2{
+  margin:0;font-size:20px;font-weight:500;line-height:1.4;letter-spacing:0;
+}
+.mine-page .mine-home-profile-copy p{margin:4px 0 0;color:#888;font-size:13px}
+.mine-page .mine-home-profile-copy>span{display:block;margin-top:4px;font-size:12px;color:#999}
+.mine-page .mine-profile-meta{margin:5px 0 0;gap:4px 8px;font-size:12px;color:#888}
+.mine-page .mine-user-id{flex-basis:100%;font-size:14px;line-height:1.5;color:#888}
+.mine-page .mine-level,.mine-page .mine-official{
+  padding:0;border:0;border-radius:0;background:none;color:#999;font-size:11px;line-height:1.5;
+}
+.mine-page .mine-official{color:var(--mine-accent)}
+.mine-page .mine-home-profile>.mine-button{
+  display:flex;align-items:center;justify-content:flex-end;gap:2px;
+  min-width:44px;min-height:44px;padding:0;border:0;border-radius:0;background:none;
+  color:#999;font-size:13px;white-space:nowrap;
+}
+.mine-page .mine-home-profile>.mine-button svg{display:block;width:14px;height:14px;color:#b2b2b2}
+.mine-page .mine-assets-entry{
+  width:100%;min-height:56px;margin:8px 0;padding:0 20px;gap:16px;
+  background:#fff;color:#191919;border:0;border-radius:0;box-shadow:none;
+}
+.mine-page .mine-assets-symbol,.mine-page .mine-row-icon,.mine-page .mine-home-shortcut>.mine-shortcut-icon{
+  display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;
+  color:var(--mine-accent);background:none;border:0;border-radius:0;
+}
+.mine-page .mine-assets-symbol svg,.mine-page .mine-row-icon svg,.mine-page .mine-home-shortcut>.mine-shortcut-icon svg{
+  width:23px;height:23px;stroke-width:1.6;
+}
+.mine-page .mine-assets-copy{gap:0}
+.mine-page .mine-assets-copy strong{font-size:16px;font-weight:400;line-height:1.5}
+.mine-page .mine-assets-copy small{display:none}
+.mine-page .mine-assets-state{
+  max-width:112px;overflow:hidden;text-overflow:ellipsis;
+  color:#999;font-size:13px;line-height:1.5;white-space:nowrap;
+}
+.mine-page .mine-assets-state.is-unavailable{color:#a57848}
+.mine-page .mine-assets-entry>svg,.mine-page .mine-row>svg,.mine-page .mine-home-shortcut>svg{
+  display:block;flex:0 0 14px;width:14px;height:14px;color:#b2b2b2;stroke-width:1.6;
+}
+.mine-page .mine-home-shortcuts{display:block;margin:8px 0;padding:0 20px;background:#fff}
+.mine-page .mine-home-shortcut{
+  position:relative;display:flex;align-items:center;gap:16px;width:100%;min-height:56px;
+  padding:0;border:0;border-radius:0;background:#fff;box-shadow:none;color:#191919;
+}
+.mine-page .mine-home-shortcut>span:nth-child(2){
+  display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;flex:1;min-width:0;
+}
+.mine-page .mine-home-shortcut strong{font-size:16px;font-weight:400;line-height:1.5}
+.mine-page .mine-home-shortcut small,.mine-page .mine-home-shortcut.mine-lilac small{font-size:13px;color:#999}
+.mine-page .mine-home-shortcut.mine-mint small{display:none}
+.mine-page .mine-list{padding:0 20px;background:#fff;border:0;border-radius:0;box-shadow:none}
+.mine-page .mine-home-links{margin:8px 0}
+.mine-page .mine-row{
+  position:relative;min-height:56px;gap:16px;padding:8px 0;border:0;color:#191919;
+}
+.mine-page .mine-row:not(:last-child)::after,.mine-page .mine-home-shortcut:not(:last-child)::after{
+  content:"";position:absolute;bottom:0;left:40px;right:0;height:1px;background:var(--mine-divider);
+}
+.mine-page .mine-row-copy strong{font-size:16px;font-weight:400;line-height:1.5}
+.mine-page .mine-row-copy small{margin-top:2px;color:#999;font-size:12px;line-height:1.5}
+.mine-page .mine-row-note{font-size:13px;color:#999}
+.mine-page .mine-home-links .mine-row-copy small{display:none}
+.mine-page .mine-home-footnote{display:none}
+.mine-page .mine-subhead{
+  display:flex;align-items:center;gap:8px;min-height:56px;margin:0;padding:0 12px;
+  background:#f7f7f7;border-bottom:1px solid #e7e7e7;
+}
+.mine-page .mine-subhead>div{flex:1;min-width:0;padding-right:44px}
+.mine-page .mine-subhead h2{font-size:18px;font-weight:500;text-align:center}
+.mine-page .mine-subhead p{margin:2px 0 6px;color:#888;font-size:12px;text-align:center}
+.mine-page .mine-back{
+  width:44px;height:44px;margin:0;border:0;border-radius:0;background:none;color:#191919;
+}
+.mine-page .mine-back svg{width:22px;height:22px}
+.mine-page .mine-panel{padding:0;border:0;border-radius:0;background:#fff;box-shadow:none}
+.mine-page .mine-avatar-preview{align-items:center;gap:16px;margin:0;padding:20px}
+.mine-page .mine-avatar-preview>div>strong{font-size:16px;font-weight:400}
+.mine-page .mine-avatar-preview small{color:#999}
+.mine-page .mine-photo-actions{gap:16px;margin-top:3px}
+.mine-page .mine-photo-actions .mine-button{
+  min-height:40px;padding:0;background:none;border:0;border-radius:0;font-size:14px;color:var(--mine-accent);
+}
+.mine-page .mine-photo-actions .mine-button[data-mine-remove-photo]{color:#888}
+.mine-page .mine-photo-status{min-height:0;margin:0;padding:0 20px 16px;font-size:12px;line-height:1.6;color:#888}
+.mine-page .mine-photo-status:empty{display:none}
+.mine-page .mine-avatar-presets{padding:0 20px;border-top:1px solid var(--mine-divider);border-bottom:1px solid var(--mine-divider)}
+.mine-page .mine-avatar-presets>summary{min-height:48px;padding:13px 0;font-size:14px;color:#777;cursor:pointer}
+.mine-page .mine-avatar-fieldset{padding:0;margin:0 0 16px}
+.mine-page .mine-avatar-options{grid-template-columns:repeat(8,minmax(0,1fr));gap:6px}
+.mine-page .mine-avatar-option{height:44px;border-radius:6px;background:#f5f5f5;font-size:24px!important;box-shadow:none}
+.mine-page .mine-avatar-option[aria-pressed=true]{background:#f0eafa;border-color:#b7a0d0;box-shadow:none}
+.mine-page .mine-field{
+  display:flex;align-items:center;gap:16px;min-height:56px;margin:0;padding:0 20px;
+  border-bottom:1px solid var(--mine-divider);font-size:16px;font-weight:400;
+}
+.mine-page .mine-field>.mine-field-label{
+  display:block;float:none;flex:0 0 88px;margin:0;color:#191919;font-size:16px;font-weight:400;
+}
+.mine-page .mine-field input,.mine-page .mine-field textarea{
+  display:block;flex:1;min-width:0;width:0;min-height:56px;margin:0;padding:14px 0;
+  border:0;border-radius:0;background:#fff;box-shadow:none;color:#555;
+  font-family:inherit;font-size:16px;font-weight:400;line-height:1.5;text-align:right;
+}
+.mine-page .mine-field input::placeholder,.mine-page .mine-field textarea::placeholder{color:#aaa;font-size:14px}
+.mine-page .mine-bio-field{align-items:flex-start}
+.mine-page .mine-bio-field>.mine-field-label{padding-top:16px}
+.mine-page .mine-field textarea{min-height:80px;text-align:left;resize:vertical}
+.mine-page .mine-field[hidden]{display:none}
+.mine-page .mine-id-tools{
+  display:flex;align-items:center;gap:16px;margin:0;padding:8px 20px 12px;
+  background:#fafafa;border-bottom:1px solid var(--mine-divider);
+}
+.mine-page .mine-id-tools .mine-button{min-height:40px;padding:0;border:0;border-radius:0;background:none;color:var(--mine-accent);font-size:13px}
+.mine-page .mine-id-tools small{color:#888;font-size:12px;line-height:1.6}
+.mine-page .mine-readonly{
+  display:grid;grid-template-columns:88px minmax(0,1fr);gap:6px 16px;margin:0;padding:16px 20px;
+  border:0;border-radius:0;background:#fff;color:#191919;font-size:14px;
+}
+.mine-page .mine-readonly strong{color:#777;font-size:14px;font-weight:400;text-align:right}
+.mine-page .mine-readonly small{grid-column:2;color:#999;font-size:12px;text-align:right;line-height:1.6}
+.mine-page .mine-primary{
+  display:flex;width:calc(100% - 40px);max-width:240px;min-height:44px;margin:20px auto 10px;padding:10px 20px;
+  border:0;border-radius:6px;background:var(--mine-accent);color:#fff;font-size:16px;font-weight:500;box-shadow:none;
+}
+.mine-page .mine-edit-form>.mine-button{
+  display:block;min-height:44px;min-width:120px;width:auto;margin:0 auto;padding:8px 16px;
+  border:0;border-radius:0;background:none;color:#777;font-size:14px;
+}
+.mine-page .mine-form-error{margin:0;padding:12px 20px 0;font-size:14px;line-height:1.6}
+.mine-page .mine-form-error:empty{display:none}
+.mine-page .mine-form-note{margin:0;padding:8px 20px 20px;color:#999;font-size:12px;line-height:1.7}
+.mine-page .mine-section{margin:8px 0}
+.mine-page .mine-section-title{margin:0;padding:14px 20px 8px}
+.mine-page .mine-section-title h3{font-size:14px;color:#888;font-weight:400}
+.mine-page .mine-section-title>span{font-size:12px;color:#999}
+.mine-page .mine-security-card,.mine-page .mine-help-banner{
+  margin:8px 0;padding:20px;gap:16px;border:0;border-radius:0;background:#fff;box-shadow:none;
+}
+.mine-page .mine-security-symbol,.mine-page .mine-help-banner>span,.mine-page .mine-empty-symbol{
+  width:40px;height:40px;border-radius:6px;background:#f5f3f8;color:var(--mine-accent);
+}
+.mine-page .mine-security-card h3,.mine-page .mine-help-banner h3{font-size:18px;font-weight:500}
+.mine-page .mine-security-card p,.mine-page .mine-help-banner p{font-size:13px;color:#888;line-height:1.7}
+.mine-page .mine-eyebrow{color:#888}
+.mine-page .mine-info,.mine-page .mine-info.mine-warning{
+  margin:8px 0;padding:14px 20px;border:0;border-radius:0;background:#f7f7f7;color:#777;font-size:13px;line-height:1.7;
+}
+.mine-page .mine-info.mine-warning{color:#966d40;background:#fff8ee}
+.mine-page .mine-rules,.mine-page .mine-faqs{padding:0 20px;border:0;border-radius:0;background:#fff}
+.mine-page .mine-rules>div{border-color:var(--mine-divider)}
+.mine-page .mine-rules strong{font-size:14px;font-weight:400}
+.mine-page .mine-rules small{color:#999}
+.mine-page .mine-rules svg{color:var(--mine-accent)}
+.mine-page .mine-faqs details{padding:16px 0;border-color:var(--mine-divider)}
+.mine-page .mine-faqs summary{font-size:15px;font-weight:400}
+.mine-page .mine-faqs details p{color:#777;font-size:14px;line-height:1.8}
+.mine-page .mine-text-button{padding:8px 0;background:none;border-radius:0;color:var(--mine-accent);font-size:14px!important}
+.mine-page .mine-support-card{margin:8px 0;padding:20px;border:0;border-radius:0;background:#fff}
+.mine-page .mine-support-card h3{margin:10px 0 6px;font-weight:500}
+.mine-page .mine-support-card p{font-size:13px;color:#888;line-height:1.7}
+.mine-page .mine-status-pill{padding:0;border-radius:0;background:none;color:#888}
+.mine-page .mine-empty{padding:32px 20px}
+.mine-page .mine-empty h3{font-size:18px;font-weight:500}
+.mine-page .mine-empty p{font-size:14px;color:#888;line-height:1.8}
+.mine-page .mine-inline-error{margin:8px 0;padding:16px 20px;border-radius:0;background:#fff8ee;font-size:13px}
+.mine-page button:focus-visible,.mine-page summary:focus-visible{outline:2px solid #a888cd;outline-offset:2px}
+.mine-page .mine-edit-form input:focus-visible,.mine-page .mine-edit-form textarea:focus-visible{outline:2px solid #a888cd;outline-offset:0}
+
+dialog:has(#change-account-password){
+  color:#191919;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+}
+dialog:has(#change-account-password) .modal-inner{background:#fff}
+dialog:has(#change-account-password) .modal-head h2{font-size:18px;font-weight:500;letter-spacing:0}
+dialog:has(#change-account-password) .account-summary{gap:10px 16px;padding:0 0 20px;border-color:#ededed}
+dialog:has(#change-account-password) .account-summary strong{font-size:18px;font-weight:500}
+dialog:has(#change-account-password) .account-summary>span{font-size:14px;color:#888}
+dialog:has(#change-account-password) .account-summary button{min-height:40px;font-size:14px;color:#8053ba}
+dialog:has(#change-account-password) #change-account-password h3{margin:20px 0 8px;font-size:16px;font-weight:400}
+dialog:has(#change-account-password) .field{display:flex;align-items:center;gap:16px;min-height:56px;margin:0;border-bottom:1px solid #ededed;font-size:15px;font-weight:400}
+dialog:has(#change-account-password) .field input{flex:1;min-width:0;width:0;margin:0;padding:16px 0;border:0;border-radius:0;background:#fff;font-size:16px;text-align:right}
+dialog:has(#change-account-password) .primary{max-width:240px;margin:24px auto 0;font-size:16px;font-weight:500;border-radius:6px;box-shadow:none}
+dialog:has(#change-account-password) .secondary{min-height:46px;border-color:#e8e8e8;border-radius:6px;background:#f5f5f5;color:#555;font-size:16px}
+dialog:has(#change-account-password) .modal-copy{color:#888;font-size:13px;line-height:1.7}
+@media(max-width:480px){
+  .mine-page .mine-avatar-options{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+}
+@media(max-width:350px){
+  .mine-page .mine-home-profile{padding-left:16px;padding-right:16px;gap:12px}
+  .mine-page .mine-home-profile>.mine-button{min-width:32px}
+  .mine-page .mine-home-profile>.mine-button span{display:none}
+  .mine-page .mine-home-profile>.mine-button svg{width:18px;height:18px}
+  .mine-page .mine-assets-entry{padding-left:16px;padding-right:16px;gap:12px}
+  .mine-page .mine-assets-state{font-size:12px;max-width:96px}
+  .mine-page .mine-field{gap:12px;padding-left:16px;padding-right:16px}
+  .mine-page .mine-field>.mine-field-label{flex-basis:80px}
+}

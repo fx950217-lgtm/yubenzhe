@@ -78,8 +78,8 @@ test('web installation entry navigates while the installed app omits it and hand
 test('personal center labels local identity and forwards own moments, drafts, and bills precisely', () => {
   const app = harness();
   assert.match(app.container.innerHTML, /本机资料/);
-  assert.match(app.container.innerHTML, /愚笨者 · 0.11.1/);
-  assert.match(app.container.innerHTML, /3 份 · 未提交/);
+  assert.match(app.container.innerHTML, /愚笨者 · 0.12.0/);
+  assert.match(app.container.innerHTML, /<small>3 份<\/small>/);
   app.click('moments'); app.click('drafts'); app.click('bill-center'); app.click('ai');
   assert.deepEqual(app.calls, [
     ['navigate', 'discover', { route: 'moments', own: true }],
@@ -98,8 +98,13 @@ test('successful profile save persists selected allowlisted avatar, escapes text
   assert.equal(getLocalProfile().avatar, PROFILE_AVATARS[2]);
   assert.equal(getLocalProfile().nickname, '<b>阿青</b>');
   assert.match(app.container.innerHTML, /&lt;b&gt;阿青&lt;\/b&gt;/);
-  assert.match(app.container.innerHTML, /&lt;img src=x onerror=1&gt;/);
-  assert.doesNotMatch(app.container.innerHTML, /<img src=x/);
+  assert.doesNotMatch(app.container.innerHTML, /<b>阿青|<img src=x/);
+  // The compact home shows the name; the saved signature is displayed in the
+  // profile editor. Verify escaping at both actual rendering locations.
+  app.click('edit');
+  assert.match(app.container.innerHTML, /name="nickname"[^>]*value="&lt;b&gt;阿青&lt;\/b&gt;"/);
+  assert.match(app.container.innerHTML, /<textarea[^>]*name="bio"[^>]*>&lt;img src=x onerror=1&gt;<\/textarea>/);
+  assert.doesNotMatch(app.container.innerHTML, /<b>阿青|<img src=x/);
   assert.deepEqual(app.messages, ['个人资料已保存在本机']);
   assert.deepEqual(app.calls, [['action', 'profile-updated']]);
   app.cleanup();

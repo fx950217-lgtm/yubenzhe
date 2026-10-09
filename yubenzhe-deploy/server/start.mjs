@@ -17,5 +17,5 @@ const aiService=createAiService({database:aiDatabase,provider:createAiProvider()
 const socialDatabase=role==='frontend' ? openSocialDatabase(process.env.SOCIAL_DATABASE_PATH || './social-state/social.sqlite') : null;
 const socialService=socialDatabase ? createSocialService({database:socialDatabase}) : null;
 const server=createAcceptanceServer({aiService,socialService,role,origin:process.env.PUBLIC_ORIGIN,publicFrontend:process.env.PUBLIC_FRONTEND === 'true',authConfig,database,staticRoot:resolve(process.env.STATIC_ROOT || `./public/${role}`)});
-server.listen(port,host,()=>console.log(`${role} ${role === 'frontend' && process.env.PUBLIC_FRONTEND === 'true' ? 'public-preview' : 'private-acceptance'} 0.11.1 listening on ${host}:${port}`));
+server.listen(port,host,()=>console.log(`${role} ${role === 'frontend' && process.env.PUBLIC_FRONTEND === 'true' ? 'public-preview' : 'private-acceptance'} 0.12.0 listening on ${host}:${port}`));
 for(const signal of ['SIGTERM','SIGINT']) process.once(signal,()=>{server.close(async()=>{await aiService.close();aiDatabase.close();socialDatabase?.close();database?.close();process.exit(0)});setTimeout(()=>process.exit(1),12000).unref()});

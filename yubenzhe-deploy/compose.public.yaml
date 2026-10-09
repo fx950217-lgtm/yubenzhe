@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: yubenzhe-public:0.11.1
+    image: yubenzhe-public:0.12.0
     environment:
       PUBLIC_FRONTEND: "true"
       PUBLIC_ORIGIN: https://66.42.56.29
