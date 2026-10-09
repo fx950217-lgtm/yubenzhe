@@ -1,11 +1,13 @@
-2026-10-09 / 0.11.0 更新
-已接入 GitHub 手动 macOS 构建流程，编译真实 iOS arm64 应用，执行 ad-hoc 签名与字节校验，输出 Dopamine rootless DEB。浅紫 UI、星环 B 与网页一致。设备安装结果以 ios-build-status.json 为准。原始说明中的“尚未构建”为历史状态。
+2026-10-09 / 0.11.1（build 13）界面修订
+0.11.1 build 13 构建与安装准备中，实际结果以 ios-build-status.json 的对应版本记录为准，不沿用旧版本的设备确认结论。已接入 GitHub 手动 macOS 构建流程，用于编译真实 iOS arm64 应用、ad-hoc 签名、字节校验及 Dopamine rootless DEB 打包。
+本次仅同步顶部 UI：移除全局 B /“愚笨者”品牌行及重复页标题，各页面保留自己的标题、搜索和“＋”等操作；BSC 测试网标识及说明按钮仅在钱包资产页。浅紫 UI 与星环 B 应用图标保持不变。
+0.11.0 build 12 历史验收：已编译并安装至 Dopamine iPhone X，日志确认 ready，用户确认可见账号登录页；完整设备功能验收尚未完成。原始说明中的“尚未构建”为历史状态。
 
-愚笨者 iOS 工程与越狱安装源 · 0.11.0
+愚笨者 iOS 工程与越狱安装源 · 0.11.1（build 13）
 
 当前事实
 已准备独立 WKWebView 本地应用工程、iPhone/iPad 图标、JSON 系统文件导出、相机权限判断、后台遮罩和钱包锁定桥接、rootful/rootless DEB 打包器、带 GPG 签名的 APT 源生成器。
-当前 Windows 本机无 Xcode；已使用 GitHub macOS 构建任务编译真实设备应用并生成 rootless DEB，签名和资源一致性已核验。设备安装状态见 ios-build-status.json；应用商店与完整设备功能验收尚未完成。脚本拒绝把网页 ZIP、假二进制或模拟器应用当安装包。
+当前 Windows 本机无 Xcode；0.11.0 已使用 GitHub macOS 构建任务编译真实设备应用并生成 rootless DEB，签名和资源一致性已核验。设备安装状态见 ios-build-status.json；应用商店与完整设备功能验收尚未完成。脚本拒绝把网页 ZIP、假二进制或模拟器应用当安装包。
 “通用”按 iPhone/iPad arm64、iOS 15.4 起设计；越狱设备分别使用 rootful / rootless 安装布局。不能覆盖所有系统、越狱工具、roothide 或已迁移 jbroot。最终兼容性须按实际设备测试。
 
 先在 iPhone 使用

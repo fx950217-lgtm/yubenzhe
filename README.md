@@ -1,8 +1,10 @@
 # 愚笨者
 
-熟人社交、测试网钱包和 AI 协作项目。当前网页与客户端源码为 **0.11.0 浅紫公开体验版**。新增独立账号、在线好友与群聊，以及标准钱包导入；发现和平台资金流程仍为体验功能。
+熟人社交、测试网钱包和 AI 协作项目。当前网页与客户端源码为 **0.11.1 浅紫界面修订版**。本次仅整理顶部界面：移除全局 B /“愚笨者”品牌行和重复页标题，各页面直接保留自己的标题、搜索及“＋”等操作；“BSC 测试网”和说明按钮仅在钱包资产页显示。应用图标继续使用浅紫星环 B。独立账号、在线好友与群聊及标准钱包导入沿用 0.11.0；发现和平台资金流程仍为体验功能。
 
-[打开网页版](https://66.42.56.29/) · [下载 Android 浅紫测试版](https://66.42.56.29/downloads/yubenzhe-0.11.0-android.apk)。Android 沿用原签名，可覆盖升级 0.9.0；Windows 0.10.0 已在当前电脑安装。iOS 0.10.0 build 11 已修复启动卡住，并在 Dopamine iPhone X 安装启动，完整功能验收状态见发布记录。各平台统一从[下载页](https://66.42.56.29/install.html)获取。
+[打开网页版](https://66.42.56.29/) · [下载安装包](https://66.42.56.29/install.html)。**0.11.1 发布与安装准备中**：Android versionCode 12，iOS build 13。实际发布版本及各端安装、验收结果以 [发布状态 JSON](tongban/releases/release-status.json)、各端验收 JSON 和 [iOS 构建状态](yubenzhe-ios/ios-build-status.json) 为准；报告中的旧版本记录不代表新版已经安装。
+
+0.11.0 历史验收：Android 原签名包已在模拟器覆盖升级；Windows 已在当前电脑安装启动；iOS build 12 已在 Dopamine iPhone X 安装，用户确认可见账号登录页。完整范围见 [0.11.0 验收记录](yubenzhe-deploy/reports/social-011-verification.json)。
 
 先读 [项目上下文](PROJECT_CONTEXT.md) 和 [协作约定](AGENTS.md)。详细重建顺序保留在原始 [源码包说明](README.txt)。
 

@@ -1,4 +1,7 @@
-愚笨者 Android 工程 · 0.11.0（versionCode 11）
+愚笨者 Android 工程 · 0.11.1（versionCode 12）
+
+0.11.1 安装准备中，实际构建、签名及设备安装结果以 ../tongban/releases/android-verification.json 和 release-status.json 的对应版本记录为准。0.11.0（versionCode 11）原签名包已在模拟器覆盖安装启动，这是历史验收，不代表 0.11.1 已安装。
+本次仅同步顶部 UI：移除全局 B /“愚笨者”品牌行及重复页标题，各页面保留自己的标题、搜索和“＋”等操作；BSC 测试网标识及说明按钮仅在钱包资产页。应用图标保持浅紫星环 B。
 
 这是安装到 Android 的早期测试客户端，不是应用商店发行版。
 当前发布包名 app.tongban.wallet.demo，沿用用户提供的原签名，可覆盖升级 0.9.0 并保留数据。也可通过 previewApplicationId 构建单独的测试包。

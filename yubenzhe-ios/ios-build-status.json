@@ -1,13 +1,13 @@
 {
   "name": "愚笨者",
-  "version": "0.10.0",
-  "build": 11,
+  "version": "0.11.0",
+  "build": 12,
   "sourceProjectReady": true,
   "nativeCompiled": true,
   "deviceVerified": false,
   "installedOnDevice": true,
   "launchVerified": true,
-  "userScreenConfirmed": false,
+  "userScreenConfirmed": true,
   "device": {
     "model": "iPhone X",
     "os": "iOS 16.7.12",
@@ -18,17 +18,17 @@
   "layout": "Dopamine rootless",
   "architecture": "iphoneos-arm64",
   "bundleId": "app.yubenzhe.wallet",
-  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37914334602",
-  "sourceCommit": "92badf55e68cad5eabe6eb734ee9d2004026181e",
+  "buildRun": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/37918577047",
+  "sourceCommit": "0e5cca5dd759972e09a9b6dbaf51e7031dee157c",
   "installPackages": [
     {
-      "filename": "app.yubenzhe.wallet_0.10.0_iphoneos-arm64.deb",
-      "sizeBytes": 2340682,
-      "sha256": "7542be91a8737da4d77ad94cd1929dca116c098bde027d50aef6e1706b0f6cd5"
+      "filename": "app.yubenzhe.wallet_0.11.0_iphoneos-arm64.deb",
+      "sizeBytes": 2371886,
+      "sha256": "aaf8e1d4fafac2822216521dc909808d9afc3d7daa7968e7337a9f3413105c72"
     }
   ],
   "checks": {
-    "pythonPackagingTests": 11,
+    "pythonPackagingTests": 13,
     "javascriptBridgeTests": 4,
     "deviceArm64MachO": true,
     "signatureVerified": true,
@@ -40,12 +40,13 @@
   },
   "startupFix": "Missing ad-hoc app identity prevented WebKit launch. Build 11 declares the app identity and its required container; adds one retry and a bounded startup timeout.",
   "webSnapshot": {
-    "index.html": "555013bc381c43879e839edccd456cf9be590db3ab165af740a68bc60ceb0844",
-    "app.js": "6f080608a28e36abebc3e656576e34840ca19bed8a3673bbb6fec133e639d78c",
-    "app.css": "322ba808f52c61190171b59f5625912cfca6c6bd83e252c52bb4919a9ebbd99d",
+    "index.html": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
+    "app.js": "515211b81ea00ae4b38bee6b915ef85fadc915bca827498d4b3cd18818d54ec0",
+    "app.css": "a284bada155504bc1caac6f59fbe3ba1a1c4152d4acfff21dbe3743cccb3ca36",
     "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
     "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec",
     "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a"
-  }
+  },
+  "startupEvidence": "Device local server returned the final asset sizes. User confirmed the 6-digit password/login page on the iPhone."
 }

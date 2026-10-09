@@ -1,0 +1,242 @@
+{
+  "version": "0.11.0",
+  "scope": {
+    "liveSocial": [
+      "random numeric ID registration",
+      "profile and avatar editing",
+      "ID-only friend requests",
+      "direct and group text/image/sticker messages",
+      "group invitation/removal/ownership/leave"
+    ],
+    "unchangedPreview": [
+      "discovery",
+      "moments",
+      "platform balance",
+      "red packets"
+    ],
+    "wallet": [
+      "BIP39 with passphrase and EVM derivation path",
+      "EVM private key",
+      "V3 JSON keystore",
+      "watch-only address"
+    ],
+    "unsupported": [
+      "mainnet",
+      "hardware wallet signing",
+      "WalletConnect",
+      "push notifications",
+      "end-to-end message encryption"
+    ]
+  },
+  "automated": {
+    "web": 270,
+    "backend": 50,
+    "native": {
+      "androidTests": 5,
+      "androidAssertions": 85,
+      "windows": 23,
+      "iosPython": 13,
+      "iosBridge": 4
+    }
+  },
+  "browser": {
+    "run": "mv0tleto",
+    "pass": true,
+    "matrix": [
+      {
+        "name": "原UI注册账号经登录页复用 A",
+        "pass": true
+      },
+      {
+        "name": "原UI注册账号经登录页复用 B",
+        "pass": true
+      },
+      {
+        "name": "原UI注册账号经登录页复用 C",
+        "pass": true
+      },
+      {
+        "name": "个人资料ID复制",
+        "pass": true
+      },
+      {
+        "name": "系统靓号保留且旧ID不变",
+        "pass": true
+      },
+      {
+        "name": "用户名ID修改+头像上传+刷新保留",
+        "pass": true
+      },
+      {
+        "name": "真实好友申请 A→B",
+        "pass": true
+      },
+      {
+        "name": "对方通过后真实会话 B",
+        "pass": true
+      },
+      {
+        "name": "双方真实跨账号收发",
+        "pass": true
+      },
+      {
+        "name": "第三账号无权读取私聊",
+        "pass": true,
+        "status": 404
+      },
+      {
+        "name": "真实图片贴纸送达且刷新保留",
+        "pass": true
+      },
+      {
+        "name": "私聊图片第三人权限隔离",
+        "pass": true,
+        "status": 404
+      },
+      {
+        "name": "真实好友申请 A→C",
+        "pass": true
+      },
+      {
+        "name": "对方通过后真实会话 C",
+        "pass": true
+      },
+      {
+        "name": "A+B+C群创建与三端消息同步",
+        "pass": true
+      },
+      {
+        "name": "普通成员没有群主管理入口",
+        "pass": true
+      },
+      {
+        "name": "群名与公告跨端保存",
+        "pass": true
+      },
+      {
+        "name": "群主移除成员后停止读取",
+        "pass": true
+      },
+      {
+        "name": "重新入群不泄露入群前历史",
+        "pass": true
+      },
+      {
+        "name": "群主转让再退出",
+        "pass": true
+      },
+      {
+        "name": "刷新关系持久+手机桌面无溢出",
+        "pass": true
+      },
+      {
+        "name": "其他账号头像真实图片加载",
+        "pass": true
+      },
+      {
+        "name": "桌面消息加载完成后截图复核",
+        "pass": true
+      }
+    ],
+    "errors": [],
+    "netErrors": []
+  },
+  "deployed": true,
+  "walletBrowser": {
+    "started": "2026-10-09T10:37:27.387Z",
+    "base": "http://127.0.0.1:58315",
+    "cases": [
+      {
+        "name": "Unauthenticated account gate opens local wallet",
+        "pass": true
+      },
+      {
+        "name": "Mnemonic default account address confirmed and import unlocked",
+        "pass": true
+      },
+      {
+        "name": "Private key tab confirms expected address and imports",
+        "pass": true
+      },
+      {
+        "name": "V3 JSON file restores same address with new local password",
+        "pass": true
+      },
+      {
+        "name": "Mock BSC balance refresh reads one test BNB",
+        "pass": true
+      },
+      {
+        "name": "Explicit lock and unlock controls work without account login",
+        "pass": true
+      },
+      {
+        "name": "Reload restores encrypted wallet locked",
+        "pass": true
+      },
+      {
+        "name": "Cancel password prompt prevents encrypted backup export",
+        "pass": true
+      },
+      {
+        "name": "Wrong wallet password rejected then correct password unlocks",
+        "pass": true
+      },
+      {
+        "name": "Native save cancellation displays cancelled without locking wallet",
+        "pass": true
+      },
+      {
+        "name": "Watch address adds and refreshes without creating signing wallet",
+        "pass": true
+      },
+      {
+        "name": "Watch address survives reload and removal persists",
+        "pass": true
+      },
+      {
+        "name": "No JavaScript failures or transaction broadcasts",
+        "pass": true
+      }
+    ],
+    "rpcMethods": [
+      "eth_chainId",
+      "eth_getBalance",
+      "eth_chainId",
+      "eth_getBalance",
+      "eth_chainId",
+      "eth_getBalance",
+      "eth_chainId",
+      "eth_getBalance",
+      "eth_chainId",
+      "eth_getBalance",
+      "eth_chainId",
+      "eth_getBalance",
+      "eth_chainId",
+      "eth_getBalance"
+    ],
+    "errors": [],
+    "screenshots": [
+      "01-mnemonic-unlocked.png",
+      "02-private-key-unlocked.png",
+      "03-keystore-unlocked.png",
+      "04-watch-only.png"
+    ],
+    "mockNativeExports": 1,
+    "completed": "2026-10-09T10:37:31.915Z"
+  },
+  "sourceCommit": "0e5cca5dd759972e09a9b6dbaf51e7031dee157c",
+  "endpoint": "https://66.42.56.29",
+  "installed": {
+    "androidEmulator": true,
+    "windows": true,
+    "iosDopamine": true,
+    "iosLoginScreenUserConfirmed": true
+  },
+  "fullPhysicalDeviceFunctionality": false,
+  "productionTestsCreatedAccounts": false,
+  "deploymentNotes": [
+    "Initial mount failure caused a brief frontend interruption; corrected legacy data links to /opt/yubenzhe/{secrets,state,ai-state,backups,ollama-state}.",
+    "Social database is isolated under /opt/yubenzhe/shared/social-state. Admin, model and proxy containers unchanged."
+  ]
+}

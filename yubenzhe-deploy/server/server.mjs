@@ -39,7 +39,7 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       const url = new URL(request.url || '/', publicURL.origin);
       if (url.pathname === '/healthz' && request.method === 'GET') {
         if (role === 'admin') database.raw.prepare('SELECT 1').get();
-        json(response,{ok:true,service:role,version:'0.11.0',stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
+        json(response,{ok:true,service:role,version:'0.11.1',stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
       }
       if (request.headers.host !== publicURL.host || url.origin !== publicURL.origin) throw new AdminError(403,'HOST_DENIED','访问地址不匹配，请使用验收地址。');
       if (role === 'frontend' && url.pathname.startsWith('/api/social/')) {

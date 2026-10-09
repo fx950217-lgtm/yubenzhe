@@ -1,3 +1,10 @@
+0.11.1 界面修订发布准备中
+
+本次仅调整消费者顶部 UI：移除全局 B /“愚笨者”品牌行和重复页标题，非资产页保留自己的标题、搜索和“＋”等操作；BSC 测试网标识及说明按钮仅在钱包资产页。浅紫星环 B 应用图标保留，不改变账号 API、钱包网络或持久数据路径。
+网页发布及各端安装准备中，Android versionCode 12、iOS build 13；实际状态以 ../tongban/releases/release-status.json、各平台验收 JSON 和本目录对应版本发布报告为准。以下 0.11.0 记录仅说明已完成的历史验收。
+
+0.11.0 历史现网验收：0.11.0 已部署至 /opt/yubenzhe/releases/0.11.0，frontend 健康；后台、Ollama 和 Caddy 保持原容器。Linux 服务端50项通过，下载文件SHA-256全部一致。既有持久目录直接位于 /opt/yubenzhe 下，只有新增 social-state 位于 /opt/yubenzhe/shared 下。完整记录见 reports/social-011-verification.json。
+
 0.11.0 账号与多人消息更新
 
 /api/social 使用独立产品账号会话，不复用 AI 验收身份或合成后台。网页会话为 HttpOnly / SameSite=Strict Cookie；固定原生来源使用 bearer。账号、ID 保留表、好友、群、消息和图片保存于独立 social-state/social.sqlite，目录 uid1000 / 0700，数据库0600；不存储钱包密钥。此数据库不可复制到 state 或 ai-state。

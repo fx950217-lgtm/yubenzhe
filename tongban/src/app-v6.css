@@ -5,3 +5,5 @@
 .native-android body{padding-top:var(--safe-area-inset-top,env(safe-area-inset-top,0px));padding-left:var(--safe-area-inset-left,0px);padding-right:var(--safe-area-inset-right,0px)}
 .native-android .layout{min-height:calc(100dvh - var(--safe-area-inset-top,0px))}
 .native-android dialog{max-height:calc(90dvh - var(--safe-area-inset-top,0px) - var(--safe-area-inset-bottom,0px))}
+
+.topbar.wallet-context-header{justify-content:flex-end;margin-bottom:16px}

@@ -1,9 +1,6 @@
-愚笨者 iOS 0.10.0 · build 11
-
-已生成真实 arm64 iOS 应用，macOS codesign ad-hoc 签名、应用身份和独立容器配置验证通过。
-安装包：app.yubenzhe.wallet_0.10.0_iphoneos-arm64.deb
-SHA256：7542be91a8737da4d77ad94cd1929dca116c098bde027d50aef6e1706b0f6cd5
-已在 Dopamine iPhone X（iOS 16.7.12）安装启动；日志确认页面加载与启动遮罩关闭。build 11 修复了此前停在“正在准备”的问题。
-适用已有 Dopamine rootless 越狱环境，iOS 15.4 起。此 DEB 不能在未越狱设备直接安装，不是 App Store 包。
-使用现有包管理器安装，或通过已授权的设备 SSH 执行 dpkg -i。升级前关闭愚笨者，安装后重新打开；请勿删除原有钱包或用户数据。
-手机未完成完整钱包、相机和备份体验验收。网页版入口：https://66.42.56.29/
+愚笨者 iOS 0.11.0 · build 12
+已通过 macOS 原生编译、ad-hoc 签名与本地资源校验。设备安装/启动状态见 ios-build-status.json。
+安装包：app.yubenzhe.wallet_0.11.0_iphoneos-arm64.deb
+SHA256：aaf8e1d4fafac2822216521dc909808d9afc3d7daa7968e7337a9f3413105c72
+适用于已具备兼容 Dopamine rootless 环境的 arm64 iPhone，最低 iOS 15.4。普通 iPhone 可使用 HTTPS 网页版。
+使用现有包管理器安装；升级前关闭愚笨者，保留已有应用数据。钱包密钥不随账号同步。

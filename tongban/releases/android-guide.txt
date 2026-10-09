@@ -1,5 +1,4 @@
-愚笨者 Android 0.10.0
-
-下载 yubenzhe-0.10.0-android.apk，可直接覆盖升级 0.9.0，保留旧版本机数据。使用原签名，指纹见 android-verification.json。
-支持 Android 7.0 及以上；仅支持 BSC 测试网。已验证模拟器安装、原位升级和启动，实体手机体验仍待验证。
-此前独立浅紫测试包 app.tongban.wallet.lilac 是单独应用，不自动合并其数据。
+愚笨者 Android 0.11.0（versionCode 11）
+下载 yubenzhe-0.11.0-android.apk，沿用原签名，可覆盖升级原包名并保留本机数据。
+支持 Android 7.0 起，WebView 105+。模拟器与实体设备验收范围见 android-verification.json。
+独立浅紫预览包 app.tongban.wallet.lilac 是另一个应用，不会自动合并钱包数据。

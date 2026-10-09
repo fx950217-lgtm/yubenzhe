@@ -1,6 +1,6 @@
 {
   "productName": "愚笨者",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "platform": "Windows x64",
   "electronVersion": "44.7.0",
   "electronBuilderVersion": "26.15.3",
@@ -13,31 +13,31 @@
     "noAdminOrPrivateSigningMaterial": true,
     "windowsRuntimePE64": true,
     "securityFusesVerified": true,
-    "unitAndHostTests": 21,
+    "unitAndHostTests": 23,
     "actualWindowsDeviceTested": false,
     "installerRunOnWindows": true,
     "actualLocalModelRunOnWindows": false,
-    "actualWindowsLaunchVerified": true,
-    "installedAssetsMatchPackage": true
+    "installedAsarMatchesBuild": true,
+    "launchVerified": true
   },
   "files": {
-    "yubenzhe-0.10.0-windows-x64-setup.exe": {
-      "bytes": 112317403,
-      "sha256": "1935ac6134c410c73eaa5c1d3bf892008bea8375bfeff9344b5d44e33e17894e"
+    "yubenzhe-0.11.0-windows-x64-setup.exe": {
+      "bytes": 112340810,
+      "sha256": "e41541045b6637ed4f90c4237cd1d18b455cc29a3eab7ca81ce7ef8f9c27002c"
     },
-    "yubenzhe-0.10.0-windows-x64.zip": {
-      "bytes": 153895838,
-      "sha256": "ab590bd2c61a2d4fc32acd133cc57fc9f3aca40ecc460a3c1979de2cea8aed90"
+    "yubenzhe-0.11.0-windows-x64.zip": {
+      "bytes": 153925679,
+      "sha256": "5cee8a51e4a38c97f60a027003626e270119873eb1414489386873528cd89fb6"
     }
   },
   "webAssets": {
-    "index.html": "555013bc381c43879e839edccd456cf9be590db3ab165af740a68bc60ceb0844",
-    "app.js": "6f080608a28e36abebc3e656576e34840ca19bed8a3673bbb6fec133e639d78c",
-    "app.css": "322ba808f52c61190171b59f5625912cfca6c6bd83e252c52bb4919a9ebbd99d",
+    "index.html": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
+    "app.js": "515211b81ea00ae4b38bee6b915ef85fadc915bca827498d4b3cd18818d54ec0",
+    "app.css": "a284bada155504bc1caac6f59fbe3ba1a1c4152d4acfff21dbe3743cccb3ca36",
     "icon.png": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42",
     "icon.svg": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa",
     "apple-touch-icon.png": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a",
     "manifest.webmanifest": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec"
   },
-  "verificationScope": "Installed on the current Windows 10 x64 computer; registered version 0.10.0; live window launched. UI reviewed in browser. Camera/export and local Ollama device flows pending."
+  "installedAsarSHA256": "83c4d2edc3fd9f064307e245280d9e184112e31b1ba74994953582b769dd934e"
 }

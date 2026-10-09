@@ -8,37 +8,37 @@
   "realFundsSupported": false,
   "walletAndSocialCloudSync": false,
   "android": {
-    "built": false,
+    "built": true,
     "versionName": "0.11.0",
     "versionCode": 11,
     "appId": "app.tongban.wallet.demo",
     "signature": "original-preview",
     "signatureSHA256": "3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d",
-    "emulatorLaunchVerified": false,
-    "emulatorUpgradeVerified": false,
+    "emulatorLaunchVerified": true,
+    "emulatorUpgradeVerified": true,
     "deviceVerified": false
   },
   "windows": {
-    "built": false,
+    "built": true,
     "version": "0.11.0",
     "architecture": "x64",
     "signed": false,
-    "installedOnWindows": false,
-    "launchVerified": false,
+    "installedOnWindows": true,
+    "launchVerified": true,
     "deviceVerified": false
   },
   "ios": {
     "sourceReady": true,
     "sourceVersion": "0.11.0",
-    "built": false,
-    "installableDeb": false,
+    "built": true,
+    "installableDeb": true,
     "layout": "rootless",
     "minimumIOS": "15.4",
     "deviceVerified": false,
-    "installedOnDevice": false,
+    "installedOnDevice": true,
     "build": 12,
-    "launchVerified": false,
-    "userScreenConfirmed": false
+    "launchVerified": true,
+    "userScreenConfirmed": true
   },
   "ai": {
     "webWorkspacePersistence": true,
@@ -47,6 +47,26 @@
     "nativePrivateCloudConnection": false
   },
   "files": [
+    {
+      "filename": "yubenzhe-0.11.0-android.apk",
+      "sizeBytes": 4136890,
+      "sha256": "ae53aa6f2dfedf6732a195e3458a554c57aaaa0129f32e44bcc630bad3caf1cc"
+    },
+    {
+      "filename": "yubenzhe-0.11.0-windows-x64-setup.exe",
+      "sizeBytes": 112340810,
+      "sha256": "e41541045b6637ed4f90c4237cd1d18b455cc29a3eab7ca81ce7ef8f9c27002c"
+    },
+    {
+      "filename": "yubenzhe-0.11.0-windows-x64.zip",
+      "sizeBytes": 153925679,
+      "sha256": "5cee8a51e4a38c97f60a027003626e270119873eb1414489386873528cd89fb6"
+    },
+    {
+      "filename": "app.yubenzhe.wallet_0.11.0_iphoneos-arm64.deb",
+      "sizeBytes": 2371886,
+      "sha256": "aaf8e1d4fafac2822216521dc909808d9afc3d7daa7968e7337a9f3413105c72"
+    },
     {
       "filename": "app.yubenzhe.wallet_0.10.0_iphoneos-arm64.deb",
       "sizeBytes": 2340682,
@@ -96,5 +116,6 @@
   "publicPreview": true,
   "scope": "Independent live accounts, profiles, friends and group messages; discovery and platform balances remain local preview. Standard EVM wallet import and address watching; BSC testnet only.",
   "socialCloudSync": true,
-  "walletKeyCloudSync": false
+  "walletKeyCloudSync": false,
+  "sourceCommit": "0e5cca5dd759972e09a9b6dbaf51e7031dee157c"
 }
