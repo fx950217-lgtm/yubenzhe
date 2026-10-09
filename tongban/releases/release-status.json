@@ -38,7 +38,7 @@
     "installedOnDevice": true,
     "build": 16,
     "launchVerified": true,
-    "userScreenConfirmed": false
+    "userScreenConfirmed": true
   },
   "ai": {
     "webWorkspacePersistence": true,

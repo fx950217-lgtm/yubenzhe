@@ -4,7 +4,7 @@
 
 [微信官方界面参考](https://apps.apple.com/cn/app/wechat/id414478124) · [打开网页版](https://66.42.56.29/) · [下载安装包](https://66.42.56.29/install.html)。
 
-**0.13.0 当前状态：已部署，三端安装及启动检查完成。** 0.13.0 已部署为公开测试版，源码提交 7eb1605747bdb6680f95c619ab9a591fb874218e。新加坡 /opt/yubenzhe/releases/0.13.0 的 frontend 与 admin 均为 0.13.0 且 healthy，公网 healthz 返回 200；原反代与模型容器未重建。Android versionCode 15 已用原签名在模拟器覆盖安装启动；Windows 安装退出码 0，安装 ASAR 与产物一致且客户端已启动；iOS build 16 已经 macOS workflow 37926392645 构建，通过 USB 安装 0.13.0 并打开，日志确认 starting local service / page loaded / ready。4 个新安装包已上传并核对 SHA-256，下载区保留历史版本。未取得本版本用户肉眼确认，也未完成全部实体设备功能验收；旧版本结果仅作历史基线。
+**0.13.0 当前状态：已部署，三端安装及启动检查完成。** 0.13.0 已部署为公开测试版，源码提交 7eb1605747bdb6680f95c619ab9a591fb874218e。新加坡 /opt/yubenzhe/releases/0.13.0 的 frontend 与 admin 均为 0.13.0 且 healthy，公网 healthz 返回 200；原反代与模型容器未重建。Android versionCode 15 已用原签名在模拟器覆盖安装启动；Windows 安装退出码 0，安装 ASAR 与产物一致且客户端已启动；iOS build 16 已经 macOS workflow 37926392645 构建，通过 USB 安装 0.13.0 并打开，日志确认 starting local service / page loaded / ready。4 个新安装包已上传并核对 SHA-256，下载区保留历史版本。用户已确认 iPhone 能看到登录页或正常首页；全部实体设备功能验收尚未完成，旧版本结果仅作历史基线。
 
 0.13.0 当前功能：真实账号朋友圈的文字/照片发布、好友或仅自己可见、分页、点赞、评论及删除；好友变化、双向拉黑与账号限制实时约束内容和图片读取，失败重试使用幂等标识。旧本机动态保留为明确标注的本机旧内容，不自动上传或发布；朋友圈只从“发现”进入，发现首页保留 AI 工作台与本机草稿，不再展示示例榜单、服务商和发币入口。
 

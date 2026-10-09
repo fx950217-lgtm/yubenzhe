@@ -209,8 +209,9 @@
         "page loaded",
         "ready"
       ],
-      "userScreenConfirmed": false,
-      "fullDeviceTest": false
+      "userScreenConfirmed": true,
+      "fullDeviceTest": false,
+      "userConfirmation": "Login page or normal home page visible"
     }
   },
   "files": [

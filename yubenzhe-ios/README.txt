@@ -1,6 +1,6 @@
 愚笨者 iOS 0.13.0（build 16，已通过 USB 安装启动）
 
-0.13.0 已部署为公开测试版，源码提交 7eb1605747bdb6680f95c619ab9a591fb874218e。新加坡 /opt/yubenzhe/releases/0.13.0 的 frontend 与 admin 均为 0.13.0 且 healthy，公网 healthz 返回 200；原反代与模型容器未重建。Android versionCode 15 已用原签名在模拟器覆盖安装启动；Windows 安装退出码 0，安装 ASAR 与产物一致且客户端已启动；iOS build 16 已经 macOS workflow 37926392645 构建，通过 USB 安装 0.13.0 并打开，日志确认 starting local service / page loaded / ready。4 个新安装包已上传并核对 SHA-256，下载区保留历史版本。未取得本版本用户肉眼确认，也未完成全部实体设备功能验收；旧版本结果仅作历史基线。
+0.13.0 已部署为公开测试版，源码提交 7eb1605747bdb6680f95c619ab9a591fb874218e。新加坡 /opt/yubenzhe/releases/0.13.0 的 frontend 与 admin 均为 0.13.0 且 healthy，公网 healthz 返回 200；原反代与模型容器未重建。Android versionCode 15 已用原签名在模拟器覆盖安装启动；Windows 安装退出码 0，安装 ASAR 与产物一致且客户端已启动；iOS build 16 已经 macOS workflow 37926392645 构建，通过 USB 安装 0.13.0 并打开，日志确认 starting local service / page loaded / ready。4 个新安装包已上传并核对 SHA-256，下载区保留历史版本。用户已确认 iPhone 能看到登录页或正常首页；全部实体设备功能验收尚未完成，旧版本结果仅作历史基线。
 
 0.13.0 当前功能：真实账号朋友圈的文字/照片发布、好友或仅自己可见、分页、点赞、评论及删除；好友变化、双向拉黑与账号限制实时约束内容和图片读取，失败重试使用幂等标识。旧本机动态保留为明确标注的本机旧内容，不自动上传或发布；朋友圈只从“发现”进入，发现首页保留 AI 工作台与本机草稿，不再展示示例榜单、服务商和发币入口。
 账号安全已加入主动生成的一次性恢复码、设备会话管理与账号注销：恢复码仅在生成时展示，服务器只保存哈希；恢复会重置 6 位密码并撤销旧会话，不解除平台封禁。注销需当前密码和明确文字确认，多人群主先转让；清理服务端自有内容与关系，保留占用 ID、账号墓碑及必要去正文审计记录。本机钱包、助记词和链上资产不随账号注销删除，账号恢复码不是钱包助记词。
@@ -34,7 +34,7 @@ build 16 的 Info.plist、Xcode 工程、生成器与验证器已对齐。Web fo
 
 当前事实
 已准备独立 WKWebView 本地应用工程、iPhone/iPad 图标、JSON 系统文件导出、相机权限判断、后台遮罩和钱包锁定桥接、rootful/rootless DEB 打包器、带 GPG 签名的 APT 源生成器。
-当前 Windows 本机无 Xcode；0.13.0 build 16 已由 GitHub macOS workflow 37926392645 构建成功，rootless DEB 已通过 USB 安装并用 uiopen 打开，日志包含 starting local service、page loaded、ready。DEB SHA-256 为 29892a39666f4ec3cbc5a8b97c38bdd5aeef78dcea1caf392d0bff563a1fffe8。未取得本版用户肉眼确认，公开下载已上传并校验。0.12.1 build 15 的成功构建与启动日志仅为上方历史验收。0.12.0 build 14 已通过的 macOS 编译、rootless DEB 发布、Dopamine iPhone X 安装和启动资源检查，以及 0.11.1 的结果，均保留为上方历史验收。实际状态以 ios-build-status.json 的对应版本记录为准；应用商店与完整设备功能验收尚未完成。脚本拒绝把网页 ZIP、假二进制或模拟器应用当安装包。
+当前 Windows 本机无 Xcode；0.13.0 build 16 已由 GitHub macOS workflow 37926392645 构建成功，rootless DEB 已通过 USB 安装并用 uiopen 打开，日志包含 starting local service、page loaded、ready。DEB SHA-256 为 29892a39666f4ec3cbc5a8b97c38bdd5aeef78dcea1caf392d0bff563a1fffe8。用户已确认本版 iPhone 能看到登录页或正常首页，公开下载已上传并校验。0.12.1 build 15 的成功构建与启动日志仅为上方历史验收。0.12.0 build 14 已通过的 macOS 编译、rootless DEB 发布、Dopamine iPhone X 安装和启动资源检查，以及 0.11.1 的结果，均保留为上方历史验收。实际状态以 ios-build-status.json 的对应版本记录为准；应用商店与完整设备功能验收尚未完成。脚本拒绝把网页 ZIP、假二进制或模拟器应用当安装包。
 “通用”按 iPhone/iPad arm64、iOS 15.4 起设计；越狱设备分别使用 rootful / rootless 安装布局。不能覆盖所有系统、越狱工具、roothide 或已迁移 jbroot。最终兼容性须按实际设备测试。
 
 先在 iPhone 使用
