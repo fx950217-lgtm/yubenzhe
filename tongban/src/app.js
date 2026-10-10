@@ -3,7 +3,7 @@ import { saveJsonFile, installAndroidControls, isNativeApp } from './native-runt
 import './app-v4.css';
 import './app-v6.css';
 import './desktop.css';
-import { MAIN_NAV, isAppView, hashForView, viewFromHash, activeNavView } from './app-navigation.js';
+import { MAIN_NAV, WORKBENCH_FEATURES, isAppView, hashForView, navigationFromHash, normalizeNavigation, activeNavView } from './app-navigation.js';
 import { mountQrScanner } from './qr-scanner.js';
 import * as wallet from './wallet.js';
 import { mountLiveSocial } from './live-social.js';
@@ -12,7 +12,7 @@ import { mountAccountGate, accountSettingsHTML, mountAccountSecurity } from './a
 import { mountNotificationSettings } from './notification-settings.js';
 import { mountWalletImport, mountWatchWallets } from './wallet-import-ui.js';
 import QRCode from 'qrcode';
-import { mountDiscover, getDiscoverDrafts } from './discover.js';
+import { mountDiscover } from './discover.js';
 import { getLocalProfile } from './profile-store.js';
 import { mountMine } from './mine.js';
 import { mountBillCenter } from './bill-center.js';
@@ -47,7 +47,7 @@ function accountReady(profile,created){accountLoading=false;accountError='';layo
 function state(){try{return wallet.getWalletState()}catch{return {exists:true,address:null,unlocked:false,unavailable:true}}}
 function walletProblem(s=state()){if(!s.corrupt&&!s.unavailable&&(!s.exists||s.address))return false;showModal('钱包暂不可用',`<div class="notice warn">${s.unavailable?'浏览器无法读取本地钱包存储，请检查存储权限后重试。':'本机钱包文件无法读取。请保留原始数据、离线助记词和已有加密备份，使用助记词在可信钱包中恢复。'}</div><p class="modal-copy">当前不能生成收款码或签名交易，原有钱包数据不会被覆盖。</p>`);return true}
 function toast(msg){const el=document.querySelector('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3500)}
-function navHtml(){const selected=activeNavView(currentView,billReturn.view);return navs.map(([id,i,label])=>`<button type="button" class="nav-item ${id===selected?'active':''}" data-nav="${id}" ${id===selected?'aria-current="page"':''}>${icon(i)}<span>${label}</span></button>`).join('')}
+function navHtml(){const selected=activeNavView(currentView,billReturn.view,routeOptions);return navs.map(([id,i,label])=>`<button type="button" class="nav-item ${id===selected?'active':''}" data-nav="${id}" ${id===selected?'aria-current="page"':''}>${icon(i)}<span>${label}</span></button>`).join('')}
 function profile(){try{return socialClient.getProfile()||getLocalProfile()}catch{return {nickname:'资料暂不可用',avatar:'🌱'}}}
 function updateRailProfile(){const p=profile();const el=app.querySelector('.rail .self');if(el){el.querySelector('.avatar').innerHTML=p.avatarImage?'<img src="'+esc(p.avatarImage)+'" alt="我的头像">':esc(p.avatar);el.querySelector('strong').textContent=p.nickname}}
 function layout(){
@@ -58,22 +58,36 @@ function layout(){
   if(['messages','contacts','mine','workbench','points'].includes(currentView)&&!socialClient.getProfile())socialCleanup=mountAccountGate(page,{client:socialClient,onReady:accountReady,onWallet:()=>navigate('wallet'),onRetry:initializeAccount,error:accountError,loading:accountLoading});
   else if(currentView==='wallet')renderWallet(page);
   else if(currentView==='points')socialCleanup=mountPoints(page,{client:socialClient,onNavigate:navigate});
-  else if(currentView==='workbench')socialCleanup=mountWorkbenchHub(page,{client:socialClient,toast,onPoints:()=>navigate('points'),onAccount:()=>navigate('messages'),onLegacy:()=>navigate('discover',{route:'ai'})});
-  else if(currentView==='mine')socialCleanup=mountMine(page,{toast,onNavigate:navigate,onAction:mineAction,getWalletStatus:state,getDraftCount:()=>getDiscoverDrafts().length,isNative:isNativeApp(),profileService:socialClient});
+  else if(currentView==='workbench'&&WORKBENCH_FEATURES.includes(routeOptions.route))socialCleanup=mountDiscoveryPage(page,'workbench');
+  else if(currentView==='workbench'){
+    let initializing=true;
+    socialCleanup=mountWorkbenchHub(page,{client:socialClient,toast,onPoints:()=>navigate('points'),onAccount:()=>navigate('messages'),onLegacy:()=>navigate('workbench',{route:'ai'}),onOpenFeature:route=>navigate('workbench',{route}),initialMode:routeOptions.hub?.mode,initialScreen:routeOptions.hub?.screen,initialSelected:routeOptions.hub?.selected,onScreenChange:hub=>{
+      const previous=hashForView(currentView,routeOptions);routeOptions={hub};const next=hashForView(currentView,routeOptions);
+      if(initializing||previous===next)history.replaceState({view:currentView,options:routeOptions},'',next);
+      else{history.pushState({view:currentView,options:routeOptions},'',next);window.scrollTo({top:0,behavior:'instant'});}
+    }});initializing=false;
+  }
+  else if(currentView==='mine')socialCleanup=mountMine(page,{toast,onNavigate:navigate,onAction:mineAction,getWalletStatus:state,isNative:isNativeApp(),profileService:socialClient});
   else if(currentView==='bills')socialCleanup=mountBillCenter(page,{toast,sources:{chain:()=>wallet.getRecords()},onRefresh:hash=>wallet.getTransactionStatus(hash),onBack:()=>navigate(billReturn.view,billReturn.options)});
-  else if(currentView==='discover')socialCleanup=mountDiscover(page,{socialClient,onAccount:()=>navigate('messages'),toast,onNavigate:navigate,onProfile:openDiscoverProfile,getWalletAddress:()=>state().address||'',initialRoute:routeOptions.route||'hub',initialOwnMoments:!!routeOptions.own,onRouteChange:route=>{routeOptions={...routeOptions,route};history.replaceState({view:currentView,options:routeOptions},'',location.hash)}});
+  else if(currentView==='discover')socialCleanup=mountDiscoveryPage(page,routeOptions.origin==='mine'?'mine':'discover');
   else if(['messages','contacts'].includes(currentView))socialCleanup=mountLiveSocial(page,{service:socialClient,profile:socialClient.getProfile(),view:currentView,toast,onNavigate:navigate,onScan:openScan,onGift:openDistributionInfo,initialProfileId:routeOptions.profileId,onScreenChange:({screen})=>document.body.classList.toggle('social-chat-open',screen==='chat')});
   else page.innerHTML='<p>页面暂不可用。</p>';
+}
+function mountDiscoveryPage(page,origin){
+  return mountDiscover(page,{socialClient,onAccount:()=>navigate('messages'),toast,onNavigate:navigate,onProfile:openDiscoverProfile,getWalletAddress:()=>state().address||'',initialRoute:routeOptions.route||'hub',initialOwnMoments:!!routeOptions.own,backLabel:origin==='workbench'?'返回 AI 工作台':origin==='mine'?'返回我的':'返回发现',onExit:origin==='discover'?undefined:()=>navigate(origin),onRouteChange:(route,meta={})=>{
+    if(!meta.localDraft&&origin==='discover'&&WORKBENCH_FEATURES.includes(route)){queueMicrotask(()=>navigate('workbench',{route}));return;}
+    routeOptions={...routeOptions,route:meta.canonicalRoute||route};history.replaceState({view:currentView,options:routeOptions},'',hashForView(currentView,routeOptions));
+  }});
 }
 function navigate(view,options={}){
   if(!isAppView(view))return;
   pageScroll.set(currentView,window.scrollY);walletIntent=null;if(dialog.open)closeModal();
   currentView=view;restoreRouteOptions(options);
-  history.pushState({view,options:routeOptions},'',hashForView(view));layout();
+  history.pushState({view:currentView,options:routeOptions},'',hashForView(currentView,routeOptions));layout();
   window.scrollTo({top:options.route?0:(pageScroll.get(view)||0),behavior:'instant'});
 }
 function restoreRouteOptions(options={}){
-  routeOptions=options&&typeof options==='object'?options:{};
+  const restored=normalizeNavigation(currentView,options);currentView=restored.view;routeOptions=restored.options;
   if(currentView==='bills'){const back=routeOptions.returnTo;billReturn=back&&isAppView(back.view)&&back.view!=='bills'?{view:back.view,options:back.options||{}}:{view:'mine',options:{}}}
 }
 function openBillCenter(){navigate('bills',{returnTo:{view:currentView,options:{...routeOptions}}})}
@@ -160,7 +174,7 @@ function confirmTransferModal(tx){showModal('核对转账',`<div class="transfer
 },()=>wallet.cancelCreation())}
 function transactionResult(result){showModal(result.broadcastUncertain?'广播状态待核实':'交易已提交',`<div class="success-ring">${icon('send')}</div><p class="modal-copy">${result.broadcastUncertain?'网络没有返回明确的广播结果。请先查看链上状态，避免重复转账。':'交易已提交至测试网，等待区块确认。提交并不代表到账。'}</p><div class="address">${esc(result.hash)}</div><a class="primary" href="https://testnet.bscscan.com/tx/${esc(result.hash)}" target="_blank" rel="noopener noreferrer">在 BscScan 查看 ${icon('arrow')}</a><button class="secondary" id="check-tx">刷新确认状态</button><p class="form-error" role="status"></p>`,el=>{el.querySelector('#check-tx').onclick=async e=>{e.target.disabled=true;try{const r=await wallet.getTransactionStatus(result.hash);formError(r.status==='confirmed'?'链上已确认，转账已完成。':r.status==='failed'?'链上执行失败，请查看交易详情。':'仍在等待链上确认，请稍后刷新。');if(currentView==='wallet')renderWallet(document.querySelector('#page'))}catch(err){formError(err)}finally{e.target.disabled=false}}})}
 function recordsModal(){showModal('本机转账记录',`${recordsHtml()}<p class="modal-copy" style="margin-top:18px">完整收支记录以区块浏览器为准。清除本机数据不会删除链上记录。</p>`)}
-function noticeModal(){showModal('关于愚笨者',`<p class="modal-copy">愚笨者 0.14.0-dev.3 · 本地测试版</p><div class="notice">支持账号资料、好友、私聊、群聊与朋友圈。邮箱验证码在本地页面显示；请在账号安全中管理通行密钥与恢复码。</div><div class="notice">发现中的服务商申请、赏金合作、发币申请与举报保存到本地服务。工作台支持填写目标、确认计划与预算，整理文件或生成清单大纲，下载实际成果。</div><div class="notice warn">POINT 仅用于服务用量，不可转赠或提现；链上红包合约尚未部署。文件任务由本地解析器执行，任务使用本地试用积分，未连接真实邮箱、云桌面或收费模型。</div><p class="modal-copy">钱包密钥在本机加密保存，链上钱包仅支持 BSC 测试网。主网转账、硬件钱包直连、端到端加密与应用商店发布尚未开放。本地测试页面只在这台电脑访问。</p>`) }
+function noticeModal(){showModal('关于愚笨者',`<p class="modal-copy">愚笨者 0.14.0-dev.4 · 本地测试版</p><div class="notice">支持账号资料、好友、私聊、群聊与朋友圈。邮箱验证码在本地页面显示；请在账号安全中管理通行密钥与恢复码。</div><div class="notice">发现中的服务商申请、赏金合作、发币申请与举报保存到本地服务。工作台支持填写目标、确认计划与预算，整理文件或生成清单大纲，下载实际成果。</div><div class="notice warn">POINT 仅用于服务用量，不可转赠或提现；链上红包合约尚未部署。文件任务由本地解析器执行，任务使用本地试用积分，未连接真实邮箱、云桌面或收费模型。</div><p class="modal-copy">钱包密钥在本机加密保存，链上钱包仅支持 BSC 测试网。主网转账、硬件钱包直连、端到端加密与应用商店发布尚未开放。本地测试页面只在这台电脑访问。</p>`) }
 function privacyModal(){showModal('隐私与熟人关系',`<div class="notice">申请通过后才能私聊。群成员身份不自动等于好友。</div><p class="modal-copy">账号资料、好友关系与聊天记录存储在服务器，通过 HTTPS 传输，目前不是端到端加密。钱包助记词和私钥只在本机处理，不发送到聊天服务器。</p><div class="transfer-detail"><span>陌生人私聊</span><b>关闭</b></div><div class="transfer-detail"><span>好友验证</span><b>开启</b></div><div class="transfer-detail"><span>资产展示</span><b>默认隐藏</b></div><div class="transfer-detail"><span>加入活跃榜</span><b>默认不参与</b></div><p class="modal-copy" style="margin-top:19px">朋友圈按好友关系与发布范围控制可见；你可以管理登录设备、拉黑、举报或注销账号。<br><a href="./privacy.html">隐私说明</a> · <a href="./terms.html">用户规则</a></p>`) }
 function exportVault(){if(walletProblem())return;if(!state().exists)return beginWalletSetup(exportVault);unlockModal(async()=>{try{const payload=wallet.exportEncryptedKeystore();const result=await saveJsonFile(payload);toast(result.saved?(result.method!=='browser-download'?'加密备份已保存，请与密码分开保管':'已请求下载加密备份，请检查下载文件'):'已取消保存，没有导出文件')}catch(e){toast(e.message||'备份没有保存，请重试')}})}
 app.addEventListener('click',e=>{const nav=e.target.closest('[data-nav]');if(nav){e.preventDefault();navigate(nav.dataset.nav);return}const action=e.target.closest('[data-action]')?.dataset.action;if(!action)return;const handlers={create:()=>beginWalletSetup(),unlock:()=>unlockModal(()=>layout()),send:openTransfer,receive:receiveModal,copy:copyAddress,records:openBillCenter,refresh:()=>refreshBalance(true),visibility:()=>{hideBalance=!hideBalance;renderWallet(document.querySelector('#page'));if(!hideBalance&&balance===null)refreshBalance()},notice:noticeModal,network:()=>showModal('当前网络',`<div class="notice">BSC 测试网 · Chain ID 97 · tBNB</div><p class="modal-copy">目前仅支持 BSC 测试网。其他网络一律不支持，主网暂未开放。测试币无实际价值，不提供跨链切换。</p>`),privacy:privacyModal,'chain-assets':()=>{chainSection='assets';renderWallet(document.querySelector('#page'));},'chain-bills':()=>{chainSection='bills';renderWallet(document.querySelector('#page'));},'asset-scan':()=>openScan(),'asset-gift':openDistributionInfo,'watch-wallets':watchWallets,'wallet-compatibility':walletCompatibility,'import-wallet':restoreModal,'wallet-management':openWalletManagement,lock:()=>{wallet.lock();layout();toast('钱包已锁定')},export:exportVault};handlers[action]?.()});
@@ -168,8 +182,8 @@ window.addEventListener('tongban:wallet-locked',()=>{walletIntent=null;backupPhr
 window.addEventListener('storage',e=>{if(e.key===null||e.key?.startsWith('tongban.wallet')){wallet.lock();balance=null;layout()}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)wallet.lock()});
 window.addEventListener('pagehide',()=>wallet.lock());
-window.addEventListener('popstate',()=>{const view=viewFromHash(location.hash);walletIntent=null;if(dialog.open)closeModal();currentView=view;restoreRouteOptions(history.state?.options);layout();window.scrollTo({top:pageScroll.get(view)||0,behavior:'instant'})});
-currentView=viewFromHash(location.hash);restoreRouteOptions(history.state?.view===currentView?history.state.options:{});history.replaceState({view:currentView,options:routeOptions},'',hashForView(currentView));layout();initializeAccount();if(state().exists)refreshBalance();
+window.addEventListener('popstate',()=>{const route=navigationFromHash(location.hash);walletIntent=null;if(dialog.open)closeModal();currentView=route.view;restoreRouteOptions(history.state?.view===currentView?history.state.options:route.options);layout();window.scrollTo({top:pageScroll.get(currentView)||0,behavior:'instant'})});
+const initialNavigation=navigationFromHash(location.hash);currentView=initialNavigation.view;restoreRouteOptions(history.state?.view===currentView?history.state.options:initialNavigation.options);history.replaceState({view:currentView,options:routeOptions},'',hashForView(currentView,routeOptions));layout();initializeAccount();if(state().exists)refreshBalance();
 
 function openDiscoverProfile(id){navigate('contacts',{profileId:id})}
 
@@ -182,7 +196,8 @@ function androidBack(){
   if(dialog.open){closeModal();return true}
   if(socialCleanup?.back?.())return true;
   if(currentView==='bills'){navigate(billReturn.view,billReturn.options);return true}
-  if(['wallet','points'].includes(currentView)){navigate('mine');return true}
+  if(currentView==='wallet'){navigate('mine');return true}
+  if(currentView==='points'){navigate('workbench');return true}
   if(currentView!=='workbench'){navigate('workbench');return true}
   return false;
 }

@@ -159,16 +159,16 @@ test('editing a saved draft keeps its ID and creation time instead of creating d
   assert.equal(data.drafts.length,2);
 });
 
-function mountHarness(t,{route='hub',own=false,data=seedDiscover(),profile}={}) {
+function mountHarness(t,{route='hub',own=false,data=seedDiscover(),profile,options={}}={}) {
   const store=storage(),previous=globalThis.localStorage;
   persistDiscover(data,store);
   if(profile!==undefined)store.setItem('tongban.profile.v1',typeof profile==='string'?profile:JSON.stringify(profile));
   globalThis.localStorage=store;
   const handlers=new Map(),seen=[];
   const container={innerHTML:'',querySelector:()=>null,querySelectorAll:()=>[],classList:{add(){},remove(){}},addEventListener:(name,handler)=>handlers.set(name,handler),removeEventListener:name=>handlers.delete(name),scrollIntoView(){}};
-  const cleanup=mountDiscover(container,{initialRoute:route,initialOwnMoments:own,onRouteChange:value=>seen.push(value)});
+  const cleanup=mountDiscover(container,{initialRoute:route,initialOwnMoments:own,onRouteChange:value=>seen.push(value),...options});
   t.after(()=>{cleanup();if(previous===undefined)delete globalThis.localStorage;else globalThis.localStorage=previous;});
-  return {container,store,seen,click:(action,extra={})=>handlers.get('click')({target:{closest:()=>({dataset:{disc:action,...extra}})}})};
+  return {container,store,seen,cleanup,click:(action,extra={})=>handlers.get('click')({target:{closest:()=>({dataset:{disc:action,...extra}})}})};
 }
 
 test('online moments require login and never publish or display legacy posts as server content',t=>{
@@ -211,19 +211,46 @@ test('draft navigation and filters use actual entries and notify route changes',
   assert.match(app.container.innerHTML,/value="WORK_MARKER"/,'explicit saved selection is remembered per type');
 });
 
-test('discovery restores actual community routes and preserves moments and local drafts without sample facts',t=>{
+test('discovery is exactly three entry rows and keeps business routes off its homepage',t=>{
   const app=mountHarness(t),markup=app.container.innerHTML;
-  assert.match(markup,/data-disc="moments"/);assert.match(markup,/data-disc="open-workbench"/);assert.match(markup,/data-disc="people"/);assert.match(markup,/data-disc="drafts"/);
-  for(const route of ['bounty','provider','rank','token'])assert.ok(markup.includes('data-disc="'+route+'"'));
-  assert.doesNotMatch(markup,/示例榜单|示例目录|示例 USDT|disc-resume-section|disc-friend-stack/);
-  app.click('drafts');assert.deepEqual(app.seen,['hub','drafts']);
-  assert.match(app.container.innerHTML,/仅保存在本机/);
+  assert.deepEqual([...markup.matchAll(/data-disc="([^"]+)"/g)].map(match=>match[1]),['moments','people','favorites']);
+  for(const label of ['朋友圈','认识新朋友','收藏'])assert.ok(markup.includes(label));
+  assert.doesNotMatch(markup,/赏金论坛|服务商|活跃榜|趣味币发行|AI 工作台|本机草稿|disc-resume-section|compose|disc-friend-stack/);
+  app.click('favorites');assert.deepEqual(app.seen,['hub','favorites']);
+  assert.match(app.container.innerHTML,/新增收藏/);assert.match(app.container.innerHTML,/历史草稿/);
 });
 
-test('discovery offers a resume card only for a real saved draft',t=>{
+test('saved drafts stay available behind favorites without expanding the discover homepage',t=>{
   const data=seedDiscover();upsertDraft(data,'ai',{title:'我的工作',prompt:'写一封邀请信'},null);
-  const app=mountHarness(t,{data});assert.match(app.container.innerHTML,/我的工作/);assert.match(app.container.innerHTML,/disc-resume-section/);
+  const app=mountHarness(t,{data});assert.doesNotMatch(app.container.innerHTML,/我的工作|disc-resume-section/);
+  app.click('favorites');app.click('drafts');
+  assert.match(app.container.innerHTML,/我的工作/);assert.match(app.container.innerHTML,/aria-label="返回收藏"/);
   app.click('edit-draft',{id:data.drafts[0].id});assert.match(app.container.innerHTML,/value="我的工作"/);
+  app.cleanup.back();assert.match(app.container.innerHTML,/我的草稿/);
+  app.cleanup.back();assert.match(app.container.innerHTML,/新增收藏/);
+  app.cleanup.back();assert.deepEqual(app.seen.slice(-3),['drafts','favorites','hub']);
+});
+
+test('embedded community routes return to workbench and favorite drafts return through their own list',t=>{
+  let exits=0;
+  const business=mountHarness(t,{route:'bounty',options:{backLabel:'返回 AI 工作台',onExit:()=>exits++}});
+  assert.match(business.container.innerHTML,/aria-label="返回 AI 工作台"/);
+  assert.match(business.container.innerHTML,/赏金论坛/);
+  business.click('hub');assert.equal(exits,1);
+  business.cleanup.back();assert.equal(exits,2);
+  const favorites=mountHarness(t,{route:'favorites',options:{backLabel:'返回我的',onExit:()=>exits++}});
+  assert.match(favorites.container.innerHTML,/aria-label="返回我的"/);
+  favorites.click('drafts');favorites.cleanup.back();assert.equal(exits,2);
+  assert.match(favorites.container.innerHTML,/新增收藏/);
+  favorites.cleanup.back();assert.equal(exits,3);
+});
+
+test('existing saved local posts appear as historical favorites and unsaving keeps their originals',t=>{
+  const data=seedDiscover();data.savedPostIds=['old'];data.posts=[{id:'old',authorId:'me',text:'<script>保留历史</script>',createdAt:1}];
+  const app=mountHarness(t,{route:'favorites',data});
+  assert.match(app.container.innerHTML,/历史收藏/);assert.match(app.container.innerHTML,/&lt;script&gt;保留历史&lt;\/script&gt;/);assert.doesNotMatch(app.container.innerHTML,/<script>/);
+  app.click('favorite-legacy-remove',{id:'old'});
+  const stored=readDiscover(app.store);assert.equal(stored.posts[0].text,'<script>保留历史</script>');assert.deepEqual(stored.savedPostIds,[]);
 });
 
 test('a stale page refuses to overwrite discovery records saved in another tab',t=>{
@@ -243,4 +270,28 @@ test('invalid profile remains intact and is explicitly reported while moments ca
   assert.match(app.container.innerHTML,/role="alert"/);
   assert.equal(app.store.getItem('tongban.profile.v1'),original);
   assert.doesNotMatch(app.container.innerHTML,/<svg>/);
+});
+
+
+test('editing historic drafts reports their local identity without turning them into community routes',t=>{
+  const data=seedDiscover(),reported=[];
+  for(const type of ['provider','bounty','token','ai','business'])upsertDraft(data,type,{title:type,name:type,prompt:'保留的历史内容'},null);
+  const app=mountHarness(t,{route:'favorites',data,options:{onRouteChange:(route,meta)=>reported.push({route,meta})}});
+  assert.deepEqual(reported.at(-1),{route:'favorites',meta:{localDraft:false,canonicalRoute:'favorites'}});
+  app.click('drafts');
+  for(const draft of data.drafts){
+    app.click('edit-draft',{id:draft.id});
+    assert.deepEqual(reported.at(-1),{route:draft.type,meta:{localDraft:true,canonicalRoute:'drafts'}});
+    app.click('new-draft');assert.equal(reported.at(-1).meta.canonicalRoute,'drafts');assert.equal(reported.at(-1).meta.localDraft,true);
+    app.cleanup.back();assert.deepEqual(reported.at(-1),{route:'drafts',meta:{localDraft:false,canonicalRoute:'drafts'}});
+  }
+  app.click('provider');assert.deepEqual(reported.at(-1),{route:'provider',meta:{localDraft:false,canonicalRoute:'provider'}});
+});
+
+test('a refreshed embedded draft list returns through favorites and then exits to mine',t=>{
+  let exits=0;
+  const app=mountHarness(t,{route:'drafts',options:{backLabel:'返回我的',onExit:()=>exits++}});
+  app.cleanup.back();assert.match(app.container.innerHTML,/新增收藏/);assert.equal(exits,0);
+  assert.match(app.container.innerHTML,/aria-label="返回我的"/);
+  app.click('back');assert.equal(exits,1);assert.deepEqual(app.seen,['drafts','favorites']);
 });

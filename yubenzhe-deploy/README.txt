@@ -1,11 +1,11 @@
 愚笨者产品服务与独立管理端
-需求基线 V0.2 · 本轮整理版本 0.14.0-dev.3 / 本地 M0
+需求基线 V0.2 · 当前版本 0.14.0-dev.4 / 本地 M0
 
 当前入口
 ../docs/requirements-v0.2.txt：产品与有效验收标准。
 ../docs/V02-IMPLEMENTATION.txt：实际实施和测试状态。
 ../docs/M0-RUNBOOK.txt：本地 M0 启动、积分流程与迁移。
-GitHub CI 38052669120 对源码 f11f4c1 全部成功：后端 207/207、前端 336/336、合约 23/23，网页与管理端构建成功。23 项构建文件哈希通过后安装到本机，18914 的 healthz/version/build-info 均为 0.14.0-dev.3；浏览器确认工作台、积分与用量、个人中心。管理端构建成功不等于完整管理交互验收。线上与原生仍为 0.13.0，未生成新版原生包或部署服务器。公开 GitHub 当前分支为 codex/m0-local-test，main 未更新。
+本轮 dev.4 前端全量 356/356 通过，本地消费者网页与管理端构建成功；网页和服务已更新，备份重启后 18914 的 healthz 与 build-info 均确认 0.14.0-dev.4。浏览器验证电脑/390px 手机个人页、业务返回及收藏→历史草稿→刷新→收藏→个人中心。无新数据库迁移，业务数据保留；证据见 reports/ui-entry-simplification.json。后台业务与合约本轮未改、未重测；上一轮 f11f4c1 的 GitHub CI 38052669120、后端 207/207 和合约 23/23 仅为历史基线。管理端构建成功不等于完整管理交互验收。线上与原生仍为 0.13.0，未生成新版原生包或部署服务器。公开 GitHub 当前分支为 codex/m0-local-test，main 未更新。
 
 架构与功能边界
 Node 24 + SQLite；frontend 提供消费者网页、/api/social 和产品 AI 接口，拒绝 /api/admin；admin 使用独立入口与会话。管理 UI 源码在 ui，依赖来自相邻 tongban-admin。

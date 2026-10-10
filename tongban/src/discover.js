@@ -1,4 +1,6 @@
 import { createPeopleFeature } from './live-people.js';
+import { createFavoritesFeature } from './favorites.js';
+import './favorites.css';
 import './discover.css';
 import { saveJsonFile } from './native-runtime.js';
 import './discover-v5.css';
@@ -35,7 +37,7 @@ const paths = {
 };
 const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.spark}"/></svg>`;
 const names = { provider:'服务预约意向', ai:'AI 工作草稿', bounty:'悬赏任务草稿', token:'发币草稿', business:'商务需求' };
-const routes = new Set(['people','hub','services','moments','rank','provider','ai','bounty','token','business','drafts','token-projects']);
+const routes = new Set(['people','hub','services','moments','rank','provider','ai','bounty','token','business','favorites','drafts','token-projects']);
 const draftStatus = type => type === 'token' ? '未部署' : type === 'bounty' ? '未发布' : '未提交';
 const draftTime = draft => draft.updatedAt || draft.createdAt;
 const draftTitle = draft => draft.values.title || draft.values.name || names[draft.type];
@@ -201,7 +203,7 @@ async function readMomentImages(files) {
 
 export function mountDiscover(container, options = {}) {
   const { toast = () => {}, onNavigate = () => {}, onProfile = () => {},
-    initialRoute = 'hub',initialOwnMoments = false,onRouteChange = () => {},getWalletAddress=()=>'' } = options;
+    initialRoute = 'hub',backLabel = '返回发现',onExit,initialOwnMoments = false,onRouteChange = () => {},getWalletAddress=()=>'' } = options;
   let view = normalizedRoute(initialRoute),ownMoments = initialOwnMoments === true,data,storageError = '',profileError = '',
     dialog = null,dead = false,editingLocalDraft=false,sort = 'desc',savedType = '',draftFilter = 'all',editingDraftId = null,
     draftQuery='',draftArchive=false,rankFilter='all',rankQuery='',newDraftRevisions={},draftSelections={},storageSnapshot=null;
@@ -218,7 +220,7 @@ export function mountDiscover(container, options = {}) {
   const posts = (ownOnly = false) => visiblePosts(data,people(),ownOnly);
   const button = (label,action,cls='disc-primary',extra='') => `<button type="button" class="${cls}" data-disc="${action}" ${extra}>${label}</button>`;
   const status = '';
-  const header = (title,subtitle='') => `<header class="disc-subhead">${button(icon('back'),'hub','disc-round','aria-label="返回发现"')}<div><h2>${title}</h2>${subtitle ? `<p>${subtitle}</p>` : ''}</div>${status}</header>`;
+  const header = (title,subtitle='') => `<header class="disc-subhead">${button(icon('back'),'back','disc-round',`aria-label="${esc(view==='drafts'?'返回收藏':editingLocalDraft?'返回历史草稿':backLabel)}"`)}<div><h2>${title}</h2>${subtitle ? `<p>${subtitle}</p>` : ''}</div>${status}</header>`;
   const saved = type => `${savedType === type ? `<p class="disc-saved" role="status">${icon('check')}草稿已保存，${type==='token'?'未部署':type==='bounty'?'未发布':'未提交'}、未扣款。</p>` : ''}${editingDraftId ? `<div class="disc-draft-context"><span>${icon('file')}正在编辑已保存的草稿</span>${button('另建一份','new-draft','disc-text')}</div>` : ''}`;
   const getDraftMeta = type => data.drafts.find(d => d.id === editingDraftId && d.type === type&&!d.archivedAt)||null;
   const latestDraft = type => getDraftMeta(type)?.values || {};
@@ -228,7 +230,8 @@ export function mountDiscover(container, options = {}) {
   const panelNote = copy => `<p class="disc-note">${copy}</p>`;
 
   const moments=createLiveMomentsFeature({service:options.socialClient||options.service,onAccount:options.onAccount,getLegacyDrafts:()=>data.posts.filter(post=>post.authorId==='me'),showDialog,closeDialog,toast,render,onSaved:()=>go('moments')});
-  const shared={socialClient:options.socialClient||options.service,onAccount:options.onAccount,getDraft:latestDraft,getDraftMeta,getDraftKey:type=>getDraftMeta(type)?.id||`new:${type}:${newDraftRevisions[type]||0}`,getDrafts:activeDrafts,saveDraft,showDialog,closeDialog,toast,go,render};
+  const shared={socialClient:options.socialClient||options.service,onAccount:options.onAccount,getDraft:latestDraft,getDraftMeta,getDraftKey:type=>getDraftMeta(type)?.id||`new:${type}:${newDraftRevisions[type]||0}`,getDrafts:activeDrafts,saveDraft,showDialog,closeDialog,toast,go,render,backLabel};
+  const favorites=createFavoritesFeature({storage:options.storage,getLegacySaved:()=>data.posts.filter(post=>data.savedPostIds.includes(post.id)),removeLegacySaved:id=>commit(next=>{if(!next.savedPostIds.includes(id))throw new Error('这条收藏已不存在，请刷新后重试。');next.savedPostIds=next.savedPostIds.filter(savedId=>savedId!==id)}),showDialog,closeDialog,toast,render});
   const newPeople=createPeopleFeature({service:options.socialClient||options.service,onAccount:options.onAccount,render,toast});
   const community=createCommunityFeature({...shared,container,onNavigate});
   const workbench=createDiscoveryWorkbench({...shared,validateDraft:validateServiceDraft});
@@ -253,6 +256,9 @@ export function mountDiscover(container, options = {}) {
     render();
     return savedId;
   }
+  function notifyRouteChange() {
+    onRouteChange(view,{localDraft:editingLocalDraft,canonicalRoute:editingLocalDraft?'drafts':view});
+  }
   function go(route,config = {}) {
     const {draftId,ownOnly=false}=config;if(Object.hasOwn(config,'draftId')&&draftId===null)newDraftRevisions[route]=(newDraftRevisions[route]||0)+1;
     view=normalizedRoute(route);editingLocalDraft=typeof draftId==='string'||(Object.hasOwn(config,'draftId')&&draftId===null&&editingLocalDraft);
@@ -267,7 +273,7 @@ export function mountDiscover(container, options = {}) {
     }
     savedType='';
     render();
-    onRouteChange(view);
+    notifyRouteChange();
     container.scrollIntoView?.({block:'start',behavior:'instant'});
   }
   function closeDialog() { const current=dialog;dialog=null;if(current){current.close();current.remove()} }
@@ -284,13 +290,19 @@ export function mountDiscover(container, options = {}) {
     setup?.(dialog);
   }
   function renderHub() {
-    const friends=people().filter(p=>p.isFriend),draft=activeDrafts()[0];
-    return `<div class="disc-home-top"><div><h2>发现</h2><p class="disc-home-subtitle">和熟悉的人，分享与协作</p></div>${button(`${icon('plus')} 发动态`,'compose','disc-record')}</div>
-      <section class="disc-circle-panel disc-simple-circle" aria-label="朋友圈入口"><button type="button" class="disc-circle-entry" data-disc="moments"><span class="disc-circle-symbol">${icon('moment')}</span><span><strong>朋友圈</strong><small>朋友的近况，自己的生活</small></span>${icon('arrow')}</button>
-      </section>
-      <section class="disc-work-list disc-simple-entries" aria-label="发现功能">${[['people','moment','认识新朋友','自愿公开 · 先申请再聊天'],['bounty','flag','赏金论坛','发布需求、合作与交付'],['provider','shield','服务商','业务服务与云基础设施'],['rank','rank','活跃榜','自愿参与，不比较资产'],['token','rocket','趣味币发行','测试申请 · 待配置']].map(([route,ico,label,copy])=>`<button class="disc-work-row" type="button" data-disc="${route}"><span class="disc-work-icon purple">${icon(ico)}</span><span><strong>${label}</strong><small>${copy}</small></span>${icon('arrow')}</button>`).join('')}<button class="disc-work-row" type="button" data-disc="open-workbench"><span class="disc-work-icon purple">${icon('ai')}</span><span><strong>AI 工作台</strong><small>本地安装 · 云端使用</small></span>${icon('arrow')}</button><button class="disc-work-row" type="button" data-disc="drafts"><span class="disc-work-icon blue">${icon('file')}</span><span><strong>本机草稿</strong><small>继续编辑、导出或归档</small></span>${icon('arrow')}</button></section>
-      ${draft?`<section class="disc-resume-section disc-compact-resume" aria-label="继续草稿"><div class="disc-section-head"><h3>上次未完成</h3>${button('全部草稿','drafts','disc-text')}</div><button type="button" class="disc-resume-card" data-disc="edit-draft" data-id="${esc(draft.id)}"><span class="disc-resume-icon">${icon('file')}</span><span><small>${names[draft.type]} · ${draftStatus(draft.type)}</small><strong>${esc(draftTitle(draft))}</strong></span>${icon('arrow')}</button></section>`:''}
-      `;
+    return '<section class="disc-home-entries" aria-label="发现">'+[
+      ['moments','moment','朋友圈'],['people','chat','认识新朋友'],['favorites','heart','收藏'],
+    ].map(([route,ico,label])=>'<button type="button" class="disc-home-entry" data-disc="'+route+'"><span class="disc-home-entry-icon">'+icon(ico)+'</span><span>'+label+'</span>'+icon('arrow')+'</button>').join('')+'</section>';
+  }
+  function goBack() {
+    if(view==='drafts'){go('favorites');return true;}
+    if(editingLocalDraft){go('drafts');return true;}
+    if(view!=='hub'){
+      if(typeof onExit==='function'&&view===normalizedRoute(initialRoute==='drafts'?'favorites':initialRoute)){onExit();return true;}
+      go('hub');return true;
+    }
+    if(typeof onExit==='function'){onExit();return true;}
+    return false;
   }
   function renderServices() { return renderHub(); }
   function renderMoments() { return moments.render({ownOnly:ownMoments}); }
@@ -316,7 +328,7 @@ export function mountDiscover(container, options = {}) {
     workbench.routeChanged?.(view);
     moments.routeChanged?.(view,{ownOnly:ownMoments});
     me();
-    const renderers={people:()=>header('认识新朋友')+newPeople.render(),hub:renderHub,services:renderServices,moments:renderMoments,rank:()=>community.render('rank'),provider:()=>editingLocalDraft?renderProvider():community.render('provider'),ai:renderAI,bounty:()=>editingLocalDraft?renderBounty():community.render('bounty'),token:()=>editingLocalDraft?renderToken():community.render('token'),business:renderBusiness,drafts:renderDrafts,'token-projects':renderTokenProjects};
+    const renderers={people:()=>header('认识新朋友')+newPeople.render(),hub:renderHub,services:renderServices,moments:renderMoments,rank:()=>community.render('rank'),provider:()=>editingLocalDraft?renderProvider():community.render('provider'),ai:renderAI,bounty:()=>editingLocalDraft?renderBounty():community.render('bounty'),token:()=>editingLocalDraft?renderToken():community.render('token'),business:renderBusiness,favorites:()=>header('收藏')+favorites.render(),drafts:renderDrafts,'token-projects':renderTokenProjects};
     const content=(renderers[view] || renderHub)();
     container.innerHTML = `${[storageError,profileError].filter(Boolean).map(message=>`<p class="disc-error" role="alert">${esc(message)}</p>`).join('')}${content}`;
   }
@@ -341,7 +353,9 @@ export function mountDiscover(container, options = {}) {
     const action=target.dataset.disc;
     if(savedType){savedType='';container.querySelector('.disc-saved')?.remove()}
     try {
+      if(action==='back'||(action==='hub'&&typeof onExit==='function')){goBack();return;}
       if(action==='open-workbench'){onNavigate('workbench');return;}
+      if(favorites.handleAction(action,target))return;
       if(newPeople.handleAction(action,target)||community.handleAction(action,target)||moments.handleAction(action,target)||workbench.handleAction(action,target)||tokenStudio.handleAction(action,target))return;
       if(routes.has(action)){go(action);return;}
       if(action==='my-moments'){go('moments',{ownOnly:true});return;}
@@ -385,8 +399,8 @@ export function mountDiscover(container, options = {}) {
   container.addEventListener('click',handleClick);
   container.addEventListener('submit',handleSubmit);
   render();
-  onRouteChange(view);
+  notifyRouteChange();
   const cleanup = () => { dead=true;newPeople.cleanup();community.cleanup();moments.cleanup?.();workbench.cleanup?.();tokenStudio.cleanup?.();closeDialog();container.removeEventListener('input',handleInput);container.removeEventListener('change',handleInput);container.removeEventListener('click',handleClick);container.removeEventListener('submit',handleSubmit);container.classList.remove('disc-root'); };
-  cleanup.back = () => { if(dialog){closeDialog();return true} if(view!=='hub'){go('hub');return true} return false; };
+  cleanup.back = () => { if(dialog){closeDialog();return true} return goBack(); };
   return cleanup;
 }

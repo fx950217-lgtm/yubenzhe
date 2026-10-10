@@ -16,7 +16,7 @@ const { mountMine } = await import(`data:text/javascript;base64,${Buffer.from(so
 // profile storage, rather than adding a browser DOM dependency to the application.
 function harness({ wallet = { exists: false }, drafts = 3, raw = null, failWrite = false, isNative = false, profileService = null, processPhoto = undefined, themeService = undefined } = {}) {
   const data = new Map(raw === null ? [] : [['tongban.profile.v1', raw]]);
-  const events = new Map(), calls = [], messages = [], attrs = new Map(), scrolls = [];
+  const events = new Map(), calls = [], messages = [], attrs = new Map(), scrolls = [], reads = { wallet: 0, drafts: 0 };
   globalThis.window = {
     scrollY: 0,
     scrollTo(options) { scrolls.push(options); this.scrollY = options.top; },
@@ -43,8 +43,8 @@ function harness({ wallet = { exists: false }, drafts = 3, raw = null, failWrite
     toast: message => messages.push(message),
     onNavigate: (...args) => calls.push(['navigate', ...args]),
     onAction: name => calls.push(['action', name]),
-    getWalletStatus: () => { if (wallet instanceof Error) throw wallet; return wallet; },
-    getDraftCount: () => { if (drafts instanceof Error) throw drafts; return drafts; },
+    getWalletStatus: () => { reads.wallet++; if (wallet instanceof Error) throw wallet; return wallet; },
+    getDraftCount: () => { reads.drafts++; if (drafts instanceof Error) throw drafts; return drafts; },
   });
   writesFail = failWrite;
   function click(name, extra = {}) {
@@ -62,32 +62,35 @@ function harness({ wallet = { exists: false }, drafts = 3, raw = null, failWrite
     const input = { owner: container, matches: () => true, files: [file], value: 'chosen' };
     return events.get('change')?.({ target: input });
   }
-  return { container, calls, messages, data, click, submit, cleanup, events, preview, attrs, scrolls, photo, photoStatus, removePhoto, save, password, passwordSection };
+  return { container, calls, messages, data, reads, click, submit, cleanup, events, preview, attrs, scrolls, photo, photoStatus, removePhoto, save, password, passwordSection };
 }
 
-test('web installation entry navigates while the installed app omits it and handles inner back', () => {
+test('installation lives in web settings and nested settings back returns through the correct parent', () => {
   const web = harness();
+  assert.doesNotMatch(web.container.innerHTML, /data-mine-action="install"/);
+  web.click('settings');assert.match(web.container.innerHTML,/data-mine-view="settings"/);
   assert.match(web.container.innerHTML, /data-mine-action="install"/);
+  assert.doesNotMatch(web.container.innerHTML,/data-mine-action="account-settings"/);
   web.click('install');assert.deepEqual(web.calls,[['action','install']]);web.cleanup();
-  const native = harness({isNative:true});
+  const native = harness({isNative:true});native.click('settings');
   assert.doesNotMatch(native.container.innerHTML,/data-mine-action="install"/);
   native.click('install');assert.deepEqual(native.calls,[]);
-  native.click('security');assert.equal(native.cleanup.back(),true);
+  native.click('security');assert.match(native.container.innerHTML,/aria-label="返回设置"/);
+  assert.equal(native.cleanup.back(),true);assert.match(native.container.innerHTML,/data-mine-view="settings"/);
+  assert.equal(native.cleanup.back(),true);
   assert.match(native.container.innerHTML,/data-mine-view="home"/);
   assert.equal(native.cleanup.back(),false);native.cleanup();
 });
 
-test('personal center labels local identity and forwards drafts and bills without duplicate moments', () => {
+test('personal center keeps identity and favorites without duplicate work or social entrances', () => {
   const app = harness();
   assert.match(app.container.innerHTML, /本机资料/);
   assert.ok(app.container.innerHTML.includes(`愚笨者 · ${packageVersion}`), 'personal center displays the current package version');
-  assert.match(app.container.innerHTML, /<small>3 份<\/small>/);
-  assert.doesNotMatch(app.container.innerHTML, /data-mine-action="moments"/);
-  app.click('drafts'); app.click('bill-center'); app.click('ai');
-  assert.deepEqual(app.calls, [
-    ['navigate', 'discover', { route: 'drafts' }], ['action', 'bill-center'], ['navigate', 'workbench'],
-  ]);
-  app.cleanup();
+  assert.match(app.container.innerHTML, /data-mine-action="edit"/);
+  assert.doesNotMatch(app.container.innerHTML, /data-mine-action="(?:drafts|moments|ai|points|bill-center|appearance|account-settings|security|install)"/);
+  assert.doesNotMatch(app.container.innerHTML, /3 份|草稿|钱包已创建|尚未创建钱包/);
+  app.click('favorites');assert.deepEqual(app.calls,[['navigate','discover',{route:'favorites',origin:'mine'}]]);
+  assert.deepEqual(app.reads,{wallet:0,drafts:0});app.cleanup();
 });
 
 test('successful profile save persists selected allowlisted avatar, escapes text and updates root once', () => {
@@ -136,10 +139,11 @@ test('invalid fields and unlisted avatar selection cannot save an invalid profil
   app.cleanup();
 });
 
-test('corrupt profile and unreadable draft count remain explicit instead of appearing empty', () => {
+test('corrupt profile remains explicit and hidden favorites storage is never read on home', () => {
   const app = harness({ raw: '{broken', drafts: new Error('storage error') });
   assert.match(app.container.innerHTML, /个人资料暂不可用/);
-  assert.match(app.container.innerHTML, /数量暂不可用/);
+  assert.doesNotMatch(app.container.innerHTML, /数量暂不可用|0 份/);
+  assert.deepEqual(app.reads,{wallet:0,drafts:0});
   assert.match(app.container.innerHTML, /data-mine-action="edit"[^>]*disabled/);
   app.click('edit');
   assert.doesNotMatch(app.container.innerHTML, /data-mine-form="profile"/);
@@ -204,28 +208,34 @@ test('subpages start at the top, home restores its position, and profile save re
   app.cleanup();
 });
 
-test('assets are the first home destination and route to the existing wallet without fake totals', () => {
+test('home has four simple destinations and opens the wallet without reading balances or status', () => {
   const wallet = { exists: true, address: '0x1111111111111111111111111111111111111111', unlocked: false };
   Object.defineProperty(wallet, 'balance', { get() { throw new Error('home must not read balances'); } });
   const app = harness({ wallet }), html = app.container.innerHTML;
-  assert.match(html, /自托管钱包/); assert.match(html, /链上直接收款与转账/); assert.match(html, /钱包已创建/);
-  const order = ['wallet', 'drafts', 'bill-center', 'security', 'help'].map(action => html.indexOf(`data-mine-action="${action}"`));
-  assert.ok(order.every((position, i) => position >= 0 && (i === 0 || position > order[i - 1])));
-  assert.doesNotMatch(html, /data-mine-action="orders"|服务订单|0\.00|tBNB|USDT|0x1111111111111111111111111111111111111111/);
+  const entries=[...html.matchAll(/class="mine-row" data-mine-action="([^"]+)"/g)].map(match=>match[1]);
+  assert.deepEqual(entries,['wallet','favorites','settings','help']);
+  assert.doesNotMatch(html, /链上直接收款与转账|钱包已创建|尚未创建钱包|3 份|data-mine-action="orders"|服务订单|0\.00|tBNB|USDT|0x1111111111111111111111111111111111111111/);
+  assert.deepEqual(app.reads,{wallet:0,drafts:0});
   app.click('wallet'); assert.deepEqual(app.calls, [['navigate', 'wallet']]); app.cleanup();
 });
 
-test('home wallet state distinguishes missing wallets from damaged or unreadable status', () => {
+test('wallet state is only read in security and unknown or damaged status never claims an empty wallet', () => {
   for (const [wallet, expected] of [
-    [{ exists: false }, '尚未创建钱包'],
-    [{ exists: true, address: '' }, '钱包状态暂不可用'],
-    [{ exists: true, corrupt: true }, '钱包状态暂不可用'],
-    [{ unavailable: true }, '钱包状态暂不可用'],
-    [{}, '钱包状态暂不可用'],
-    [new Error('unavailable storage'), '钱包状态暂不可用'],
+    [{ exists: false }, '尚未创建'],
+    [{ exists: true, address: '' }, '暂不可读取'],
+    [{ exists: true, corrupt: true }, '暂不可读取'],
+    [{ unavailable: true }, '暂不可读取'],
+    [{}, '暂不可读取'],
+    [new Error('unavailable storage'), '暂不可读取'],
   ]) {
-    const app = harness({ wallet }); assert.match(app.container.innerHTML, new RegExp(expected));
-    if (expected.includes('暂不可用')) assert.doesNotMatch(app.container.innerHTML, /尚未创建钱包/);
+    const app = harness({ wallet });assert.equal(app.reads.wallet,0);
+    assert.doesNotMatch(app.container.innerHTML,/尚未创建|暂不可读取/);
+    app.click('settings');assert.equal(app.reads.wallet,0);app.click('security');assert.equal(app.reads.wallet,1);
+    assert.ok(app.container.innerHTML.includes('<h3>'+expected+'</h3>'));
+    if (expected==='暂不可读取') {
+      assert.doesNotMatch(app.container.innerHTML, /尚未创建|data-mine-action="create"/);
+      assert.match(app.container.innerHTML, /原始钱包数据不会被覆盖/);
+    }
     assert.match(app.container.innerHTML, /data-mine-action="wallet"/); app.cleanup();
   }
 });
@@ -250,7 +260,8 @@ test('cloud profile ID edits require current password and await authoritative sa
   let profile = cloudProfile(), finish; const submitted = [];
   const app = harness({ profileService: { getProfile: () => profile, saveProfile: input => { submitted.push(input); return new Promise(resolve => { finish = () => { profile = { ...profile, ...input, revision: 8 }; delete profile.currentPassword; resolve(profile); }; }); } } });
   assert.match(app.container.innerHTML, /ID 25973186/); assert.match(app.container.innerHTML, /Lv. 3/); assert.doesNotMatch(app.container.innerHTML, /官方认证/);
-  app.click('account-settings'); assert.deepEqual(app.calls, [['action', 'account-settings']]); app.click('edit');
+  app.click('settings');assert.match(app.container.innerHTML,/data-mine-action="account-settings"/);
+  app.click('account-settings'); assert.deepEqual(app.calls, [['action', 'account-settings']]); app.click('home');app.click('edit');
   const invalid = app.submit('新的名字', '', '27495381'); await invalid.pending; assert.match(invalid.error.textContent, /当前 6 位/); assert.equal(submitted.length, 0);
   const valid = app.submit('新的名字', '新签名', '27495381', '248635'); assert.equal(app.save.disabled, true); assert.equal(app.messages.length, 0); assert.equal(submitted.length, 1); assert.equal(submitted[0].revision, 7); assert.equal(submitted[0].currentPassword, '248635'); assert.equal(submitted[0].level, undefined); assert.equal(submitted[0].official, undefined);
   finish(); await valid.pending; assert.equal(app.messages.at(-1), '个人资料已保存'); assert.match(app.container.innerHTML, /ID 27495381/); app.cleanup();
@@ -266,6 +277,7 @@ test('cloud conflicts stay editable and ordinary saves omit passwords; late resp
 function themeFixture(initial='light',persistent=true){let current=initial;const selected=[];return{selected,service:{getTheme:()=>current,setTheme:id=>{current=id;selected.push(id)},isPersistent:()=>persistent}};}
 test('appearance entry displays exactly the three allowed skins and reads the current selection',()=>{
   const theme=themeFixture('dark'),app=harness({themeService:theme.service});
+  assert.doesNotMatch(app.container.innerHTML,/data-mine-action="appearance"/);app.click('settings');
   assert.match(app.container.innerHTML,/data-mine-action="appearance"/);app.click('appearance');
   assert.match(app.container.innerHTML,/data-mine-view="appearance"/);
   const options=[...app.container.innerHTML.matchAll(/data-mine-theme="([^"]+)" aria-pressed="([^"]+)"/g)].map(m=>[m[1],m[2]]);
@@ -274,7 +286,7 @@ test('appearance entry displays exactly the three allowed skins and reads the cu
   assert.equal(theme.selected.length,0);assert.deepEqual(app.messages,[]);app.cleanup();
 });
 test('skin selection immediately invokes the theme service, updates selection, and names the exact skin in its toast',()=>{
-  const theme=themeFixture(),app=harness({themeService:theme.service});app.click('appearance');
+  const theme=themeFixture(),app=harness({themeService:theme.service});app.click('settings');app.click('appearance');
   for(const [id,label] of [['dark','黑天'],['eyecare','护眼'],['light','白天']]){
     app.click('theme-select',{mineTheme:id});
     assert.equal(theme.service.getTheme(),id);
@@ -285,7 +297,7 @@ test('skin selection immediately invokes the theme service, updates selection, a
   assert.deepEqual(app.calls,[]);assert.doesNotMatch(app.container.innerHTML,/确认切换|保存皮肤/);app.cleanup();
 });
 test('failed persistent storage keeps the live skin selected but explains that it cannot be saved',()=>{
-  const theme=themeFixture('light',false),app=harness({themeService:theme.service});app.click('appearance');app.click('theme-select',{mineTheme:'eyecare'});
+  const theme=themeFixture('light',false),app=harness({themeService:theme.service});app.click('settings');app.click('appearance');app.click('theme-select',{mineTheme:'eyecare'});
   assert.equal(theme.service.getTheme(),'eyecare');
   assert.match(app.container.innerHTML,/data-mine-theme="eyecare" aria-pressed="true"/);
   assert.match(app.container.innerHTML,/本机存储暂不可用，本次选择仅在当前页面生效/);
@@ -293,10 +305,17 @@ test('failed persistent storage keeps the live skin selected but explains that i
 });
 test('unlisted themes, out-of-view clicks and a detached appearance view cannot invoke the theme service',()=>{
   const theme=themeFixture(),app=harness({themeService:theme.service});app.click('theme-select',{mineTheme:'dark'});
-  assert.deepEqual(theme.selected,[]);app.click('appearance');
+  assert.deepEqual(theme.selected,[]);app.click('settings');app.click('appearance');
   for(const id of ['system','<script>','',undefined,'__proto__','constructor','toString'])app.click('theme-select',{mineTheme:id});
   assert.deepEqual(theme.selected,[]);assert.equal(theme.service.getTheme(),'light');
   assert.ok(app.messages.every(m=>m==='外观设置暂不可用，请重新打开页面。'));
   assert.match(app.container.innerHTML,/data-mine-theme="light" aria-pressed="true"/);
   app.cleanup();app.click('theme-select',{mineTheme:'dark'});assert.deepEqual(theme.selected,[]);
+});
+
+test('appearance returns to settings through visible back, while editing profile returns directly home',()=>{
+  const app=harness({themeService:themeFixture().service});app.click('settings');app.click('appearance');
+  assert.match(app.container.innerHTML,/aria-label="返回设置"/);app.click('back');assert.match(app.container.innerHTML,/data-mine-view="settings"/);
+  app.click('back');assert.match(app.container.innerHTML,/data-mine-view="home"/);app.click('edit');assert.match(app.container.innerHTML,/aria-label="返回个人中心"/);
+  assert.equal(app.cleanup.back(),true);assert.match(app.container.innerHTML,/data-mine-view="home"/);app.cleanup();
 });

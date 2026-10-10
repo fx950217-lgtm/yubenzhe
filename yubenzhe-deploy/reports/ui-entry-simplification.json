@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-10T13:11:30.073Z",
+  "version": "0.14.0-dev.4",
+  "scope": "local-development-ui",
+  "changes": {
+    "discover": [
+      "moments",
+      "people",
+      "favorites"
+    ],
+    "workbench": "entry-only home; workflow cards and model details inside subpages",
+    "movedBusiness": [
+      "bounty",
+      "provider",
+      "rank",
+      "token"
+    ],
+    "mine": [
+      "wallet",
+      "favorites",
+      "settings",
+      "help"
+    ],
+    "favorites": "local text and safe HTTP(S) links; previous saved posts and draft records preserved"
+  },
+  "validation": {
+    "frontend": {
+      "pass": 356,
+      "fail": 0
+    },
+    "consumerBuild": "passed",
+    "adminBuild": "passed",
+    "sourceBoundary": "passed",
+    "desktopBrowser": "passed",
+    "mobileViewport": {
+      "width": 390,
+      "height": 844,
+      "horizontalOverflow": false,
+      "entryMinHeight": 56
+    },
+    "observed": [
+      "three discover entries",
+      "four Mine entries",
+      "workbench entry-only home",
+      "business returns to workbench",
+      "favorites to drafts to refresh to favorites to Mine",
+      "browser Back restores work tab",
+      "chat entry-only home"
+    ],
+    "appConsoleErrors": 0
+  },
+  "runtime": {
+    "health": {
+      "ok": true,
+      "service": "frontend",
+      "version": "0.14.0-dev.4",
+      "stage": "public-preview"
+    },
+    "build": {
+      "version": "0.14.0-dev.4",
+      "builtAt": "2026-10-10T13:07:02.139Z",
+      "requirements": "V0.2",
+      "channel": "local-development"
+    }
+  },
+  "artifacts": {
+    "appSha256": "5669af698866957c7019ce56e1dbd6ceb43902eecb75b01df007971b67ba86e0",
+    "cssSha256": "4292a4f9c7ba0934e3d4836fa8a6785d0ac411a4d97c620e809388a188e194d7"
+  },
+  "backendBusinessChanged": false,
+  "databaseMigration": false,
+  "nativePackagesUpdated": false,
+  "productionDeployed": false,
+  "branch": "codex/m0-local-test"
+}

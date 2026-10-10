@@ -5,6 +5,7 @@ import { prepareProfilePhoto } from './profile-photo.js';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const paths = {
   back: 'M15 5l-7 7 7 7', arrow: 'M9 5l7 7-7 7', edit: 'M14 5l5 5 M4 20l4-1L20 7l-3-3L5 16Z',
+  favorite: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z', settings: 'M4 7h16M4 17h16M8 4v6M16 14v6',
   draft: 'M6 3h8l4 4v14H6Z M14 3v5h4 M9 12h6 M9 16h4', bill: 'M5 3h14v18l-3-2-4 2-4-2-3 2Z M8 8h8 M8 12h8',
   order: 'M4 7h16v14H4Z M8 7V5a4 4 0 0 1 8 0v2 M8 12h8', shield: 'M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6Z M8 12l3 3 5-6',
   help: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M9.5 8a2.5 2.5 0 1 1 3 4v2 M12.5 17h.01', wallet: 'M4 7h15v14H4V4h12v3 M19 11h-5v5h5',
@@ -16,8 +17,8 @@ const button = (action, label, extra = '') => `<button type="button" class="mine
 const row = (action, name, description, symbol, suffix = '') => `<button type="button" class="mine-row" data-mine-action="${action}"><span class="mine-row-icon">${icon(symbol)}</span><span class="mine-row-copy"><strong>${name}</strong>${description ? `<small>${description}</small>` : ''}</span>${suffix ? `<span class="mine-row-note">${suffix}</span>` : ''}${icon('arrow')}</button>`;
 
 /** Local profile and product navigation only. Wallet authorization stays in app.js. */
-export function mountMine(container, { toast = () => {}, onNavigate = () => {}, onAction = () => {}, getWalletStatus = () => ({}), getDraftCount = () => 0, isNative = false, profileService = null, processPhoto = prepareProfilePhoto, themeService = globalThis.window?.YBZTheme } = {}) {
-  let active = true, view = 'home', profile = null, profileError = false, selectedAvatar = PROFILE_AVATARS[0], selectedPhoto = '', homeScroll = 0, generation = 0, photoTask = 0, photoBusy = false, saving = false;
+export function mountMine(container, { toast = () => {}, onNavigate = () => {}, onAction = () => {}, getWalletStatus = () => ({}), isNative = false, profileService = null, processPhoto = prepareProfilePhoto, themeService = globalThis.window?.YBZTheme } = {}) {
+  let active = true, view = 'home', settingsChild = false, profile = null, profileError = false, selectedAvatar = PROFILE_AVATARS[0], selectedPhoto = '', homeScroll = 0, generation = 0, photoTask = 0, photoBusy = false, saving = false;
   const remote = () => profile?.identityScope === 'server';
   const avatarContent = (avatar, photo) => photo ? `<img src="${esc(photo)}" alt="个人头像" width="512" height="512">` : esc(avatar);
   const identity = () => profile ? `<span class="mine-user-id">ID ${esc(profile.userId)}</span><span class="mine-level">Lv. ${esc(profile.level)}</span>${profile.official ? '<span class="mine-official">官方认证</span>' : ''}` : '';
@@ -29,25 +30,23 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     catch { profile = null; profileError = true; }
   }
   function walletStatus() {
-    try { return getWalletStatus() || { unavailable: true }; }
+    try { const value = getWalletStatus(); return value && typeof value.exists === 'boolean' ? value : { unavailable: true }; }
     catch { return { unavailable: true }; }
   }
-  function draftCount() {
-    try { const value = getDraftCount(); return Number.isSafeInteger(value) && value >= 0 ? String(value) : '暂不可用'; }
-    catch { return '暂不可用'; }
-  }
   function heading(title, description) {
-    return `<header class="mine-subhead"><button type="button" class="mine-back" data-mine-action="home" aria-label="返回个人中心">${icon('back')}</button><div><h2 tabindex="-1">${title}</h2>${description ? `<p>${description}</p>` : ''}</div></header>`;
+    return `<header class="mine-subhead"><button type="button" class="mine-back" data-mine-action="back" aria-label="${settingsChild ? '返回设置' : '返回个人中心'}">${icon('back')}</button><div><h2 tabindex="-1">${title}</h2>${description ? `<p>${description}</p>` : ''}</div></header>`;
   }
   function home() {
-    const count = draftCount(), state = walletStatus();
-    const unavailable = state.corrupt || state.unavailable || typeof state.exists !== 'boolean' || state.exists && !state.address;
-    const walletLabel = unavailable ? '钱包状态暂不可用' : state.exists ? '钱包已创建' : '尚未创建钱包';
     return `<section class="mine-home-profile"><span class="mine-avatar" aria-hidden="true">${profile ? avatarContent(profile.avatar, profile.avatarImage) : '🌱'}</span><div class="mine-home-profile-copy"><h2>${profile ? esc(profile.nickname) : '个人资料暂不可用'}</h2>${profile ? '' : '<p>原始资料已保留</p>'}<div class="mine-profile-meta">${identity()}</div>${!remote() && profile ? '<span>本机资料 · ID 尚未云端登记</span>' : ''}</div>${button('edit', `<span>资料</span>${icon('arrow')}`, `aria-label="编辑资料" ${profileError ? 'disabled' : ''}`)}</section>${profileError ? `<div class="mine-inline-error" role="alert">${profileService ? '账号资料暂不可读，请检查网络后重新连接。' : '本机资料无法读取，请检查存储权限。'}${button('retry-profile', '重新读取资料')}</div>` : ''}
-      <button type="button" class="mine-assets-entry" data-mine-action="wallet"><span class="mine-assets-symbol">${icon('wallet')}</span><span class="mine-assets-copy"><strong>自托管钱包</strong><small>链上直接收款与转账</small></span><span class="mine-assets-state ${unavailable ? 'is-unavailable' : ''}">${walletLabel}</span>${icon('arrow')}</button>
-      <div class="mine-home-shortcuts"><button type="button" class="mine-home-shortcut mine-lilac" data-mine-action="drafts"><span class="mine-shortcut-icon">${icon('draft')}</span><span><strong>草稿</strong><small>${count === '暂不可用' ? '数量暂不可用' : `${count} 份`}</small></span>${icon('arrow')}</button></div>
-      <section class="mine-list mine-home-links" aria-label="个人功能">${row('ai', 'AI 工作台', '', 'order')}${row('points', '积分与用量', '仅用于服务 · 不可转赠或提现', 'bill')}${row('bill-center', '账单记录', '', 'bill')}${profileService ? row('account-settings', '账号设置', '登录方式、恢复与设备', 'lock') : ''}${row('appearance', '外观皮肤', '', 'eye')}${row('security', '安全设置', '', 'shield')}${row('help', '帮助', '', 'help')}${!isNative?row('install', '安装愚笨者', '手机与电脑', 'wallet'):''}</section>
-      <p class="mine-footnote mine-home-footnote">愚笨者 · 0.14.0-dev.3</p>`;
+      <section class="mine-list mine-home-links" aria-label="我的收藏与钱包">${row('wallet', '自托管钱包', '', 'wallet')}${row('favorites', '收藏', '', 'favorite')}</section>
+      <section class="mine-list mine-home-links" aria-label="个人设置">${row('settings', '设置', '', 'settings')}${row('help', '帮助', '', 'help')}</section>
+      <p class="mine-footnote mine-home-footnote">愚笨者 · 0.14.0-dev.4</p>`;
+  }
+  function settings() {
+    return heading('设置', '') + '<section class="mine-list mine-home-links" aria-label="设置选项">' +
+      (profileService ? row('account-settings', '账号设置', '', 'lock') : '') +
+      row('appearance', '外观皮肤', '', 'eye') + row('security', '安全设置', '', 'shield') +
+      (!isNative ? row('install', '安装愚笨者', '', 'wallet') : '') + '</section>';
   }
   function edit() {
     if (!profile) return `${heading('个人资料', '资料暂不可用')}<div class="mine-info mine-warning" role="alert">资料暂不可用，当前不能覆盖原始资料。</div>${button('retry-profile', '返回并重新读取')}`;
@@ -83,7 +82,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   }
   function render(focus = false) {
     if (!active) return;
-    const screens = { home, edit, appearance, security, orders, help };
+    const screens = { home, settings, edit, appearance, security, orders, help };
     container.innerHTML = `<div class="mine-page" data-mine-view="${view}">${screens[view]()}</div>`;
     if (focus) container.querySelector('h2')?.focus({ preventScroll: true });
   }
@@ -91,6 +90,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   function open(next) {
     if (view === 'home') homeScroll = globalThis.window?.scrollY || 0;
     generation++; photoTask++; photoBusy = false; saving = false;
+    settingsChild = next !== 'settings' && next !== 'home' && (view === 'settings' || settingsChild);
     view = next;
     if (next === 'home') readProfile();
     if (next === 'edit') { selectedAvatar = profile?.avatar || PROFILE_AVATARS[0]; selectedPhoto = profile?.avatarImage || ''; }
@@ -107,7 +107,8 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     if (!active || !target || !container.contains(target) || target.disabled) return;
     const name = target.dataset.mineAction;
     if (saving && ['home', 'edit', 'avatar', 'choose-photo', 'remove-photo'].includes(name)) { toast('资料正在保存，请稍候。'); return; }
-    if (['home', 'edit', 'appearance', 'security', 'orders', 'help'].includes(name)) { open(name); return; }
+    if (name === 'back') { if (saving) { toast('资料正在保存，请稍候。'); return; } open(settingsChild ? 'settings' : 'home'); return; }
+    if (['home', 'settings', 'edit', 'appearance', 'security', 'orders', 'help'].includes(name)) { open(name); return; }
     if (name === 'theme-select' && view === 'appearance') {
       const id=target.dataset.mineTheme;if(!['light','dark','eyecare'].includes(id))return;
       const label={light:'白天',dark:'黑天',eyecare:'护眼'}[id];
@@ -118,6 +119,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     }
     if (name === 'retry-profile') { open('home'); return; }
     if (name === 'ai') { onNavigate('workbench'); return; }
+    if (name === 'favorites') { onNavigate('discover', { route: 'favorites', origin: 'mine' }); return; }
     if (name === 'drafts') { onNavigate('discover', { route: 'drafts' }); return; }
     if (name === 'wallet') { onNavigate('wallet'); return; }
     if (name === 'points') { onNavigate('points'); return; }
@@ -216,7 +218,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     globalThis.window?.removeEventListener('tongban:wallet-locked', refreshStatus);
     globalThis.window?.removeEventListener('ybz:theme-changed', refreshTheme);
   };
-  cleanup.back = () => { if (saving) { toast('资料正在保存，请稍候。'); return true; } if(view==='home')return false;open('home');return true; };
+  cleanup.back = () => { if (saving) { toast('资料正在保存，请稍候。'); return true; } if(view==='home')return false;open(settingsChild ? 'settings' : 'home');return true; };
   cleanup.refresh = () => { if (view !== 'edit') { readProfile(); render(); } };
   return cleanup;
 }
