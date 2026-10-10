@@ -82,12 +82,13 @@ test('installation lives in web settings and nested settings back returns throug
   assert.equal(native.cleanup.back(),false);native.cleanup();
 });
 
-test('personal center keeps identity and favorites without duplicate work or social entrances', () => {
+test('personal center keeps identity without duplicate wallet, favorites or business entrances', () => {
   const app = harness();
   assert.match(app.container.innerHTML, /本机资料/);
-  assert.ok(app.container.innerHTML.includes(`愚笨者 · ${packageVersion}`), 'personal center displays the current package version');
-  assert.match(app.container.innerHTML, /data-mine-action="edit"/);
-  assert.doesNotMatch(app.container.innerHTML, /data-mine-action="(?:drafts|moments|ai|points|bill-center|appearance|account-settings|security|install)"/);
+  assert.ok(app.container.innerHTML.includes(`class="mine-number">${packageVersion}</span>`), 'personal center displays the current package version');
+  assert.match(app.container.innerHTML, /lang="en">YBZ/);
+  assert.match(app.container.innerHTML, /data-mine-action="account"/);
+  assert.doesNotMatch(app.container.innerHTML, /data-mine-action="(?:wallet|favorites|drafts|moments|ai|points|bill-center|appearance|account-settings|security|install)"/);
   assert.doesNotMatch(app.container.innerHTML, /3 份|草稿|钱包已创建|尚未创建钱包/);
   app.click('favorites');assert.deepEqual(app.calls,[['navigate','discover',{route:'favorites',origin:'mine'}]]);
   assert.deepEqual(app.reads,{wallet:0,drafts:0});app.cleanup();
@@ -144,7 +145,8 @@ test('corrupt profile remains explicit and hidden favorites storage is never rea
   assert.match(app.container.innerHTML, /个人资料暂不可用/);
   assert.doesNotMatch(app.container.innerHTML, /数量暂不可用|0 份/);
   assert.deepEqual(app.reads,{wallet:0,drafts:0});
-  assert.match(app.container.innerHTML, /data-mine-action="edit"[^>]*disabled/);
+  app.click('account');
+  assert.match(app.container.innerHTML, /data-mine-action="edit"/);
   app.click('edit');
   assert.doesNotMatch(app.container.innerHTML, /data-mine-form="profile"/);
   assert.equal(app.data.get('tongban.profile.v1'), '{broken');
@@ -208,15 +210,15 @@ test('subpages start at the top, home restores its position, and profile save re
   app.cleanup();
 });
 
-test('home has four simple destinations and opens the wallet without reading balances or status', () => {
+test('home has four simple destinations and opens cloud devices without reading wallet status', () => {
   const wallet = { exists: true, address: '0x1111111111111111111111111111111111111111', unlocked: false };
   Object.defineProperty(wallet, 'balance', { get() { throw new Error('home must not read balances'); } });
   const app = harness({ wallet }), html = app.container.innerHTML;
   const entries=[...html.matchAll(/class="mine-row" data-mine-action="([^"]+)"/g)].map(match=>match[1]);
-  assert.deepEqual(entries,['wallet','favorites','settings','help']);
+  assert.deepEqual(entries,['account','settings','cloud','about']);
   assert.doesNotMatch(html, /链上直接收款与转账|钱包已创建|尚未创建钱包|3 份|data-mine-action="orders"|服务订单|0\.00|tBNB|USDT|0x1111111111111111111111111111111111111111/);
   assert.deepEqual(app.reads,{wallet:0,drafts:0});
-  app.click('wallet'); assert.deepEqual(app.calls, [['navigate', 'wallet']]); app.cleanup();
+  app.click('cloud'); assert.deepEqual(app.calls, [['navigate', 'workbench', { hub: { mode: 'work', screen: 'devices' } }]]); app.cleanup();
 });
 
 test('wallet state is only read in security and unknown or damaged status never claims an empty wallet', () => {
@@ -260,7 +262,7 @@ test('cloud profile ID edits require current password and await authoritative sa
   let profile = cloudProfile(), finish; const submitted = [];
   const app = harness({ profileService: { getProfile: () => profile, saveProfile: input => { submitted.push(input); return new Promise(resolve => { finish = () => { profile = { ...profile, ...input, revision: 8 }; delete profile.currentPassword; resolve(profile); }; }); } } });
   assert.match(app.container.innerHTML, /ID 25973186/); assert.match(app.container.innerHTML, /Lv. 3/); assert.doesNotMatch(app.container.innerHTML, /官方认证/);
-  app.click('settings');assert.match(app.container.innerHTML,/data-mine-action="account-settings"/);
+  app.click('account');assert.match(app.container.innerHTML,/data-mine-action="account-settings"/);
   app.click('account-settings'); assert.deepEqual(app.calls, [['action', 'account-settings']]); app.click('home');app.click('edit');
   const invalid = app.submit('新的名字', '', '27495381'); await invalid.pending; assert.match(invalid.error.textContent, /当前 6 位/); assert.equal(submitted.length, 0);
   const valid = app.submit('新的名字', '新签名', '27495381', '248635'); assert.equal(app.save.disabled, true); assert.equal(app.messages.length, 0); assert.equal(submitted.length, 1); assert.equal(submitted[0].revision, 7); assert.equal(submitted[0].currentPassword, '248635'); assert.equal(submitted[0].level, undefined); assert.equal(submitted[0].official, undefined);
@@ -318,4 +320,40 @@ test('appearance returns to settings through visible back, while editing profile
   assert.match(app.container.innerHTML,/aria-label="返回设置"/);app.click('back');assert.match(app.container.innerHTML,/data-mine-view="settings"/);
   app.click('back');assert.match(app.container.innerHTML,/data-mine-view="home"/);app.click('edit');assert.match(app.container.innerHTML,/aria-label="返回个人中心"/);
   assert.equal(app.cleanup.back(),true);assert.match(app.container.innerHTML,/data-mine-view="home"/);app.cleanup();
+});
+
+test('account profile editing returns through account and settings help returns through settings',()=>{
+  const app=harness();
+  app.click('account');app.click('edit');
+  assert.match(app.container.innerHTML,/aria-label="返回账号"/);
+  app.click('back');assert.match(app.container.innerHTML,/data-mine-view="account"/);
+  app.click('back');assert.match(app.container.innerHTML,/data-mine-view="home"/);
+  app.click('settings');app.click('help');assert.match(app.container.innerHTML,/aria-label="返回设置"/);
+  assert.equal(app.cleanup.back(),true);assert.match(app.container.innerHTML,/data-mine-view="settings"/);
+  assert.equal(app.cleanup.back(),true);assert.match(app.container.innerHTML,/data-mine-view="home"/);
+  app.cleanup();
+});
+
+test('brand avatar is a fallback and never replaces a saved personal photo',()=>{
+  const app=harness();
+  assert.match(app.container.innerHTML,/<span class="mine-avatar" aria-hidden="true">愚<\/span>/);
+  const original=getLocalProfile();app.cleanup();
+  const stored={...original,avatarImage:PHOTO_512};
+  const photo=harness({raw:JSON.stringify(stored)});
+  assert.match(photo.container.innerHTML,/<span class="mine-avatar" aria-hidden="true"><img/);
+  assert.equal(getLocalProfile().avatarImage,PHOTO_512);
+  photo.cleanup();
+});
+
+test('about has the approved brand language and personal views omit prohibited product wording',()=>{
+  const app=harness();app.click('about');
+  for(const text of ['YBZ','愚笨者','技能交给 AI，判断留给自己。','Let AI do the doing. You do the deciding.','思维','知道要什么、为什么','决策','定方向、做取舍、担结果','创造性','把不相干的东西连起来']) {
+    assert.ok(app.container.innerHTML.includes(text),text);
+  }
+  for(const screen of ['home','account','settings','appearance','security','orders','help','about']) {
+    app.click(screen);
+    assert.doesNotMatch(app.container.innerHTML,/余额|提现|积分转让|邀请.{0,8}奖励|分享.{0,8}奖励/);
+    assert.ok((app.container.innerHTML.match(/class="mine-primary"/g)||[]).length<=1);
+  }
+  app.cleanup();
 });

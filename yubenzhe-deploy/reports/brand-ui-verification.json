@@ -1,0 +1,114 @@
+{
+  "version": "0.14.0-dev.5",
+  "requirements": "V0.2 plus user-approved YBZ naming and UI specification",
+  "verifiedAt": "2026-10-10T13:31:12.471Z",
+  "scope": "Local M0 web UI; no production deployment or native installation",
+  "references": [
+    "design/命名与UI设计规范.md",
+    "design/ui-preview-cn.html",
+    "design/ui-preview.html",
+    "design/brand-home.html",
+    "design/brand-posters.html"
+  ],
+  "implementation": {
+    "brand": {
+      "chinese": "愚笨者",
+      "global": "YBZ",
+      "claim": "技能交给 AI，判断留给自己。",
+      "englishClaim": "Let AI do the doing. You do the deciding.",
+      "elements": [
+        "思维",
+        "决策",
+        "创造性"
+      ]
+    },
+    "navigation": [
+      "工作台",
+      "消息",
+      "钱包",
+      "发现",
+      "我的"
+    ],
+    "default": "workbench",
+    "discover": [
+      "朋友圈",
+      "认识新朋友",
+      "收藏"
+    ],
+    "mine": [
+      "账号",
+      "设置",
+      "云机",
+      "关于"
+    ],
+    "skins": [
+      "light",
+      "dark",
+      "eyecare"
+    ],
+    "pointsNotice": "积分不可转让、不可提现，仅可用于消耗站内服务。",
+    "walletNotice": "密钥保存在你自己的设备上，平台不托管、不接触你的资金。",
+    "feePolicy": "手续费 $0.01 is an explicitly labelled design example, never a fixed quote or synthetic transaction. Real records prefer receipt-derived fees; otherwise show the estimate or unavailable status."
+  },
+  "automated": {
+    "frontend": {
+      "passed": 404,
+      "failed": 0,
+      "skipped": 0
+    },
+    "consumerBuild": "passed",
+    "independentAdminBuild": "passed",
+    "diffCheck": "passed",
+    "backend": "not rerun; no backend business changes",
+    "contracts": "not rerun; no contract changes",
+    "sourceBoundary": "passed; development mode, no missing files or problems"
+  },
+  "browser": {
+    "surface": "in-app browser",
+    "viewports": [
+      {
+        "width": 390,
+        "height": 844
+      },
+      {
+        "width": 1141
+      }
+    ],
+    "verified": [
+      "Five main pages and exact navigation order",
+      "Default root URL opens workbench",
+      "Three skins switch through settings and light restored",
+      "No horizontal overflow in checked desktop and mobile pages",
+      "Messages to contacts and back",
+      "Discover favorites and return",
+      "Mine settings/appearance/about and return",
+      "Mine cloud entry opens workbench devices with honest unavailable status",
+      "Recent activity opens the actual existing task without creating or executing a task",
+      "Canonical wallet route and custody notice",
+      "Only one primary action across checked home and task UI states"
+    ],
+    "consoleErrors": [],
+    "themeLeft": "light",
+    "viewportRestored": true
+  },
+  "local": {
+    "url": "http://localhost:18914/?v=0.14.0-dev.5#workbench",
+    "healthVersion": "0.14.0-dev.5",
+    "buildVersion": "0.14.0-dev.5",
+    "preservedExistingState": true,
+    "databaseChanges": false,
+    "backupMethod": "SQLite backup API",
+    "backupIntegrity": [
+      "social.sqlite: ok",
+      "ai.sqlite: ok"
+    ],
+    "externalBackupFolder": "work/yubenzhe-m0-backups/pre-brand-2026-10-10T13-26-56-533Z"
+  },
+  "limits": [
+    "No live wallet transfer or private key export performed",
+    "No production/native upgrade in this UI change",
+    "Backend and contract historical results are not presented as new tests",
+    "Cloud providers and general models remain unavailable in local M0 until configured",
+    "Admin build is not a full admin UI acceptance test"
+  ]
+}

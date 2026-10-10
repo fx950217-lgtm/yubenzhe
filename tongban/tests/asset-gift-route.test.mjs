@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
+import {walletFeeText} from '../src/wallet-fees.js';
 
 const source=await readFile(new URL('../src/app.js',import.meta.url),'utf8');
 function block(start,end){const at=source.indexOf(start),last=source.indexOf(end,at+start.length);assert.ok(at>=0&&last>at,'application function boundaries remain available');return source.slice(at,last)}
@@ -12,15 +13,17 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{reso
 function walletHarness({exists=true,initialBalance='12.5',hidden=false,section='assets',records=[],getBalance=async()=> '24.75'}={}){
  const page={innerHTML:''},toasts=[];let reads=0,disposals=0;
  const walletState={exists,address:exists?'0x1111111111111111111111111111111111111111':null,unlocked:false};
- const context=vm.createContext({chainSection:section,currentView:'wallet',balance:initialBalance,balanceError:'',hideBalance:hidden,loadingBalance:false,state:()=>walletState,document:{querySelector:selector=>selector==='#page'?page:null},wallet:{getRecords:()=>records,getBalance:()=>{reads++;return getBalance()}},walletProblem:()=>{},icon:name=>'<svg data-icon="'+name+'"></svg>',toast:message=>toasts.push(message)});
+ const context=vm.createContext({walletFeeText,chainSection:section,currentView:'wallet',balance:initialBalance,balanceError:'',hideBalance:hidden,loadingBalance:false,state:()=>walletState,document:{querySelector:selector=>selector==='#page'?page:null},wallet:{getRecords:()=>records,getBalance:()=>{reads++;return getBalance()}},walletProblem:()=>{},icon:name=>'<svg data-icon="'+name+'"></svg>',toast:message=>toasts.push(message)});
  new vm.Script(escapeSource+'\n'+shortSource+'\n'+walletSource).runInContext(context);
  return{context,page,toasts,get reads(){return reads},get disposals(){return disposals},render:()=>context.renderWallet(page),refresh:(show=false)=>context.refreshBalance(show)};
 }
 
-test('chain assets show only chain balances, circular action hooks and underlined section choices',()=>{
- const h=walletHarness();h.render();assert.match(h.page.innerHTML,/<strong class="asset-total-number" id="balance-number">12\.5<\/strong>/);assert.match(h.page.innerHTML,/测试资产 · 涨幅不适用/);assert.doesNotMatch(h.page.innerHTML,/balance-card|总资产估值|USDT|\$12/);
- const quick=h.page.innerHTML.match(/<nav class="asset-quick-actions"[\s\S]+?<\/nav>/)[0];
- assert.deepEqual([...quick.matchAll(/data-action="([^"]+)"/g)].map(m=>m[1]),['send','receive','asset-scan','asset-gift']);assert.equal([...quick.matchAll(/class="asset-quick-icon"/g)].length,4);
+test('wallet home preserves real chain amounts and has one primary action',()=>{
+ const h=walletHarness();h.render();assert.match(h.page.innerHTML,/<strong class="asset-total-number" id="balance-number">12\.5<\/strong>/);assert.match(h.page.innerHTML,/测试资产无实际价值/);assert.doesNotMatch(h.page.innerHTML,/balance-card|总资产估值|USDT|\$12/);
+ assert.match(h.page.innerHTML,/密钥保存在你自己的设备上，平台不托管、不接触你的资金。/);
+ assert.equal((h.page.innerHTML.match(/class="primary"/g)||[]).length,1);
+ for(const name of ["send","receive","asset-scan"])assert.ok(h.page.innerHTML.includes('data-action="'+name+'"'));
+ assert.match(h.page.innerHTML,/设计示例 · 非交易记录/);
  assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-assets"/);assert.doesNotMatch(h.page.innerHTML,/id="recent-records"/);assert.match(h.page.innerHTML,/钱包资产/);
 });
 
@@ -36,7 +39,7 @@ test('bills use real local records and refreshing chain balances preserves the s
  const h=walletHarness({section:'bills',records,getBalance:()=>wait.promise});h.render();
  assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-bills"/);assert.match(h.page.innerHTML,/id="recent-records"/);assert.match(h.page.innerHTML,/1\.125 tBNB/);assert.doesNotMatch(h.page.innerHTML,/id="token-balance"/);
  const pending=h.refresh(true);assert.equal(h.reads,1);assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/data-action="chain-bills"/);wait.resolve('24.75');await pending;
- assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-bills"/);assert.match(h.page.innerHTML,/id="balance-number">24\.75/);assert.deepEqual(h.toasts,['链上余额已更新']);
+ assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-bills"/);assert.match(h.page.innerHTML,/id="balance-number">24\.75/);assert.deepEqual(h.toasts,['链上资产已更新']);
 });
 
 test('switching section during an in-flight refresh keeps the latest selection after success or failure',async()=>{

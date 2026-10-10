@@ -33,6 +33,24 @@ test('guests get a login entry without fetching or publishing community data',as
  const h=harness(t,{loggedIn:false});await h.open('bounty');assert.match(h.markup,/登录后使用/);assert.equal(h.calls.length,0);h.action('login');assert.equal(h.logins,1);
 });
 
+test('business directories keep one primary action without hiding filters or applicant selection',async t=>{
+ const mainActions=html=>[...html.matchAll(/<button\b[^>]*class="([^"]*)"[^>]*data-disc="([^"]+)"/g)].filter(([,classes])=>classes.split(/\s+/).includes('community-button')&&!classes.split(/\s+/).includes('secondary')).map(([,classes,action])=>action);
+ const h=harness(t);await h.open('bounty');
+ assert.deepEqual(mainActions(h.markup),['community-publish']);
+ assert.match(h.markup,/data-disc="community-search"/);
+ await h.open('provider');assert.deepEqual(mainActions(h.markup),['community-provider-apply']);
+ assert.match(h.markup,/data-kind="business" aria-pressed="true"/);
+ h.action('provider-kind',{kind:'cloud'});await tick();
+ assert.match(h.markup,/data-kind="cloud" aria-pressed="true"/);
+ assert.deepEqual(mainActions(h.markup),['community-provider-apply']);
+ const applications=[1,2].map(n=>({id:'application-'+n,applicant:{...person,userId:'applicant_'+n},message:'申请说明'}));
+ const candidates=harness(t,{request:async(path,o,fallback)=>path.includes('bounties/')?{bounty:task({applications})}:fallback(path,o)});
+ await candidates.open('bounty');candidates.action('detail',{id:task().id});await tick();
+ assert.equal((candidates.markup.match(/data-disc="community-select"/g)||[]).length,2);
+ assert.equal(mainActions(candidates.markup).length,0);
+ candidates.action('select',{id:'application-2'});assert.match(candidates.dialog.html,/提交/);
+});
+
 test('task UI uses server data, escapes content and separates cooperation from payment',async t=>{
  const h=harness(t,{request:async(path,o,fallback)=>path.includes('bounties/')?{bounty:task({title:'<script>alert(1)</script>',status:'ended',payment:{status:'unpaid',verifiedUnits:'0',records:[]}})}:fallback(path,o)});await h.open('bounty');assert.match(h.markup,/SERVER_TASK/);assert.match(h.markup,/赏金未托管/);assert.match(h.markup,/意向报价/);h.action('detail',{id:task().id});await tick();assert.match(h.markup,/&lt;script&gt;/);assert.doesNotMatch(h.markup,/<script>/);assert.match(h.markup,/已结束/);assert.match(h.markup,/链上付款核验与托管尚未部署/);assert.doesNotMatch(h.markup,/已核验 10.25/);
 });

@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Humbly — UI Design System</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+
+  :root{
+    --ink:#1B1B1F;
+    --ink-2:#2D2A3E;
+    --accent:#6C5CE7;
+    --accent-2:#A29BFE;
+    --teal:#00B8A9;
+    --amber:#FFB020;
+    --green:#00C48C;
+    --red:#FF3B30;
+    --grey-1:#F7F7F9;
+    --grey-2:#F0F0F5;
+    --grey-3:#E8E8EE;
+    --text:#1A1A1A;
+    --text-2:#666;
+    --text-3:#999;
+    --radius-s:8px;
+    --radius-m:14px;
+    --radius-l:20px;
+    --radius-xl:28px;
+  }
+
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",system-ui,sans-serif;
+    background:#EFEFF3;
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100vh;
+    padding:32px 20px 60px;
+  }
+
+  .page-head{ text-align:center; margin-bottom:8px; }
+  .page-head h1{ font-size:26px; font-weight:800; letter-spacing:-.6px; margin-bottom:7px; }
+  .page-head p{ font-size:13px; color:var(--text-2); }
+  .logo-lock{ display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:14px; }
+  .logo-mark{
+    width:38px; height:38px; border-radius:11px;
+    background:linear-gradient(140deg,#1B1B1F,#3D3A52);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .logo-name{ font-size:21px; font-weight:800; letter-spacing:-.5px; color:var(--ink); }
+
+  .switcher{
+    display:flex; gap:6px; margin:22px 0 26px; background:#fff; padding:6px;
+    border-radius:100px; box-shadow:0 2px 14px rgba(0,0,0,.07); flex-wrap:wrap; justify-content:center;
+  }
+  .switcher button{
+    border:none; background:transparent; font-family:inherit;
+    font-size:13px; font-weight:650; color:var(--text-2);
+    padding:9px 17px; border-radius:100px; cursor:pointer;
+    transition:all .18s;
+  }
+  .switcher button.on{ background:var(--ink); color:#fff; }
+
+  /* ===== phone frame ===== */
+  .phone{
+    width:375px; height:812px; background:#fff;
+    border-radius:44px;
+    box-shadow:0 0 0 10px #1B1B1F, 0 24px 60px rgba(0,0,0,.22);
+    overflow:hidden; position:relative;
+    display:flex; flex-direction:column;
+  }
+
+  .statusbar{
+    height:52px; display:flex; align-items:flex-end; justify-content:space-between;
+    padding:0 26px 8px; font-size:13px; font-weight:600; flex-shrink:0; z-index:10;
+    transition:color .2s;
+  }
+  .statusbar.light{ color:#fff; }
+  .statusbar.dark{ color:var(--text); }
+  .sb-right{ display:flex; gap:5px; align-items:center; font-size:11px; }
+
+  .screen{ flex:1; overflow-y:auto; overflow-x:hidden; padding-bottom:88px; }
+  .screen::-webkit-scrollbar{ display:none; }
+
+  /* ===== tab bar ===== */
+  .tabbar{
+    position:absolute; bottom:0; left:0; right:0; height:84px;
+    background:rgba(255,255,255,.94); backdrop-filter:blur(20px);
+    border-top:1px solid var(--grey-3);
+    display:flex; align-items:flex-start; padding-top:10px; z-index:20;
+  }
+  .tab{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:5px;
+    cursor:pointer; color:var(--text-3); transition:color .18s; user-select:none;
+  }
+  .tab.active{ color:var(--accent); }
+  .tab svg{ width:24px; height:24px; }
+  .tab span{ font-size:10px; font-weight:600; letter-spacing:.1px; }
+
+  /* ===== HERO ===== */
+  .hero{
+    background:linear-gradient(140deg,#1B1B1F 0%,#2D2A3E 100%);
+    padding:8px 24px 28px; border-radius:0 0 28px 28px; margin-bottom:24px;
+  }
+  .hero-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+  .greeting{ font-size:11px; letter-spacing:.9px; color:#9B98B5; font-weight:600; margin-bottom:7px; }
+  .hero h2{ font-size:27px; font-weight:800; color:#fff; letter-spacing:-.5px; line-height:1.15; }
+  .avatar{
+    width:42px; height:42px; border-radius:50%;
+    background:#3D3A52; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:15px;
+  }
+  .cta{
+    display:inline-flex; align-items:center; gap:7px;
+    background:linear-gradient(90deg,#6C5CE7,#A29BFE);
+    color:#fff; border:none; padding:12px 20px; border-radius:100px;
+    font-size:14px; font-weight:700; margin-top:20px; cursor:pointer;
+    font-family:inherit; box-shadow:0 8px 22px rgba(108,92,231,.36);
+    transition:transform .15s;
+  }
+  .cta:active{ transform:scale(.97); }
+
+  .sec{ padding:0 24px; margin-bottom:26px; }
+  .sec-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+  .sec-title{ font-size:11px; font-weight:700; letter-spacing:.9px; color:var(--text-3); text-transform:uppercase; }
+  .sec-link{ font-size:12px; color:var(--accent); font-weight:600; cursor:pointer; }
+
+  .card{
+    background:#fff; border:1px solid var(--grey-3); border-radius:var(--radius-m);
+    padding:14px 16px; margin-bottom:10px;
+    display:flex; align-items:center; gap:12px;
+    transition:border-color .18s, transform .15s; cursor:pointer;
+  }
+  .card:active{ transform:scale(.985); }
+  .card:hover{ border-color:#D8D8E0; }
+  .card.flat{ cursor:default; }
+  .card.flat:hover{ border-color:var(--grey-3); }
+
+  .dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .card-body{ flex:1; min-width:0; }
+  .card-title{ font-size:14px; font-weight:650; margin-bottom:5px; letter-spacing:-.1px; }
+  .card-sub{ font-size:12px; color:var(--text-3); }
+
+  .bar{ height:5px; border-radius:3px; background:var(--grey-3); margin-top:9px; overflow:hidden; }
+  .bar i{ display:block; height:100%; border-radius:3px; }
+
+  .chip{
+    font-size:11px; font-weight:700; padding:6px 13px; border-radius:100px;
+    background:var(--grey-2); color:var(--text-2);
+    border:none; cursor:pointer; font-family:inherit; transition:background .15s;
+  }
+  .chip.accent{ background:var(--accent); color:#fff; }
+  .chip.ghost{ background:transparent; border:1px solid var(--grey-3); }
+
+  .credits-card{
+    background:linear-gradient(140deg,#1B1B1F,#2D2A3E);
+    border-radius:var(--radius-l); padding:22px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .credits-num{ font-size:34px; font-weight:800; color:#fff; letter-spacing:-1.2px; font-variant-numeric:tabular-nums; }
+  .credits-label{ font-size:11px; letter-spacing:.9px; color:#9B98B5; font-weight:600; margin-bottom:6px; }
+  .credits-unit{ font-size:14px; color:#9B98B5; font-weight:600; margin-left:5px; }
+  .credits-btn{
+    background:rgba(255,255,255,.13); color:#fff; border:none;
+    padding:11px 18px; border-radius:100px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+  }
+
+  /* ===== messages ===== */
+  .msg-list{ padding:0 0 8px; }
+  .msg{
+    display:flex; align-items:center; gap:14px; padding:13px 24px;
+    cursor:pointer; transition:background .15s;
+  }
+  .msg:hover{ background:#FAFAFC; }
+  .msg-avatar{
+    width:50px; height:50px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:17px; position:relative;
+  }
+  .online{
+    position:absolute; bottom:1px; right:1px; width:13px; height:13px;
+    border-radius:50%; background:var(--green); border:2.5px solid #fff;
+  }
+  .msg-body{ flex:1; min-width:0; }
+  .msg-name{ font-size:15px; font-weight:650; margin-bottom:3px; letter-spacing:-.1px; }
+  .msg-text{ font-size:13px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .msg-meta{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+  .msg-time{ font-size:11.5px; color:var(--text-3); }
+  .badge{
+    min-width:20px; height:20px; border-radius:10px;
+    background:var(--accent); color:#fff; font-size:11px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; padding:0 6px;
+  }
+
+  /* wallet */
+  .wallet-card{
+    margin:6px 24px 0; background:linear-gradient(140deg,#1B1B1F,#2D2A3E);
+    border-radius:var(--radius-l); padding:20px 22px;
+  }
+  .w-label{ font-size:11px; letter-spacing:.9px; color:#9B98B5; font-weight:600; margin-bottom:8px; }
+  .w-balance{ font-size:31px; font-weight:800; color:#fff; letter-spacing:-1px; font-variant-numeric:tabular-nums; margin-bottom:18px; }
+  .w-actions{ display:flex; gap:10px; }
+  .w-btn{
+    flex:1; background:rgba(255,255,255,.12); color:#fff; border:none;
+    padding:11px; border-radius:var(--radius-s); font-size:13px; font-weight:650;
+    cursor:pointer; font-family:inherit;
+  }
+  .w-btn.primary{ background:linear-gradient(90deg,#6C5CE7,#A29BFE); }
+
+  .pill-row{ display:flex; gap:8px; padding:0 24px 16px; flex-wrap:wrap; }
+  .tag{
+    font-size:12px; font-weight:600; padding:7px 14px; border-radius:100px;
+    background:#fff; border:1px solid var(--grey-3); color:var(--text-2); cursor:pointer;
+  }
+  .tag.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  .page-title{ font-size:29px; font-weight:800; letter-spacing:-.7px; padding:4px 24px 18px; }
+
+  .hint{ font-size:11.5px; color:var(--text-3); padding:14px 24px 0; line-height:1.6; }
+
+  /* discover */
+  .hero-sm{
+    margin:6px 24px 20px; height:132px; border-radius:var(--radius-l);
+    background:linear-gradient(140deg,#1B1B1F,#3D3A52);
+    display:flex; flex-direction:column; justify-content:flex-end;
+    padding:18px; position:relative; overflow:hidden;
+  }
+  .hero-sm .glow{
+    position:absolute; width:170px; height:170px; border-radius:50%;
+    background:radial-gradient(circle,rgba(108,92,231,.55),transparent 68%);
+    top:-58px; right:-40px;
+  }
+  .hero-sm .eyebrow{ font-size:10px; letter-spacing:1px; color:#A29BFE; font-weight:700; margin-bottom:7px; position:relative; }
+  .hero-sm .ht{ font-size:18px; font-weight:800; color:#fff; letter-spacing:-.3px; line-height:1.25; position:relative; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 24px; }
+  .tile{
+    background:#fff; border:1px solid var(--grey-3); border-radius:var(--radius-m);
+    padding:15px 14px; cursor:pointer; transition:transform .15s, border-color .18s;
+  }
+  .tile:active{ transform:scale(.975); }
+  .tile:hover{ border-color:#D8D8E0; }
+  .tile-ico{
+    width:36px; height:36px; border-radius:11px; margin-bottom:11px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tile-t{ font-size:13.5px; font-weight:680; margin-bottom:4px; letter-spacing:-.1px; }
+  .tile-s{ font-size:11.5px; color:var(--text-3); line-height:1.45; }
+
+  /* me */
+  .profile-card{
+    margin:6px 24px 0; background:linear-gradient(140deg,#1B1B1F,#2D2A3E);
+    border-radius:var(--radius-l); padding:22px; display:flex; align-items:center; gap:15px;
+  }
+  .pav{
+    width:58px; height:58px; border-radius:50%; flex-shrink:0;
+    background:linear-gradient(135deg,#6C5CE7,#A29BFE);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800; font-size:21px;
+  }
+  .p-name{ font-size:17px; font-weight:800; color:#fff; letter-spacing:-.2px; margin-bottom:5px; }
+  .p-sub{ font-size:12px; color:#9B98B5; display:flex; align-items:center; gap:6px; }
+  .p-badge{
+    font-size:10px; font-weight:700; padding:3px 8px; border-radius:100px;
+    background:rgba(0,196,140,.16); color:#00C48C;
+  }
+
+  .stat-row{ display:flex; gap:10px; padding:14px 24px 0; }
+  .stat{
+    flex:1; background:#fff; border:1px solid var(--grey-3);
+    border-radius:var(--radius-m); padding:13px 14px;
+  }
+  .stat-v{ font-size:19px; font-weight:800; letter-spacing:-.5px; font-variant-numeric:tabular-nums; margin-bottom:4px; }
+  .stat-l{ font-size:10.5px; color:var(--text-3); font-weight:600; letter-spacing:.3px; }
+
+  .row-item{
+    display:flex; align-items:center; gap:13px; padding:14px 16px;
+    background:#fff; border:1px solid var(--grey-3); border-radius:var(--radius-m);
+    margin-bottom:9px; cursor:pointer; transition:border-color .18s;
+  }
+  .row-item:hover{ border-color:#D8D8E0; }
+  .row-ico{
+    width:34px; height:34px; border-radius:10px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .row-t{ flex:1; font-size:14px; font-weight:620; letter-spacing:-.1px; }
+  .row-x{ font-size:12.5px; color:var(--text-3); }
+
+  /* brand page */
+  .brand-wrap{ width:min(940px,100%); }
+  .brand-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:26px; }
+  .brand-card{
+    background:#fff; border:2px solid var(--grey-3); border-radius:var(--radius-l);
+    padding:22px 20px; position:relative; transition:border-color .2s, transform .2s;
+  }
+  .brand-card.pick{ border-color:var(--accent); box-shadow:0 10px 34px rgba(108,92,231,.16); }
+  .b-tag{
+    position:absolute; top:-11px; left:20px;
+    font-size:10px; font-weight:800; letter-spacing:.7px;
+    padding:4px 11px; border-radius:100px; background:var(--accent); color:#fff;
+  }
+  .b-name{ font-size:23px; font-weight:800; letter-spacing:-.6px; margin-bottom:5px; }
+  .b-pro{ font-size:11.5px; color:var(--accent); font-weight:700; letter-spacing:.5px; margin-bottom:13px; text-transform:uppercase; }
+  .b-desc{ font-size:12.5px; color:var(--text-2); line-height:1.65; margin-bottom:14px; }
+  .b-kv{ font-size:11.5px; color:var(--text-3); line-height:1.85; }
+  .b-kv b{ color:var(--text-2); font-weight:650; }
+
+  .note{
+    background:#fff; border:1px solid var(--grey-3); border-radius:var(--radius-l);
+    padding:20px 22px; margin-bottom:16px;
+  }
+  .note h3{ font-size:14px; font-weight:750; margin-bottom:11px; letter-spacing:-.1px; }
+  .note ul{ list-style:none; }
+  .note li{
+    font-size:12.5px; color:var(--text-2); line-height:1.75;
+    padding-left:16px; position:relative;
+  }
+  .note li::before{
+    content:''; position:absolute; left:2px; top:8px;
+    width:5px; height:5px; border-radius:50%; background:var(--accent-2);
+  }
+  .dodont{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .dd{ background:#fff; border:1px solid var(--grey-3); border-radius:var(--radius-l); padding:19px 20px; }
+  .dd h4{ font-size:13px; font-weight:750; margin-bottom:11px; }
+  .dd.ok h4{ color:var(--green); }
+  .dd.no h4{ color:var(--red); }
+  .dd li{ font-size:12.5px; color:var(--text-2); line-height:1.8; list-style:none; padding-left:16px; position:relative; }
+  .dd li::before{ position:absolute; left:0; font-weight:800; }
+  .dd.ok li::before{ content:'✓'; color:var(--green); }
+  .dd.no li::before{ content:'✕'; color:var(--red); }
+
+  @media(max-width:960px){
+    .brand-grid{ grid-template-columns:1fr; }
+    .dodont{ grid-template-columns:1fr; }
+  }
+  @media(max-width:460px){
+    .phone{ transform:scale(.9); transform-origin:top center; margin-bottom:-70px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <div class="logo-lock">
+    <div class="logo-mark">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8.5 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/>
+        <path d="M15.5 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/>
+        <path d="M11.2 12h1.6"/>
+      </svg>
+    </div>
+    <div class="logo-name">Humbly</div>
+  </div>
+  <p>AI Workspace · UI Design System — International Style</p>
+</div>
+
+<div class="switcher" id="switcher">
+  <button class="on" data-tab="0">Workspace</button>
+  <button data-tab="1">Messages</button>
+  <button data-tab="2">Wallet</button>
+  <button data-tab="3">Discover</button>
+  <button data-tab="4">Me</button>
+  <button data-tab="5">Naming</button>
+</div>
+
+<!-- ================= PHONE ================= -->
+<div class="phone" id="phone">
+  <div class="statusbar light" id="statusbar">
+    <span>9:41</span>
+    <div class="sb-right"><span>●●●●</span><span>WiFi</span><span>100%</span></div>
+  </div>
+
+  <!-- ============ SCREEN 0: WORKSPACE ============ -->
+  <div class="screen" id="screen-0">
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="greeting">GOOD EVENING</div>
+          <h2>Workspace</h2>
+        </div>
+        <div class="avatar">A</div>
+      </div>
+      <button class="cta">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New Task
+      </button>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head">
+        <div class="sec-title">Running</div>
+        <div class="sec-link">View all</div>
+      </div>
+      <div class="card">
+        <div class="dot" style="background:var(--green)"></div>
+        <div class="card-body">
+          <div class="card-title">Research Agent</div>
+          <div class="card-sub">Collecting market data · step 3 of 5</div>
+          <div class="bar"><i style="width:64%;background:var(--accent)"></i></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="dot" style="background:var(--amber)"></div>
+        <div class="card-body">
+          <div class="card-title">Code Reviewer</div>
+          <div class="card-sub">Scanning repository · waiting for input</div>
+          <div class="bar"><i style="width:30%;background:var(--amber)"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Models</div></div>
+      <div class="card" style="justify-content:space-between">
+        <div class="card-body">
+          <div class="card-title">GPT-5 · Claude · Gemini</div>
+          <div class="card-sub">Connect your own key — no markup</div>
+        </div>
+        <button class="chip accent">Manage</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Cloud Machine</div></div>
+      <div class="card" style="justify-content:space-between">
+        <div class="card-body">
+          <div class="card-title">sgp-01 · 4 vCPU / 8 GB</div>
+          <div class="card-sub" style="color:var(--green)">● Connected · 2h 14m</div>
+        </div>
+        <button class="chip accent">Open</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Credits</div></div>
+      <div class="credits-card">
+        <div>
+          <div class="credits-label">AVAILABLE</div>
+          <div><span class="credits-num">2,480</span><span class="credits-unit">pts</span></div>
+        </div>
+        <button class="credits-btn">Top up</button>
+      </div>
+    </div>
+
+    <div class="hint">Credits are non-transferable and can only be used for in-app services.</div>
+  </div>
+
+  <!-- ============ SCREEN 1: MESSAGES ============ -->
+  <div class="screen" id="screen-1" style="display:none">
+    <div class="page-title">Messages</div>
+    <div class="pill-row">
+      <div class="tag on">All</div>
+      <div class="tag">Unread</div>
+      <div class="tag">Groups</div>
+      <div class="tag">AI</div>
+    </div>
+
+    <div class="msg-list">
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#6C5CE7,#A29BFE)">L<div class="online"></div></div>
+        <div class="msg-body">
+          <div class="msg-name">Linh Nguyen</div>
+          <div class="msg-text">Sent you a red packet 🎁</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">2m</div><div class="badge">3</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#00B8A9,#00D8C4)">M<div class="online"></div></div>
+        <div class="msg-body">
+          <div class="msg-name">Minh Tran</div>
+          <div class="msg-text">Shared a workflow template</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">18m</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#3D3A52,#5A5674)">D</div>
+        <div class="msg-body">
+          <div class="msg-name">Dev Group</div>
+          <div class="msg-text">AI completed 4 tasks</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">1h</div><div class="badge">12</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#FFB020,#FFC85C)">K</div>
+        <div class="msg-body">
+          <div class="msg-name">Khanh Le</div>
+          <div class="msg-text" style="color:var(--accent);font-style:italic">Typing…</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">2h</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#FF6B6B,#FF9B9B)">A</div>
+        <div class="msg-body">
+          <div class="msg-name">An Hoang</div>
+          <div class="msg-text">Thanks, got it!</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">5h</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#4A6C96,#6E90B8)">T</div>
+        <div class="msg-body">
+          <div class="msg-name">Team Design</div>
+          <div class="msg-text">Bao: new mockups uploaded</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">1d</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 2: WALLET ============ -->
+  <div class="screen" id="screen-2" style="display:none">
+    <div class="page-title">Wallet</div>
+
+    <div class="wallet-card">
+      <div class="w-label">SELF-CUSTODY · BSC</div>
+      <div class="w-balance">$24.80</div>
+      <div class="w-actions">
+        <button class="w-btn primary">Send</button>
+        <button class="w-btn">Receive</button>
+      </div>
+    </div>
+
+    <div class="hint" style="padding-top:16px">
+      Your keys stay on this device. Humbly never holds your funds.
+    </div>
+
+    <div class="sec" style="margin-top:22px">
+      <div class="sec-head"><div class="sec-title">Recent Activity</div></div>
+      <div class="card">
+        <div class="dot" style="background:var(--green)"></div>
+        <div class="card-body">
+          <div class="card-title">Red packet claimed</div>
+          <div class="card-sub">From Linh Nguyen · just now</div>
+        </div>
+        <div style="text-align:right"><div style="font-size:14px;font-weight:750;color:var(--green)">+$5.20</div></div>
+      </div>
+      <div class="card">
+        <div class="dot" style="background:var(--accent)"></div>
+        <div class="card-body">
+          <div class="card-title">Sent to Minh Tran</div>
+          <div class="card-sub">BSC · 2h ago</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:14px;font-weight:750">−$12.00</div>
+          <div style="font-size:10.5px;color:var(--text-3);margin-top:3px">Gas $0.01</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="dot" style="background:var(--amber)"></div>
+        <div class="card-body">
+          <div class="card-title">Credits purchased</div>
+          <div class="card-sub">1,000 pts · yesterday</div>
+        </div>
+        <div style="text-align:right"><div style="font-size:14px;font-weight:750">−$9.90</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Security</div></div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Recovery phrase</div>
+          <div class="card-sub">Backed up · 12 words</div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2.2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Connected devices</div>
+          <div class="card-sub">2 active</div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2.2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 3: DISCOVER ============ -->
+  <div class="screen" id="screen-3" style="display:none">
+    <div class="page-title">Discover</div>
+
+    <div class="hero-sm">
+      <div class="glow"></div>
+      <div class="eyebrow">FEATURED</div>
+      <div class="ht">Build a workflow<br>in 30 seconds</div>
+    </div>
+
+    <div class="pill-row">
+      <div class="tag on">All</div>
+      <div class="tag">Agents</div>
+      <div class="tag">Prompts</div>
+      <div class="tag">Templates</div>
+    </div>
+
+    <div class="grid2">
+      <div class="tile">
+        <div class="tile-ico" style="background:rgba(108,92,231,.12)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.2 5.5L20 10l-5.8 1.5L12 17l-2.2-5.5L4 10l5.8-1.5z"/></svg>
+        </div>
+        <div class="tile-t">Prompt Library</div>
+        <div class="tile-s">240 curated prompts</div>
+      </div>
+      <div class="tile">
+        <div class="tile-ico" style="background:rgba(0,184,169,.12)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00B8A9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12h8M12 8v8"/></svg>
+        </div>
+        <div class="tile-t">Agent Store</div>
+        <div class="tile-s">Deploy in one tap</div>
+      </div>
+      <div class="tile">
+        <div class="tile-ico" style="background:rgba(255,176,32,.14)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFB020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        </div>
+        <div class="tile-t">Templates</div>
+        <div class="tile-s">Ready-made workflows</div>
+      </div>
+      <div class="tile">
+        <div class="tile-ico" style="background:rgba(61,58,82,.1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D3A52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg>
+        </div>
+        <div class="tile-t">What's New</div>
+        <div class="tile-s">Weekly releases</div>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:20px">
+      <div class="sec-head"><div class="sec-title">Trending in your network</div></div>
+      <div class="card" style="justify-content:space-between">
+        <div class="card-body">
+          <div class="card-title">Market Research Agent</div>
+          <div class="card-sub">Used by 1,204 people today</div>
+        </div>
+        <button class="chip ghost">Try</button>
+      </div>
+      <div class="card" style="justify-content:space-between">
+        <div class="card-body">
+          <div class="card-title">Invoice Extractor</div>
+          <div class="card-sub">Used by 863 people today</div>
+        </div>
+        <button class="chip ghost">Try</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 4: ME ============ -->
+  <div class="screen" id="screen-4" style="display:none">
+    <div class="page-title">Me</div>
+
+    <div class="profile-card">
+      <div class="pav">A</div>
+      <div>
+        <div class="p-name">Alex Chen</div>
+        <div class="p-sub">@alexchen <span class="p-badge">Verified</span></div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="stat-v">12</div><div class="stat-l">TASKS</div></div>
+      <div class="stat"><div class="stat-v">3</div><div class="stat-l">AGENTS</div></div>
+      <div class="stat"><div class="stat-v">248</div><div class="stat-l">CONNECTIONS</div></div>
+    </div>
+
+    <div class="sec" style="margin-top:22px">
+      <div class="sec-head"><div class="sec-title">Account</div></div>
+      <div class="row-item">
+        <div class="row-ico" style="background:rgba(108,92,231,.12)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/></svg>
+        </div>
+        <div class="row-t">Identity</div>
+        <div class="row-x">Linked</div>
+      </div>
+      <div class="row-item">
+        <div class="row-ico" style="background:rgba(0,184,169,.12)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00B8A9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-3 7.6-7 9-4-1.4-7-4.8-7-9V6z"/></svg>
+        </div>
+        <div class="row-t">Privacy &amp; Security</div>
+        <div class="row-x">2FA on</div>
+      </div>
+      <div class="row-item">
+        <div class="row-ico" style="background:rgba(255,176,32,.14)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l2.6 1.6"/></svg>
+        </div>
+        <div class="row-t">Usage &amp; Billing</div>
+        <div class="row-x">2,480 pts</div>
+      </div>
+      <div class="row-item">
+        <div class="row-ico" style="background:rgba(61,58,82,.09)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3D3A52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        </div>
+        <div class="row-t">Settings</div>
+        <div class="row-x"></div>
+      </div>
+    </div>
+
+    <div class="hint" style="padding-bottom:10px">Version 0.1.0 · Build 1042</div>
+  </div>
+</div>
+
+<!-- ================= NAMING / BRAND PANEL ================= -->
+<div class="brand-wrap" id="brand-panel" style="display:none; width:100%; max-width:940px">
+
+  <div class="note" style="border:2px solid #FF3B30">
+    <h3 style="color:#FF3B30">⛔ 已排除：Knotwise / Nodo — 查证后被占用</h3>
+    <ul>
+      <li><strong>Knotwise</strong>：App Store 已有在架 App「KnotWise · Sailing Logbook」（Innovify GmbH，德国），域名 knotwise.app 被其占用，另有纽约 Knotwise LLC（2026-07）与印度 Knotwise Gifting Pvt Ltd → 踩苹果 4.1(c) 品牌冲突，审核必拒</li>
+      <li><strong>Nodo / Nodewise</strong>：瑞典 Nodewise AB 在用 nodewise.se，美国另有 NORDWISE 注册商标 → 同样不干净</li>
+      <li>教训：<strong>域名 + 商标 + App Store 重名，三项查完才能定名</strong>，不能凭语感拍板</li>
+    </ul>
+  </div>
+
+  <div class="brand-grid">
+    <div class="brand-card pick">
+      <div class="b-tag">RECOMMENDED</div>
+      <div class="b-name">Humbly</div>
+      <div class="b-pro">humble + ly</div>
+      <div class="b-desc">把「愚笨者」的精神内核翻出来，而不是把字面翻出来。中文的「愚笨者」是自嘲、是刻意藏拙；英文 humble 天然带「藏着本事不外露」的意思——最贴「大智若愚」，且是纯褒义词。</div>
+      <div class="b-kv">
+        <b>读音</b> /ˈhʌmbli/ 全球好念<br>
+        <b>调性</b> 谦逊、克制、可信<br>
+        <b>适用</b> AI 工作台 + 钱包双业务都撑得住<br>
+        <b>风险</b> 常见词，需查商标
+      </div>
+    </div>
+
+    <div class="brand-card">
+      <div class="b-name">Poky</div>
+      <div class="b-pro">Self-deprecating</div>
+      <div class="b-desc">英语口语「慢吞吞的」。有自嘲感但完全无害，像「笨笨的但一直在往前走」，宠物 / 品牌语境常用。记忆点强，两个音节好念，全球无发音障碍。</div>
+      <div class="b-kv">
+        <b>读音</b> /ˈpoʊki/ 好念<br>
+        <b>调性</b> 憨、亲切、有性格<br>
+        <b>适用</b> 偏社交、偏年轻化<br>
+        <b>风险</b> 「慢」的联想对效率型产品可能不利
+      </div>
+    </div>
+
+    <div class="brand-card">
+      <div class="b-name">Dumbly</div>
+      <div class="b-pro">Direct, softened</div>
+      <div class="b-desc">保留「愚笨者」的字面识别度，副词形态（-ly）把 dumb 的贬义软化成「笨笨地做」。三个里最贴中文字面的一档，但也最能看出翻译痕迹。</div>
+      <div class="b-kv">
+        <b>读音</b> /ˈdʌmli/ 好念<br>
+        <b>调性</b> 玩梗、反差<br>
+        <b>适用</b> 偏娱乐向定位<br>
+        <b>风险</b> dumb 词根在金融类 App 审核中可能被多看两眼
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>为什么不用 Fool / Fools</h3>
+    <ul>
+      <li>英文里 Fool 的主语是<strong>「被愚弄的人」</strong>，不是「大智若愚的人」——中文的「愚笨者」是自嘲式褒义，英文的 fool 是纯贬义</li>
+      <li>苹果对金融 / 加密类 App 有「不得作出不实或误导性陈述」的条款，品牌名带贬义会进入更慢的审查队列</li>
+      <li>同理慎用：Simpleton（傻子）、Muddler（搞砸的人）、Dummy（除了 iOS 开发者场景外基本都是骂人）</li>
+      <li>其他中性候选：Slowhand（慢手，有 Eric Clapton 的文化梗）、Plainly、Unassumed</li>
+    </ul>
+  </div>
+
+  <div class="dodont">
+    <div class="dd ok">
+      <h4>定名前必须查完这 4 项</h4>
+      <ul>
+        <li>.com 和 .app 域名是否可注册</li>
+        <li>USPTO（美国）/ EUIPO（欧盟）商标是否被占，注意第 9 类（软件）和第 36 类（金融）</li>
+        <li>App Store 搜同名 App，避免 4.1(c) 品牌冲突</li>
+        <li>目标市场（越南 / 巴西）的发音是否有歧义或脏话谐音</li>
+      </ul>
+    </div>
+    <div class="dd no">
+      <h4>不要做的事</h4>
+      <ul>
+        <li>不要用 DBA / 商号去注册苹果组织账号（必须法律实体）</li>
+        <li>不要在 App 图标里使用任何现有品牌元素</li>
+        <li>不要把「愚笨者」直译成 Fool 系列</li>
+        <li>不要在没查商标前就印物料 / 买域名</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Slogan 建议</h3>
+    <ul>
+      <li><strong>Humbly</strong> — "Big things, quietly done."（大事，安静地做）</li>
+      <li><strong>Humbly</strong> — "Get smart. Stay humble."</li>
+      <li><strong>Poky</strong> — "Slow is smooth, smooth is fast."</li>
+      <li>中文线（对外不出，只做内部记忆点）：愚者千虑，必有一得</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+  const screens = [0,1,2,3,4].map(i => document.getElementById('screen-'+i));
+  const phone = document.getElementById('phone');
+  const brandPanel = document.getElementById('brand-panel');
+  const tabs = [...document.querySelectorAll('.tab')];
+  const switchBtns = [...document.querySelectorAll('#switcher button')];
+  const statusbar = document.getElementById('statusbar');
+
+  function show(idx){
+    if(idx === 5){
+      phone.style.display = 'none';
+      brandPanel.style.display = 'block';
+      switchBtns.forEach((b,i)=> b.classList.toggle('on', i===5));
+      return;
+    }
+    phone.style.display = 'flex';
+    brandPanel.style.display = 'none';
+
+    screens.forEach((s,i) => { if(s) s.style.display = (i===idx) ? 'block' : 'none'; });
+    tabs.forEach((t,i)=> t.classList.toggle('active', i===idx));
+    switchBtns.forEach((b,i)=> b.classList.toggle('on', i===idx));
+    statusbar.className = 'statusbar ' + (idx===0 ? 'light' : 'dark');
+  }
+
+  tabs.forEach(t => t.addEventListener('click', () => show(+t.dataset.screen)));
+  switchBtns.forEach(b => b.addEventListener('click', () => show(+b.dataset.tab)));
+</script>
+</body>
+</html>

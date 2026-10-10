@@ -93,6 +93,22 @@ test('parameter export strips forged contracts, balances, fees, and live chain c
 
 test('removed balance integration has no route, handler or fee export',()=>{const app=harness();assert.doesNotMatch(app.html(),/300|余额接入|USDT 服务费/);assert.equal(app.studio.render('integration'),'');assert.equal(app.studio.handleAction('t-route-integration',{}),false);app.studio.cleanup();});
 
+test('project list keeps creation as the only primary action while every saved draft remains editable',()=>{
+  for(const records of [[],[record('first'),record('second',{name:'Another Club'})]]){
+    const app=harness({records});app.go('token-projects');
+    const primary=[...app.html().matchAll(/<button[^>]*class="tk-primary"[^>]*>/g)];
+    assert.equal(primary.length,1);
+    if(records.length){
+      assert.equal((app.html().match(/data-disc="t-edit-project"/g)||[]).length,2);
+      app.action('t-edit-project',{id:'second'});
+      assert.match(app.html(),/Another Club/);
+    }else{
+      assert.match(app.html(),/开始准备/);app.action('t-new-token');assert.match(app.html(),/基础信息/);
+    }
+    app.studio.cleanup();
+  }
+});
+
 test('three steps save only after preview, then survive a synchronous parent rerender with saved id', () => {
   const app=harness();
   app.submit(token()); assert.match(app.html(),/02 \/ 接收钱包/); assert.equal(app.writes(),0);

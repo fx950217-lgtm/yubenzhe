@@ -124,11 +124,26 @@ test('mount is passive; manual recognition shows full network review and only ex
   assert.match(app.resultBox.innerHTML, new RegExp(address));
   assert.match(app.resultBox.innerHTML, /裸地址无法证明所属网络/);
   assert.match(app.resultBox.innerHTML, /金额不会填入转账/);
+  assert.equal(app.camera.className, 'qr-secondary', 'a recognized result becomes the only primary action');
   const button = app.click('confirm'); app.click('confirm', button);
   await tick();
   assert.deepEqual(app.results, [{ kind: 'address', address, chainId: 97, networkExplicit: false }]);
   app.cleanup();
   assert.equal(app.events.size, 0); assert.equal(app.documentEvents.size, 0); assert.equal(app.windowEvents.size, 0);
+});
+
+test('recognition review keeps camera available as secondary and restores its priority when starting again',()=>{
+  const app=harness();
+  app.submit(address);
+  assert.equal(app.camera.className,'qr-secondary');
+  assert.equal(app.camera.disabled,false);
+  assert.match(app.resultBox.innerHTML,/class="qr-primary" data-qr-action="confirm"/);
+  app.click('again');
+  assert.equal(app.camera.className,'qr-primary');
+  assert.equal(app.resultBox.hidden,true);
+  assert.equal(app.stage.hidden,false);
+  assert.equal(app.results.length,0);
+  app.cleanup();
 });
 
 test('invalid and wrong-mode manual payloads cannot produce a confirmable result', () => {

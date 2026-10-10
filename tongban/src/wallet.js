@@ -297,7 +297,7 @@ async function quote(url, from, to, value) {
     throw fail('网络手续费数据异常，已阻止交易。', 'FEE_INVALID');
   }
   const gasFee = gasPrice * gasLimit;
-  if (balance < value + gasFee) throw fail('测试 BNB 余额不足，需要同时支付转账金额与网络手续费。', 'BALANCE_INSUFFICIENT');
+  if (balance < value + gasFee) throw fail('测试 BNB 数量不足，需要同时支付转账金额与网络手续费。', 'BALANCE_INSUFFICIENT');
   return { gasPrice, gasLimit, gasFee, nonce: Number(nonceValue) };
 }
 
@@ -422,6 +422,9 @@ export async function getTransactionStatus(hash) {
     hash, status: receipt.status === '0x1' ? 'confirmed' : 'failed',
     confirmations: Number(latest >= block ? latest - block + 1n : 0n), blockNumber: Number(block),
   };
+  if (receipt.gasUsed !== undefined && receipt.effectiveGasPrice !== undefined) {
+    result.actualGasFee = formatEther(quantity(receipt.gasUsed) * quantity(receipt.effectiveGasPrice));
+  }
   const vault = readVault();
   if (vault && readRecords(vault.address).some(item => item.hash.toLowerCase() === hash.toLowerCase())) {
     saveRecord(vault.address, { ...result, broadcastUncertain: false });

@@ -9,4 +9,101 @@
 
 .live-gift-card{display:flex;flex-direction:column;gap:8px;border:1px solid #e5d4f4;border-radius:10px;padding:16px;background:#f6edff;color:#6e438e;text-align:left;font:inherit;cursor:pointer}.live-gift-card span{font-size:12px;color:#8b739c}
 
+/* YBZ: familiar conversations, quiet lists and solid avatars. */
+.live-social {
+  --live-purple:var(--accent,#6C5CE7);
+  --live-ink:var(--text,#1A1A1A);
+  --live-muted:var(--text-2,#666);
+  max-width:880px;
+  padding:4px 24px 32px;
+  letter-spacing:.5px;
+}
+.live-social .live-header {
+  gap:12px;
+  min-height:72px;
+  padding:8px 0 16px;
+  background:transparent;
+}
+.live-social .live-header h1 {
+  font-size:29px;
+  font-weight:800;
+  letter-spacing:.5px;
+  line-height:1.3;
+}
+.live-social .live-chat .live-header h1 { font-size:18px; }
+.live-social svg { stroke-width:2.2; }
+.live-social .live-icon {
+  border:0;
+  background:transparent;
+  color:var(--text,#1A1A1A);
+  border-radius:var(--radius-m,14px);
+}
+.live-social .live-contacts-shortcut {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:44px;
+  padding:6px 8px;
+  background:transparent;
+  border:0;
+  border-radius:var(--radius-s,8px);
+  color:var(--accent,#6C5CE7);
+  font-size:12.5px;
+  font-weight:650;
+  white-space:nowrap;
+}
+.live-social .live-contacts-shortcut svg { width:20px;height:20px; }
+.live-social .live-search {
+  background:var(--paper-2);
+  border:1px solid transparent;
+  border-radius:var(--radius-m,14px);
+  margin:0 0 16px;
+  color:var(--text-3,#999);
+}
+.live-social .live-search input { color:var(--text,#1A1A1A);font-size:14px; }
+.live-social .live-person,.live-social .live-conversation {
+  padding:16px 0;
+  gap:14px;
+  border:0;
+  border-bottom:1px solid var(--line);
+  border-radius:0;
+  background:transparent;
+}
+.live-social .live-person:last-child,.live-social .live-conversation:last-child { border-bottom:0; }
+.live-social .live-person:hover,.live-social .live-conversation:hover,.live-social .live-conversation.is-pinned { background:var(--bg); }
+.live-social .live-avatar,.live-social .live-avatar.is-group {
+  width:50px;
+  height:50px;
+  border-radius:50%;
+  background:var(--paper-2);
+  color:var(--accent,#6C5CE7);
+  font-size:18px;
+  font-weight:700;
+}
+.live-social .live-avatar.is-group { background:var(--human-bg,#E1F5EE);color:var(--human,#0F6E56); }
+.live-social .live-profile-card .live-avatar { width:86px;height:86px;border-radius:50%;font-size:34px; }
+.live-social .live-message>.live-avatar { width:35px;height:35px;border-radius:50%;font-size:15px; }
+.live-social .live-select-members .live-avatar { width:38px;height:38px;border-radius:50%;font-size:16px; }
+.live-social .live-person strong,.live-social .live-conversation-copy strong { font-size:15px;font-weight:650;color:var(--text,#1A1A1A); }
+.live-social .live-conversation-copy small { font-size:13px;line-height:1.5;margin-top:5px;color:var(--text-3,#999); }
+.live-social .live-conversation-copy time { font-size:11.5px;color:var(--text-3,#999);font-variant-numeric:tabular-nums; }
+.live-social .live-count { background:var(--accent,#6C5CE7);color:#fff;font-variant-numeric:tabular-nums; }
+.live-social .live-section-title { font-size:12.5px;font-weight:700;letter-spacing:.5px;text-transform:none;background:transparent;color:var(--text-2,#666);margin:26px 0 12px; }
+.live-social .live-menu { border:1px solid var(--line);border-radius:var(--radius-m,14px);box-shadow:0 8px 24px #1B1B1F12; }
+.live-social .live-menu button:hover { background:var(--bg); }
+.live-social .live-menu button svg { color:var(--accent,#6C5CE7); }
+.live-social .live-bubble,.live-social .is-mine .live-bubble { border:0;border-radius:var(--radius-m,14px);background:var(--paper-2);color:var(--text,#1A1A1A);box-shadow:none; }
+.live-social .is-mine .live-bubble { background:var(--line); }
+.live-social .live-chat,.live-social .live-chat-messages,.live-social .live-composer { background:var(--bg); }
+.live-social .live-setting,.live-social .live-contact-tools button,.live-social .live-profile-card,.live-social .live-dialog { border-color:var(--line);border-radius:var(--radius-m,14px); }
+.live-social .live-contact-tools .live-contact-tool-icon { background:var(--paper-2);color:var(--accent,#6C5CE7); }
+.live-social .live-primary,.live-social .live-composer .live-send { background:var(--accent,#6C5CE7);color:#fff; }
+.live-social .live-request-approve { border:0;border-radius:var(--radius-s,8px);padding:7px 14px;font-size:13px;line-height:1.5;background:var(--paper-2);color:var(--accent,#6C5CE7); }
+@media(max-width:700px) {
+  .live-social { padding:4px 0 24px; }
+  .live-social .live-header { gap:6px; }
+  .live-social.is-chat { background:var(--bg); }
+  .live-social .live-person,.live-social .live-conversation { padding:15px 0; }
+}
+
 .live-reply-quote{margin:0 0 5px;padding:7px 10px;border-left:3px solid #b6a1d1;background:#f1eff4;color:#716b7a;font-size:13px;border-radius:4px;max-width:260px;overflow-wrap:anywhere;white-space:pre-wrap}.live-reply-draft{display:flex;gap:8px;align-items:center;padding:7px 10px;background:#f4f2f6;font-size:13px}.live-reply-draft span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.live-member-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.live-request .live-greeting{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;color:#68616f}.live-people{padding:12px;max-width:800px;margin:auto}.live-people-consent{padding:12px;background:#f6f5f8;border-radius:6px}.live-people-consent button{margin:8px}.live-people-consent p,.live-people-card p{font-size:14px;color:#716c78;line-height:1.55}.live-people-card{display:flex;gap:12px;padding:18px 0;border-bottom:1px solid #eeedf0}.live-people-card>img,.live-people-avatar{width:48px;height:48px;border-radius:6px;object-fit:cover;flex:none}.live-people-avatar{display:grid;place-items:center;background:#f0ebf8;font-size:24px}.live-people-card>div{min-width:0;flex:1}.live-people-card small{display:block;margin-top:4px;overflow-wrap:anywhere}.live-people-card p{overflow-wrap:anywhere}.live-people-actions{display:flex;flex-wrap:wrap;gap:6px}.live-people textarea{width:100%;box-sizing:border-box;min-height:80px;padding:10px;border:1px solid #d5d0db;border-radius:6px;font:inherit}.live-people form{padding:14px 0}.live-people form button{margin:8px 6px 0 0}

@@ -290,7 +290,7 @@ export function mountDiscover(container, options = {}) {
     setup?.(dialog);
   }
   function renderHub() {
-    return '<section class="disc-home-entries" aria-label="发现">'+[
+    return '<header class="disc-brand-heading"><h1>发现</h1></header><section class="disc-brand-hero" aria-label="发现内容与灵感"><span lang="en">YBZ</span><h2>把不相干的东西连起来</h2><p>从交流与收藏中，找到新的思路。</p></section><h2 class="disc-home-group-title">内容与功能</h2><section class="disc-home-entries" aria-label="发现">'+[
       ['moments','moment','朋友圈'],['people','chat','认识新朋友'],['favorites','heart','收藏'],
     ].map(([route,ico,label])=>'<button type="button" class="disc-home-entry" data-disc="'+route+'"><span class="disc-home-entry-icon">'+icon(ico)+'</span><span>'+label+'</span>'+icon('arrow')+'</button>').join('')+'</section>';
   }

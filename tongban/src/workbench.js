@@ -26,9 +26,10 @@ const examples=[
  {title:'整理会议文字',goal:'整理会议文字，删除重复行并统计内容',hint:'上传 TXT 或 Markdown',file:true}
 ];
 function pointsBudget(value){const raw=String(value).trim();if(!/^[1-9]\d{0,3}$/.test(raw)||BigInt(raw)>1000n)throw Error('请输入 1–1000 的整数积分预算。');return BigInt(raw).toString();}
-export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toast=()=>{},embedded=false,initialGoal=''}={}){
+export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toast=()=>{},embedded=false,initialGoal='',initialScreen='home',initialTaskId=null}={}){
  let active=true,timer=null,busy=false,cap=null,tasks=[],files=[],selected=null,error='',uploading=false;
- let screen='home',taskTab='overview',filter='all',search='',catalog=null,reminders=[],planNotice=null,preview=null,cancelPrompt=false,editing=false;
+ let screen=initialScreen==='tasks'?'tasks':'home',taskTab='overview',filter='all',search='',catalog=null,reminders=[],planNotice=null,preview=null,cancelPrompt=false,editing=false;
+ let requestedTask=typeof initialTaskId==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(initialTaskId)?initialTaskId:null;
  const draft={goal:String(initialGoal||'').slice(0,4000),budget:'100',fileIds:[]};let instruction='',confirmBudget='',budgetDraft='100';
  const pending=new Map(),ownerId=client.getProfile()?.userId;let viewEpoch=0;
  const isCurrent=()=>active&&client.getProfile()?.userId===ownerId;
@@ -39,12 +40,12 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
   try{const result=await client.authenticatedRequest('workbench/'+path,{method:'POST',input:{...input,requestId}});checkCurrent();pending.delete(signature);return result;}
   catch(e){if(e.status&&e.status<500)pending.delete(signature);throw e;}
  }
- const button=(action,label,extra='',primary=false)=>'<button type="button" data-action="'+action+'" '+extra+' class="'+(primary?'primary':'')+'" '+(busy?'disabled':'')+'>'+label+'</button>';
+ const button=(action,label,extra='',primary=false,previewAction=false)=>'<button type="button" data-action="'+action+'" '+extra+' class="'+(primary&&(!preview||previewAction)?'primary':'')+'" '+(busy?'disabled':'')+'>'+label+'</button>';
  function shell(body){
   root.innerHTML='<section class="wb">'+(embedded?'':'<header class="wb-head"><div><h1>AI 工作台</h1><p>把想做的事，说给工作台</p></div><span class="wb-trial">本地试用</span></header>')+
    '<nav class="wb-navigation" aria-label="工作台导航">'+[['home','新任务'],['tasks','我的任务'],['files','成果与文件'],['environment','工作环境']].map(([id,label])=>'<button type="button" data-action="screen" data-screen="'+id+'" class="'+(screen===id?'active':'')+'" '+(busy?'disabled':'')+'>'+label+'</button>').join('')+'</nav>'+
    (error?'<div class="wb-error" role="alert">'+esc(error)+'</div>':'')+body+
-   (preview?'<section class="wb-preview" aria-label="文件预览"><div class="wb-row"><h2>'+esc(preview.file.name)+'</h2>'+button('close-preview','关闭')+'</div><p class="wb-muted">纯文本预览'+(preview.preview.truncated?' · 仅显示前一部分':'')+'</p><pre>'+esc(preview.preview.text)+'</pre>'+button('download','下载完整文件','data-id="'+esc(preview.file.id)+'"',true)+'</section>':'')+'</section>';
+   (preview?'<section class="wb-preview" aria-label="文件预览"><div class="wb-row"><h2>'+esc(preview.file.name)+'</h2>'+button('close-preview','关闭')+'</div><p class="wb-muted">纯文本预览'+(preview.preview.truncated?' · 仅显示前一部分':'')+'</p><pre>'+esc(preview.preview.text)+'</pre>'+button('download','下载完整文件','data-id="'+esc(preview.file.id)+'"',true,true)+'</section>':'')+'</section>';
  }
  function render(){
   if(!isCurrent())return;
@@ -68,8 +69,8 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
   const selectedFiles=files.filter(f=>draft.fileIds.includes(f.id));
   shell('<section class="wb-composer"><h2>你想完成什么？</h2><form data-plan><label class="sr-only" for="wb-goal">任务目标</label><textarea id="wb-goal" name="goal" data-draft="goal" rows="4" maxlength="4000" placeholder="例如：把这份订单表去重，给我一份整理后的表格和统计报告。" required>'+esc(draft.goal)+'</textarea>'+
    '<div class="wb-attachments">'+selectedFiles.map(f=>'<span class="wb-attachment">'+esc(f.name)+button('remove-file','×','data-id="'+esc(f.id)+'" aria-label="移除附件 '+esc(f.name)+'"')+'</span>').join('')+'</div>'+
-   '<div class="wb-composer-actions"><label class="wb-upload">'+(uploading?'上传中…':'＋ 添加文件')+'<input data-file type="file" accept=".csv,.txt,.md,.json" multiple '+(busy||uploading?'disabled':'')+'></label><button type="submit" class="primary" '+(busy||uploading?'disabled':'')+'>'+(busy?'正在整理计划…':'生成计划')+'</button></div>'+
-   '<p class="wb-muted">先看计划，再确认积分预算。只有确认后才预留积分，未用部分会退回；积分不可转赠或提现。</p></form></section>'+noticeHTML()+
+   '<div class="wb-composer-actions"><label class="wb-upload">'+(uploading?'上传中…':'＋ 添加文件')+'<input data-file type="file" accept=".csv,.txt,.md,.json" multiple '+(busy||uploading?'disabled':'')+'></label><button type="submit" class="'+(preview?'':'primary')+'" '+(busy||uploading?'disabled':'')+'>'+(busy?'正在整理计划…':'生成计划')+'</button></div>'+
+   '<p class="wb-muted">先看计划，再确认积分预算。只有确认后才预留积分，未用部分会退回；积分仅用于站内服务。</p></form></section>'+noticeHTML()+
    '<section class="wb-examples"><h2>从一件小事开始</h2><div class="wb-example-grid">'+examples.map((x,i)=>'<button type="button" data-action="example" data-index="'+i+'"><strong>'+esc(x.title)+'</strong><span>'+esc(x.hint)+'</span></button>').join('')+'</div></section>'+
    (files.length?'<details class="wb-library"><summary>使用已上传的文件（'+files.length+'）</summary><p class="wb-muted">CSV、TXT、Markdown、JSON，单文件最多 256 KiB，每次最多 5 个。</p>'+files.map(f=>'<label><input type="checkbox" data-choose-file value="'+esc(f.id)+'" '+(draft.fileIds.includes(f.id)?'checked':'')+'>'+esc(f.name)+' <small>'+Math.ceil(f.size/1024)+' KB</small></label>').join('')+'</details>':'')+
    '<div class="wb-capability-note"><span class="wb-status-dot"></span><p>当前可做文件整理与清单、大纲草稿。使用本地规则，尚未接入通用 AI 模型和云电脑。</p></div>'+
@@ -122,12 +123,12 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
     '<section class="wb-list"><h3>'+(awaiting?'先确认执行计划':'正在做什么')+'</h3><p>'+esc(plan.summary||t.goal||t.title)+'</p><ol class="wb-steps">'+steps.map((s,i)=>'<li class="'+(i<t.step?'complete':i===t.step&&!final(t.status)?'current':'')+'"><span>'+(i<t.step?'✓':i+1)+'</span><div><strong>'+esc(s.title)+'</strong>'+(s.description?'<p>'+esc(s.description)+'</p>':'')+'</div></li>').join('')+'</ol>'+
     ((plan.artifacts||[]).length?'<p class="wb-muted">预计得到：'+plan.artifacts.map(f=>esc(f.name||f.description)).join('、')+'</p>':'')+
     '<p class="wb-local-label">执行方式：本地规则与文件处理，非通用 AI 模型</p></section>';
-   if(awaiting&&points)body+='<form class="wb-confirm" data-confirm><div class="wb-row"><div><span class="wb-muted">预计积分区间</span><h3>'+estimateRange(t)+'</h3></div><span class="wb-trial">POINT · 本地试用</span></div><p class="wb-muted">预计用时：'+estimatedTime(plan.estimatedSeconds)+'。时间为预估，不是完成时限保证。</p><p class="wb-muted">积分费率版本：'+priceVersion(t)+'</p><label>本次最高预算（积分）<input name="budget" data-confirm-budget type="number" min="1" max="1000" step="1" value="'+esc(confirmBudget||taskBudget(t))+'" required></label><p class="wb-muted">计划有效至 '+date(t.quoteExpiresAt)+'。确认后预留积分，达到上限会暂停；追加预算须再次确认。</p><button class="primary" type="submit" '+(busy?'disabled':'')+'>确认积分预算，开始执行</button></form>';
+   if(awaiting&&points)body+='<form class="wb-confirm" data-confirm><div class="wb-row"><div><span class="wb-muted">预计积分区间</span><h3>'+estimateRange(t)+'</h3></div><span class="wb-trial">POINT · 本地试用</span></div><p class="wb-muted">预计用时：'+estimatedTime(plan.estimatedSeconds)+'。时间为预估，不是完成时限保证。</p><p class="wb-muted">积分费率版本：'+priceVersion(t)+'</p><label>本次最高预算（积分）<input name="budget" data-confirm-budget type="number" min="1" max="1000" step="1" value="'+esc(confirmBudget||taskBudget(t))+'" required></label><p class="wb-muted">计划有效至 '+date(t.quoteExpiresAt)+'。确认后预留积分，达到上限会暂停；追加预算须再次确认。</p><button class="'+(preview?'':'primary')+'" type="submit" '+(busy?'disabled':'')+'>确认积分预算，开始执行</button></form>';
    if(!points)body+='<p class="wb-plan-notice">这是历史本地试用任务，仅保留旧记录，不转换积分。可按这个目标新建积分任务。</p>';
    if(!awaiting&&!final(t.status)&&points)body+='<section class="wb-list" data-task-cost><h3>积分用量与预算</h3><div class="wb-bill"><span>已使用积分</span><strong>'+pointsValue(t.spentPoints)+'</strong><span>最高积分预算</span><strong>'+pointsValue(t.budgetPoints)+'</strong><span>剩余预算</span><strong>'+pointsValue(t.remainingPoints)+'</strong><span>当前预留</span><strong>'+pointsValue(t.reservedPoints)+'</strong></div><p class="wb-muted">依据当前任务锁定的积分费率核算；未提供的数据不作估计。</p></section>';
-   if(points&&!awaiting&&!final(t.status))body+='<div class="wb-actions">'+(['running','queued'].includes(t.status)?button('pause','暂停任务'):button('resume','继续同一任务','',true))+button('takeover','我来操作')+button('refresh','刷新进度')+'</div>';
+   if(points&&!awaiting&&!final(t.status))body+='<div class="wb-actions">'+(['running','queued'].includes(t.status)?button('pause','暂停任务'):button('resume','继续同一任务','',!pendingApprovals.length))+button('takeover','我来操作')+button('refresh','刷新进度')+'</div>';
    if(editable)body+='<details class="wb-library"><summary>补充要求，重新查看计划</summary><form data-instructions><label>补充说明<textarea name="instruction" data-instruction maxlength="2000" rows="3" placeholder="例如：请改为去掉重复行，并保留原来的表头。" required>'+esc(instruction)+'</textarea></label><p class="wb-muted">修改后先给你新计划，再确认执行。已完成步骤产生的用量会保留。</p><button type="submit" '+(busy?'disabled':'')+'>更新计划</button></form></details>';
-   if(points&&['paused','budget-paused','awaiting-user'].includes(t.status))body+='<details class="wb-library" '+(t.status==='budget-paused'?'open':'')+'><summary>调整最高积分预算</summary><form data-budget><label>新的最高预算（积分）<input name="budget" data-budget-draft type="number" min="1" max="1000" step="1" value="'+esc(budgetDraft)+'" required></label><button type="submit">查看调整详情</button></form>'+pendingApprovals.map(a=>'<div class="wb-plan-notice"><p>仅将此任务预算从 '+pointsValue(a.parameters.oldBudgetPoints)+' 调整到 '+pointsValue(a.parameters.newBudgetPoints)+'。</p><p class="wb-muted">确认有效至 '+date(a.expiresAt)+'</p>'+button('approve','确认这个积分预算','data-id="'+esc(a.id)+'"',true)+'</div>').join('')+'</details>';
+   if(points&&['paused','budget-paused','awaiting-user'].includes(t.status))body+='<details class="wb-library" '+(t.status==='budget-paused'||pendingApprovals.length?'open':'')+'><summary>调整最高积分预算</summary><form data-budget><label>新的最高预算（积分）<input name="budget" data-budget-draft type="number" min="1" max="1000" step="1" value="'+esc(budgetDraft)+'" required></label><button type="submit">查看调整详情</button></form>'+pendingApprovals.map((a,index)=>'<div class="wb-plan-notice"><p>仅将此任务预算从 '+pointsValue(a.parameters.oldBudgetPoints)+' 调整到 '+pointsValue(a.parameters.newBudgetPoints)+'。</p><p class="wb-muted">确认有效至 '+date(a.expiresAt)+'</p>'+button('approve','确认这个积分预算','data-id="'+esc(a.id)+'"',index===0)+'</div>').join('')+'</details>';
    body+='<section class="wb-result-shortcut"><h3>成果文件</h3><p>'+((t.outputs||[]).length?'已生成 '+t.outputs.length+' 个文件，可预览或下载。':'完成后可在“成果与账单”查看。')+'</p>'+button('task-tab','查看成果与账单','data-tab="outputs"')+'</section>';
   }
   body+='<div class="wb-actions">'+(points&&!final(t.status)?button('cancel-request','取消任务'):'')+(!points||final(t.status)?button('reuse','按这个目标新建任务'):'')+'</div>'+
@@ -136,11 +137,11 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
   shell(body);if(busy)root.querySelectorAll('button').forEach(b=>b.disabled=true);
  }
  async function load(){
-  if(!client.getProfile()){render();return;}const turn=viewEpoch,id=selected?.id;
+  if(!client.getProfile()){render();return;}const turn=viewEpoch,id=selected?.id||requestedTask;
   try{
    const c=await get('capabilities');if(!isCurrent()||turn!==viewEpoch)return;cap=c;
    if(cap.enabled){
-    if(id){const result=await get('tasks/'+id);if(!isCurrent()||turn!==viewEpoch)return;if(!selected||Number(result.task.version)>=Number(selected.version))selected=result.task;}
+    if(id){const result=await get('tasks/'+id);if(!isCurrent()||turn!==viewEpoch)return;if(!selected||Number(result.task.version)>=Number(selected.version)){selected=result.task;confirmBudget=taskBudget(selected);}requestedTask=null;}
     else{const values=await Promise.all([get('tasks'),get('files')]);if(!isCurrent()||turn!==viewEpoch)return;tasks=values[0].tasks||[];files=values[1].files||[];draft.fileIds=draft.fileIds.filter(id=>files.some(f=>f.id===id));}
     if(screen==='environment'){const value=await get('catalog');if(!isCurrent()||turn!==viewEpoch)return;catalog=value;}
     if(screen==='files'){const value=await get('retention');if(!isCurrent()||turn!==viewEpoch)return;reminders=value.reminders||[];}
@@ -152,7 +153,7 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
   if(busy||!isCurrent())return;viewEpoch++;busy=true;root.querySelectorAll('button').forEach(b=>b.disabled=true);error='';
   try{await fn();}catch(e){if(isCurrent())error=e.message;}finally{busy=false;render();}
  }
- async function changeScreen(next){viewEpoch++;screen=next;selected=null;preview=null;cancelPrompt=false;await load();}
+ async function changeScreen(next){viewEpoch++;screen=next;selected=null;requestedTask=null;preview=null;cancelPrompt=false;await load();}
  async function click(e){
   const b=e.target.closest('[data-action]');if(!b||!root.contains(b))return;e.stopPropagation?.();if(busy)return;const name=b.dataset.action;
   if(name==='login'){onAccount();return;}if(name==='legacy'){onLegacy();return;}

@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>愚笨者 · AI 时代，人人都是愚笨者</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+
+  :root{
+    --ink:#0E0E12;
+    --ink-2:#1B1B1F;
+    --ink-3:#2D2A3E;
+    --accent:#6C5CE7;
+    --accent-2:#A29BFE;
+    --teal:#00B8A9;
+    --teal-2:#5DCAA5;
+    --amber:#FFB020;
+    --green:#00C48C;
+    --grey-1:#F7F7F9;
+    --grey-2:#F0F0F5;
+    --grey-3:#E8E8EE;
+    --text:#1A1A1A;
+    --text-2:#666;
+    --text-3:#999;
+    --bg:#FBFBFD;
+  }
+
+  html{scroll-behavior:smooth;}
+
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    overflow-x:hidden;
+    line-height:1.6;
+  }
+
+  /* ============ NAV ============ */
+  .nav{
+    position:fixed; top:0; left:0; right:0; height:66px; z-index:100;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 40px;
+    background:rgba(251,251,253,.82);
+    backdrop-filter:blur(20px) saturate(180%);
+    border-bottom:1px solid rgba(0,0,0,.06);
+  }
+  .nav-brand{ display:flex; align-items:center; gap:11px; }
+  .nav-mark{
+    width:34px; height:34px; border-radius:10px;
+    background:linear-gradient(140deg,#0E0E12,#2D2A3E);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .nav-name{ font-size:17px; font-weight:800; letter-spacing:.5px; }
+  .nav-links{ display:flex; gap:32px; }
+  .nav-links a{
+    font-size:13.5px; color:var(--text-2); text-decoration:none;
+    font-weight:500; transition:color .2s;
+  }
+  .nav-links a:hover{ color:var(--text); }
+  .nav-cta{
+    background:var(--ink); color:#fff; border:none;
+    padding:9px 20px; border-radius:100px; font-size:13.5px; font-weight:650;
+    cursor:pointer; font-family:inherit; transition:transform .15s;
+  }
+  .nav-cta:active{ transform:scale(.96); }
+
+  /* ============ HERO ============ */
+  .hero{
+    padding:108px 40px 56px;
+    max-width:1180px; margin:0 auto;
+    text-align:center;
+    position:relative;
+  }
+  .hero-glow{
+    position:absolute; top:-40px; left:50%; transform:translateX(-50%);
+    width:820px; height:460px; pointer-events:none; z-index:0;
+    background:radial-gradient(ellipse 50% 50% at 50% 38%,rgba(108,92,231,.13),transparent 70%);
+  }
+  .hero .eyebrow,
+  .hero .hero-title,
+  .hero .hero-sub,
+  .hero .hero-actions{ position:relative; z-index:1; }
+
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:12.5px; font-weight:650; letter-spacing:1.4px;
+    color:var(--accent); background:rgba(108,92,231,.09);
+    padding:7px 16px; border-radius:100px; margin-bottom:26px;
+  }
+  .eyebrow i{
+    width:6px; height:6px; border-radius:50%; background:var(--accent);
+    display:block; animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:.45; transform:scale(.8); }
+  }
+
+  h1.hero-title{
+    font-size:60px; font-weight:800; letter-spacing:-1.4px;
+    line-height:1.16; margin-bottom:24px;
+    background:linear-gradient(160deg,#0E0E12 30%,#3D3A52 100%);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  h1.hero-title em{
+    font-style:normal; position:relative; white-space:nowrap;
+  }
+  h1.hero-title em::after{
+    content:''; position:absolute; left:0; right:0; bottom:4px; height:11px;
+    background:linear-gradient(90deg,rgba(108,92,231,.22),rgba(0,184,169,.22));
+    border-radius:3px; z-index:-1;
+  }
+
+  .hero-sub{
+    font-size:19px; color:var(--text-2); line-height:1.75;
+    max-width:660px; margin:0 auto 40px;
+  }
+
+  .hero-actions{ display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+  .btn-primary{
+    background:linear-gradient(90deg,#6C5CE7,#A29BFE);
+    color:#fff; border:none; padding:15px 32px; border-radius:100px;
+    font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+    box-shadow:0 10px 28px rgba(108,92,231,.34);
+    transition:transform .15s, box-shadow .2s;
+  }
+  .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 14px 34px rgba(108,92,231,.42); }
+  .btn-primary:active{ transform:scale(.97); }
+  .btn-ghost{
+    background:#fff; color:var(--text);
+    border:1px solid var(--grey-3); padding:15px 32px; border-radius:100px;
+    font-size:15px; font-weight:650; cursor:pointer; font-family:inherit;
+    transition:border-color .2s, transform .15s;
+  }
+  .btn-ghost:hover{ border-color:#D0D0DA; transform:translateY(-2px); }
+
+  /* ============ 双圆对比 ============ */
+  .compare{
+    max-width:1140px; margin:0 auto; padding:8px 40px 20px;
+    position:relative;
+  }
+  .compare-cap{
+    text-align:center; font-size:13px; color:var(--text-3);
+    letter-spacing:.6px; margin-bottom:28px; font-weight:600;
+  }
+  .compare-stage{
+    position:relative;
+    display:grid; grid-template-columns:1fr 220px 1fr;
+    align-items:center; gap:0;
+    min-height:400px;
+  }
+
+  .circle-wrap{ display:flex; justify-content:center; position:relative; }
+  .circle{
+    width:350px; height:350px; border-radius:50%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; position:relative;
+    transition:transform .5s cubic-bezier(.2,.8,.2,1);
+  }
+  .circle:hover{ transform:scale(1.035); }
+
+  .circle.ai{
+    background:radial-gradient(circle at 34% 28%,#EEF5FE,#DCEBFA 75%);
+    border:1.5px solid #B5D4F4;
+  }
+  .circle.human{
+    background:radial-gradient(circle at 34% 28%,#E8F7F1,#D2EFE3 75%);
+    border:1.5px solid #9FE1CB;
+  }
+  .c-label{
+    font-size:32px; font-weight:800; letter-spacing:1px; margin-bottom:2px;
+  }
+  .circle.ai .c-label{ color:#185FA5; }
+  .circle.human .c-label{ color:#0F6E56; }
+  .c-layer{
+    font-size:12.5px; letter-spacing:2px; font-weight:600;
+    padding:3px 12px; border-radius:100px; margin-bottom:22px;
+  }
+  .circle.ai .c-layer{ color:#185FA5; background:rgba(24,95,165,.09); }
+  .circle.human .c-layer{ color:#0F6E56; background:rgba(15,110,86,.09); }
+  .c-items{ display:flex; flex-direction:column; gap:10px; }
+  .c-item{ font-size:16px; font-weight:550; }
+  .circle.ai .c-item{ color:#1C6FB8; }
+  .circle.human .c-item{ color:#13806A; }
+  .c-item b{ font-weight:750; }
+  .c-foot{
+    margin-top:22px; font-size:12.5px; opacity:.8; line-height:1.55;
+  }
+  .circle.ai .c-foot{ color:#185FA5; }
+  .circle.human .c-foot{ color:#0F6E56; }
+
+  /* 中间连接区 */
+  .bridge{
+    display:flex; flex-direction:column; align-items:center;
+    gap:14px; position:relative;
+  }
+  .bridge-row{
+    display:flex; align-items:center; gap:10px; width:100%;
+    justify-content:center;
+  }
+  .bridge-txt{
+    font-size:12.5px; color:var(--text-3); font-weight:650;
+    letter-spacing:.5px; white-space:nowrap;
+  }
+  .bridge-dot{
+    width:5px; height:5px; border-radius:50%; background:rgba(140,138,155,.5);
+    flex-shrink:0;
+  }
+  .bridge-line{
+    height:1.5px; flex:1; max-width:48px; position:relative;
+    background:linear-gradient(90deg,rgba(140,138,155,.12),rgba(140,138,155,.65));
+  }
+  .bridge-line.rev{
+    background:linear-gradient(90deg,rgba(140,138,155,.65),rgba(140,138,155,.12));
+  }
+  .bridge-line::after{
+    content:''; position:absolute; right:-1px; top:50%; transform:translateY(-50%);
+    border-left:8px solid rgba(140,138,155,.8);
+    border-top:5.5px solid transparent; border-bottom:5.5px solid transparent;
+  }
+  .bridge-line.rev::after{
+    right:auto; left:-1px;
+    border-left:none; border-right:8px solid rgba(140,138,155,.8);
+  }
+
+  .knot{
+    width:86px; height:86px; border-radius:50%;
+    background:linear-gradient(140deg,#F4F2FF,#E7E3FE);
+    border:1.5px solid #CECBF6;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 10px 30px rgba(108,92,231,.2);
+    z-index:2;
+  }
+  .knot span{ font-size:26px; font-weight:800; color:#534AB7; line-height:1; }
+  .knot small{ font-size:9.5px; color:#7F77DD; letter-spacing:1.4px; margin-top:4px; }
+
+  /* ============ 三句宣言 ============ */
+  .creed{
+    max-width:1140px; margin:0 auto; padding:96px 40px 20px;
+    text-align:center;
+  }
+  .creed-title{
+    font-size:13px; letter-spacing:2.2px; color:var(--text-3);
+    font-weight:700; margin-bottom:14px;
+  }
+  .creed-lead{
+    font-size:31px; font-weight:800; letter-spacing:-.6px;
+    color:var(--ink); margin-bottom:52px; line-height:1.4;
+  }
+  .creed-grid{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:20px;
+  }
+  .creed-card{
+    background:#fff; border:1px solid var(--grey-3); border-radius:22px;
+    padding:34px 28px; text-align:left;
+    transition:transform .3s, box-shadow .3s, border-color .3s;
+  }
+  .creed-card:hover{
+    transform:translateY(-5px);
+    box-shadow:0 16px 44px rgba(0,0,0,.07);
+    border-color:#DDDCE6;
+  }
+  .creed-num{
+    font-size:11.5px; font-weight:800; letter-spacing:1.6px;
+    margin-bottom:20px; display:inline-block;
+  }
+  .creed-card:nth-child(1) .creed-num{ color:#6C5CE7; }
+  .creed-card:nth-child(2) .creed-num{ color:#00B8A9; }
+  .creed-card:nth-child(3) .creed-num{ color:#FFB020; }
+  .creed-ico{
+    width:46px; height:46px; border-radius:14px; margin-bottom:20px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .creed-h{ font-size:21px; font-weight:800; margin-bottom:11px; color:var(--ink); letter-spacing:-.2px; }
+  .creed-p{ font-size:14px; color:var(--text-2); line-height:1.85; }
+
+  /* ============ 宣言大字 ============ */
+  .statement{
+    margin-top:100px;
+    background:linear-gradient(150deg,#0E0E12 0%,#1B1B1F 55%,#2D2A3E 100%);
+    padding:110px 40px;
+    position:relative; overflow:hidden;
+  }
+  .statement::before{
+    content:''; position:absolute; top:-180px; right:-140px;
+    width:520px; height:520px; border-radius:50%;
+    background:radial-gradient(circle,rgba(108,92,231,.22),transparent 68%);
+  }
+  .statement::after{
+    content:''; position:absolute; bottom:-200px; left:-120px;
+    width:460px; height:460px; border-radius:50%;
+    background:radial-gradient(circle,rgba(0,184,169,.15),transparent 68%);
+  }
+  .statement-inner{
+    max-width:880px; margin:0 auto; text-align:center; position:relative; z-index:1;
+  }
+  .statement-tag{
+    font-size:12px; letter-spacing:2.6px; color:#7F77DD;
+    font-weight:700; margin-bottom:30px;
+  }
+  .statement-big{
+    font-size:44px; font-weight:800; color:#fff;
+    letter-spacing:-.8px; line-height:1.45; margin-bottom:34px;
+  }
+  .statement-big em{
+    font-style:normal;
+    background:linear-gradient(90deg,#A29BFE,#5DCAA5);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .statement-line{
+    width:56px; height:2px; margin:0 auto 34px;
+    background:linear-gradient(90deg,#6C5CE7,#00B8A9);
+    border-radius:2px;
+  }
+  .statement-p{
+    font-size:16px; color:#A8A4BD; line-height:2; max-width:620px; margin:0 auto;
+  }
+  .statement-p b{ color:#E8E6F2; font-weight:650; }
+
+  /* ============ 产品 ============ */
+  .product{
+    max-width:1140px; margin:0 auto; padding:110px 40px;
+  }
+  .product-head{ text-align:center; margin-bottom:66px; }
+  .product-title{
+    font-size:40px; font-weight:800; letter-spacing:-.9px;
+    color:var(--ink); margin-bottom:16px; line-height:1.3;
+  }
+  .product-sub{ font-size:16.5px; color:var(--text-2); max-width:600px; margin:0 auto; }
+
+  .feature-grid{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:20px;
+  }
+  .feature{
+    background:#fff; border:1px solid var(--grey-3); border-radius:22px;
+    padding:32px 30px; transition:transform .3s, box-shadow .3s;
+  }
+  .feature:hover{ transform:translateY(-4px); box-shadow:0 16px 44px rgba(0,0,0,.07); }
+  .feature-ico{
+    width:50px; height:50px; border-radius:15px; margin-bottom:22px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .feature-h{ font-size:19px; font-weight:800; margin-bottom:10px; color:var(--ink); }
+  .feature-p{ font-size:14px; color:var(--text-2); line-height:1.85; }
+
+  /* ============ 底线 ============ */
+  .principle{
+    background:#fff; border-top:1px solid var(--grey-3);
+    border-bottom:1px solid var(--grey-3);
+    padding:80px 40px; margin-top:20px;
+  }
+  .principle-inner{ max-width:1140px; margin:0 auto; }
+  .principle-title{
+    font-size:13px; letter-spacing:2.2px; color:var(--text-3);
+    font-weight:700; margin-bottom:34px; text-align:center;
+  }
+  .principle-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:18px;
+  }
+  .principle-item{
+    text-align:center; padding:26px 18px;
+    border-radius:18px; transition:background .25s;
+  }
+  .principle-item:hover{ background:var(--grey-1); }
+  .principle-check{
+    width:30px; height:30px; border-radius:50%; margin:0 auto 15px;
+    background:rgba(0,196,140,.13); color:var(--green);
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:800;
+  }
+  .principle-h{ font-size:15px; font-weight:750; margin-bottom:8px; color:var(--ink); }
+  .principle-p{ font-size:12.5px; color:var(--text-3); line-height:1.7; }
+
+  /* ============ CTA ============ */
+  .cta-final{
+    max-width:880px; margin:0 auto; padding:110px 40px 120px;
+    text-align:center;
+  }
+  .cta-final h2{
+    font-size:38px; font-weight:800; letter-spacing:-.8px;
+    color:var(--ink); margin-bottom:18px; line-height:1.35;
+  }
+  .cta-final p{
+    font-size:16.5px; color:var(--text-2); margin-bottom:40px; line-height:1.8;
+  }
+
+  /* ============ FOOTER ============ */
+  footer{
+    border-top:1px solid var(--grey-3);
+    padding:44px 40px; text-align:center;
+  }
+  .foot-brand{
+    display:flex; align-items:center; gap:10px; justify-content:center;
+    margin-bottom:16px;
+  }
+  .foot-mark{
+    width:28px; height:28px; border-radius:9px;
+    background:linear-gradient(140deg,#0E0E12,#2D2A3E);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .foot-name{ font-size:14.5px; font-weight:800; }
+  .foot-p{ font-size:12.5px; color:var(--text-3); line-height:1.9; }
+
+  /* ============ 滚动动画 ============ */
+  .reveal{ opacity:1; transform:none; }
+  .js-anim .reveal{ opacity:0; transform:translateY(26px); transition:opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1); }
+  .js-anim .reveal.in{ opacity:1; transform:none; }
+  .js-anim .reveal.d1{ transition-delay:.08s; }
+  .js-anim .reveal.d2{ transition-delay:.16s; }
+  .js-anim .reveal.d3{ transition-delay:.24s; }
+
+  @media(max-width:1080px){
+    .circle{ width:290px; height:290px; }
+    .compare-stage{ grid-template-columns:1fr 170px 1fr; }
+    h1.hero-title{ font-size:46px; }
+  }
+  @media(max-width:880px){
+    .nav{ padding:0 20px; }
+    .nav-links{ display:none; }
+    .hero{ padding:120px 22px 70px; }
+    h1.hero-title{ font-size:34px; letter-spacing:-.6px; }
+    .hero-sub{ font-size:16px; }
+    .compare{ padding:10px 22px 20px; }
+    .compare-stage{
+      grid-template-columns:1fr; gap:26px; min-height:auto;
+    }
+    .bridge{ flex-direction:row; gap:14px; }
+    .bridge-row{ flex-direction:column; gap:8px; }
+    .bridge-line{ width:1.5px; height:34px; flex:none; max-width:none;
+      background:linear-gradient(180deg,rgba(140,138,155,.15),rgba(140,138,155,.7)); }
+    .bridge-line.rev{ background:linear-gradient(180deg,rgba(140,138,155,.7),rgba(140,138,155,.15)); }
+    .bridge-line::after{ display:none; }
+    .circle{ width:270px; height:270px; }
+    .creed{ padding:70px 22px 10px; }
+    .creed-lead{ font-size:23px; }
+    .creed-grid{ grid-template-columns:1fr; }
+    .statement{ padding:80px 22px; }
+    .statement-big{ font-size:29px; }
+    .statement-p{ font-size:14.5px; }
+    .product{ padding:80px 22px; }
+    .product-title{ font-size:29px; }
+    .feature-grid{ grid-template-columns:1fr; }
+    .principle{ padding:60px 22px; }
+    .principle-grid{ grid-template-columns:repeat(2,1fr); }
+    .cta-final{ padding:80px 22px 90px; }
+    .cta-final h2{ font-size:28px; }
+  }
+  @media(max-width:420px){
+    .principle-grid{ grid-template-columns:1fr; }
+    .hero-actions{ flex-direction:column; }
+    .btn-primary,.btn-ghost{ width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-mark">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8.5 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/>
+        <path d="M15.5 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/>
+        <path d="M11.2 12h1.6"/>
+      </svg>
+    </div>
+    <div class="nav-name">愚笨者</div>
+  </div>
+  <div class="nav-links">
+    <a href="#creed">理念</a>
+    <a href="#product">产品</a>
+    <a href="#principle">我们的底线</a>
+  </div>
+  <button class="nav-cta">开始使用</button>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-glow"></div>
+
+  <div class="eyebrow"><i></i>AI 时代 · 人的位置</div>
+
+  <h1 class="hero-title">
+    AI 时代，<br>人人都是<em>愚笨者</em>
+  </h1>
+
+  <p class="hero-sub">
+    写代码、翻译、记账、检索——任何单项技能，我们都比不过 AI。<br>
+    承认这一点不是自嘲，是清醒。因为我们真正厉害的，AI 给不了。
+  </p>
+
+  <div class="hero-actions">
+    <button class="btn-primary">下载 App</button>
+    <button class="btn-ghost">了解理念</button>
+  </div>
+</section>
+
+<!-- ============ 双圆对比 ============ -->
+<section class="compare">
+  <div class="compare-cap reveal">技能层面 vs 价值层面</div>
+
+  <div class="compare-stage reveal d1">
+
+    <div class="circle-wrap">
+      <div class="circle ai">
+        <div class="c-label">AI</div>
+        <div class="c-layer">技能层面</div>
+        <div class="c-items">
+          <div class="c-item">写代码 · 翻译</div>
+          <div class="c-item">记忆 · 检索 · 计算</div>
+        </div>
+        <div class="c-foot">更快 · 更全 · 更不知疲倦</div>
+      </div>
+    </div>
+
+    <div class="bridge">
+      <div class="bridge-row">
+        <span class="bridge-txt">执行</span>
+        <span class="bridge-dot"></span>
+        <span class="bridge-line"></span>
+      </div>
+      <div class="knot">
+        <span>结</span>
+        <small>KNOT</small>
+      </div>
+      <div class="bridge-row">
+        <span class="bridge-line rev"></span>
+        <span class="bridge-dot"></span>
+        <span class="bridge-txt">提问</span>
+      </div>
+    </div>
+
+    <div class="circle-wrap">
+      <div class="circle human">
+        <div class="c-label">人</div>
+        <div class="c-layer">价值层面</div>
+        <div class="c-items">
+          <div class="c-item"><b>思维</b> · <b>决策</b></div>
+          <div class="c-item">创造性 · 担结果</div>
+        </div>
+        <div class="c-foot">知道要什么 · 为什么</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ 三句宣言 ============ -->
+<section class="creed" id="creed">
+  <div class="creed-title reveal">我们相信</div>
+  <h2 class="creed-lead reveal d1">AI 给不了的三样东西，<br>才是人真正值钱的地方</h2>
+
+  <div class="creed-grid">
+    <div class="creed-card reveal d1">
+      <div class="creed-num">01</div>
+      <div class="creed-ico" style="background:rgba(108,92,231,.1)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.4 2"/>
+        </svg>
+      </div>
+      <div class="creed-h">思维</div>
+      <p class="creed-p">AI 能算出答案，但决定「问什么」的人是你。知道要什么、为什么值得做，这件事 AI 替代不了。</p>
+    </div>
+
+    <div class="creed-card reveal d2">
+      <div class="creed-num">02</div>
+      <div class="creed-ico" style="background:rgba(0,184,169,.1)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00B8A9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3"/>
+          <path d="M18 3v4h-4M6 21v-4h4"/>
+        </svg>
+      </div>
+      <div class="creed-h">决策</div>
+      <p class="creed-p">技能已经变成公共品，人人都有。但没有方向上的判断和取舍，AI 的能力你根本调用不出来——能定方向、敢担结果的人才有活路。</p>
+    </div>
+
+    <div class="creed-card reveal d3">
+      <div class="creed-num">03</div>
+      <div class="creed-ico" style="background:rgba(255,176,32,.12)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFB020" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l2.2 5.5L20 10l-5.8 1.5L12 17l-2.2-5.5L4 10l5.8-1.5z"/>
+          <path d="M18.5 16.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/>
+        </svg>
+      </div>
+      <div class="creed-h">创造性</div>
+      <p class="creed-p">把两个毫不相干的东西连成新的东西——这是 AI 最不擅长、而人天生就会的事。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 宣言大字 ============ -->
+<section class="statement">
+  <div class="statement-inner">
+    <div class="statement-tag reveal">我 们 的 态 度</div>
+    <div class="statement-big reveal d1">
+      承认自己在技能上<em>「愚笨」</em><br>
+      然后把力气花在 AI 给不了的那三样上
+    </div>
+    <div class="statement-line reveal d2"></div>
+    <p class="statement-p reveal d2">
+      这不是自嘲，是<b>清醒</b>。<br>
+      我们不做「比 AI 更强」的幻想，我们做的是——<b>驾驭 AI 的人</b>。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 产品 ============ -->
+<section class="product" id="product">
+  <div class="product-head">
+    <h2 class="product-title reveal">所以，我们把这件事<br>做成了一个工作台</h2>
+    <p class="product-sub reveal d1">技能交给 AI，判断留给自己。所有的功能，都围绕这个原则设计。</p>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature reveal d1">
+      <div class="feature-ico" style="background:rgba(108,92,231,.1)">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7.5" height="9" rx="2"/><rect x="13.5" y="3" width="7.5" height="5.5" rx="2"/>
+          <rect x="13.5" y="11.5" width="7.5" height="9.5" rx="2"/><rect x="3" y="15" width="7.5" height="6" rx="2"/>
+        </svg>
+      </div>
+      <div class="feature-h">AI 工作台</div>
+      <p class="feature-p">接你自己的模型 Key，把 GPT、Claude、Gemini 放在一起用。平台不加价、不代充，你花多少是官方多少。</p>
+    </div>
+
+    <div class="feature reveal d2">
+      <div class="feature-ico" style="background:rgba(0,184,169,.1)">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#00B8A9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 9.5h19"/>
+          <circle cx="6.5" cy="15" r="1.3"/>
+        </svg>
+      </div>
+      <div class="feature-h">云电脑</div>
+      <p class="feature-p">在云端跑长任务、开大文件、跨设备接着干。算力按积分计费，用多少扣多少，明细看得到。</p>
+    </div>
+
+    <div class="feature reveal d2">
+      <div class="feature-ico" style="background:rgba(255,176,32,.12)">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#FFB020" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.9 8.9 0 01-3.8-.8L3 21l1.9-5.1a8.4 8.4 0 01-.9-3.8 8.4 8.4 0 018.4-8.4 8.4 8.4 0 018.6 7.8z"/>
+        </svg>
+      </div>
+      <div class="feature-h">熟人社交通信</div>
+      <p class="feature-p">和熟人聊天的同时，把红包、协作、任务一起做掉。不是陌生人社交，是你真的认识的人。</p>
+    </div>
+
+    <div class="feature reveal d3">
+      <div class="feature-ico" style="background:rgba(61,58,82,.08)">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#3D3A52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l7.5 3.2v5.6c0 4.4-3.1 7.9-7.5 9.2-4.4-1.3-7.5-4.8-7.5-9.2V6.2z"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="feature-h">自托管钱包</div>
+      <p class="feature-p">密钥只存在你自己设备上，平台不托管、不接触你的资金。收发红包直连链上，手续费透明可见。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 底线 ============ -->
+<section class="principle" id="principle">
+  <div class="principle-inner">
+    <div class="principle-title reveal">我 们 的 底 线</div>
+    <div class="principle-grid">
+      <div class="principle-item reveal d1">
+        <div class="principle-check">✓</div>
+        <div class="principle-h">不碰你的钱</div>
+        <p class="principle-p">钱包自托管，密钥在你手里，平台不做托管</p>
+      </div>
+      <div class="principle-item reveal d1">
+        <div class="principle-check">✓</div>
+        <div class="principle-h">不做代充中介</div>
+        <p class="principle-p">模型服务你直接向官方付费，我们只提供工具</p>
+      </div>
+      <div class="principle-item reveal d2">
+        <div class="principle-check">✓</div>
+        <div class="principle-h">积分只进不出</div>
+        <p class="principle-p">积分不可转让、不可提现，只用于消耗站内服务</p>
+      </div>
+      <div class="principle-item reveal d3">
+        <div class="principle-check">✓</div>
+        <div class="principle-h">费用全部明示</div>
+        <p class="principle-p">每一笔链上手续费、每一次算力消耗都写清楚</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-final">
+  <h2 class="reveal">技能交给 AI<br>判断留给自己</h2>
+  <p class="reveal d1">如果你也认同——在 AI 时代，人真正值钱的是思维、决策和创造性，那我们是一路人。</p>
+  <button class="btn-primary reveal d2" style="padding:17px 40px;font-size:16px;">开始使用愚笨者</button>
+</section>
+
+<footer>
+  <div class="foot-brand">
+    <div class="foot-mark">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8.5 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/>
+        <path d="M15.5 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/>
+        <path d="M11.2 12h1.6"/>
+      </svg>
+    </div>
+    <div class="foot-name">愚笨者</div>
+  </div>
+  <p class="foot-p">
+    AI 时代，人人都是愚笨者。<br>
+    © 2026 愚笨者 · 技能交给 AI，判断留给自己
+  </p>
+</footer>
+
+<script>
+  document.documentElement.classList.add('js-anim');
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  window.addEventListener('load', () => {
+    document.querySelectorAll('.reveal').forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight) el.classList.add('in');
+    });
+  });
+</script>
+</body>
+</html>

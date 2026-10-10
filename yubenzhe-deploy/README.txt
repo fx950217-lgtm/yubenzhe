@@ -1,11 +1,14 @@
 愚笨者产品服务与独立管理端
-需求基线 V0.2 · 当前版本 0.14.0-dev.4 / 本地 M0
+需求基线 V0.2 · 当前版本 0.14.0-dev.5 / 本地 M0
 
 当前入口
 ../docs/requirements-v0.2.txt：产品与有效验收标准。
 ../docs/V02-IMPLEMENTATION.txt：实际实施和测试状态。
 ../docs/M0-RUNBOOK.txt：本地 M0 启动、积分流程与迁移。
-本轮 dev.4 前端全量 356/356 通过，本地消费者网页与管理端构建成功；网页和服务已更新，备份重启后 18914 的 healthz 与 build-info 均确认 0.14.0-dev.4。浏览器验证电脑/390px 手机个人页、业务返回及收藏→历史草稿→刷新→收藏→个人中心。无新数据库迁移，业务数据保留；证据见 reports/ui-entry-simplification.json。后台业务与合约本轮未改、未重测；上一轮 f11f4c1 的 GitHub CI 38052669120、后端 207/207 和合约 23/23 仅为历史基线。管理端构建成功不等于完整管理交互验收。线上与原生仍为 0.13.0，未生成新版原生包或部署服务器。公开 GitHub 当前分支为 codex/m0-local-test，main 未更新。
+历史 dev.4 前端全量 356/356 通过，本地消费者网页与管理端构建成功；网页和服务已更新，备份重启后 18914 的 healthz 与 build-info 均确认 0.14.0-dev.4。浏览器验证电脑/390px 手机个人页、业务返回及收藏→历史草稿→刷新→收藏→个人中心。无新数据库迁移，业务数据保留；证据见 reports/ui-entry-simplification.json。后台业务与合约本轮未改、未重测；上一轮 f11f4c1 的 GitHub CI 38052669120、后端 207/207 和合约 23/23 仅为历史基线。管理端构建成功不等于完整管理交互验收。线上与原生仍为 0.13.0，未生成新版原生包或部署服务器。公开 GitHub 当前分支为 codex/m0-local-test，main 未更新。
+
+dev.5 验证状态：前端全量 404/404、消费者网页及独立管理端构建通过；已核对桌面与 390px 手机五页、三皮肤、云机/收藏/通讯录/近期任务路径和工作台默认落地，本地 healthz 与 build-info 均为 0.14.0-dev.5。
+YBZ 品牌 UI 已按最新命名规范重做，五 Tab 顺序为工作台、消息、钱包、发现、我的。无新数据库迁移；既有本地数据已用 SQLite backup API 备份并通过完整性检查后保留重启。详情见 reports/brand-ui-verification.json。线上与原生包未更新。
 
 架构与功能边界
 Node 24 + SQLite；frontend 提供消费者网页、/api/social 和产品 AI 接口，拒绝 /api/admin；admin 使用独立入口与会话。管理 UI 源码在 ui，依赖来自相邻 tongban-admin。

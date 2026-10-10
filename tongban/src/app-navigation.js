@@ -1,10 +1,10 @@
 export const MAIN_NAV = Object.freeze([
-  ['workbench','spark','AI 工作台'],['messages','message','消息'],['contacts','users','通讯录'],['discover','discover','发现'],['mine','user','我'],
+  ['workbench','spark','工作台'],['messages','message','消息'],['wallet','wallet','钱包'],['discover','discover','发现'],['mine','user','我的'],
 ]);
 export const WORKBENCH_FEATURES = Object.freeze(['bounty','provider','rank','token','ai','business','token-projects']);
 const discoveryRoutes = new Set(['hub','moments','people','favorites','drafts',...WORKBENCH_FEATURES]);
 const hubScreens = new Set(['home','workflows','detail','devices','connections','creator','tasks','chat-cloud','chat-local']);
-export const isAppView = view => MAIN_NAV.some(item=>item[0]===view)||view==='wallet'||view==='bills'||view==='points';
+export const isAppView = view => MAIN_NAV.some(item=>item[0]===view)||view==='contacts'||view==='bills'||view==='points';
 export function normalizedHubState(value={}) {
  const mode=value?.mode==='chat'?'chat':'work';
  const candidate=hubScreens.has(value?.screen)?value.screen:'home';
@@ -20,7 +20,7 @@ export function normalizeNavigation(view,options={}) {
  return {view:isAppView(view)?view:'workbench',options:safe};
 }
 export function hashForView(view,options={}) {
- if(view==='wallet')return '#mine/assets';
+ if(view==='wallet')return '#wallet';
  if(view==='points')return '#workbench/points';
  if(view==='discover') {
   if(WORKBENCH_FEATURES.includes(options.route))return '#workbench/'+options.route;
@@ -52,7 +52,7 @@ export function navigationFromHash(hash) {
 export const viewFromHash=hash=>navigationFromHash(hash).view;
 export function activeNavView(view,billOrigin='mine',options={}) {
  const parent=view==='bills'?billOrigin:view;
- if(parent==='wallet')return 'mine';
+ if(parent==='contacts')return 'messages';
  if(parent==='points')return 'workbench';
  if(parent==='discover'&&options.origin==='mine')return 'mine';
  return MAIN_NAV.some(item=>item[0]===parent)?parent:'mine';

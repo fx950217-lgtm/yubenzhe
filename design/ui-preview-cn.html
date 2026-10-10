@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>愚笨者 · 中文版 UI 设计稿</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+
+  :root{
+    --ink:#1B1B1F;
+    --ink-2:#2D2A3E;
+    --accent:#6C5CE7;
+    --accent-2:#A29BFE;
+    --teal:#00B8A9;
+    --amber:#FFB020;
+    --green:#00C48C;
+    --red:#FF3B30;
+    --grey-1:#F7F7F9;
+    --grey-2:#F0F0F5;
+    --grey-3:#E8E8EE;
+    --text:#1A1A1A;
+    --text-2:#666;
+    --text-3:#999;
+    --radius-s:8px;
+    --radius-m:14px;
+    --radius-l:20px;
+    --radius-xl:28px;
+  }
+
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+    background:#EFEFF3;
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100vh;
+    padding:32px 20px 60px;
+  }
+
+  .page-head{ text-align:center; margin-bottom:8px; }
+  .page-head p{ font-size:13px; color:var(--text-2); margin-top:8px; }
+  .logo-lock{ display:flex; align-items:center; gap:11px; justify-content:center; }
+  .logo-mark{
+    width:40px; height:40px; border-radius:12px;
+    background:linear-gradient(140deg,#1B1B1F,#3D3A52);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .logo-name{ font-size:23px; font-weight:800; letter-spacing:.5px; color:var(--ink); }
+  .logo-sub{ font-size:11px; color:var(--text-3); letter-spacing:2.5px; margin-top:3px; text-align:center; }
+
+  .switcher{
+    display:flex; gap:6px; margin:22px 0 26px; background:#fff; padding:6px;
+    border-radius:100px; box-shadow:0 2px 14px rgba(0,0,0,.07); flex-wrap:wrap; justify-content:center;
+  }
+  .switcher button{
+    border:none; background:transparent; font-family:inherit;
+    font-size:13px; font-weight:600; color:var(--text-2);
+    padding:9px 17px; border-radius:100px; cursor:pointer;
+    transition:all .18s;
+  }
+  .switcher button.on{ background:var(--ink); color:#fff; }
+
+  .phone{
+    width:375px; height:812px; background:#fff;
+    border-radius:44px;
+    box-shadow:0 0 0 10px #1B1B1F, 0 24px 60px rgba(0,0,0,.22);
+    overflow:hidden; position:relative;
+    display:flex; flex-direction:column;
+  }
+
+  .statusbar{
+    height:52px; display:flex; align-items:flex-end; justify-content:space-between;
+    padding:0 26px 8px; font-size:13px; font-weight:600; flex-shrink:0; z-index:10;
+    transition:color .2s;
+  }
+  .statusbar.light{ color:#fff; }
+  .statusbar.dark{ color:var(--text); }
+  .sb-right{ display:flex; gap:5px; align-items:center; font-size:11px; }
+
+  .screen{ flex:1; overflow-y:auto; overflow-x:hidden; padding-bottom:88px; }
+  .screen::-webkit-scrollbar{ display:none; }
+
+  .tabbar{
+    position:absolute; bottom:0; left:0; right:0; height:84px;
+    background:rgba(255,255,255,.94); backdrop-filter:blur(20px);
+    border-top:1px solid var(--grey-3);
+    display:flex; align-items:flex-start; padding-top:10px; z-index:20;
+  }
+  .tab{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:5px;
+    cursor:pointer; color:var(--text-3); transition:color .18s; user-select:none;
+  }
+  .tab.active{ color:var(--accent); }
+  .tab svg{ width:24px; height:24px; }
+  .tab span{ font-size:10.5px; font-weight:600; }
+
+  .hero{
+    background:linear-gradient(140deg,#1B1B1F 0%,#2D2A3E 100%);
+    padding:8px 24px 30px; border-radius:0 0 28px 28px; margin-bottom:24px;
+  }
+  .hero-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .greeting{ font-size:11px; letter-spacing:1.5px; color:#9B98B5; font-weight:600; margin-bottom:8px; }
+  .hero h2{ font-size:27px; font-weight:800; color:#fff; letter-spacing:.5px; line-height:1.2; }
+  .hero-quote{
+    font-size:12px; color:#8B87A8; line-height:1.6; margin-top:10px;
+    padding-left:11px; border-left:2px solid #4A4560;
+  }
+  .avatar{
+    width:42px; height:42px; border-radius:50%;
+    background:#3D3A52; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:15px;
+  }
+  .cta{
+    display:inline-flex; align-items:center; gap:7px;
+    background:linear-gradient(90deg,#6C5CE7,#A29BFE);
+    color:#fff; border:none; padding:12px 20px; border-radius:100px;
+    font-size:14px; font-weight:700; margin-top:20px; cursor:pointer;
+    font-family:inherit; box-shadow:0 8px 22px rgba(108,92,231,.36);
+    transition:transform .15s;
+  }
+  .cta:active{ transform:scale(.97); }
+
+  .sec{ padding:0 24px; margin-bottom:26px; }
+  .sec-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+  .sec-title{ font-size:12.5px; font-weight:700; color:var(--text-2); letter-spacing:.5px; }
+  .sec-link{ font-size:12px; color:var(--accent); font-weight:600; cursor:pointer; }
+
+  .card{
+    background:#fff; border:1px solid var(--grey-3); border-radius:var(--radius-m);
+    padding:14px 16px; margin-bottom:10px;
+    display:flex; align-items:center; gap:12px;
+    transition:border-color .18s, transform .15s; cursor:pointer;
+  }
+  .card:active{ transform:scale(.985); }
+  .card:hover{ border-color:#D8D8E0; }
+
+  .dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .card-body{ flex:1; min-width:0; }
+  .card-title{ font-size:14px; font-weight:650; margin-bottom:5px; }
+  .card-sub{ font-size:12px; color:var(--text-3); line-height:1.5; }
+
+  .bar{ height:5px; border-radius:3px; background:var(--grey-3); margin-top:9px; overflow:hidden; }
+  .bar i{ display:block; height:100%; border-radius:3px; }
+
+  .chip{
+    font-size:11.5px; font-weight:700; padding:6px 13px; border-radius:100px;
+    background:var(--grey-2); color:var(--text-2);
+    border:none; cursor:pointer; font-family:inherit; flex-shrink:0;
+  }
+  .chip.accent{ background:var(--accent); color:#fff; }
+
+  .credits-card{
+    background:linear-gradient(140deg,#1B1B1F,#2D2A3E);
+    border-radius:var(--radius-l); padding:22px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .credits-num{ font-size:34px; font-weight:800; color:#fff; letter-spacing:-1px; font-variant-numeric:tabular-nums; }
+  .credits-label{ font-size:11px; letter-spacing:1.2px; color:#9B98B5; font-weight:600; margin-bottom:6px; }
+  .credits-unit{ font-size:14px; color:#9B98B5; font-weight:600; margin-left:5px; }
+  .credits-btn{
+    background:rgba(255,255,255,.13); color:#fff; border:none;
+    padding:11px 18px; border-radius:100px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+  }
+
+  .msg-list{ padding:0 0 8px; }
+  .msg{
+    display:flex; align-items:center; gap:14px; padding:13px 24px;
+    cursor:pointer; transition:background .15s;
+  }
+  .msg:hover{ background:#FAFAFC; }
+  .msg-avatar{
+    width:50px; height:50px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:17px; position:relative;
+  }
+  .online{
+    position:absolute; bottom:1px; right:1px; width:13px; height:13px;
+    border-radius:50%; background:var(--green); border:2.5px solid #fff;
+  }
+  .msg-body{ flex:1; min-width:0; }
+  .msg-name{ font-size:15px; font-weight:650; margin-bottom:3px; }
+  .msg-text{ font-size:13px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .msg-meta{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+  .msg-time{ font-size:11.5px; color:var(--text-3); }
+  .badge{
+    min-width:20px; height:20px; border-radius:10px;
+    background:var(--accent); color:#fff; font-size:11px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; padding:0 6px;
+  }
+
+  .wallet-card{
+    margin:6px 24px 0; background:linear-gradient(140deg,#1B1B1F,#2D2A3E);
+    border-radius:var(--radius-l); padding:20px 22px;
+  }
+  .w-label{ font-size:11px; letter-spacing:1px; color:#9B98B5; font-weight:600; margin-bottom:8px; }
+  .w-balance{ font-size:31px; font-weight:800; color:#fff; letter-spacing:-.5px; font-variant-numeric:tabular-nums; margin-bottom:18px; }
+  .w-actions{ display:flex; gap:10px; }
+  .w-btn{
+    flex:1; background:rgba(255,255,255,.12); color:#fff; border:none;
+    padding:11px; border-radius:var(--radius-s); font-size:13px; font-weight:650;
+    cursor:pointer; font-family:inherit;
+  }
+  .w-btn.primary{ background:linear-gradient(90deg,#6C5CE7,#A29BFE); }
+
+  .pill-row{ display:flex; gap:8px; padding:0 24px 16px; flex-wrap:wrap; }
+  .tag{
+    font-size:12.5px; font-weight:600; padding:7px 14px; border-radius:100px;
+    background:#fff; border:1px solid var(--grey-3); color:var(--text-2); cursor:pointer;
+  }
+  .tag.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  .page-title{ font-size:29px; font-weight:800; letter-spacing:.5px; padding:4px 24px 6px; }
+  .page-sub{ font-size:12.5px; color:var(--text-3); padding:0 24px 18px; }
+
+  .hint{ font-size:11.5px; color:var(--text-3); padding:14px 24px 0; line-height:1.7; }
+
+  .hero-sm{
+    margin:6px 24px 20px; height:140px; border-radius:var(--radius-l);
+    background:linear-gradient(140deg,#1B1B1F,#3D3A52);
+    display:flex; flex-direction:column; justify-content:flex-end;
+    padding:18px; position:relative; overflow:hidden;
+  }
+  .hero-sm .glow{
+    position:absolute; width:180px; height:180px; border-radius:50%;
+    background:radial-gradient(circle,rgba(108,92,231,.5),transparent 68%);
+    top:-60px; right:-45px;
+  }
+  .hero-sm .eyebrow{ font-size:10px; letter-spacing:1.5px; color:#A29BFE; font-weight:700; margin-bottom:7px; position:relative; }
+  .hero-sm .ht{ font-size:18px; font-weight:800; color:#fff; line-height:1.35; position:relative; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 24px; }
+  .tile{
+    background:#fff; border:1px solid var(--grey-3); border-radius:var(--radius-m);
+    padding:15px 14px; cursor:pointer; transition:transform .15s, border-color .18s;
+  }
+  .tile:active{ transform:scale(.975); }
+  .tile:hover{ border-color:#D8D8E0; }
+  .tile-ico{
+    width:36px; height:36px; border-radius:11px; margin-bottom:11px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tile-t{ font-size:13.5px; font-weight:680; margin-bottom:4px; }
+  .tile-s{ font-size:11.5px; color:var(--text-3); line-height:1.5; }
+
+  .profile-card{
+    margin:6px 24px 0; background:linear-gradient(140deg,#1B1B1F,#2D2A3E);
+    border-radius:var(--radius-l); padding:22px; display:flex; align-items:center; gap:15px;
+  }
+  .pav{
+    width:58px; height:58px; border-radius:50%; flex-shrink:0;
+    background:linear-gradient(135deg,#6C5CE7,#A29BFE);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800; font-size:21px;
+  }
+  .p-name{ font-size:17px; font-weight:800; color:#fff; margin-bottom:5px; }
+  .p-sub{ font-size:12px; color:#9B98B5; display:flex; align-items:center; gap:6px; }
+  .p-badge{
+    font-size:10px; font-weight:700; padding:3px 8px; border-radius:100px;
+    background:rgba(0,196,140,.16); color:#00C48C;
+  }
+
+  .stat-row{ display:flex; gap:10px; padding:14px 24px 0; }
+  .stat{
+    flex:1; background:#fff; border:1px solid var(--grey-3);
+    border-radius:var(--radius-m); padding:13px 14px;
+  }
+  .stat-v{ font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; margin-bottom:4px; }
+  .stat-l{ font-size:10.5px; color:var(--text-3); font-weight:600; }
+
+  .row-item{
+    display:flex; align-items:center; gap:13px; padding:14px 16px;
+    background:#fff; border:1px solid var(--grey-3); border-radius:var(--radius-m);
+    margin-bottom:9px; cursor:pointer; transition:border-color .18s;
+  }
+  .row-item:hover{ border-color:#D8D8E0; }
+  .row-ico{
+    width:34px; height:34px; border-radius:10px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .row-t{ flex:1; font-size:14px; font-weight:620; }
+  .row-x{ font-size:12.5px; color:var(--text-3); }
+
+  .brand-wrap{ width:100%; max-width:940px; }
+  .brand-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:26px; }
+  .brand-card{
+    background:#fff; border:2px solid var(--grey-3); border-radius:var(--radius-l);
+    padding:22px 20px; position:relative; transition:border-color .2s;
+  }
+  .brand-card.pick{ border-color:var(--accent); box-shadow:0 10px 34px rgba(108,92,231,.16); }
+  .b-tag{
+    position:absolute; top:-11px; left:20px;
+    font-size:10px; font-weight:800; letter-spacing:.7px;
+    padding:4px 11px; border-radius:100px; background:var(--accent); color:#fff;
+  }
+  .b-name{ font-size:22px; font-weight:800; margin-bottom:5px; }
+  .b-pro{ font-size:11.5px; color:var(--accent); font-weight:700; letter-spacing:.5px; margin-bottom:13px; }
+  .b-desc{ font-size:12.5px; color:var(--text-2); line-height:1.7; margin-bottom:14px; }
+  .b-kv{ font-size:11.5px; color:var(--text-3); line-height:1.9; }
+  .b-kv b{ color:var(--text-2); font-weight:650; }
+
+  .note{
+    background:#fff; border:1px solid var(--grey-3); border-radius:var(--radius-l);
+    padding:20px 22px; margin-bottom:16px;
+  }
+  .note h3{ font-size:14px; font-weight:750; margin-bottom:11px; }
+  .note li{
+    font-size:12.5px; color:var(--text-2); line-height:1.8;
+    padding-left:16px; position:relative; list-style:none;
+  }
+  .note li::before{
+    content:''; position:absolute; left:2px; top:9px;
+    width:5px; height:5px; border-radius:50%; background:var(--accent-2);
+  }
+
+  @media(max-width:960px){ .brand-grid{ grid-template-columns:1fr; } }
+  @media(max-width:460px){ .phone{ transform:scale(.9); transform-origin:top center; margin-bottom:-70px; } }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <div class="logo-lock">
+    <div class="logo-mark">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8.5 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/>
+        <path d="M15.5 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/>
+        <path d="M11.2 12h1.6"/>
+      </svg>
+    </div>
+    <div class="logo-name">愚笨者</div>
+  </div>
+  <div class="logo-sub">Y U B E N Z H E</div>
+  <p>AI 工作台 · 中文版 UI 设计稿</p>
+</div>
+
+<div class="switcher" id="switcher">
+  <button class="on" data-tab="0">工作台</button>
+  <button data-tab="1">消息</button>
+  <button data-tab="2">钱包</button>
+  <button data-tab="3">发现</button>
+  <button data-tab="4">我的</button>
+  <button data-tab="5">品牌定义</button>
+</div>
+
+<div class="phone" id="phone">
+  <div class="statusbar light" id="statusbar">
+    <span>9:41</span>
+    <div class="sb-right"><span>●●●●</span><span>5G</span><span>100%</span></div>
+  </div>
+
+  <!-- ========== 工作台 ========== -->
+  <div class="screen" id="screen-0">
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="greeting">晚上好</div>
+          <h2>工作台</h2>
+        </div>
+        <div class="avatar">愚</div>
+      </div>
+      <div class="hero-quote">技能交给 AI，判断留给自己。</div>
+      <button class="cta">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        新建任务
+      </button>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head">
+        <div class="sec-title">进行中</div>
+        <div class="sec-link">全部</div>
+      </div>
+      <div class="card">
+        <div class="dot" style="background:var(--green)"></div>
+        <div class="card-body">
+          <div class="card-title">市场调研</div>
+          <div class="card-sub">正在收集数据 · 第 3 / 5 步</div>
+          <div class="bar"><i style="width:64%;background:var(--accent)"></i></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="dot" style="background:var(--amber)"></div>
+        <div class="card-body">
+          <div class="card-title">代码审查</div>
+          <div class="card-sub">扫描仓库中 · 等待你确认</div>
+          <div class="bar"><i style="width:30%;background:var(--amber)"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">模型</div></div>
+      <div class="card" style="justify-content:space-between">
+        <div class="card-body">
+          <div class="card-title">GPT · Claude · Gemini</div>
+          <div class="card-sub">接你自己的 Key，平台不加价</div>
+        </div>
+        <button class="chip accent">管理</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">云电脑</div></div>
+      <div class="card" style="justify-content:space-between">
+        <div class="card-body">
+          <div class="card-title">sgp-01 · 4 核 / 8 G</div>
+          <div class="card-sub" style="color:var(--green)">● 已连接 · 已运行 2 小时 14 分</div>
+        </div>
+        <button class="chip accent">进入</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">积分</div></div>
+      <div class="credits-card">
+        <div>
+          <div class="credits-label">可用</div>
+          <div><span class="credits-num">2,480</span><span class="credits-unit">分</span></div>
+        </div>
+        <button class="credits-btn">充值</button>
+      </div>
+    </div>
+
+    <div class="hint">积分不可转让、不可提现，仅可用于消耗站内服务。</div>
+  </div>
+
+  <!-- ========== 消息 ========== -->
+  <div class="screen" id="screen-1" style="display:none">
+    <div class="page-title">消息</div>
+    <div class="pill-row">
+      <div class="tag on">全部</div>
+      <div class="tag">未读</div>
+      <div class="tag">群聊</div>
+      <div class="tag">AI</div>
+    </div>
+
+    <div class="msg-list">
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#6C5CE7,#A29BFE)">林<div class="online"></div></div>
+        <div class="msg-body">
+          <div class="msg-name">林小雨</div>
+          <div class="msg-text">给你发了个红包 🎁</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">2 分钟</div><div class="badge">3</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#00B8A9,#00D8C4)">陈<div class="online"></div></div>
+        <div class="msg-body">
+          <div class="msg-name">陈明</div>
+          <div class="msg-text">分享了一个工作流模板</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">18 分钟</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#3D3A52,#5A5674)">开</div>
+        <div class="msg-body">
+          <div class="msg-name">开发组</div>
+          <div class="msg-text">AI 已完成 4 个任务</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">1 小时</div><div class="badge">12</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#FFB020,#FFC85C)">康</div>
+        <div class="msg-body">
+          <div class="msg-name">康乐</div>
+          <div class="msg-text" style="color:var(--accent)">正在输入…</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">2 小时</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#FF6B6B,#FF9B9B)">安</div>
+        <div class="msg-body">
+          <div class="msg-name">安和</div>
+          <div class="msg-text">收到了，谢谢！</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">5 小时</div></div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#4A6C96,#6E90B8)">设</div>
+        <div class="msg-body">
+          <div class="msg-name">设计组</div>
+          <div class="msg-text">宝哥：新的设计稿已上传</div>
+        </div>
+        <div class="msg-meta"><div class="msg-time">1 天</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 钱包 ========== -->
+  <div class="screen" id="screen-2" style="display:none">
+    <div class="page-title">钱包</div>
+    <div class="page-sub">自托管 · 密钥只在你手机上</div>
+
+    <div class="wallet-card">
+      <div class="w-label">自托管钱包 · BSC</div>
+      <div class="w-balance">$24.80</div>
+      <div class="w-actions">
+        <button class="w-btn primary">转账</button>
+        <button class="w-btn">收款</button>
+      </div>
+    </div>
+
+    <div class="hint">密钥保存在你自己的设备上，平台不托管、不接触你的资金。</div>
+
+    <div class="sec" style="margin-top:22px">
+      <div class="sec-head"><div class="sec-title">最近记录</div></div>
+      <div class="card">
+        <div class="dot" style="background:var(--green)"></div>
+        <div class="card-body">
+          <div class="card-title">领取红包</div>
+          <div class="card-sub">来自 林小雨 · 刚刚</div>
+        </div>
+        <div style="text-align:right"><div style="font-size:14px;font-weight:750;color:var(--green)">+$5.20</div></div>
+      </div>
+      <div class="card">
+        <div class="dot" style="background:var(--accent)"></div>
+        <div class="card-body">
+          <div class="card-title">转给 陈明</div>
+          <div class="card-sub">BSC · 2 小时前</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:14px;font-weight:750">−$12.00</div>
+          <div style="font-size:10.5px;color:var(--text-3);margin-top:3px">手续费 $0.01</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="dot" style="background:var(--amber)"></div>
+        <div class="card-body">
+          <div class="card-title">购买积分</div>
+          <div class="card-sub">1,000 分 · 昨天</div>
+        </div>
+        <div style="text-align:right"><div style="font-size:14px;font-weight:750">−$9.90</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">安全</div></div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">助记词</div>
+          <div class="card-sub">已备份 · 12 个词</div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">已登录设备</div>
+          <div class="card-sub">2 台在使用</div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 发现 ========== -->
+  <div class="screen" id="screen-3" style="display:none">
+    <div class="page-title">发现</div>
+
+    <div class="hero-sm">
+      <div class="glow"></div>
+      <div class="eyebrow">精选</div>
+      <div class="ht">30 秒搭好<br>一个工作流</div>
+    </div>
+
+    <div class="pill-row">
+      <div class="tag on">全部</div>
+      <div class="tag">智能体</div>
+      <div class="tag">提示词</div>
+      <div class="tag">模板</div>
+    </div>
+
+    <div class="grid2">
+      <div class="tile">
+        <div class="tile-ico" style="background:rgba(108,92,231,.12)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.2 5.5L20 10l-5.8 1.5L12 17l-2.2-5.5L4 10l5.8-1.5z"/></svg>
+        </div>
+        <div class="tile-t">提示词库</div>
+        <div class="tile-s">240 条精选题</div>
+      </div>
+      <div class="tile">
+        <div class="tile-ico" style="background:rgba(0,184,169,.12)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00B8A9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>
+        </div>
+        <div class="tile-t">智能体商店</div>
+        <div class="tile-s">一键部署</div>
+      </div>
+      <div class="tile">
+        <div class="tile-ico" style="background:rgba(255,176,32,.14)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFB020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        </div>
+        <div class="tile-t">工作流模板</div>
+        <div class="tile-s">开箱即用</div>
+      </div>
+      <div class="tile">
+        <div class="tile-ico" style="background:rgba(61,58,82,.1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D3A52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg>
+        </div>
+        <div class="tile-t">本周上新</div>
+        <div class="tile-s">每周更新</div>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:20px">
+      <div class="sec-head"><div class="sec-title">你同事在用的</div></div>
+      <div class="card" style="justify-content:space-between">
+        <div class="card-body">
+          <div class="card-title">市场调研智能体</div>
+          <div class="card-sub">今天有 1,204 人在用</div>
+        </div>
+        <button class="chip">试用</button>
+      </div>
+      <div class="card" style="justify-content:space-between">
+        <div class="card-body">
+          <div class="card-title">发票信息提取</div>
+          <div class="card-sub">今天有 863 人在用</div>
+        </div>
+        <button class="chip">试用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 我的 ========== -->
+  <div class="screen" id="screen-4" style="display:none">
+    <div class="page-title">我的</div>
+
+    <div class="profile-card">
+      <div class="pav">愚</div>
+      <div>
+        <div class="p-name">阿哲</div>
+        <div class="p-sub">@azhe <span class="p-badge">已认证</span></div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="stat-v">12</div><div class="stat-l">任务</div></div>
+      <div class="stat"><div class="stat-v">3</div><div class="stat-l">智能体</div></div>
+      <div class="stat"><div class="stat-v">248</div><div class="stat-l">好友</div></div>
+    </div>
+
+    <div class="sec" style="margin-top:22px">
+      <div class="sec-head"><div class="sec-title">账户</div></div>
+      <div class="row-item">
+        <div class="row-ico" style="background:rgba(108,92,231,.12)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/></svg>
+        </div>
+        <div class="row-t">身份展示</div>
+        <div class="row-x">已绑定</div>
+      </div>
+      <div class="row-item">
+        <div class="row-ico" style="background:rgba(0,184,169,.12)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00B8A9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-3 7.6-7 9-4-1.4-7-4.8-7-9V6z"/></svg>
+        </div>
+        <div class="row-t">隐私与安全</div>
+        <div class="row-x">已开二次验证</div>
+      </div>
+      <div class="row-item">
+        <div class="row-ico" style="background:rgba(255,176,32,.14)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4l2.6 1.6"/></svg>
+        </div>
+        <div class="row-t">用量与账单</div>
+        <div class="row-x">2,480 分</div>
+      </div>
+      <div class="row-item">
+        <div class="row-ico" style="background:rgba(61,58,82,.09)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3D3A52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        </div>
+        <div class="row-t">设置</div>
+        <div class="row-x"></div>
+      </div>
+    </div>
+
+    <div class="hint" style="padding-bottom:10px">版本 0.1.0 · 构建 1042</div>
+  </div>
+</div>
+
+<!-- ================= 品牌定义面板 ================= -->
+<div class="brand-wrap" id="brand-panel" style="display:none">
+
+  <div class="note" style="background:linear-gradient(140deg,#1B1B1F,#2D2A3E); border:none">
+    <h3 style="color:#fff; font-size:15px">愚笨者 · 精神内核</h3>
+    <div style="font-size:13px; color:#B8B4CC; line-height:1.9; margin-top:4px">
+      AI 时代，<b style="color:#fff">人人都是愚笨的</b>——写代码、翻译、记账、检索，任何单项技能都比不过 AI。<br><br>
+      但我们真正厉害的，是 AI 给不了的三样：<br>
+      <b style="color:#A29BFE">思维</b> · <b style="color:#00D8C4">决策</b> · <b style="color:#FFC85C">创造性</b><br><br>
+      <b style="color:#fff">技能已经变成公共品，人人都有。</b>但没有思维和决策，AI 的能力你根本调用不出来。<br><br>
+      所以要学的不是技能，是思维和决策。承认自己在技能上「愚笨」，不是自嘲，是<b style="color:#fff">新开始</b>。
+    </div>
+  </div>
+
+  <div class="brand-grid">
+    <div class="brand-card pick">
+      <div class="b-tag">推荐方向</div>
+      <div class="b-name">愚笨者</div>
+      <div class="b-pro">中文主名 · 保留</div>
+      <div class="b-desc">中文语境下「愚笨者」是自嘲式褒义，带《愚者千虑，必有一得》的底子。在中国市场直接用它，识别度最高、最有态度。</div>
+      <div class="b-kv">
+        <b>调性</b> 自嘲、清醒、有骨气<br>
+        <b>适用</b> 中国区 / 华人圈<br>
+        <b>风险</b> 中文名的英文直译必须避开
+      </div>
+    </div>
+
+    <div class="brand-card">
+      <div class="b-name">待定 · 方向 A</div>
+      <div class="b-pro">「人在 AI 之上」</div>
+      <div class="b-desc">不描述「笨」，而描述「人比 AI 多出来的那部分」。英文里这类词最不容易撞车，也最贴合你说的精神内核。候选词待定向查证。</div>
+      <div class="b-kv">
+        <b>优点</b> 内核准确、正向<br>
+        <b>优点</b> 国际化无障碍<br>
+        <b>待办</b> 需跑域名 + 商标 + 商店查重
+      </div>
+    </div>
+
+    <div class="brand-card">
+      <div class="b-name">待定 · 方向 B</div>
+      <div class="b-pro">「还在学」的状态</div>
+      <div class="b-desc">强调「一直在学、一直在做决定」这个动态，而不是一个固定标签。和「思维与决策」这条内核最贴。</div>
+      <div class="b-kv">
+        <b>优点</b> 有生长感<br>
+        <b>优点</b> 适合做长期品牌<br>
+        <b>待办</b> 需跑域名 + 商标 + 商店查重
+      </div>
+    </div>
+  </div>
+
+  <div class="note" style="border:2px solid #FF3B30">
+    <h3 style="color:#FF3B30">⛔ 已查证排除的名字</h3>
+    <ul>
+      <li><b>Knotwise / Knotly</b>：App Store 均已存在同名在架 App，域名被占</li>
+      <li><b>Humanly</b>：有在架 App「Humanly」+ 两个活跃美国商标</li>
+      <li><b>Nodo / Nodewise</b>：瑞典 Nodewise AB 在用；美国有 NORDWISE 商标</li>
+      <li><b>Poki</b>（Poky 近亲）：Poki B.V. 大厂商标，已公告异议期</li>
+      <li><b>Humble</b>：Humble Robotics 正在抢注第 9 / 12 / 39 / 42 类</li>
+      <li><b>Fool / Fools / Simpleton</b>：英文里是真贬义，与中文「愚笨者」不等价</li>
+    </ul>
+  </div>
+
+  <div class="note">
+    <h3>品牌调性建议（三句话）</h3>
+    <ul>
+      <li><b>中文主名</b>：愚笨者 —— 自嘲但清醒，中国区直接用</li>
+      <li><b>品牌主张</b>：技能交给 AI，判断留给自己</li>
+      <li><b>英文主名</b>：待定向查证后确定（不做直译，走「人在 AI 之上」的内核路线）</li>
+    </ul>
+  </div>
+
+  <div class="note">
+    <h3>UI 里已落实的合规文案</h3>
+    <ul>
+      <li>工作台积分卡下：积分不可转让、不可提现，仅可用于消耗站内服务</li>
+      <li>钱包卡下：密钥保存在你自己的设备上，平台不托管、不接触你的资金</li>
+      <li>转账记录明示「手续费 $0.01」，费用不藏</li>
+      <li>界面中<b>不出现</b>：余额（平台余额）、提现、积分转让、任何「邀请好友得奖励」文案</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+  const screens = [0,1,2,3,4].map(i => document.getElementById('screen-'+i));
+  const phone = document.getElementById('phone');
+  const brandPanel = document.getElementById('brand-panel');
+  const tabs = [...document.querySelectorAll('.tab')];
+  const switchBtns = [...document.querySelectorAll('#switcher button')];
+  const statusbar = document.getElementById('statusbar');
+
+  function show(idx){
+    if(idx === 5){
+      phone.style.display = 'none';
+      brandPanel.style.display = 'block';
+      switchBtns.forEach((b,i)=> b.classList.toggle('on', i===5));
+      return;
+    }
+    phone.style.display = 'flex';
+    brandPanel.style.display = 'none';
+    screens.forEach((s,i) => { if(s) s.style.display = (i===idx) ? 'block' : 'none'; });
+    tabs.forEach((t,i)=> t.classList.toggle('active', i===idx));
+    switchBtns.forEach((b,i)=> b.classList.toggle('on', i===idx));
+    statusbar.className = 'statusbar ' + (idx===0 ? 'light' : 'dark');
+  }
+
+  tabs.forEach(t => t.addEventListener('click', () => show(+t.dataset.screen)));
+  switchBtns.forEach(b => b.addEventListener('click', () => show(+b.dataset.tab)));
+</script>
+</body>
+</html>

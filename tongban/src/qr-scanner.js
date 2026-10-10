@@ -120,11 +120,11 @@ export function mountQrScanner(container, { mode = 'all', onResult, toast = () =
     cancelImage?.(); cancelImage = null;
   }
   function resetResult() {
-    result = null; confirming = false; resultBox.hidden = true; resultBox.innerHTML = ''; stage.hidden = false;
+    result = null; confirming = false; resultBox.hidden = true; resultBox.innerHTML = ''; stage.hidden = false; cameraButton.className = 'qr-primary';
   }
   function showResult(payload) {
     cancelOperations(); result = payload; confirming = false;
-    stage.hidden = true; resultBox.hidden = false;
+    stage.hidden = true; resultBox.hidden = false; cameraButton.className = 'qr-secondary';
     const isAddress = payload.kind === 'address';
     resultBox.innerHTML = `<span class="qr-result-symbol" aria-hidden="true">${isAddress ? '↗' : '☺'}</span><span class="qr-result-kind">已识别${isAddress ? '收款地址' : '愚笨者好友码'}</span><h3>${isAddress ? '核对完整地址' : '核对好友 ID'}</h3><code>${esc(isAddress ? payload.address : payload.id)}</code>${isAddress ? `<span class="qr-network">BSC 测试网 · Chain ID 97</span><p>${payload.networkExplicit ? '二维码标注了 BSC 测试网，请仍向收款方确认。' : '裸地址无法证明所属网络，请向收款方确认使用 BSC 测试网。'}</p><p class="qr-result-note">仅识别地址，二维码中的金额不会填入转账。</p>` : '<p>下一步只查看好友资料，不会直接添加好友。</p>'}<button type="button" class="qr-primary" data-qr-action="confirm">${isAddress ? '使用此地址' : '查看好友'}</button><button type="button" class="qr-text-button" data-qr-action="again">重新识别</button>`;
     setStatus('识别完成，请核对后继续。');
