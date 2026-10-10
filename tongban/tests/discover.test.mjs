@@ -8,9 +8,9 @@ import { build } from 'esbuild';
 const source=(await readFile(new URL('../src/discover.js',import.meta.url),'utf8'))
   .replace("import './discover.css';",'')
   .replace("import { getSocialPeople, getSocialShareTargets, shareMomentToChat } from './social.js';",`const getSocialPeople=()=>[{id:'lin',name:'林一',initial:'林',color:'mint',isFriend:true,amount:100},{id:'moon',name:'月亮',initial:'月',isFriend:false,amount:200}]; const getSocialShareTargets=()=>[]; const shareMomentToChat=()=>{throw new Error('No social writes in this harness');};`)
-  + '\nexport { seedDiscover,readDiscover,persistDiscover,visiblePosts,validateUsd,validateTokenDraft,validateServiceDraft,safeImageData,readMomentImages,upsertDraft,filterRankPeople,filterDrafts,setDraftArchived,duplicateDraft,esc };';
+  + '\nexport { seedDiscover,readDiscover,persistDiscover,visiblePosts,validateUsd,validateTokenDraft,validateServiceDraft,safeImageData,readMomentImages,upsertDraft,filterDrafts,setDraftArchived,duplicateDraft,esc };';
 const bundled=await build({stdin:{contents:source,resolveDir:fileURLToPath(new URL('../src/',import.meta.url)),sourcefile:'discover-under-test.js'},bundle:true,write:false,format:'esm',platform:'node',loader:{'.css':'empty'},logLevel:'silent'});
-const {seedDiscover,readDiscover,persistDiscover,visiblePosts,validateUsd,validateTokenDraft,validateServiceDraft,safeImageData,readMomentImages,upsertDraft,getDiscoverDrafts,mountDiscover,filterRankPeople,filterDrafts,setDraftArchived,duplicateDraft,esc}=await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
+const {seedDiscover,readDiscover,persistDiscover,visiblePosts,validateUsd,validateTokenDraft,validateServiceDraft,safeImageData,readMomentImages,upsertDraft,getDiscoverDrafts,mountDiscover,filterDrafts,setDraftArchived,duplicateDraft,esc}=await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
 const storage=()=>{const data=new Map();return{getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value),data};};
 const token=overrides=>({name:'Lime Club',symbol:'lime',supply:'1000000000',address:'0x1111111111111111111111111111111111111111',ownsWallet:true,...overrides});
 const png=`data:image/png;base64,${Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]).toString('base64')}`;
@@ -33,12 +33,7 @@ test('draft archiving preserves values and restoring does not create an order or
  const copy=duplicateDraft(data,id,300);assert.notEqual(copy,id);assert.equal(data.drafts.length,2);assert.match(data.drafts[0].values.title,/副本/);assert.equal(data.drafts[0].values.status,'未提交');
 });
 
-test('ranking search and relationship filters never grant friend privileges',()=>{
- const list=[{id:'a',name:'可可',handle:'coco',amount:1,isFriend:true},{id:'b',name:'陌生人',handle:'moon',amount:20,isFriend:false},{id:'c',name:'无金额',amount:NaN}];
- assert.deepEqual(filterRankPeople(list,{scope:'friends'}).map(x=>x.id),['a']);
- assert.deepEqual(filterRankPeople(list,{scope:'new',query:'MOON'}).map(x=>x.id),['b']);
- assert.equal(list[1].isFriend,false);assert.deepEqual(filterRankPeople(list,{sort:'asc'}).map(x=>x.id),['a','b']);
-});
+test('removed asset-ranking and balance-integration paths are absent',()=>{assert.doesNotMatch(source,/function filterRankPeople|资产排行榜|示例 USDT|300 USDT/);assert.throws(()=>validateServiceDraft('integration',{title:'old',details:'old balance integration'}),/类型/);});
 
 test('new drafts never silently discard earlier saved work at capacity',()=>{
  const data=seedDiscover();data.drafts=Array.from({length:100},(_,i)=>({id:`d${i}`,type:'ai',values:{title:'旧草稿',prompt:'已有工作内容'},createdAt:i}));
@@ -81,7 +76,7 @@ test('malformed storage fails explicitly and quota failures do not pretend to sa
 test('token drafts validate fixed supply, checksum address and ownership without creating a contract',()=>{
   const draft=validateTokenDraft(token());
   assert.equal(draft.symbol,'LIME');assert.equal(draft.status,'未部署');
-  assert.equal(draft.network,'BSC 测试网');assert.equal(draft.serviceFee,'0 USDT');assert.equal(draft.settlement,'平台余额');
+  assert.equal(draft.network,'BSC 测试网');assert.equal(draft.serviceFee,undefined);assert.equal(draft.settlement,undefined);
   assert.equal(draft.contractAddress,undefined);
   for(const supply of ['0','-1','1.1','1e9','1000000000000001'])assert.throws(()=>validateTokenDraft(token({supply})),/固定总量/);
   for(const address of ['0x1234','0x0000000000000000000000000000000000000000','not-a-wallet'])assert.throws(()=>validateTokenDraft(token({address})));
@@ -91,10 +86,7 @@ test('token drafts validate fixed supply, checksum address and ownership without
   assert.throws(()=>validateTokenDraft(token({ownsWallet:'true'})),/自己控制/);
 });
 
-test('service drafts preserve balance-only settlement and 300 USDT integration price without charge',()=>{
-  const integration=validateServiceDraft('integration',{title:'Lime Club',details:'希望让社区成员通过平台余额使用此代币'});
-  assert.equal(integration.serviceFee,'300 USDT');assert.equal(integration.status,'未提交');assert.equal(integration.settlement,'平台余额');
-  assert.equal(integration.paid,undefined);
+test('service drafts preserve noncustodial intent without creating a charge',()=>{
   const bounty=validateServiceDraft('bounty',{title:'设计任务',details:'设计一套包含六个图案的社区表情包',reward:'100.25'});
   assert.equal(bounty.status,'未发布');assert.equal(bounty.reward,'100.25');
   assert.throws(()=>validateServiceDraft('bounty',{title:' ',details:'这里已经超过十个字的有效内容',reward:'1'}),/名称/);
@@ -208,13 +200,13 @@ test('draft navigation and filters use actual entries and notify route changes',
   app.click('new-draft');
   assert.doesNotMatch(app.container.innerHTML,/value="WORK_MARKER"/);
   assert.equal(getDiscoverDrafts(app.store).length,2,'opening a new form does not create or delete a draft');
-  app.click('integration');
+  app.click('business');
   app.click('new-draft');
   app.click('ai');
   assert.doesNotMatch(app.container.innerHTML,/value="WORK_MARKER"/,'returning to AI keeps the new form selected instead of loading an old draft');
   assert.doesNotMatch(app.container.innerHTML,/正在编辑已保存的草稿/);
   app.click('edit-draft',{id:'work-id'});
-  app.click('integration');
+  app.click('business');
   app.click('ai');
   assert.match(app.container.innerHTML,/value="WORK_MARKER"/,'explicit saved selection is remembered per type');
 });

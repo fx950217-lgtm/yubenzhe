@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-10T12:33:28.027Z",
+  "version": "0.14.0-dev.3",
+  "removedRegenerablePaths": [
+    "yubenzhe-desktop/dist",
+    "contracts/.npm-cache",
+    "contracts/artifacts",
+    "tongban-android/android/.gradle",
+    "tongban-android/android/build",
+    "tongban-android/android/app/build",
+    "yubenzhe-ios/scripts/__pycache__",
+    "yubenzhe-ios/tests/__pycache__"
+  ],
+  "approxRemovedMiB": 1985,
+  "kept": [
+    "user databases and wallet credentials",
+    "installed dependency directories",
+    "migration history and original MANIFEST",
+    "historical acceptance/deployment evidence and release metadata"
+  ],
+  "blockedDeletion": {
+    "reason": "Automatic review rejected batch removal of historical audit reports, release metadata and workspace configuration; files retained",
+    "bypassed": false
+  },
+  "nativePolicy": "source wrappers retained; regenerate current web snapshots before packaging",
+  "webPackagesContainOldInstallers": false
+}

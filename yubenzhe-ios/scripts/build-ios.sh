@@ -5,10 +5,10 @@ if ! xcodebuild -version >/dev/null 2>&1 || ! xcrun --sdk iphoneos --show-sdk-pa
   echo '需要已安装并选中的完整 Xcode 与 iPhoneOS SDK。当前未产生 .app、IPA 或 DEB。' >&2
   exit 2
 fi
-if [ ! -f App/Web/app.js ] || [ ! -f web-snapshot.json ]; then
-  echo '请先使用 scripts/sync-web.py 同步最终网页资源。' >&2
-  exit 3
-fi
+# Generated web assets are deliberately absent from Git. Rebuild them from the
+# checked-out consumer source rather than packaging an earlier release snapshot.
+(cd ../tongban && node build.mjs)
+python3 scripts/sync-web.py
 xcodebuild -project Yubenzhe.xcodeproj -scheme Yubenzhe -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData \
   CODE_SIGNING_ALLOWED=NO build

@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { createReadStream, realpathSync } from 'node:fs';
+import { createReadStream, realpathSync, readFileSync } from 'node:fs';
 import { readFile, stat, realpath } from 'node:fs/promises';
 import { resolve, extname, basename, relative, isAbsolute, sep } from 'node:path';
 import { createAuthentication } from './auth.mjs';
@@ -7,11 +7,12 @@ import { handleSocialHTTP } from './social-http.mjs';
 import { AdminError, assertSameOrigin, authorizeAdmin, setupAdmin, getBootstrap, listRecords, getRecord, applyAction, listAudit } from '../upstream/admin/core.mjs';
 
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const APP_VERSION=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version;
 const types = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon','.woff2':'font/woff2','.webmanifest':'application/manifest+json','.apk':'application/vnd.android.package-archive','.deb':'application/vnd.debian.binary-package','.exe':'application/octet-stream','.zip':'application/zip','.txt':'text/plain; charset=utf-8' };
 function json(response, value, status = 200) { response.writeHead(status, { 'Content-Type':'application/json; charset=utf-8' }); response.end(JSON.stringify(value)); }
 function redirect(response, location = '/') { response.writeHead(303, { Location: location }); response.end(); }
 function gatePage(role, error = '', logout = false) {
-  return `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>愚笨者 · 受限验收</title><style>body{margin:0;background:#f3f8f5;color:#204235;font:15px/1.8 system-ui,sans-serif;display:grid;place-items:center;min-height:100dvh}main{max-width:390px;margin:24px;padding:32px;background:#fff;border:1px solid #deebe2;border-radius:18px}small{color:#678573}h1{font-size:27px;margin:12px 0}p{font-size:13px;color:#6f8276}label{display:block;margin:17px 0;font-size:13px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cdddce;border-radius:7px;font:inherit}button{width:100%;background:#14835f;color:#fff;border:0;padding:13px;border-radius:7px;font:inherit;cursor:pointer}.error{color:#a64438}</style><main><small>PRIVATE ACCEPTANCE · 0.9.0</small><h1>愚笨者${role === 'admin' ? '管理后台' : '体验验收'}</h1><p>仅限受邀验收。AI 工作台申请、审核和任务记录真实保存在服务器；模型需要配置与审核开通。消费者账号与聊天使用独立服务；资金流程仍为体验数据，未开放真实托管结算。</p>${error ? `<p role="alert" class="error">${escape(error)}</p>` : ''}<form method="post" action="${logout ? '/logout' : '/login'}">${logout ? '<p>退出当前验收会话后，需要重新输入访问凭证。</p>' : '<label>验收账号<input name="username" autocomplete="username" maxlength="40" required></label><label>访问密码<input name="password" type="password" autocomplete="current-password" maxlength="256" required></label>'}<button type="submit">${logout ? '确认退出' : '进入受限验收'}</button></form></main></html>`;
+  return `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>愚笨者 · 受限验收</title><style>body{margin:0;background:#f3f8f5;color:#204235;font:15px/1.8 system-ui,sans-serif;display:grid;place-items:center;min-height:100dvh}main{max-width:390px;margin:24px;padding:32px;background:#fff;border:1px solid #deebe2;border-radius:18px}small{color:#678573}h1{font-size:27px;margin:12px 0}p{font-size:13px;color:#6f8276}label{display:block;margin:17px 0;font-size:13px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cdddce;border-radius:7px;font:inherit}button{width:100%;background:#14835f;color:#fff;border:0;padding:13px;border-radius:7px;font:inherit;cursor:pointer}.error{color:#a64438}</style><main><small>PRIVATE ACCEPTANCE · ${APP_VERSION}</small><h1>愚笨者${role === 'admin' ? '管理后台' : '体验验收'}</h1><p>仅限受邀验收。AI 工作台申请、审核和任务记录真实保存在服务器；模型需要配置与审核开通。消费者账号与聊天使用独立服务；平台不托管用户资产，链上钱包由用户自行保管密钥。服务积分仅用于平台服务。</p>${error ? `<p role="alert" class="error">${escape(error)}</p>` : ''}<form method="post" action="${logout ? '/logout' : '/login'}">${logout ? '<p>退出当前验收会话后，需要重新输入访问凭证。</p>' : '<label>验收账号<input name="username" autocomplete="username" maxlength="40" required></label><label>访问密码<input name="password" type="password" autocomplete="current-password" maxlength="256" required></label>'}<button type="submit">${logout ? '确认退出' : '进入受限验收'}</button></form></main></html>`;
 }
 async function body(request,limit=16384) {
   if (Number(request.headers['content-length'] || 0) > limit) throw new AdminError(413,'BODY_TOO_LARGE','请求内容过大。');
@@ -40,7 +41,7 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       if (url.pathname === '/healthz' && request.method === 'GET') {
         if (role === 'admin') database.raw.prepare('SELECT 1').get();
         socialService?.health?.();
-        json(response,{ok:true,service:role,version:'0.14.0-dev.2',stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
+        json(response,{ok:true,service:role,version:APP_VERSION,stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
       }
       if (request.headers.host !== publicURL.host || url.origin !== publicURL.origin) throw new AdminError(403,'HOST_DENIED','访问地址不匹配，请使用验收地址。');
       if (role === 'frontend' && url.pathname.startsWith('/api/social/')) {

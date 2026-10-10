@@ -12,7 +12,7 @@ const { mountMine } = await import(`data:text/javascript;base64,${Buffer.from(so
 
 // Minimal event surface: tests exercise the component's public event flows and real
 // profile storage, rather than adding a browser DOM dependency to the application.
-function harness({ wallet = { exists: false }, drafts = 3, raw = null, failWrite = false, isNative = false, profileService = null, processPhoto = undefined } = {}) {
+function harness({ wallet = { exists: false }, drafts = 3, raw = null, failWrite = false, isNative = false, profileService = null, processPhoto = undefined, themeService = undefined } = {}) {
   const data = new Map(raw === null ? [] : [['tongban.profile.v1', raw]]);
   const events = new Map(), calls = [], messages = [], attrs = new Map(), scrolls = [];
   globalThis.window = {
@@ -37,7 +37,7 @@ function harness({ wallet = { exists: false }, drafts = 3, raw = null, failWrite
     querySelectorAll: selector => selector === '[data-mine-avatar]' ? avatarNodes : [],
   };
   const cleanup = mountMine(container, {
-    isNative, profileService, processPhoto,
+    isNative, profileService, processPhoto, themeService,
     toast: message => messages.push(message),
     onNavigate: (...args) => calls.push(['navigate', ...args]),
     onAction: name => calls.push(['action', name]),
@@ -206,7 +206,7 @@ test('assets are the first home destination and route to the existing wallet wit
   const wallet = { exists: true, address: '0x1111111111111111111111111111111111111111', unlocked: false };
   Object.defineProperty(wallet, 'balance', { get() { throw new Error('home must not read balances'); } });
   const app = harness({ wallet }), html = app.container.innerHTML;
-  assert.match(html, /我的资产/); assert.match(html, /平台资产 · 链上钱包/); assert.match(html, /钱包已创建/);
+  assert.match(html, /自托管钱包/); assert.match(html, /链上直接收款与转账/); assert.match(html, /钱包已创建/);
   const order = ['wallet', 'drafts', 'bill-center', 'security', 'help'].map(action => html.indexOf(`data-mine-action="${action}"`));
   assert.ok(order.every((position, i) => position >= 0 && (i === 0 || position > order[i - 1])));
   assert.doesNotMatch(html, /data-mine-action="orders"|服务订单|0\.00|tBNB|USDT|0x1111111111111111111111111111111111111111/);
@@ -259,4 +259,42 @@ test('cloud conflicts stay editable and ordinary saves omit passwords; late resp
   app.click('edit'); const result = app.submit('新名字', '新签名'); await result.pending; assert.match(result.error.textContent, /已被使用/); assert.equal('currentPassword' in submitted[0], false); assert.equal(app.messages.length, 0); assert.match(app.container.innerHTML, /data-mine-view="edit"/); app.cleanup();
   const canceled = harness({ profileService: { getProfile: cloudProfile, saveProfile: input => new Promise(resolve => { finish = () => resolve({ ...cloudProfile(), ...input, revision: 8 }); }) } });
   canceled.click('edit'); const pending = canceled.submit('晚返回', ''); canceled.cleanup(); finish(); await pending.pending; assert.equal(canceled.messages.length, 0); assert.match(canceled.container.innerHTML, /data-mine-view="edit"/);
+});
+
+function themeFixture(initial='light',persistent=true){let current=initial;const selected=[];return{selected,service:{getTheme:()=>current,setTheme:id=>{current=id;selected.push(id)},isPersistent:()=>persistent}};}
+test('appearance entry displays exactly the three allowed skins and reads the current selection',()=>{
+  const theme=themeFixture('dark'),app=harness({themeService:theme.service});
+  assert.match(app.container.innerHTML,/data-mine-action="appearance"/);app.click('appearance');
+  assert.match(app.container.innerHTML,/data-mine-view="appearance"/);
+  const options=[...app.container.innerHTML.matchAll(/data-mine-theme="([^"]+)" aria-pressed="([^"]+)"/g)].map(m=>[m[1],m[2]]);
+  assert.deepEqual(options,[['light','false'],['dark','true'],['eyecare','false']]);
+  for(const label of ['白天','黑天','护眼'])assert.ok(app.container.innerHTML.includes(label));
+  assert.equal(theme.selected.length,0);assert.deepEqual(app.messages,[]);app.cleanup();
+});
+test('skin selection immediately invokes the theme service, updates selection, and names the exact skin in its toast',()=>{
+  const theme=themeFixture(),app=harness({themeService:theme.service});app.click('appearance');
+  for(const [id,label] of [['dark','黑天'],['eyecare','护眼'],['light','白天']]){
+    app.click('theme-select',{mineTheme:id});
+    assert.equal(theme.service.getTheme(),id);
+    const selected=[...app.container.innerHTML.matchAll(/data-mine-theme="([^"]+)" aria-pressed="true"/g)].map(m=>m[1]);
+    assert.deepEqual(selected,[id]);assert.equal(app.messages.at(-1),'已切换为 '+label+' 皮肤');
+  }
+  assert.deepEqual(theme.selected,['dark','eyecare','light']);
+  assert.deepEqual(app.calls,[]);assert.doesNotMatch(app.container.innerHTML,/确认切换|保存皮肤/);app.cleanup();
+});
+test('failed persistent storage keeps the live skin selected but explains that it cannot be saved',()=>{
+  const theme=themeFixture('light',false),app=harness({themeService:theme.service});app.click('appearance');app.click('theme-select',{mineTheme:'eyecare'});
+  assert.equal(theme.service.getTheme(),'eyecare');
+  assert.match(app.container.innerHTML,/data-mine-theme="eyecare" aria-pressed="true"/);
+  assert.match(app.container.innerHTML,/本机存储暂不可用，本次选择仅在当前页面生效/);
+  assert.equal(app.messages.at(-1),'已切换为 护眼 皮肤；本机暂时无法保存');app.cleanup();
+});
+test('unlisted themes, out-of-view clicks and a detached appearance view cannot invoke the theme service',()=>{
+  const theme=themeFixture(),app=harness({themeService:theme.service});app.click('theme-select',{mineTheme:'dark'});
+  assert.deepEqual(theme.selected,[]);app.click('appearance');
+  for(const id of ['system','<script>','',undefined,'__proto__','constructor','toString'])app.click('theme-select',{mineTheme:id});
+  assert.deepEqual(theme.selected,[]);assert.equal(theme.service.getTheme(),'light');
+  assert.ok(app.messages.every(m=>m==='外观设置暂不可用，请重新打开页面。'));
+  assert.match(app.container.innerHTML,/data-mine-theme="light" aria-pressed="true"/);
+  app.cleanup();app.click('theme-select',{mineTheme:'dark'});assert.deepEqual(theme.selected,[]);
 });

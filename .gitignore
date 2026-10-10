@@ -78,3 +78,16 @@
 **/*.app/
 **/.DS_Store
 **/Thumbs.db
+
+# Rebuild current web snapshots from source; do not commit stale packages.
+**/.npm-cache/
+**/retired-v01/
+/tongban-android/www/
+/tongban-android/android/app/src/main/assets/public/
+/yubenzhe-desktop/web/
+/yubenzhe-desktop/web-assets-verification.json
+/yubenzhe-desktop/release-verification.json
+/yubenzhe-ios/App/Web/
+/yubenzhe-ios/web-snapshot.json
+/yubenzhe-ios/ios-build-status.json
+/yubenzhe-deploy/public/admin/

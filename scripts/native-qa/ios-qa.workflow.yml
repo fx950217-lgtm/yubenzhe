@@ -1,0 +1,59 @@
+# REVIEW DRAFT: copy to .github/workflows/ios-local-qa.yml only after approval.
+name: iOS isolated local QA
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-isolated-local-qa
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Verify original iOS boundary
+        working-directory: yubenzhe-ios
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          node --test tests/bridge.test.mjs
+      - name: Build the reviewed frozen frontend
+        working-directory: tongban
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          node build.mjs
+      - name: Verify QA runtime and Swift request policy
+        run: |
+          node --test scripts/native-qa/qa.test.mjs scripts/native-qa/ios.test.mjs
+          swiftc -target "$(uname -m)-apple-macosx12.0" -framework WebKit scripts/native-qa/LocalQaApi.swift scripts/native-qa/ios-policy-check.swift -o "$RUNNER_TEMP/ios-qa-policy"
+          "$RUNNER_TEMP/ios-qa-policy"
+      - name: Prepare isolated iOS project
+        run: |
+          node scripts/native-qa/prepare-ios.mjs --frozen-web --output "$RUNNER_TEMP/ios-localqa" > "$RUNNER_TEMP/ios-localqa-manifest.json"
+          python3 scripts/native-qa/verify-ios-stage.py "$RUNNER_TEMP/ios-localqa"
+      - name: Build and package isolated rootless application
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/ios-localqa/build"
+          bash "$RUNNER_TEMP/ios-localqa/scripts/build-ios.sh" 2>&1 | tee "$RUNNER_TEMP/ios-localqa/build/ios-qa-build.log"
+          APP="$RUNNER_TEMP/ios-localqa/build/DerivedData/Build/Products/Release-iphoneos/YubenzheLocalQA.app"
+          codesign --force --sign - --timestamp=none --entitlements "$RUNNER_TEMP/ios-localqa/App/Preview.entitlements" "$APP"
+          python3 "$RUNNER_TEMP/ios-localqa/scripts/package-deb.py" --app "$APP" --scheme rootless
+          shasum -a 256 "$RUNNER_TEMP/ios-localqa/packages/"*.deb > "$RUNNER_TEMP/ios-localqa/packages/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: yubenzhe-ios-isolated-local-qa
+          path: |
+            ${{ runner.temp }}/ios-localqa/packages/*.deb
+            ${{ runner.temp }}/ios-localqa/packages/SHA256SUMS.txt
+            ${{ runner.temp }}/ios-localqa/build/ios-qa-build.log
+            ${{ runner.temp }}/ios-localqa-manifest.json
+          retention-days: 7
+          if-no-files-found: error

@@ -1,15 +1,24 @@
 import { build } from 'esbuild';
-import { mkdir, copyFile, writeFile, cp } from 'node:fs/promises';
-await mkdir('dist',{recursive:true});
-await build({entryPoints:['src/app.js'],bundle:true,minify:true,outdir:'dist',entryNames:'app',target:['es2022','safari15.4'],format:'esm',legalComments:'eof'});
-await copyFile('src/index.html','dist/index.html');
-for(const name of ['sw.js','privacy.html','terms.html'])await copyFile('src/'+name,'dist/'+name);
-await copyFile('src/icon.png','dist/icon.png');
-await copyFile('src/icon.svg','dist/icon.svg');
-await copyFile('src/apple-touch-icon.png','dist/apple-touch-icon.png');
-await copyFile('src/manifest.webmanifest','dist/manifest.webmanifest');
-await writeFile('dist/_headers', '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Permissions-Policy: camera=(self), microphone=(), geolocation=()\n  Cache-Control: no-store\n/downloads/*.apk\n  Content-Type: application/vnd.android.package-archive\n  Content-Disposition: attachment\n');
-await copyFile('src/install.html','dist/install.html');
-await copyFile('src/install-qr.svg','dist/install-qr.svg');
-await cp('releases','dist/downloads',{recursive:true});
-console.log('Built Yubenzhe application');
+import { mkdir, copyFile, writeFile, readFile, rm, rename, realpath, lstat } from 'node:fs/promises';
+import { resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root=fileURLToPath(new URL('./',import.meta.url));
+const {version}=JSON.parse(await readFile(resolve(root,'package.json'),'utf8'));
+const stage=resolve(root,'.web-staging'),dist=resolve(root,'dist');
+async function removeGenerated(path){
+ const parent=await realpath(root);
+ try{const info=await lstat(path);if(info.isSymbolicLink())throw Error('Refusing linked build output');
+ const actual=await realpath(path);if(!actual.startsWith(parent+sep))throw Error('Output is outside project');
+ await rm(actual,{recursive:true,force:true});}catch(error){if(error.code!=='ENOENT')throw error;}
+}
+await removeGenerated(stage);await mkdir(stage,{recursive:true});
+try{
+ await build({absWorkingDir:root,entryPoints:['src/app.js'],bundle:true,minify:true,outdir:stage,entryNames:'app',target:['es2022','safari15.4'],format:'esm',legalComments:'eof'});
+ for(const name of ['sw.js','privacy.html','terms.html','icon.png','icon.svg','apple-touch-icon.png','manifest.webmanifest','install.html'])await copyFile(resolve(root,'src',name),resolve(stage,name));
+ const index=(await readFile(resolve(root,'src/index.html'),'utf8')).replace('./app.js','./app.js?v='+version).replace('./app.css','./app.css?v='+version);
+ await writeFile(resolve(stage,'index.html'),index);
+ await writeFile(resolve(stage,'build-info.json'),JSON.stringify({version,builtAt:new Date().toISOString(),requirements:'V0.2',channel:'local-development'},null,2)+'\n');
+ await writeFile(resolve(stage,'_headers'),'/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Permissions-Policy: camera=(self), microphone=(), geolocation=()\n  Cache-Control: no-store\n');
+ await removeGenerated(dist);await rename(stage,dist);
+ console.log('Built Yubenzhe '+version);
+}catch(error){await removeGenerated(stage);throw error;}

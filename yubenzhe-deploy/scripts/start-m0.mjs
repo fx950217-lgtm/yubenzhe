@@ -19,5 +19,5 @@ delete process.env.OPENAI_API_KEY;
 delete process.env.AI_API_KEY;
 delete process.env.AI_API_KEY_FILE;
 process.env.AI_PROVIDER='disabled';
-console.log('本地 M0：http://localhost:'+port+' · 模拟邮件 / 模拟资产 / 文件解析测试；没有公开部署。');
+console.log('本地 M0：http://localhost:'+port+' · 模拟邮件 / 独立服务积分 / 文件解析测试；没有公开部署。');
 await import('../server/start.mjs');

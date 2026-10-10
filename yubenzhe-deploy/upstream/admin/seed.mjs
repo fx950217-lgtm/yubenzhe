@@ -1,4 +1,4 @@
-export const SEED_VERSION = 1;
+export const SEED_VERSION = 2;
 export const COHORTS = Object.freeze([
   { id: 'newcomer', label: '入门体验者', count: 300, need: '场景假设：需要清楚的入口和首次操作指引' },
   { id: 'connector', label: '熟人联络者', count: 250, need: '场景假设：常用好友聊天、朋友圈和照片' },
@@ -9,7 +9,7 @@ export const COHORTS = Object.freeze([
 const BASE = Date.UTC(2026, 9, 1, 8);
 const pad = number => String(number).padStart(4, '0');
 const detail = values => ({ '数据性质': '合成测试样本，非真实用户或实际业务', ...values });
-const entry = (kind, id, title, subtitle, index, values = {}) => ({ kind, id, title, subtitle, status: kind === 'reviews' ? 'pending' : kind === 'tickets' ? 'open' : kind === 'ledger' ? 'recorded' : 'active', version: 1, createdAt: BASE + index * 60000, segment: '', type: '', amount: null, currency: null, detail: detail({}), ...values });
+const entry = (kind, id, title, subtitle, index, values = {}) => ({ kind, id, title, subtitle, status: kind === 'reviews' ? 'pending' : kind === 'tickets' ? 'open' : 'active', version: 1, createdAt: BASE + index * 60000, segment: '', type: '', amount: null, currency: null, detail: detail({}), ...values });
 
 export function createSeedRecords() {
   const records = [], names = ['清风', '小禾', '海盐', '阿蓝', '木木', '青柠', '小满', '山川', '橙子', '星河'];
@@ -29,20 +29,15 @@ export function createSeedRecords() {
       detail: detail({ '群类型': label, '成员数量': 12 + n % 39, '群主样本': `user-${pad(n * 7)}`, '成员示例': Array.from({ length: 5 }, (_, i) => `user-${pad((n * 7 + i) % 1000 + 1)}`), '群公告': '熟人交流测试群，不向实际成员发送通知。', '举报摘要': n % 10 === 0 ? '测试举报：群公告重复发布；仅场景摘要，不包含私人聊天' : '此样本无待处理举报', '聊天隐私': '未读取或生成真实私聊内容' }),
     }));
   }
-  const reviewTypes = [['provider', '服务商入驻'], ['bounty', '赏金任务'], ['meme', 'Meme 创建申请'], ['integration', '平台接入申请']];
-  for (let n = 1; n <= 64; n++) {
-    const [type, label] = reviewTypes[(n - 1) % 4], state = n <= 48 ? 'pending' : n <= 56 ? 'approved' : 'rejected';
+  const reviewTypes = [['provider', '服务商入驻'], ['bounty', '赏金任务'], ['meme', 'Meme 创建申请']];
+  for (let n = 1; n <= 48; n++) {
+    const [type, label] = reviewTypes[(n - 1) % reviewTypes.length], state = n <= 36 ? 'pending' : n <= 42 ? 'approved' : 'rejected';
     records.push(entry('reviews', `review-${pad(n)}`, `${label} ${String(n).padStart(3, '0')}`, `申请样本 user-${pad(n * 9)} · 未接通实际业务`, 1100 + n, {
       type, segment: type, status: state,
-      detail: detail({ '申请类型': label, '申请用户': `user-${pad(n * 9)}`, '内容说明': type === 'provider' ? '提供设计、内容与社群协作服务的测试申请。' : type === 'bounty' ? '协作完成产品体验与资料整理的测试需求。' : type === 'meme' ? '仅审核创建意向，不部署合约或发行代币。' : '申请接入平台余额结算的测试场景。', '费用规则': type === 'integration' ? '300 USDT，业务规则参考；本后台不收费、不扣款' : '未收费；审核仅改变测试记录状态', '审核边界': '批准不创建真实服务、不产生转账、不部署合约' }),
+      detail: detail({ '申请类型': label, '申请用户': `user-${pad(n * 9)}`, '内容说明': type === 'provider' ? '提供设计、内容与社群协作服务的测试申请。' : type === 'bounty' ? '协作完成产品体验与资料整理的测试需求。' : '仅审核创建意向，不部署合约或发行代币。', '费用规则': '未收费；审核仅改变测试记录状态', '审核边界': '批准不创建真实服务、不产生转账、不部署合约' }),
     }));
   }
   const topics = ['钱包备份咨询', '转账记录核对', '好友申请说明', '群聊使用问题', '服务申请进度', '朋友圈内容举报'];
   for (let n = 1; n <= 40; n++) records.push(entry('tickets', `ticket-${pad(n)}`, `${topics[(n - 1) % topics.length]} ${String(n).padStart(3, '0')}`, `user-${pad(n * 13)} · 合成客服工单`, 1200 + n, { status: n <= 32 ? 'open' : 'resolved', type: ['wallet', 'transfer', 'social', 'group', 'service', 'report'][(n - 1) % topics.length], detail: detail({ '用户样本': `user-${pad(n * 13)}`, '问题描述': n % 6 === 0 ? '测试举报摘要：朋友圈重复推广内容，等待内部处理；不包含实际用户内容。' : '这是用于验证客服处理和审计流程的固定测试工单。', '优先级': n % 5 === 0 ? '高' : '普通', '沟通状态': '未向任何用户发送消息' }) }));
-  const ledgerTypes = [['chain_transfer', '链上转账样本', '记出'], ['packet_sent', '红包发出样本', '记出'], ['packet_claimed', '红包领取样本', '记入'], ['packet_refund', '红包到期退款样本', '记入'], ['platform_deposit', '余额转入样本', '记入'], ['platform_withdraw', '余额转出样本', '记出']];
-  for (let n = 1; n <= 80; n++) {
-    const [type, label, direction] = ledgerTypes[(n - 1) % ledgerTypes.length];
-    records.push(entry('ledger', `ledger-${pad(n)}`, `${label} ${String(n).padStart(3, '0')}`, `user-${pad(n * 11)} · 只读样本`, 1300 + n, { type, amount: String(1000 + n * 37), currency: 'TEST', detail: detail({ '样本用户': `user-${pad(n * 11)}`, '模拟场景': label, '记账方向': direction, '金额单位': 'TEST 整数测试单位，无实际价值', '记录性质': '固定合成流水，不代表充值、提现、托管余额或链上交易', '操作权限': '只读；全部资金操作禁用' }) }));
-  }
   return records;
 }

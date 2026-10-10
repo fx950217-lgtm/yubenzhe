@@ -90,11 +90,13 @@ test('official certification has separate scope, expiry, and moderation revokes 
  h.tick(1001);assert.equal(h.service.profileExtras(h.b.id).official,false);
 });
 
-test('asset ranks default private, reject simulation/stale prices and expose only ranges until opt-out',t=>{
- const h=harness(t);assert.equal(h.call(h.a,'GET','identity').assetPublic,false);h.post(h.b,'preferences',{assetPublic:true});h.valuation={verified:true,mode:'simulation',asOf:h.time,priceSource:'simulation',rows:[{accountId:h.b.id,usdMicroUnits:'150000000'}]};assert.deepEqual(h.call(h.a,'GET','rankings').rows,[]);
- h.valuation={verified:true,mode:'live',asOf:h.time,priceSource:'trusted-test-fixture',rows:[{accountId:h.b.id,usdMicroUnits:'150000000'},{accountId:h.c.id,usdMicroUnits:'90000000000'}]};let rank=h.call(h.a,'GET','rankings');assert.equal(rank.rows.length,1);assert.equal(rank.rows[0].assetRange,'$100–999');assert.equal(JSON.stringify(rank).includes('150000000'),false);assert.equal(JSON.stringify(rank).includes(h.b.id),false);
- assert.equal(h.call(h.a,'GET','rankings',{}, {kind:'activity'}).rows.length,0);h.post(h.b,'preferences',{assetPublic:false});assert.equal(h.call(h.a,'GET','rankings').rows.length,0);
- h.post(h.b,'preferences',{assetPublic:true});h.tick(600001);assert.equal(h.call(h.a,'GET','rankings').available,false);
+test('asset ranking is retired and activity disclosure remains explicit and reversible',t=>{
+ const h=harness(t);assert.equal(Object.hasOwn(h.call(h.a,'GET','identity'),'assetPublic'),false);
+ assert.throws(()=>h.call(h.a,'GET','rankings',{}, {kind:'assets'}),code('ASSET_RANK_REMOVED'));
+ assert.throws(()=>h.post(h.b,'preferences',{assetPublic:true}));
+ assert.equal(h.call(h.a,'GET','rankings').kind,'activity');assert.equal(h.call(h.a,'GET','rankings').rows.length,0);
+ h.post(h.b,'preferences',{activityPublic:true});let rank=h.call(h.a,'GET','rankings');assert.equal(rank.rows.length,1);assert.equal(Object.hasOwn(rank.rows[0],'assetRange'),false);
+ h.post(h.b,'preferences',{activityPublic:false});assert.equal(h.call(h.a,'GET','rankings').rows.length,0);
 });
 
 test('online time is server timed, multi-device deduplicated, idles at five minutes and stops hidden',t=>{
@@ -118,8 +120,8 @@ test('token approval is only configuration approval; no deployment, zero recipie
 });
 
 test('restrictions cannot be bypassed and account cleanup blocks open cooperation then removes exposure',t=>{
- const h=harness(t),task=h.publish();assert.throws(()=>h.service.deleteAccount(h.a.id),code('COMMUNITY_PENDING'));h.post(h.a,'bounties/'+task.id+'/cancel',{reason:'结束合成测试'});h.post(h.a,'preferences',{assetPublic:true,activityPublic:true});h.heartbeat();h.service.deleteAccount(h.a.id);assert.equal(h.one('SELECT 1 FROM community_preferences WHERE account_id=?',h.a.id),undefined);assert.equal(h.call(h.b,'GET','bounties').items.length,0);
- h.run('INSERT INTO account_restrictions VALUES(?,?,?,?)',h.b.id,'muted','测试禁言',h.time);assert.throws(()=>h.publish(h.b),code('ACCOUNT_RESTRICTED'));assert.equal(h.call(h.b,'GET','capabilities').realFunds,false);h.post(h.b,'preferences',{assetPublic:false});
+ const h=harness(t),task=h.publish();assert.throws(()=>h.service.deleteAccount(h.a.id),code('COMMUNITY_PENDING'));h.post(h.a,'bounties/'+task.id+'/cancel',{reason:'结束合成测试'});h.post(h.a,'preferences',{activityPublic:true});h.heartbeat();h.service.deleteAccount(h.a.id);assert.equal(h.one('SELECT 1 FROM community_preferences WHERE account_id=?',h.a.id),undefined);assert.equal(h.call(h.b,'GET','bounties').items.length,0);
+ h.run('INSERT INTO account_restrictions VALUES(?,?,?,?)',h.b.id,'muted','测试禁言',h.time);assert.throws(()=>h.publish(h.b),code('ACCOUNT_RESTRICTED'));assert.equal(h.call(h.b,'GET','capabilities').realFunds,false);h.post(h.b,'preferences',{activityPublic:false});
 });
 
 test('community records and idempotency survive reopening the persistent database',t=>{

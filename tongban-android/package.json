@@ -6,10 +6,12 @@
   "packageManager": "pnpm@11.19.0",
   "scripts": {
     "web:copy": "node scripts/copy-web.mjs",
-    "sync": "pnpm web:copy && cap sync android",
+    "web:prepare": "node scripts/prepare-web.mjs",
+    "sync": "pnpm web:prepare && cap sync android",
     "test": "node --test tests/*.test.mjs",
     "android:open": "cap open android",
-    "android:debug": "cd android && ./gradlew assembleDebug"
+    "android:debug": "pnpm sync && cd android && ./gradlew assembleDebug",
+    "android:release": "pnpm sync && cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

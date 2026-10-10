@@ -1,0 +1,44 @@
+2026-10-10 本地验证结果（已完成Solidity编译与进程内EVM验证）
+
+运行环境与依赖
+- Windows x64，Node v24.19.0。
+- 已经用户授权联网安装，官方npm registry，缓存限定contracts/.npm-cache。
+- OpenZeppelin Contracts 5.0.2、ethers 6.17.0、Ganache 7.9.2、solc 0.8.20。
+- 已生成package-lock.json；没有执行依赖生命周期脚本、npm审计或募捐请求。
+
+实际执行
+1. npm install --ignore-scripts --no-audit --no-fund --cache .npm-cache：成功。
+2. node scripts/compile.mjs：成功；优化200次，EVM目标paris。
+   SingleDistribution运行时代码8825字节，无编译警告。
+3. node --test --test-concurrency=1 test/distribution.test.mjs：退出码0。
+   23/23通过，0失败、0跳过；17个顶层场景及6个子用例，记录耗时42443.3653ms。
+   Ganache没有适用于本机Node ABI137的µWS原生模块，已明确回退JavaScript实现；这不是测试失败。
+4. README已更新锁文件复现方式；node_modules/artifacts/.npm-cache均忽略，不提交产物或依赖。
+
+实际通过范围
+- 不可变配置、时间窗口、人数/金额边界、发送者权限、授权与足额精确转入。
+- 白名单、名额、邀请与承诺绑定；复制承诺不能抢领；跨合约/领取者重放不能揭示。
+- commit/reveal边界、错误秘密、重复操作、全员承诺与揭示要求。
+- 揭示顺序不影响种子/分配；最小单位、非整除和uint128最大金额守恒。
+- 独立领取、衰减扣减、零金额重试、到期原发送者退款。
+- 转账明确失败的状态回滚、其他领取者隔离、恢复后重试；false返回与手续费币拒绝。
+- 退款失败后可重试；代币回调不能重入；ABI无管理员/升级/任意提款接口。
+
+仍未验证/交付
+- 独立安全审计、最大200人数Gas测量、目标链及具体真实代币审查。
+- 正式钱包/UI端到端接入、节点重组/事件索引处理、真实网络运行。
+- 平台代付Gas、积分核销发链上资产或主网部署；本原型不包含这些服务。
+- 纯commit-reveal仍有最后揭示者选择中止及全员协调要求；此测试不改变README列出的限制。
+
+范围边界
+全部测试只使用进程内Ganache自动生成的合成测试账户和MockToken；不监听RPC端口，不读取真实密钥，不连接外部RPC，不部署到任何真实链，不接真实资产。
+测试通过不等同安全审计、法律许可或可承载真实资金。
+
+源码与锁文件SHA-256
+src/SingleDistribution.sol  ca36dfc4f4512b87f4d40614c11e1c94a69805eeee0910c546fd8f3c7d4e03c6
+test/MockToken.sol  ace5d9660b81932202ef8921a0e39533c157bdc6e4448d2cac5fe6a8ab09bc8b
+test/distribution.test.mjs  59683a23d7178778c9393fd452621573c8d3d11ec9598f7fcc4cae900e1b9de5
+package-lock.json  f0763151a44088711429c804a03a8ec89219acd649e73a5cd7e755c6123b8765
+
+完整本地输出：artifacts/evm-validation.log（被Git忽略）。
+后续复现：npm ci --ignore-scripts --no-audit --no-fund --cache .npm-cache，然后npm run compile与npm test。

@@ -94,6 +94,8 @@ export function createSocialClient({baseURL=isNativeApp()?'https://66.42.56.29':
  }
  return {
   getProfile:()=>copy(current),
+  getPointsAccount:()=>request('points/account'),
+  getPointsLedger:({cursor}={})=>request('points/ledger'+(cursor?'?cursor='+encodeURIComponent(cursor):'')),
   authenticatedRequest:(path,options)=>request(path,options),
   publicRequest:(path,options)=>request(path,options),
   clearSession:()=>forget(),

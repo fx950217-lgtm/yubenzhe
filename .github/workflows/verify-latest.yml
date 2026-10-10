@@ -1,0 +1,128 @@
+name: Verify latest web
+
+on:
+  push:
+    branches: [main, codex/m0-local-test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-latest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    container: node:24-bookworm
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Read current version
+        id: release
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, appendFileSync, mkdirSync } from 'node:fs';
+          const consumer = JSON.parse(readFileSync('tongban/package.json', 'utf8')).version;
+          for (const file of ['tongban-admin/package.json', 'yubenzhe-deploy/package.json']) {
+            if (JSON.parse(readFileSync(file, 'utf8')).version !== consumer) throw new Error('Source versions do not match.');
+          }
+          if (!/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(consumer)) throw new Error('Invalid source version.');
+          appendFileSync(process.env.GITHUB_OUTPUT, 'version=' + consumer + '\n');
+          mkdirSync('verification-logs', { recursive: true });
+          NODE
+
+      - name: Install consumer dependencies from lock
+        working-directory: tongban
+        run: npm exec --yes --package=pnpm@11.19.0 -- pnpm install --frozen-lockfile
+
+      - name: Install server, admin and contract dependencies from locks
+        run: |
+          npm ci --prefix yubenzhe-deploy --ignore-scripts --no-audit --no-fund
+          npm ci --prefix tongban-admin --ignore-scripts --no-audit --no-fund
+          npm ci --prefix contracts --ignore-scripts --no-audit --no-fund
+
+      - name: Run full consumer tests
+        working-directory: tongban
+        run: node --test tests/*.test.mjs 2>&1 | tee ../verification-logs/frontend-tests.log
+
+      - name: Run full server tests
+        if: ${{ !cancelled() }}
+        working-directory: yubenzhe-deploy
+        run: node --test tests/*.test.mjs 2>&1 | tee ../verification-logs/backend-tests.log
+
+      - name: Compile and test contract prototype
+        if: ${{ !cancelled() }}
+        working-directory: contracts
+        run: |
+          npm run compile 2>&1 | tee ../verification-logs/contracts-compile.log
+          npm test 2>&1 | tee ../verification-logs/contracts-tests.log
+
+      - name: Build consumer web
+        working-directory: tongban
+        run: npm run build 2>&1 | tee ../verification-logs/frontend-build.log
+
+      - name: Build independent admin web
+        working-directory: tongban-admin
+        run: npm run build 2>&1 | tee ../verification-logs/admin-build.log
+
+      - name: Stage matching consumer output
+        run: node yubenzhe-deploy/scripts/stage-frontend.mjs tongban/dist
+
+      - name: Package latest verified web
+        env:
+          WEB_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { cpSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { join } from 'node:path';
+          const version = process.env.WEB_VERSION;
+          const target = join('latest-web', version);
+          mkdirSync(target, { recursive: true });
+          for (const kind of ['frontend', 'admin']) {
+            const source = join('yubenzhe-deploy', 'public', kind);
+            const info = JSON.parse(readFileSync(join(source, 'build-info.json'), 'utf8'));
+            if (info.version !== version) throw new Error(kind + ' build version mismatch.');
+            cpSync(source, join(target, kind), { recursive: true });
+          }
+          writeFileSync(join(target, 'VERSION.json'), JSON.stringify({
+            version, requirements: 'V0.2', sourceCommit: process.env.GITHUB_SHA,
+            builtAt: new Date().toISOString(), scope: 'development-web-only',
+            verified: ['full-consumer-tests', 'full-server-tests', 'contract-compile-and-local-tests', 'consumer-and-admin-build'],
+            deployed: false, nativePackagesIncluded: false,
+          }, null, 2) + '\n');
+          const entries = [];
+          function walk(directory, prefix = '') {
+            for (const file of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+              const relative = prefix + file.name;
+              if (file.isDirectory()) walk(join(directory, file.name), relative + '/');
+              else if (file.isFile()) entries.push(createHash('sha256').update(readFileSync(join(directory, file.name))).digest('hex') + '  ' + relative);
+              else throw new Error('Unexpected linked build artifact.');
+            }
+          }
+          walk(target);
+          writeFileSync(join(target, 'SHA256SUMS.txt'), entries.join('\n') + '\n');
+          NODE
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: yubenzhe-web-${{ steps.release.outputs.version }}
+          path: latest-web/
+          retention-days: 14
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: latest-verification-logs
+          path: verification-logs/
+          retention-days: 14
+          if-no-files-found: warn

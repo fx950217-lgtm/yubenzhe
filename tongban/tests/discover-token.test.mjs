@@ -6,7 +6,7 @@ const source = (await readFile(new URL('../src/discover-token.js', import.meta.u
   .replace("import './discover-token.css';", '')
   .replace("from './native-runtime.js'", `from '${new URL('../src/native-runtime.js', import.meta.url).href}'`)
   .replace("from 'ethers'", `from '${import.meta.resolve('ethers')}'`);
-const { validateTokenBasics, validateTokenRecipient, validateTokenPreparation, tokenParameterDocument, validateIntegrationPreparation, createTokenStudio } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const { validateTokenBasics, validateTokenRecipient, validateTokenPreparation, tokenParameterDocument,  createTokenStudio } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const address = '0x1111111111111111111111111111111111111111';
 const token = (extra = {}) => ({ name:'Lime Club', symbol:'lime', supply:'1000000000', address, ownsWallet:true, ...extra });
 const record = (id, extra = {}) => ({ id, type:'token', values:token(extra) });
@@ -85,23 +85,13 @@ test('parameter export strips forged contracts, balances, fees, and live chain c
   const document = tokenParameterDocument(token({ chainId:56, network:'mainnet', status:'deployed', contractAddress:address, balance:'99999', serviceFee:'999 USDT', privateKey:'must-not-export' }));
   assert.equal(document.chainId,97); assert.equal(document.network,'BSC Testnet');
   assert.equal(document.status,'not_deployed'); assert.equal(document.contractAddress,null); assert.equal(document.issuedTokens,false);
-  assert.deepEqual(document.serviceFee,{ amount:'0',asset:'USDT',charged:false });
+  assert.equal(document.serviceFee,undefined);
   assert.deepEqual(document.networkFee,{ status:'not_connected',amount:null });
   assert.equal(document.privateKey,undefined); assert.equal(document.balance,undefined);
   assert.equal(document.ownership,'user_declared_only');
 });
 
-test('integration treats 300 USDT as a separate uncharged service and validates optional deployed contract', () => {
-  const base={ title:'Lime Club',details:'用于熟人社区中的红包与服务结算。',relatedDraftId:'token-a',hasContract:false,contractAddress:'' };
-  const value=validateIntegrationPreparation(base,[record('token-a')]);
-  assert.equal(value.serviceFee,'300 USDT'); assert.equal(value.status,'未提交'); assert.equal(value.contractAddress,'');
-  assert.equal(value.settlement,'平台余额'); assert.equal(value.network,'BSC 测试网');
-  assert.throws(() => validateIntegrationPreparation({ ...base,contractAddress:address },[record('token-a')]),/已经部署/);
-  assert.throws(() => validateIntegrationPreparation({ ...base,hasContract:true },[record('token-a')]),/合约地址/);
-  assert.throws(() => validateIntegrationPreparation({ ...base,hasContract:true,contractAddress:'0x0000000000000000000000000000000000000000' },[record('token-a')]),/零地址/);
-  assert.throws(() => validateIntegrationPreparation(base,[]),/不存在/);
-  assert.equal(validateIntegrationPreparation({ ...base,hasContract:true,contractAddress:address },[record('token-a')]).contractAddress,address);
-});
+test('removed balance integration has no route, handler or fee export',()=>{const app=harness();assert.doesNotMatch(app.html(),/300|余额接入|USDT 服务费/);assert.equal(app.studio.render('integration'),'');assert.equal(app.studio.handleAction('t-route-integration',{}),false);app.studio.cleanup();});
 
 test('three steps save only after preview, then survive a synchronous parent rerender with saved id', () => {
   const app=harness();
@@ -128,10 +118,10 @@ test('save failure preserves review inputs and never shows saved success', () =>
 test('editing sessions are isolated by type and draft id through navigation', () => {
   const app=harness({ records:[record('alpha',{ name:'Alpha Club' }),record('beta',{ name:'Beta Club' })] });
   app.go('token',{ draftId:'alpha' }); app.input('name','Alpha Edited');
-  app.go('integration',{ draftId:null }); app.input('title','Independent Request');
+  app.go('business',{ draftId:null }); app.input('title','Independent Request');
   app.go('token',{ draftId:'beta' }); assert.match(app.html(),/value="Beta Club"/);
   app.go('token',{ draftId:'alpha' }); assert.match(app.html(),/value="Alpha Edited"/);
-  app.go('integration',{ draftId:null }); assert.match(app.html(),/value="Independent Request"/);
+  app.go('business',{ draftId:null }); assert.match(app.html(),/value="Independent Request"/);
   assert.equal(app.drafts().find(draft => draft.id==='alpha').values.name,'Alpha Club');
   assert.equal(app.writes(),0); app.studio.cleanup();
 });

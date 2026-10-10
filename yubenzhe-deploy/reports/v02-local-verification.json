@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-10T12:24:37.962Z",
+  "scope": "V0.2 local source changes; no deployment",
+  "status": "partially-verified-build-blocked",
+  "backend": {
+    "passed": 207,
+    "failed": 0,
+    "log": "../../../m0-qa/v02-backend-full-tests.log"
+  },
+  "frontend": {
+    "executedFiles": 29,
+    "passed": 220,
+    "failed": 0,
+    "excludedBlockedFiles": [
+      "ai-workspace.test.mjs",
+      "discover-community.test.mjs",
+      "discover-workbench.test.mjs",
+      "discover.test.mjs",
+      "live-moments.test.mjs",
+      "points.test.mjs",
+      "v02-consumer-boundary.test.mjs",
+      "workbench-cost-ui.test.mjs",
+      "workbench-experience-ui.test.mjs",
+      "workbench-hub.test.mjs",
+      "workbench.test.mjs"
+    ],
+    "log": "../../../m0-qa/v02-frontend-supported-tests.log",
+    "fullSuitePassed": false
+  },
+  "contracts": {
+    "compiled": true,
+    "warnings": 0,
+    "runtimeBytes": 8825,
+    "evmPassed": 23,
+    "evmFailed": 0,
+    "network": "in-process Ganache",
+    "deployed": false,
+    "report": "../../contracts/TEST-RESULTS.txt"
+  },
+  "migration": {
+    "isolatedCopyPassed": true,
+    "originalDatabaseMigrated": false,
+    "report": "v02-migration-rehearsal.json"
+  },
+  "sourceChecks": {
+    "changedTrackedJavascriptSyntaxPassed": 45,
+    "diffCheckPassed": true,
+    "projectBoundaryPassed": true,
+    "manifestModified": false
+  },
+  "build": {
+    "passed": false,
+    "reason": "esbuild cannot read ancestor directory; automatic approval review rejected the earlier overly broad C:/Users plus network permission profile",
+    "bypassed": false
+  },
+  "runtime": {
+    "localhost18914Updated": false,
+    "productionUpdated": false,
+    "nativeUpdated": false,
+    "chainWalletIntegration": false,
+    "pointsAssetCampaignEnabled": false,
+    "gasSponsorshipEnabled": false
+  }
+}

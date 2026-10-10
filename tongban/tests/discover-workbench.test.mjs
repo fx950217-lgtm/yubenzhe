@@ -16,7 +16,7 @@ function harness(initial={},initialDrafts=[]) {
   let drafts=structuredClone(initialDrafts),failure=null,afterSave=null;
   const ctx={getDraft:type=>current[type]||{},getDraftKey:type=>keys[type]||`new:${type}`,getDrafts:()=>drafts,
     saveDraft(type,values){if(failure)throw new Error(failure);calls.saved.push({type,values});current[type]={...values};afterSave?.(type,values);},
-    validateDraft(type,values){assert.equal(values.settlement,'平台余额');return {...values};},
+    validateDraft(type,values){assert.equal(values.settlement,'独立服务协议');return {...values};},
     showDialog:(title,html)=>calls.dialogs.push({title,html}),closeDialog:()=>calls.closed++,toast:value=>calls.toast.push(value),
     go:(route,options)=>calls.go.push({route,options}),onBalance:()=>calls.balance++,render:()=>calls.render++};
   const wb=createDiscoveryWorkbench(ctx);
@@ -38,7 +38,7 @@ test('budget parsing uses exact cents and rejects exponents, unsafe amounts and 
   assert.equal(formatWorkUsd(parseWorkUsd('100.1')),'100.10');
   for(const input of ['0','-1','1e3','1.001','1000000','01','NaN','Infinity','',null,1])assert.throws(()=>parseWorkUsd(input));
   const p=bountySettlement({reward:'100',count:'3'});
-  assert.deepEqual(p,{total:'100.00',count:3,base:'33.33',higher:'33.34',higherCount:1,baseCount:2,settlement:'平台余额',frozen:false,paid:false});
+  assert.deepEqual(p,{total:'100.00',count:3,base:'33.33',higher:'33.34',higherCount:1,baseCount:2,settlement:'独立服务协议',frozen:false,paid:false});
   assert.equal(parseWorkUsd(p.base)*BigInt(p.baseCount)+parseWorkUsd(p.higher)*BigInt(p.higherCount),parseWorkUsd(p.total));
   assert.equal(bountySettlement({reward:'0.03',count:'3'}).base,'0.01');
   for(const count of ['0','-1','1.5','101','1e2','01',''])assert.throws(()=>bountySettlement({reward:'100',count}));
@@ -67,7 +67,7 @@ test('provider drafts verify example/package pairing and cannot claim certificat
 
 test('bounty validates delivery, acceptance, count and real dates while overriding forged settlement state',()=>{
   const d=validateWorkbenchDraft('bounty',bounty({status:'已发布',paid:true,settlement:'链上钱包',contractAddress:'0xFAKE'}),today);
-  assert.equal(d.status,'未发布');assert.equal(d.settlement,'平台余额');assert.equal(d.reward,'100.00');assert.equal(d.count,'3');
+  assert.equal(d.status,'未发布');assert.equal(d.settlement,'独立服务协议');assert.equal(d.reward,'100.00');assert.equal(d.count,'3');
   assert.equal(d.paid,undefined);assert.equal(d.contractAddress,undefined);
   for(const bad of [{title:' '},{details:'短'},{acceptance:'满意为止'},{count:'101'},{reward:'1e2'},{deadline:'2030-13-01'},{deadline:'2029-12-31'},{deadline:''}])assert.throws(()=>validateWorkbenchDraft('bounty',bounty(bad),today));
   assert.equal(validateWorkbenchDraft('bounty',bounty({deadline:'2032-02-29'}),today).deadline,'2032-02-29');

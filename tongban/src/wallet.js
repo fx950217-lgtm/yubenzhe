@@ -441,18 +441,8 @@ export function exportEncryptedKeystore() {
 // Lock other tabs when the encrypted vault changes. The UI also hides backup words.
 globalThis.addEventListener?.('storage', event => { if (event.key === VAULT_KEY) lock(); });
 
-// Only the server's narrow, non-transactional M0 binding challenge can be signed.
-export async function signBindingProof(message,{address,expiresAt,origin=globalThis.location?.origin}={}){
- const vault=requireSession(),startEpoch=epoch,time=Date.now();let expectedHost;
- try{const url=new URL(origin);if(typeof origin!=='string'||url.origin!==origin||url.username||url.password||!(url.protocol==='https:'||url.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(url.hostname)))throw Error();expectedHost=url.host;}catch{throw fail('钱包绑定来源无效。','BINDING_CHALLENGE_INVALID');}
- if(typeof message!=='string'||message.length>1800||address!==vault.address||!Number.isSafeInteger(expiresAt)||expiresAt<=time||expiresAt>time+6*60000)throw fail('钱包绑定挑战无效或已过期。','BINDING_CHALLENGE_INVALID');
- const lines=message.split('\n');
- if(lines.length!==10||lines[0]!==expectedHost+' requests a Yubenzhe wallet ownership proof.'||lines[1]!=='Address: '+address||lines[2]!=='Purpose: Bind the default SIM BSC wallet; no transfer or approval.'||!/^Account: [a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(lines[3])||lines[4]!=='URI: '+origin||lines[5]!=='Chain ID: 97'||!/^Binding version: (0|[1-9][0-9]{0,15})$/.test(lines[6])||!/^Nonce: [a-f0-9]{48}$/.test(lines[7])||!lines[8].startsWith('Issued At: ')||lines[9]!=='Expiration Time: '+new Date(expiresAt).toISOString())throw fail('钱包绑定内容不匹配，已阻止签名。','BINDING_CHALLENGE_INVALID');
- const issued=Date.parse(lines[8].slice(11));if(!Number.isFinite(issued)||new Date(issued).toISOString()!==lines[8].slice(11)||issued>time+60000||expiresAt-issued>5*60000||expiresAt<=issued)throw fail('钱包绑定时间无效。','BINDING_CHALLENGE_INVALID');
- const signature=await session.signMessage(message);requireSameSession(startEpoch,address,vault.encryptedJson);if(expiresAt<=Date.now())throw fail('钱包绑定挑战已过期。','BINDING_CHALLENGE_INVALID');return signature;
-}
-// Called after the UI verifies backup acknowledgement. The caller must first
-// complete server-side unbinding, then use this permit, then acknowledge cleanup.
+// Called after local backup acknowledgement. The permit is local-only and
+// verifies that the same encrypted vault is still present before removing it.
 export async function prepareLocalWalletDeletion(password,{expectedAddress}={}){
  const vault=readVault();if(!vault||vault.address!==expectedAddress)throw fail('本机钱包已变化，请重新核对。','WALLET_CHANGED');
  await verifyPassword(password);let consumed=false,removalStarted=false;
@@ -463,6 +453,6 @@ export async function prepareLocalWalletDeletion(password,{expectedAddress}={}){
    if(current&&(current.address!==vault.address||current.encryptedJson!==vault.encryptedJson)||!current&&!removalStarted)throw fail('钱包已变化，未清理新钱包。','WALLET_CHANGED');
    if(current){const local=storage(),key=recordsKey(vault.address);local.removeItem(key);if(local.getItem(key)!==null)throw Error('Records remain');removalStarted=true;local.removeItem(VAULT_KEY);if(local.getItem(VAULT_KEY)!==null)throw Error('Vault remains');}
    consumed=true;lock();return {cleared:true};
-  }catch(error){if(error.code==='WALLET_CHANGED')throw error;if(removalStarted)lock();throw fail('服务器已解除关联，但本机清理未完成，请重试。','LOCAL_CLEANUP_FAILED');}
+  }catch(error){if(error.code==='WALLET_CHANGED')throw error;if(removalStarted)lock();throw fail('本机清理未完成，请保留离线备份并重试。','LOCAL_CLEANUP_FAILED');}
  }};
 }

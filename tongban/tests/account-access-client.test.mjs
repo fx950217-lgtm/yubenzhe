@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createAccountAccessClient} from '../src/account-access-client.js';
+function fixture({isCurrent=()=>true,authenticate=async()=>({id:'synthetic-response'})}={}){
+ const calls=[],client={getAccessRecoveryToken:()=>'',async authenticatedRequest(path,options){calls.push({path,...options});if(path==='access/passkeys/options')return {challengeId:'challenge-1',options:{challenge:'synthetic-challenge'}};if(path==='access/passkeys/verify')return {proof:'synthetic-single-action-proof'};if(path==='access/security-state')return {authMode:'pin',everHadStrongCredential:true,credentials:[{id:'key-1'}]};return {removed:true};}};
+ const access=createAccountAccessClient(client,{deviceId:'synthetic_device_00001',supported:()=>true,authenticate,isCurrent});return {access,calls,client};
+}
+test('account client exposes safety actions and no funds activation method',()=>{const {access}=fixture();assert.equal('activate' in access,false);for(const name of ['strongProof','registerPasskey','generateRecovery','confirmRecovery','removePasskey','revokeSession'])assert.equal(typeof access[name],'function');});
+test('device removal obtains security-scoped proof before a single authenticated action',async()=>{const {access,calls}=fixture();await access.removePasskey('key-1');assert.deepEqual(calls.map(c=>c.path),['access/passkeys/options','access/passkeys/verify','access/passkeys/remove']);assert.deepEqual(calls[0].input,{purpose:'security-change'});assert.deepEqual(calls[2].input,{credentialId:'key-1',proof:'synthetic-single-action-proof'});});
+test('account change while WebAuthn is open cannot submit proof or mutate credentials',async()=>{let current=true;const {access,calls}=fixture({isCurrent:()=>current,authenticate:async()=>{current=false;return {id:'late-response'};}});await assert.rejects(access.removePasskey('key-1'),/操作已取消/);assert.deepEqual(calls.map(c=>c.path),['access/passkeys/options']);});
+test('strong accounts revoke other devices only after scoped WebAuthn proof',async()=>{const {access,calls}=fixture();await access.revokeSession(null,true);assert.deepEqual(calls.map(c=>c.path),['access/security-state','access/passkeys/options','access/passkeys/verify','access/sessions/revoke']);assert.deepEqual(calls.at(-1).input,{others:true,proof:'synthetic-single-action-proof'});});

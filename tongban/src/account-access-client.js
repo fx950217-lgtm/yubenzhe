@@ -13,7 +13,6 @@ export function createAccountAccessClient(client,{register=startRegistration,aut
  async registerPasskey(name='我的设备'){if(!supported())throw Error('此设备暂不支持通行密钥。');const s=await client.authenticatedRequest('access/security-state'),input=s.everHadStrongCredential&&s.credentials.length?{proof:await strongProof('security-change')}:{recoveryToken:client.getAccessRecoveryToken?.()||undefined};const c=await post('passkeys/register/options',input);let response;try{response=await register({optionsJSON:c.options});}catch(e){throw error(e);}const result=await post('passkeys/register/verify',{challengeId:c.challengeId,response,name});client.setAccessRecoveryToken?.('');return result;},
  async generateRecovery(){return post('recovery-code',{proof:await strongProof('security-change')});},
  confirmRecovery:recoveryCode=>post('recovery-code/confirm',{recoveryCode}),
- async activate(){return post('funds/activate',{proof:await strongProof('funds-activate')});},
  async removePasskey(credentialId){const result=await post('passkeys/remove',{credentialId,proof:await strongProof('security-change')});if(result.accessRecoveryToken)client.setAccessRecoveryToken?.(result.accessRecoveryToken);return result;},
  async requestEmailChange(email){return post('email/change/request',{email,deviceId,requestId:crypto.randomUUID(),proof:await strongProof('security-change')});},
  verifyEmailChange:(challengeId,code)=>post('email/change/verify',{challengeId,code,deviceId}),

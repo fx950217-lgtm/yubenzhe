@@ -1,79 +1,23 @@
-愚笨者 Windows 客户端 0.13.0（已安装启动）
+愚笨者 Windows 原生源码
 
-0.13.0 已部署为公开测试版，源码提交 7eb1605747bdb6680f95c619ab9a591fb874218e。新加坡 /opt/yubenzhe/releases/0.13.0 的 frontend 与 admin 均为 0.13.0 且 healthy，公网 healthz 返回 200；原反代与模型容器未重建。Android versionCode 15 已用原签名在模拟器覆盖安装启动；Windows 安装退出码 0，安装 ASAR 与产物一致且客户端已启动；iOS build 16 已经 macOS workflow 37926392645 构建，通过 USB 安装 0.13.0 并打开，日志确认 starting local service / page loaded / ready。4 个新安装包已上传并核对 SHA-256，下载区保留历史版本。用户已确认 iPhone 能看到登录页或正常首页；全部实体设备功能验收尚未完成，旧版本结果仅作历史基线。
+当前交付方式
+Git 只保留 Electron 主进程、受限桥接、配置、锁文件和 build/icon.ico，不保留 web 中的旧网页副本。旧 release-verification.json 作为历史验收证据保留，不代表本次已产生新安装包。当前功能以 ../docs/requirements-v0.2.txt 和 ../docs/V02-IMPLEMENTATION.txt 为准。
+本次未重新打包或安装 Windows 客户端。package.json 和原生桥中的 0.13.0 是历史包装版本，不是最新网页发行版本；下次原生发行前须统一调整并重新验收。旧安装记录可从 Git 历史追溯。
 
-0.13.0 当前功能：真实账号朋友圈的文字/照片发布、好友或仅自己可见、分页、点赞、评论及删除；好友变化、双向拉黑与账号限制实时约束内容和图片读取，失败重试使用幂等标识。旧本机动态保留为明确标注的本机旧内容，不自动上传或发布；朋友圈只从“发现”进入，发现首页保留 AI 工作台与本机草稿，不再展示示例榜单、服务商和发币入口。
-账号安全已加入主动生成的一次性恢复码、设备会话管理与账号注销：恢复码仅在生成时展示，服务器只保存哈希；恢复会重置 6 位密码并撤销旧会话，不解除平台封禁。注销需当前密码和明确文字确认，多人群主先转让；清理服务端自有内容与关系，保留占用 ID、账号墓碑及必要去正文审计记录。本机钱包、助记词和链上资产不随账号注销删除，账号恢复码不是钱包助记词。
-消息新增连续游标补齐与缓存失效处理；双向拉黑限制私聊、好友申请与直接群邀请，共同群内容仍可能可见。举报和反馈持久保存，用户可查看自身处理进度；审核、禁言、暂停、恢复和内容移除由独立管理端/工具处理，消费者端不提供管理入口。云端 AI 已绑定产品账号的内部 UUID，保留原审批、免费额度和模型配置；变更数字 ID 不改变 AI 数据归属。账号注销后的 AI 清理通过有界幂等重试执行，取消任务并丢弃迟到输出；这部分已通过本地隔离测试并随本版本部署；本版真实模型调用与完整手机功能未单独验收。
-浏览器消息通知服务及 VAPID 已安全配置，真实浏览器权限和端到端通知仍未验收；通知正文只含通用提醒。Android/iOS/Windows 原生推送未接入，原生包不复制或注册 sw.js。隐私政策与用户条款已打包，通过应用内弹窗读取本地静态页，不放宽原生导航或钱包权限。停 frontend 与 admin 后的三库备份及隔离恢复演练已通过，004–007 社交迁移已完成；服务器每小时备份、保留 14 天及每 5 分钟健康检查已启用并成功执行。备份仍在本机，异地恢复与外部告警未完成。当前仅为公开测试，运营主体、客服联系方式与适用地区待用户提供；商店发布、主网与真实资金、端到端加密、硬件钱包直连及完整实体设备功能验收未完成。
+开发与构建
+使用 Node 24、pnpm 11.19.0。先分别在 ../tongban 和本目录执行 pnpm install --frozen-lockfile；按 Electron 官方安装要求完成运行时依赖准备。
+pnpm sync:web 会重新构建 tongban，再生成本地 web 与 web-assets-verification.json。pnpm copy:web 只复制已经构建且 build-info.json 版本匹配的 dist。
+pnpm test 检查主进程、桥接和本机 AI 边界，不代表已编译安装包。
+pnpm build:win 先重新准备网页，再生成 Windows x64 NSIS 与 ZIP；不会自动上传或安装。
+构建后执行 node scripts/verify-release.cjs，核对 ASAR 网页与当前 dist、原生代码、安全 Fuses、安装包和校验和。生成 release-verification.json 与 dist/SHA256SUMS.txt；这些文件只属于对应实际构建；仓库保留的历史 release-verification.json 不代表当前源码的验收结果。
+实际发行需统一 wrapper 版本、源版本、签名与设备验收；此源码整理不声明最新原生包已经存在。
 
-本机 yubenzhe://app 白名单及复制清单新增 privacy.html、terms.html；网页快照共 9 个文件，sw.js 不进入原生包，不宣称 Windows 原生推送已接通。
-0.13.0 本轮重新通过网页 299/299、Windows 后端 101/101 及生产 Linux 同镜像后端 101/101；真实整页 Chromium 16 项流程与 320px/390px 政策交互检查通过。本机负载检查为 24 账号、20 并发、180 秒、8,915 次请求全部 HTTP 200，p95 8.08ms；该结果仅代表本机测试，不代表生产并发容量。发布验收报告为 ../yubenzhe-deploy/reports/release-013-verification.json，最终下载清单与各端状态以本版本 JSON 记录为准。
+资源与数据边界
+仅复制九个白名单应用网页文件；sw.js、安装页、下载包、管理后台与凭据不会进入原生资源。
+web、dist 与 web-assets-verification.json 都是可再生输出；旧 release-verification.json 保留为历史证据。build/icon.ico 是打包输入，不能按缓存删除。
+本次清理不碰已安装应用或其用户数据；卸载器原有保留数据行为不变。钱包资料仍需用户保留自己的加密备份或助记词。
 
-0.12.1 历史安装与验收
-
-0.12.1 仅移除“我”页面中重复的朋友圈入口，朋友圈统一保留在“发现”。其他界面沿用 0.12.0 的白灰背景、紫色强调、系统 sans-serif 黑灰字体、扁平列表与简洁底栏；浅紫星环 B 应用图标不变。
-0.12.1 已部署并完成客户端覆盖安装和启动检查，Android versionCode 14、iOS build 15，源码提交 e54ff57e906ca650900112864210a1e130d54a47。新加坡前台已切换至 /opt/yubenzhe/releases/0.12.1，下载区 25 个文件 SHA-256 全部通过。Android 14 已安装启动；Windows 安装器退出码为 0，安装 ASAR 与构建产物一致且客户端已启动；iOS build 15 经 macOS workflow 37922714334 构建成功，0.12.1 DEB 安装成功，日志确认 page loaded / ready。
-本轮通过 mine + discover 的 36 项相关网页测试、14 项布局检查、Android 5 项测试 / 85 条断言、Windows 23 项检查及 iOS 13 项 Python + 4 项桥接检查；在 360px / 1280px 两种尺寸额外确认“我”页面朋友圈入口为 0、“发现”入口为 1。未新增用户在手机上肉眼确认画面，完整实体设备功能验收仍未完成。0.12.0 的 270 项全量网页测试及安装验收保留为历史基线，不计为本轮全量重跑。 详细记录见 ../yubenzhe-deploy/reports/ui-0121-verification.json。 实际发布范围见 release-verification.json 和 ../tongban/releases/release-status.json。
-本次只调整入口展示，不改变朋友圈业务、账号服务或钱包能力。
-
-0.12.0 历史安装与验收
-
-0.12.0 参考微信官方 App Store 的消息列表与群聊截图，改为白色列表、浅灰背景和紫色重点操作；使用系统 sans-serif 字体与黑灰文字，主标题 18px、会话名称 17px、正文 16px。页面采用扁平分组列表、细分隔线、小圆角与简洁底部导航，减少大卡片、阴影和装饰文字。浅紫星环 B 应用图标保留，网络标识和说明仍只在钱包资产页显示。
-界面参考：https://apps.apple.com/cn/app/wechat/id414478124 。
-0.12.0 Windows 安装版与 ZIP 版已发布，当前电脑已完成覆盖安装：安装器退出码为 0，安装 ASAR 与构建产物一致，客户端进程运行。网页 JS/CSS 与四端快照一致，下载区 21 个文件 SHA-256 全部通过；构建源码提交 9c87fe4c345d1e726a5d9e5f40791a9795bc6f6a。实际资源校验和安装结果见 release-verification.json、../tongban/releases/release-status.json 与 ../yubenzhe-deploy/reports/ui-012-verification.json。
-本轮通过网页 270 项测试、14 项手机/桌面布局检查（360px / 1280px）、20 项交互检查（320px / 390px）、Android 5 项测试 / 85 条断言、Windows 23 项检查、iOS 13 项 Python 检查及 macOS 工作流内 4 项桥接检查。未新增用户在手机上肉眼确认画面，完整实体设备功能验收仍未完成。发现只调整界面，业务能力与数据范围不变；账号和在线社交沿用现有服务，钱包仍仅支持 BSC 测试网。
-
-0.11.1 历史安装与验收
-
-0.11.1 已在当前 Windows 电脑覆盖安装：安装器退出码为 0，安装 ASAR 与构建产物 SHA-256 一致，新客户端进程运行。打包网页 app.js 与其余三端快照一致；共享网页的顶部 UI 14 项检查及相关测试 20 项通过。完整设备功能仍未全部验收，实际范围见 release-verification.json、../tongban/releases/release-status.json 和 ../yubenzhe-deploy/reports/ui-0111-verification.json。
-本次仅同步顶部 UI：移除全局 B /“愚笨者”品牌行及重复页标题，各页面保留自己的标题、搜索和“＋”等操作；BSC 测试网标识及说明按钮仅在钱包资产页。应用图标保持浅紫星环 B。
-
-用途
-独立安装的 Windows x64 桌面客户端。本轮为公开体验版本，未上架 Microsoft Store。
-钱包仍仅连接 BSC 测试网；账号、好友、群聊及图片随账号同步；0.13.0 源码的朋友圈改为真实账号服务，旧草稿、红包和平台余额仍为本机体验，不支持真实托管资金。
-
-安装
-当前安装文件为 yubenzhe-0.13.0-windows-x64-setup.exe，安装退出码为 0，安装 ASAR 与构建产物完全一致，客户端已启动；0.12.1 结果仅保留为历史验收。公开下载已上传并校验。下载文件以发布状态 JSON 中的对应版本及 SHA-256 清单为准。安装到当前用户目录，无需管理员权限。
-免安装版解压 ZIP 后运行 Yubenzhe.exe。不要仅从 ZIP 中拖出单个 EXE，其余运行文件也必须保留。
-支持 Windows 10/11 64 位电脑。此构建无 Windows 代码签名证书；请先核对下载来源及 SHA256，并遵循系统安全提示，不要关闭安全防护。
-0.11.0 历史验收已完成编译、签名状态/安全边界核验及 23 项测试，并在当前 Windows 电脑安装启动，安装资源与当时构建一致。相机、文件导出和本地模型运行仍需完整设备验收。
-
-数据与使用
-钱包密钥和发现草稿保存在当前 Windows 用户的应用数据中；账号、好友和消息通过固定 HTTPS 社交 API 同步。
-卸载器保留应用数据，避免误删备份；自行删除应用数据前请先保存加密钱包备份。
-窗口切到后台、最小化、电脑锁屏或休眠时，前端收到锁定事件。摄像头只用于用户发起的扫码，须经过明确授权，不开放麦克风。
-JSON 导出使用系统保存窗口；点击取消不会显示保存成功。图片导入通过浏览器系统文件选择完成。
-客户端不包含后台管理入口，助记词、钱包密码和私钥不上传；账号登录密码通过 HTTPS 验证，聊天记录存储在社交服务器。
-仅内置已打包的网页资产。后续服务器域名更改不会自动改变钱包或同步数据。
-
-开发与复现
-固定依赖版本见 package.json 与 pnpm-lock.yaml。
-1. pnpm install --frozen-lockfile --ignore-scripts
-2. 在 ../tongban 生成最新网页 dist。
-3. pnpm sync:web
-4. pnpm test
-5. pnpm build:win
-构建程序从 Electron 官方发布下载 Windows 运行时和 NSIS 工具。不会发布到第三方商店或自动上传。
-web-assets-verification.json 记录打包前端文件 SHA256，release-verification.json 记录安装包校验和与验收范围。
-
-原生接口
-window.YubenzheDesktop.platform = 'windows'
-window.YubenzheDesktop.version = '0.13.0'
-saveJson({filename, mimeType:'application/json', content}) -> Promise<{saved:boolean, method:'desktop'}>
-onBackground(callback) -> unsubscribe 函数
-接口没有任意文件读写、命令执行、process、Node.js 或 Electron 对象。
-
-正式发布仍需
-Windows 真机完成扫码、加密备份保存/恢复、窗口锁定、离线重启与升级回归。
-确定运营主体后办理 Windows 代码签名身份；Microsoft Store 提交需对应开发者账户及商店资料。
-真实资产/托管功能必须另行完成后端、安全与运营验收；不能通过隐藏文案把演示数据视为正式资金。
-
-官方资料
-https://www.electronjs.org/docs/latest/tutorial/security
-https://www.electronjs.org/docs/latest/api/session
-https://www.electron.build/v26/docs/targets/
-
-0.9 AI 工作台
-Windows 本地 AI 需要用户安装官方 Ollama 并自行下载一个本地模型。客户端只访问本机 127.0.0.1:11434，不能指定其他服务器，不自动下载模型、运行命令或安装软件。可以读取已安装本地模型、主动生成文本和取消任务；离开窗口会取消未完成本地任务。云端模型或 remote 模型不在本地入口运行。
-0.13.0 源码中的云端 AI 经产品账号社交 API 接入独立 AI 数据库，须审核并受既有额度与模型配置约束；使用内部 UUID 归属，已随本版部署和客户端安装；完整原生交互及真实模型请求仍按实际验证范围记录。旧验收身份及其数据不自动迁入产品账号。
+安全与能力
+Electron 隔离、沙箱、固定本地源、受限 JSON 保存桥和导航白名单保持不变。取消保存不报成功；最小化、后台、锁屏和休眠触发钱包锁定。摄像头须主动授权，麦克风不开放。
+本地 AI 仅连接 127.0.0.1:11434 的既有 Ollama；不自动安装模型或连接任意远端服务。云端功能按当前后端能力返回，未配置服务不伪造成功。
+钱包仅 BSC 测试网；无 Windows 正式代码签名、商店上架或原生推送。完整扫码、导出恢复、本地模型、离线重启及升级仍需实际设备验收。

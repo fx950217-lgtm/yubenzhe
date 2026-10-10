@@ -10,9 +10,10 @@
   },
   "license": "UNLICENSED",
   "scripts": {
-    "sync:web": "node scripts/copy-web.mjs",
+    "sync:web": "node scripts/prepare-web.mjs",
+    "copy:web": "node scripts/copy-web.mjs",
     "test": "node --test tests/*.test.cjs",
-    "build:win": "electron-builder --win nsis zip --x64 --publish never"
+    "build:win": "node scripts/prepare-web.mjs && electron-builder --win nsis zip --x64 --publish never"
   },
   "devDependencies": {
     "electron": "44.7.0",

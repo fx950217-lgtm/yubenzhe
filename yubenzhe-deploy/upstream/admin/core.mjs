@@ -4,7 +4,7 @@ export class AdminError extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
 }
 const fail = (status, code, message) => { throw new AdminError(status, code, message); };
-const STATUSES = Object.freeze({ users: ['active', 'restricted'], groups: ['active', 'restricted'], reviews: ['pending', 'approved', 'rejected'], tickets: ['open', 'resolved'], ledger: ['recorded'] });
+const STATUSES = Object.freeze({ users: ['active', 'restricted'], groups: ['active', 'restricted'], reviews: ['pending', 'approved', 'rejected'], tickets: ['open', 'resolved'] });
 const TRANSITIONS = Object.freeze({ users: { restrict: ['active', 'restricted'], restore: ['restricted', 'active'] }, groups: { restrict: ['active', 'restricted'], restore: ['restricted', 'active'] }, reviews: { approve: ['pending', 'approved'], reject: ['pending', 'rejected'] }, tickets: { resolve: ['open', 'resolved'], reopen: ['resolved', 'open'] } });
 export const PERMISSIONS = Object.freeze([
   { role: 'owner', label: '所有者', description: '唯一管理员，可查看、处理测试记录与审计；资金操作始终禁用', enabled: true },
@@ -13,7 +13,7 @@ export const PERMISSIONS = Object.freeze([
   { role: 'support', label: '客服', description: '预留角色，尚未启用，不可分配', enabled: false },
   { role: 'auditor', label: '只读审计', description: '预留角色，尚未启用，不可分配', enabled: false },
 ]);
-export const SYSTEM = Object.freeze({ network: 'BSC 测试网', consumerConnected: false, synthetic: true, financialActionsEnabled: false, teamRolesEnabled: false, aiConnected: false, aiStatus: 'AI 工作台服务预留，未连接模型服务，无实际调用统计', seedVersion: SEED_VERSION, sampleNote: '固定场景样本分布，不是实际用户、真实运营数据或调研结论', fundsNote: '账务仅为 TEST 整数单位的合成只读样本，不代表资金、交易或真实余额' });
+export const SYSTEM = Object.freeze({ network: 'BSC 测试网', consumerConnected: false, synthetic: true, financialActionsEnabled: false, teamRolesEnabled: false, aiConnected: false, aiStatus: 'AI 工作台服务预留，未连接模型服务，无实际调用统计', seedVersion: SEED_VERSION, sampleNote: '固定场景样本分布，不是实际用户、真实运营数据或调研结论', fundsNote: 'V0.2 不提供平台资产账户与托管资金操作；退休样本只在历史数据库和审计备份保留' });
 
 function identity(user) {
   if (!user || typeof user.userId !== 'string' || !user.userId.trim() || user.userId.length > 500) fail(401, 'SIGN_IN_REQUIRED', '请先使用 ChatGPT 身份登录后台。');
@@ -37,7 +37,9 @@ function recordItem(row) {
   if (!row) return null;
   return { id: row.id, title: row.title, subtitle: row.subtitle, status: row.status, version: row.version, createdAt: row.created_at, segment: row.segment, type: row.type, amount: row.amount, currency: row.currency, detail: JSON.parse(row.detail_json), synthetic: true };
 }
-function kindOf(kind) { if (typeof kind !== 'string' || !Object.hasOwn(STATUSES, kind)) fail(400, 'INVALID_KIND', '记录类型无效。'); return kind; }
+const retiredRecord = row => row?.kind === 'ledger' || row?.kind === 'reviews' && (row.type === 'integration' || row.segment === 'integration');
+const retired = () => fail(410, 'ADMIN_MODULE_RETIRED', '平台资产账务与接入模块已移除，历史数据保留但不再通过此入口提供。');
+function kindOf(kind) { if (kind === 'ledger') retired(); if (typeof kind !== 'string' || !Object.hasOwn(STATUSES, kind)) fail(400, 'INVALID_KIND', '记录类型无效。'); return kind; }
 function idOf(id) { if (typeof id !== 'string' || !/^[a-z][a-z0-9-]{1,99}$/.test(id)) fail(400, 'INVALID_ID', '记录编号无效。'); return id; }
 function positiveInteger(input, fallback, max) { const raw = input === undefined || input === null || input === '' ? String(fallback) : String(input); if (!/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(Number(raw)) || Number(raw) > max) fail(400, 'INVALID_PAGE', '分页参数无效。'); return Number(raw); }
 function searchText(value) { if (value !== undefined && value !== null && typeof value !== 'string') fail(400, 'INVALID_QUERY', '搜索条件无效。'); const text = String(value || '').trim(); if (text.length > 120) fail(400, 'INVALID_QUERY', '搜索文字最多 120 个字符。'); return text; }
@@ -70,7 +72,7 @@ export async function getBootstrap(db, user) {
   const access = await authorizeAdmin(db, user, { allowUninitialized: true });
   const base = { initialized: access.initialized, viewer: { name: access.actor.name, role: 'owner' }, overview: { users: 0, groups: 0, pendingReviews: 0, openTickets: 0, restrictedUsers: 0 }, cohorts: [], permissions: PERMISSIONS.map(item => ({ ...item })), system: { ...SYSTEM } };
   if (!access.initialized) return base;
-  const counts = results(await db.prepare('SELECT kind,status,COUNT(*) AS count FROM admin_records GROUP BY kind,status').all());
+  const counts = results(await db.prepare("SELECT kind,status,COUNT(*) AS count FROM admin_records WHERE kind <> 'ledger' AND NOT (kind='reviews' AND (type='integration' OR segment='integration')) GROUP BY kind,status").all());
   for (const row of counts) {
     if (row.kind === 'users') { base.overview.users += row.count; if (row.status === 'restricted') base.overview.restrictedUsers += row.count; }
     if (row.kind === 'groups') base.overview.groups += row.count;
@@ -86,6 +88,7 @@ export async function listRecords(db, user, input = {}) {
   await authorizeAdmin(db, user);
   const kind = kindOf(input.kind), page = positiveInteger(input.page, 1, 100000), pageSize = positiveInteger(input.pageSize, 20, 100), q = searchText(input.q);
   const predicates = ['kind=?'], bindings = [kind];
+  if (kind === 'reviews') { if (input.segment === 'integration') retired(); predicates.push("type <> 'integration' AND segment <> 'integration'"); }
   if (input.status && input.status !== 'all') { if (!STATUSES[kind].includes(input.status)) fail(400, 'INVALID_STATUS', '状态筛选无效。'); predicates.push('status=?'); bindings.push(input.status); }
   if (input.segment && input.segment !== 'all') { if (typeof input.segment !== 'string' || !/^[a-z][a-z0-9_-]{0,49}$/.test(input.segment)) fail(400, 'INVALID_SEGMENT', '分组筛选无效。'); predicates.push('segment=?'); bindings.push(input.segment); }
   if (q) { predicates.push("(id LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\' OR subtitle LIKE ? ESCAPE '\\')"); bindings.push(like(q), like(q), like(q)); }
@@ -97,6 +100,7 @@ export async function getRecord(db, user, kind, id) {
   await authorizeAdmin(db, user); kindOf(kind); idOf(id);
   const row = await db.prepare('SELECT * FROM admin_records WHERE kind=? AND id=?').bind(kind, id).first();
   if (!row) fail(404, 'NOT_FOUND', '没有找到这条测试记录。');
+  if (retiredRecord(row)) retired();
   return recordItem(row);
 }
 function validateAction(body) {
@@ -118,10 +122,11 @@ function replay(audit, actor, fingerprint) {
 export async function applyAction(db, user, body) {
   const { actor } = await authorizeAdmin(db, user), input = validateAction(body);
   const fingerprint = JSON.stringify([actor.id, input.kind, input.id, input.action, input.reason, input.version]);
-  let previous = await db.prepare('SELECT * FROM admin_audit WHERE request_id=?').bind(input.requestId).first();
-  if (previous) return replay(previous, actor, fingerprint);
   const row = await db.prepare('SELECT * FROM admin_records WHERE kind=? AND id=?').bind(input.kind, input.id).first();
   if (!row) fail(404, 'NOT_FOUND', '没有找到这条测试记录。');
+  if (retiredRecord(row)) retired();
+  let previous = await db.prepare('SELECT * FROM admin_audit WHERE request_id=?').bind(input.requestId).first();
+  if (previous) return replay(previous, actor, fingerprint);
   if (row.version !== input.version) fail(409, 'VERSION_CONFLICT', '记录已被其他操作更新，请刷新后重新确认。');
   const [fromStatus, toStatus] = TRANSITIONS[input.kind][input.action];
   if (row.status !== fromStatus) fail(409, 'STATUS_CONFLICT', '当前状态不支持此操作，请刷新记录。');
