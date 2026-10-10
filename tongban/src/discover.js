@@ -1,3 +1,4 @@
+import { createPeopleFeature } from './live-people.js';
 import './discover.css';
 import { saveJsonFile } from './native-runtime.js';
 import './discover-v5.css';
@@ -35,7 +36,7 @@ const paths = {
 };
 const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.spark}"/></svg>`;
 const names = { provider:'服务预约意向', ai:'AI 工作草稿', bounty:'悬赏任务草稿', token:'发币草稿', integration:'余额接入申请', business:'商务需求' };
-const routes = new Set(['hub','services','moments','rank','provider','ai','bounty','token','integration','business','drafts','token-projects']);
+const routes = new Set(['people','hub','services','moments','rank','provider','ai','bounty','token','integration','business','drafts','token-projects']);
 const draftStatus = type => type === 'token' ? '未部署' : type === 'bounty' ? '未发布' : '未提交';
 const draftTime = draft => draft.updatedAt || draft.createdAt;
 const draftTitle = draft => draft.values.title || draft.values.name || names[draft.type];
@@ -234,6 +235,7 @@ export function mountDiscover(container, options = {}) {
 
   const moments=createLiveMomentsFeature({service:options.socialClient||options.service,onAccount:options.onAccount,getLegacyDrafts:()=>data.posts.filter(post=>post.authorId==='me'),showDialog,closeDialog,toast,render,onSaved:()=>go('moments')});
   const shared={socialClient:options.socialClient||options.service,onAccount:options.onAccount,getDraft:latestDraft,getDraftMeta,getDraftKey:type=>getDraftMeta(type)?.id||`new:${type}:${newDraftRevisions[type]||0}`,getDrafts:activeDrafts,saveDraft,showDialog,closeDialog,toast,go,onBalance,render};
+  const newPeople=createPeopleFeature({service:options.socialClient||options.service,onAccount:options.onAccount,render,toast});
   const community=createCommunityFeature({...shared,container,onNavigate,onBountyPayment:options.onBountyPayment});
   const workbench=createDiscoveryWorkbench({...shared,validateDraft:validateServiceDraft});
   const tokenStudio=createTokenStudio({...shared,validateToken:validateTokenDraft,validateService:validateServiceDraft,getWalletAddress});
@@ -292,7 +294,7 @@ export function mountDiscover(container, options = {}) {
     return `<div class="disc-home-top"><div><h2>发现</h2><p class="disc-home-subtitle">和熟悉的人，分享与协作</p></div>${button(`${icon('plus')} 发动态`,'compose','disc-record')}</div>
       <section class="disc-circle-panel disc-simple-circle" aria-label="朋友圈入口"><button type="button" class="disc-circle-entry" data-disc="moments"><span class="disc-circle-symbol">${icon('moment')}</span><span><strong>朋友圈</strong><small>朋友的近况，自己的生活</small></span>${icon('arrow')}</button>
       </section>
-      <section class="disc-work-list disc-simple-entries" aria-label="发现功能">${[['bounty','flag','赏金论坛','发布需求、合作与交付'],['provider','shield','服务商','业务服务与云基础设施'],['rank','rank','排行榜','隐私优先，按需展示'],['token','rocket','趣味币发行','测试申请 · 待配置']].map(([route,ico,label,copy])=>`<button class="disc-work-row" type="button" data-disc="${route}"><span class="disc-work-icon purple">${icon(ico)}</span><span><strong>${label}</strong><small>${copy}</small></span>${icon('arrow')}</button>`).join('')}<button class="disc-work-row" type="button" data-disc="ai"><span class="disc-work-icon purple">${icon('ai')}</span><span><strong>AI 工作台</strong><small>本地安装 · 云端使用</small></span>${icon('arrow')}</button><button class="disc-work-row" type="button" data-disc="drafts"><span class="disc-work-icon blue">${icon('file')}</span><span><strong>本机草稿</strong><small>继续编辑、导出或归档</small></span>${icon('arrow')}</button></section>
+      <section class="disc-work-list disc-simple-entries" aria-label="发现功能">${[['people','moment','认识新朋友','自愿公开 · 先申请再聊天'],['bounty','flag','赏金论坛','发布需求、合作与交付'],['provider','shield','服务商','业务服务与云基础设施'],['rank','rank','排行榜','隐私优先，按需展示'],['token','rocket','趣味币发行','测试申请 · 待配置']].map(([route,ico,label,copy])=>`<button class="disc-work-row" type="button" data-disc="${route}"><span class="disc-work-icon purple">${icon(ico)}</span><span><strong>${label}</strong><small>${copy}</small></span>${icon('arrow')}</button>`).join('')}<button class="disc-work-row" type="button" data-disc="open-workbench"><span class="disc-work-icon purple">${icon('ai')}</span><span><strong>AI 工作台</strong><small>本地安装 · 云端使用</small></span>${icon('arrow')}</button><button class="disc-work-row" type="button" data-disc="drafts"><span class="disc-work-icon blue">${icon('file')}</span><span><strong>本机草稿</strong><small>继续编辑、导出或归档</small></span>${icon('arrow')}</button></section>
       ${draft?`<section class="disc-resume-section disc-compact-resume" aria-label="继续草稿"><div class="disc-section-head"><h3>上次未完成</h3>${button('全部草稿','drafts','disc-text')}</div><button type="button" class="disc-resume-card" data-disc="edit-draft" data-id="${esc(draft.id)}"><span class="disc-resume-icon">${icon('file')}</span><span><small>${names[draft.type]} · ${draftStatus(draft.type)}</small><strong>${esc(draftTitle(draft))}</strong></span>${icon('arrow')}</button></section>`:''}
       `;
   }
@@ -325,10 +327,11 @@ export function mountDiscover(container, options = {}) {
     if (dead) return;
     container.classList.add('disc-root');
     community.routeChanged?.(editingLocalDraft?'drafts':view);
+    newPeople.routeChanged(view);
     workbench.routeChanged?.(view);
     moments.routeChanged?.(view,{ownOnly:ownMoments});
     me();
-    const renderers={hub:renderHub,services:renderServices,moments:renderMoments,rank:()=>community.render('rank'),provider:()=>editingLocalDraft?renderProvider():community.render('provider'),ai:renderAI,bounty:()=>editingLocalDraft?renderBounty():community.render('bounty'),token:()=>editingLocalDraft?renderToken():community.render('token'),integration:renderIntegration,business:renderBusiness,drafts:renderDrafts,'token-projects':renderTokenProjects};
+    const renderers={people:()=>header('认识新朋友')+newPeople.render(),hub:renderHub,services:renderServices,moments:renderMoments,rank:()=>community.render('rank'),provider:()=>editingLocalDraft?renderProvider():community.render('provider'),ai:renderAI,bounty:()=>editingLocalDraft?renderBounty():community.render('bounty'),token:()=>editingLocalDraft?renderToken():community.render('token'),integration:renderIntegration,business:renderBusiness,drafts:renderDrafts,'token-projects':renderTokenProjects};
     const content=(renderers[view] || renderHub)();
     container.innerHTML = `${[storageError,profileError].filter(Boolean).map(message=>`<p class="disc-error" role="alert">${esc(message)}</p>`).join('')}${content}`;
   }
@@ -357,7 +360,8 @@ export function mountDiscover(container, options = {}) {
     const action=target.dataset.disc;
     if(savedType){savedType='';container.querySelector('.disc-saved')?.remove()}
     try {
-      if(community.handleAction(action,target)||moments.handleAction(action,target)||workbench.handleAction(action,target)||tokenStudio.handleAction(action,target))return;
+      if(action==='open-workbench'){onNavigate('workbench');return;}
+      if(newPeople.handleAction(action,target)||community.handleAction(action,target)||moments.handleAction(action,target)||workbench.handleAction(action,target)||tokenStudio.handleAction(action,target))return;
       if(routes.has(action)){go(action);return;}
       if(action==='my-moments'){go('moments',{ownOnly:true});return;}
       if(action==='moment-filter'){ownMoments=target.dataset.filter==='mine';render();return;}
@@ -394,7 +398,7 @@ export function mountDiscover(container, options = {}) {
     } catch(error) { const errorBox=dialog?.querySelector('.disc-form-error') || container.querySelector('.disc-form-error');if(errorBox)errorBox.textContent=error.message;else toast(error.message); }
   }
   function handleSubmit(event) {
-    if(workbench.handleSubmit(event)||tokenStudio.handleSubmit(event))return;
+    if(newPeople.handleSubmit(event)||workbench.handleSubmit(event)||tokenStudio.handleSubmit(event))return;
     const form=event.target.closest('[data-form]');if(!form)return;
     event.preventDefault();
     const type=form.dataset.form;
@@ -406,13 +410,13 @@ export function mountDiscover(container, options = {}) {
       saveDraft(type,values);
     } catch(error) { form.querySelector('.disc-form-error').textContent=error.message; }
   }
-  function handleInput(event){if(community.handleInput(event))return;if(savedType&&Object.hasOwn(names,view)){savedType='';container.querySelector('.disc-saved')?.remove()}moments.handleInput?.(event);workbench.handleInput?.(event);tokenStudio.handleInput?.(event);if(event.target.matches?.('[data-draft-search]')){draftQuery=event.target.value;renderDraftResults()}if(event.target.matches?.('[data-rank-search]')){rankQuery=event.target.value;renderRankResults()}}
+  function handleInput(event){newPeople.handleInput(event);if(community.handleInput(event))return;if(savedType&&Object.hasOwn(names,view)){savedType='';container.querySelector('.disc-saved')?.remove()}moments.handleInput?.(event);workbench.handleInput?.(event);tokenStudio.handleInput?.(event);if(event.target.matches?.('[data-draft-search]')){draftQuery=event.target.value;renderDraftResults()}if(event.target.matches?.('[data-rank-search]')){rankQuery=event.target.value;renderRankResults()}}
   container.addEventListener('input',handleInput);container.addEventListener('change',handleInput);
   container.addEventListener('click',handleClick);
   container.addEventListener('submit',handleSubmit);
   render();
   onRouteChange(view);
-  const cleanup = () => { dead=true;community.cleanup();moments.cleanup?.();workbench.cleanup?.();tokenStudio.cleanup?.();closeDialog();container.removeEventListener('input',handleInput);container.removeEventListener('change',handleInput);container.removeEventListener('click',handleClick);container.removeEventListener('submit',handleSubmit);container.classList.remove('disc-root'); };
+  const cleanup = () => { dead=true;newPeople.cleanup();community.cleanup();moments.cleanup?.();workbench.cleanup?.();tokenStudio.cleanup?.();closeDialog();container.removeEventListener('input',handleInput);container.removeEventListener('change',handleInput);container.removeEventListener('click',handleClick);container.removeEventListener('submit',handleSubmit);container.classList.remove('disc-root'); };
   cleanup.back = () => { if(dialog){closeDialog();return true} if(view!=='hub'){go('hub');return true} return false; };
   return cleanup;
 }

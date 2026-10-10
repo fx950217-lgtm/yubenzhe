@@ -221,7 +221,7 @@ test('draft navigation and filters use actual entries and notify route changes',
 
 test('discovery restores actual community routes and preserves moments and local drafts without sample facts',t=>{
   const app=mountHarness(t),markup=app.container.innerHTML;
-  assert.match(markup,/data-disc="moments"/);assert.match(markup,/data-disc="ai"/);assert.match(markup,/data-disc="drafts"/);
+  assert.match(markup,/data-disc="moments"/);assert.match(markup,/data-disc="open-workbench"/);assert.match(markup,/data-disc="people"/);assert.match(markup,/data-disc="drafts"/);
   for(const route of ['bounty','provider','rank','token'])assert.ok(markup.includes('data-disc="'+route+'"'));
   assert.doesNotMatch(markup,/示例榜单|示例目录|示例 USDT|disc-resume-section|disc-friend-stack/);
   app.click('drafts');assert.deepEqual(app.seen,['hub','drafts']);

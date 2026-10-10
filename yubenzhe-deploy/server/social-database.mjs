@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync,mkdirSync,chmodSync } from 'node:fs';
 import { dirname,resolve } from 'node:path';
 import { createHash } from 'node:crypto';
-const MIGRATIONS=['003-social.sql','004-social-safety.sql','005-account-security.sql','006-social-moments.sql','007-social-notifications.sql','008-account-access.sql','009-platform-assets.sql','010-community.sql','011-workbench.sql'];
+const MIGRATIONS=['003-social.sql','004-social-safety.sql','005-account-security.sql','006-social-moments.sql','007-social-notifications.sql','008-account-access.sql','009-platform-assets.sql','010-community.sql','011-workbench.sql','012-workbench-experience.sql','013-social-experience.sql'];
 export function openSocialDatabase(filename) {
  if(!filename)throw new Error('SOCIAL_DATABASE_PATH is required.');
  if(filename!==':memory:')mkdirSync(dirname(resolve(filename)),{recursive:true,mode:0o700});

@@ -31,7 +31,7 @@ test('leaving the workbench while a file is read prevents upload and late DOM re
 });
 
 test('back from task details discards a delayed polling response instead of reopening the task',async t=>{
- const late=deferred();let details=0;const h=harness(t,{request:async(path,options,fallback)=>path==='workbench/tasks/'+task().id&&++details===2?late.promise:fallback(path,options)});await tick();await h.click('open',task().id);assert.match(h.root.innerHTML,/成果文件/);h.poll();await tick();assert.equal(details,2);await h.click('back');assert.match(h.root.innerHTML,/新建文件任务/);late.resolve({task:task({title:'STALE_DETAIL_MUST_NOT_RETURN'})});await tick();assert.match(h.root.innerHTML,/新建文件任务/);assert.doesNotMatch(h.root.innerHTML,/STALE_DETAIL_MUST_NOT_RETURN|成果文件/);
+ const late=deferred();let details=0;const h=harness(t,{request:async(path,options,fallback)=>path==='workbench/tasks/'+task().id&&++details===2?late.promise:fallback(path,options)});await tick();await h.click('open',task().id);assert.match(h.root.innerHTML,/成果文件/);h.poll();await tick();assert.equal(details,2);await h.click('back');assert.match(h.root.innerHTML,/我的任务/);late.resolve({task:task({title:'STALE_DETAIL_MUST_NOT_RETURN'})});await tick();assert.match(h.root.innerHTML,/我的任务/);assert.doesNotMatch(h.root.innerHTML,/STALE_DETAIL_MUST_NOT_RETURN|成果文件/);
 });
 
 test('an upload response after unmount does not query files or mutate a replacement page',async t=>{
@@ -39,5 +39,5 @@ test('an upload response after unmount does not query files or mutate a replacem
 });
 
 test('pending task open blocks local navigation until its guarded response resolves',async t=>{
- const opened=deferred(),h=harness(t,{request:async(path,options,fallback)=>path==='workbench/tasks/'+task().id?opened.promise:fallback(path,options)});await tick();const opening=h.click('open',task().id);await h.click('back');assert.equal(h.buttons.every(b=>b.disabled),true);opened.resolve({task:task()});await opening;assert.match(h.root.innerHTML,/成果文件/);await h.click('back');assert.match(h.root.innerHTML,/新建文件任务/);
+ const opened=deferred(),h=harness(t,{request:async(path,options,fallback)=>path==='workbench/tasks/'+task().id?opened.promise:fallback(path,options)});await tick();const opening=h.click('open',task().id);await h.click('back');assert.equal(h.buttons.every(b=>b.disabled),true);opened.resolve({task:task()});await opening;assert.match(h.root.innerHTML,/成果文件/);await h.click('back');assert.match(h.root.innerHTML,/我的任务/);
 });

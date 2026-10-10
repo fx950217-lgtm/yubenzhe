@@ -78,7 +78,7 @@ test('web installation entry navigates while the installed app omits it and hand
 test('personal center labels local identity and forwards drafts and bills without duplicate moments', () => {
   const app = harness();
   assert.match(app.container.innerHTML, /本机资料/);
-  assert.match(app.container.innerHTML, /愚笨者 · 0.14.0-dev.1/);
+  assert.match(app.container.innerHTML, /愚笨者 · 0.14.0-dev.2/);
   assert.match(app.container.innerHTML, /<small>3 份<\/small>/);
   assert.doesNotMatch(app.container.innerHTML, /data-mine-action="moments"/);
   app.click('drafts'); app.click('bill-center'); app.click('ai');
@@ -154,7 +154,7 @@ test('wallet management acts on the wallet while orders and help do not invent l
   assert.deepEqual(app.calls, [['navigate', 'wallet'], ['action', 'unlock'], ['action', 'export']]);
   app.click('orders');
   assert.match(app.container.innerHTML, /没有真实订单/);
-  assert.match(app.container.innerHTML, /草稿不会自动成为订单/);
+  assert.match(app.container.innerHTML, /申请和任务完成不代表已经付款/);
   app.click('help');
   assert.match(app.container.innerHTML, /提交反馈/);
   assert.match(app.container.innerHTML, /运营人员查看处理/);
@@ -206,7 +206,7 @@ test('assets are the first home destination and route to the existing wallet wit
   const wallet = { exists: true, address: '0x1111111111111111111111111111111111111111', unlocked: false };
   Object.defineProperty(wallet, 'balance', { get() { throw new Error('home must not read balances'); } });
   const app = harness({ wallet }), html = app.container.innerHTML;
-  assert.match(html, /我的资产/); assert.match(html, /钱包与平台余额/); assert.match(html, /钱包已创建/);
+  assert.match(html, /我的资产/); assert.match(html, /平台资产 · 链上钱包/); assert.match(html, /钱包已创建/);
   const order = ['wallet', 'drafts', 'bill-center', 'security', 'help'].map(action => html.indexOf(`data-mine-action="${action}"`));
   assert.ok(order.every((position, i) => position >= 0 && (i === 0 || position > order[i - 1])));
   assert.doesNotMatch(html, /data-mine-action="orders"|服务订单|0\.00|tBNB|USDT|0x1111111111111111111111111111111111111111/);

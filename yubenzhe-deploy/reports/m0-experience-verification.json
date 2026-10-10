@@ -1,0 +1,206 @@
+{
+  "version": "0.14.0-dev.2",
+  "date": "2026-10-10",
+  "scope": "Loopback local M0 only; no public deployment, native update, external model call or real funds",
+  "requirements": {
+    "chatTitle": "愚笨需求",
+    "userMessagesRead": 2,
+    "file": "docs/requirements-v0.1.txt"
+  },
+  "automated": {
+    "frontend": {
+      "passed": 357,
+      "failed": 0
+    },
+    "backend": {
+      "passed": 207,
+      "failed": 0
+    },
+    "build": true
+  },
+  "rootBrowser": {
+    "environment": "Chromium on Windows, real localhost HTTP, synthetic accounts and virtual CTAP2, random empty test wallet",
+    "checks": [
+      {
+        "flow": "goal_without_attachment_plan",
+        "passed": true
+      },
+      {
+        "flow": "task_actual_output_download",
+        "passed": true,
+        "bytes": 571
+      },
+      {
+        "flow": "unconfigured_goal_does_not_execute",
+        "passed": true
+      },
+      {
+        "flow": "missing_file_recovered_without_losing_goal",
+        "passed": true
+      },
+      {
+        "flow": "csv_deduplicated_actual_rows",
+        "passed": true,
+        "content": "\"订单\",\"金额\"\n\"A\",\"12\"\n\"B\",\"15\""
+      },
+      {
+        "flow": "paused_task_replans_and_requires_confirmation",
+        "passed": true
+      },
+      {
+        "flow": "wallet_cancel_keeps_transfer_amount",
+        "passed": true
+      },
+      {
+        "flow": "import_wallet_resumes_original_amount_and_binding",
+        "passed": true
+      },
+      {
+        "flow": "sim_withdraw_authorized_and_pending",
+        "passed": true
+      },
+      {
+        "flow": "sim_withdraw_cancel_before_broadcast",
+        "passed": true
+      },
+      {
+        "flow": "specific_checklist_items",
+        "passed": true
+      },
+      {
+        "flow": "new_task_starts_without_previous_goal_or_attachments",
+        "passed": true
+      },
+      {
+        "flow": "cancelled_withdrawal_restores_available_balance",
+        "passed": true
+      }
+    ],
+    "layouts": [
+      {
+        "width": 320,
+        "page": "workbench",
+        "content": 320,
+        "overflow": false
+      },
+      {
+        "width": 320,
+        "page": "mine/assets",
+        "content": 320,
+        "overflow": false
+      },
+      {
+        "width": 320,
+        "page": "discover",
+        "content": 320,
+        "overflow": false
+      },
+      {
+        "width": 390,
+        "page": "workbench",
+        "content": 390,
+        "overflow": false
+      },
+      {
+        "width": 390,
+        "page": "mine/assets",
+        "content": 390,
+        "overflow": false
+      },
+      {
+        "width": 390,
+        "page": "discover",
+        "content": 390,
+        "overflow": false
+      },
+      {
+        "width": 1280,
+        "page": "workbench",
+        "content": 1280,
+        "overflow": false
+      },
+      {
+        "width": 1280,
+        "page": "mine/assets",
+        "content": 1280,
+        "overflow": false
+      },
+      {
+        "width": 1280,
+        "page": "discover",
+        "content": 1280,
+        "overflow": false
+      }
+    ],
+    "pageErrors": []
+  },
+  "socialBrowser": {
+    "scope": "Isolated loopback database, four synthetic accounts, real HTTP and rendered UI",
+    "checks": [
+      {
+        "name": "opt-in recommendation and explicit greeting UI persist without automatic contact",
+        "pass": true
+      },
+      {
+        "name": "friend acceptance unlocks real chat and quoted reply submits and renders",
+        "pass": true
+      },
+      {
+        "name": "three-item menu, group creation and owner administrator assignment work through UI",
+        "pass": true
+      },
+      {
+        "name": "member invitation is pending and administrator approval admits the new member",
+        "pass": true
+      },
+      {
+        "name": "administrator mute blocks a real UI send and 320px group management has no overflow",
+        "pass": true
+      },
+      {
+        "name": "320px discovery remains usable and AI home entry navigates to the task workbench",
+        "pass": true
+      }
+    ],
+    "pass": true
+  },
+  "assetsComponentBrowser": {
+    "ok": true,
+    "checks": 12,
+    "scenarios": [
+      "home shows platform currency balances, no management form or mixed chain total",
+      "stable all uses total debit and fee/net review with readonly destination",
+      "uncertain order has no retry payment or cancel/refund action",
+      "bill history includes exact signed gift movement without raw status codes",
+      "fun all cannot proceed without separate fee currency",
+      "fun amount intact with explicit fee in separate asset",
+      "security then wallet creation then ownership resumes original deposit amount",
+      "cancelled wallet setup preserves amount and submits no transfer",
+      "closed page cannot bind or transfer after delayed wallet callback",
+      "management deletion stays two-stage and retry keeps platform balance",
+      "different server and local addresses require additional consent",
+      "320/390/1280 home and readonly-address review have no horizontal overflow"
+    ],
+    "pageErrors": [],
+    "mode": "real Chromium, isolated synthetic API and public addresses; no broadcast"
+  },
+  "limits": [
+    "Rules/templates/file parser only, no general language model or live desktop",
+    "SIM only; no real chain broadcasting",
+    "No Windows Hello, native phone or production Linux verification this round",
+    "No full English UI, invite links or dedicated group dissolution flow"
+  ],
+  "health": {
+    "ok": true,
+    "service": "frontend",
+    "version": "0.14.0-dev.2",
+    "stage": "public-preview"
+  },
+  "originalManifestPreserved": true,
+  "sourceChecks": {
+    "allowChanges": true,
+    "missingFiles": 0,
+    "problems": 0,
+    "diffCheck": true
+  }
+}

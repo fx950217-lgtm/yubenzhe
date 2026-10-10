@@ -1,4 +1,4 @@
-愚笨者 0.14.0-dev.1 本地测试运行说明
+愚笨者 0.14.0-dev.2 本地测试运行说明
 日期：2026-10-10
 
 范围
@@ -21,7 +21,7 @@
 浏览器会请求 Windows Hello 或安全密钥；自动验收使用虚拟 CTAP2 验证器，未代替真实设备验证。
 账号恢复码与钱包助记词是两套独立数据。助记词、私钥和解锁密码不上传服务端。
 发现可进入朋友圈、赏金论坛、服务商、排行榜、趣味币发行申请和本机草稿。
-工作台上传 CSV / TXT / MD / JSON，单文件不超过 256 KiB，单任务最多 5 文件。确认预算后实际解析并提供下载。
+工作台先填写目标并生成计划，再单独确认预算。清单/大纲/任务草稿可不带附件；文件整理支持 CSV / TXT / MD / JSON，单文件不超过 256 KiB，每次最多 5 文件。暂停可补充要求并重新确认；成果可预览下载，保留 30 天并在到期前 7/1 天提醒。
 无真实模型/远程桌面，能力页明确显示不可用；本地整理不代表通用 AI 自动操作。
 
 测试资产注入（仅操作者命令，不向普通用户开放）
@@ -41,7 +41,7 @@ M0_SIMULATION 默认关闭。dev:m0 显式打开且强制 BIND_HOST=127.0.0.1 / 
 停止服务后备份整个 yubenzhe-m0-state 可保留本地记录；不应将其覆盖到线上库。
 
 迁移
-social 数据库新增 008-account-access、009-platform-assets、010-community、011-workbench。
+social 数据库新增 008-account-access、009-platform-assets、010-community、011-workbench、012-workbench-experience、013-social-experience。
 迁移按校验和执行，旧迁移不修改。现有生产 frontend/admin 均可写库；未来升级应按原部署说明停两个写入者、备份并隔离恢复，再迁移。
 本地启动仅创建/打开隔离测试库，不触碰线上数据。不要把迁移后的库交给旧版镜像。
 
@@ -59,6 +59,9 @@ gifts；gifts/<id>；gifts/<id>/claim：建立、记录、领取，24 小时截�
 community/capabilities、identity、activity、preferences、rankings：等级、认证、隐私及榜单。
 community/bounties：赏金列表/发布；条目详情下申请、选人、确认、交付、结束、取消、评论与评价。
 community/providers、tokens、reports：服务商申请、发币申请、举报与本人处理记录。
+workbench/catalog、plan、retention；files/<id>/details：规则计划、真实能力、到期提醒和安全纯文本预览；tasks/<id>/instructions 修改同任务需重新确认。
+assets/transfer-options/<assetId>、withdrawals/<id>：精确可转出量与本人订单状态。
+discovery/preferences、people、dismiss、greet：自愿发现和文字招呼。conversations/<id>/role、silence、join-requests、join-respond：群角色、禁言和加入审批；消息支持 replyToId。
 workbench/capabilities、files、estimate、tasks：文件、估算、任务；tasks/<id> 下确认、暂停、恢复、取消、接管、预算申请与确认；files/<id> 为所属用户下载。
 /api/admin/community/* 使用独立管理会话；认证、服务商审核、发行审核、举报与等级规则不在消费者端开放。
 确切请求字段与错误代码以对应 server 模块及 tests 为准。写操作使用 requestId（UUID）和版本/报价；相同键不同载荷拒绝，金额均为十进制整数字符串，不用浮点数计算资金。

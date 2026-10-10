@@ -1,6 +1,6 @@
 import { randomUUID,createHash } from 'node:crypto';
-import { fail } from './social-validation.mjs';
-import { validateFile,processLocalFiles,priceMicro,STEP_COST,PRICE_VERSION,RETENTION_MS } from './workbench-adapters.mjs';
+import { fail,fields,text } from './social-validation.mjs';
+import { validateFile,processLocalFiles,planLocalGoal,localServiceCatalog,priceMicro,STEP_COST,PRICE_VERSION,RETENTION_MS } from './workbench-adapters.mjs';
 const FINAL=new Set(['succeeded','failed','cancelled']);
 const ALLOWED=new Set(['analyze','deduplicate']);
 const uuid=value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
@@ -12,7 +12,15 @@ export function createWorkbenchService({database,socialService,enabled=false,now
  function enabledOrFail(){if(!enabled)fail(503,'WORKBENCH_UNCONFIGURED','文件工作台未配置。当前只有明确启用的本机测试执行器可用。');}
  function ownTask(owner,id){const task=one('SELECT * FROM workbench_tasks WHERE id=? AND owner_id=?',id,owner);if(!task)fail(404,'TASK_NOT_FOUND','任务不存在。');return task;}
  function event(task,eventName,payload={}){run('INSERT INTO workbench_events VALUES(?,?,?,?,?)',randomUUID(),task.id,eventName,JSON.stringify(payload),now());}
- function view(task){return {id:task.id,title:task.title,operation:task.operation,status:task.status,step:task.step,version:task.version,workspaceId:task.workspace_id,workspace:one('SELECT id,state,controller,controller_task_id AS controllerTaskId,version FROM workbench_workspaces WHERE id=?',task.workspace_id),quoteExpiresAt:task.quote_expires_at,estimatedMicro:task.estimated_micro,budgetMicro:task.budget_micro,costMicro:task.cost_micro,reservedMicro:task.reserved_micro,settledMicro:task.settled_micro,releasedMicro:task.released_micro,billingState:task.billing_state,priceVersion:task.price_version,payer:'platform-trial',userChargeMicro:'0',simulation:true,error:task.error_code,createdAt:task.created_at,updatedAt:task.updated_at,outputs:all('SELECT id,name,mime,size,expires_at AS expiresAt FROM workbench_files WHERE task_id=? AND kind=? AND expires_at>?',task.id,'output',now()),events:all('SELECT event,payload,created_at AS createdAt FROM workbench_events WHERE task_id=? ORDER BY created_at,rowid',task.id).map(row=>({...row,payload:JSON.parse(row.payload)})),approvals:all('SELECT id,action,parameters,status,expires_at AS expiresAt,version FROM workbench_approvals WHERE task_id=?',task.id).map(row=>({...row,parameters:JSON.parse(row.parameters)})),invoice:one('SELECT id,cost_micro AS costMicro,total_micro AS totalMicro,user_charge_micro AS userChargeMicro,payer,state FROM workbench_invoices WHERE task_id=?',task.id)||null};}
+ function view(task){return {id:task.id,title:task.title,goal:task.goal,locale:task.locale,planVersion:task.plan_version,plan:task.plan_version?JSON.parse(task.plan_json):null,remainingSteps:Math.max(0,3-task.step),instructions:all('SELECT id,instruction,plan_version AS planVersion,created_at AS createdAt FROM workbench_instructions WHERE task_id=? ORDER BY created_at,rowid',task.id),operation:task.operation,status:task.status,step:task.step,version:task.version,workspaceId:task.workspace_id,workspace:one('SELECT id,state,controller,controller_task_id AS controllerTaskId,version FROM workbench_workspaces WHERE id=?',task.workspace_id),quoteExpiresAt:task.quote_expires_at,estimatedMicro:task.estimated_micro,budgetMicro:task.budget_micro,costMicro:task.cost_micro,reservedMicro:task.reserved_micro,settledMicro:task.settled_micro,releasedMicro:task.released_micro,billingState:task.billing_state,priceVersion:task.price_version,payer:'platform-trial',userChargeMicro:'0',simulation:true,error:task.error_code,createdAt:task.created_at,updatedAt:task.updated_at,outputs:all('SELECT id,name,mime,size,expires_at AS expiresAt FROM workbench_files WHERE task_id=? AND kind=? AND expires_at>?',task.id,'output',now()),events:all('SELECT event,payload,created_at AS createdAt FROM workbench_events WHERE task_id=? ORDER BY created_at,rowid',task.id).map(row=>({...row,payload:JSON.parse(row.payload)})),approvals:all('SELECT id,action,parameters,status,expires_at AS expiresAt,version FROM workbench_approvals WHERE task_id=?',task.id).map(row=>({...row,parameters:JSON.parse(row.parameters)})),invoice:one('SELECT id,cost_micro AS costMicro,total_micro AS totalMicro,user_charge_micro AS userChargeMicro,payer,state FROM workbench_invoices WHERE task_id=?',task.id)||null};}
+ function selectedFiles(owner,ids){if(!Array.isArray(ids)||ids.length>5||ids.some(id=>!uuid(id))||new Set(ids).size!==ids.length)fail(400,'FILE_REQUIRED','请选择最多 5 个不同文件。');return ids.map(id=>{const file=one("SELECT * FROM workbench_files WHERE id=? AND owner_id=? AND kind='input' AND expires_at>?",id,owner,now()+60000);if(!file)fail(404,'FILE_NOT_FOUND','文件不存在或即将过期。');return file;});}
+ function workspace(owner){let ws=one('SELECT * FROM workbench_workspaces WHERE owner_id=?',owner);if(!ws){const id=randomUUID();run('INSERT INTO workbench_workspaces(id,owner_id,state,controller,version,created_at,updated_at) VALUES(?,?,?,?,?,?,?)',id,owner,'ready','ai',1,now(),now());ws={id};}return ws;}
+ function planGoal(goal,files,locale,priorCostMicro='0'){try{return planLocalGoal({goal,files,locale,priorCostMicro});}catch(error){fail(400,'PLAN_INVALID',error.message);}}
+ function newPlan(owner,input){const files=selectedFiles(owner,input.fileIds??[]),goal=text(input.goal,4000,'任务目标',2),locale=input.locale||'zh-CN',plan=planGoal(goal,files,locale);if(plan.status!=='ready')return {plan,task:null};
+  const budget=amount(input.budgetMicro??'100000');if(budget<10000n)fail(400,'BUDGET_TOO_SMALL','测试预算至少 0.01 美元。');
+  if(one("SELECT count(*) n FROM workbench_tasks WHERE owner_id=? AND status NOT IN ('succeeded','failed','cancelled')",owner).n>=20)fail(409,'TASK_QUOTA','请先完成或取消已有任务。');
+  const ws=workspace(owner),id=randomUUID();run('INSERT INTO workbench_tasks(id,owner_id,workspace_id,title,operation,input_ids,status,quote_expires_at,estimated_micro,budget_micro,price_version,created_at,updated_at,goal,locale,plan_json,plan_version) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',id,owner,ws.id,goal.slice(0,200),plan.operation,JSON.stringify(files.map(f=>f.id)),'awaiting-confirmation',now()+60000,plan.estimatedMicro,budget.toString(),PRICE_VERSION,now(),now(),goal,locale,JSON.stringify(plan),1);event({id},'planned',{planner:plan.planner,planVersion:1,steps:plan.steps,estimatedSeconds:plan.estimatedSeconds});return {plan,task:view(ownTask(owner,id))};
+ }
  function command(owner,path,input,fn){if(!uuid(input.requestId))fail(400,'REQUEST_ID_REQUIRED','请保留同一个操作标识重试。');const signature=digest(JSON.stringify({path,input:{...input,requestId:undefined}}));return transaction(()=>{const old=one('SELECT * FROM workbench_commands WHERE owner_id=? AND request_id=?',owner,input.requestId);if(old){if(old.signature!==signature)fail(409,'IDEMPOTENCY_CONFLICT','同一操作标识的内容不能改变。');return JSON.parse(old.response);}const result=fn();run('INSERT INTO workbench_commands VALUES(?,?,?,?,?)',owner,input.requestId,signature,JSON.stringify(result),now());return result;});}
  function update(task,status,extras={}){run('UPDATE workbench_tasks SET status=?,version=version+1,updated_at=? WHERE id=?',status,now(),task.id);event(task,status,extras);}
  function settle(task,status,error=null){
@@ -32,7 +40,7 @@ export function createWorkbenchService({database,socialService,enabled=false,now
   if(!other)run("UPDATE workbench_workspaces SET state='suspended',version=version+1,updated_at=? WHERE id=?",now(),task.workspace_id);
  }
  function validateVersion(task,input){if(!Number.isInteger(input.version)||task.version!==input.version)fail(409,'TASK_CHANGED','任务已在另一设备更新，请刷新后重试。');}
- function pending(owner){return all("SELECT id,status,billing_state FROM workbench_tasks WHERE owner_id=? AND status NOT IN ('succeeded','failed','cancelled','awaiting-confirmation')",owner).map(row=>({type:'file-task',id:row.id,status:row.status}));}
+ function pending(owner){return all("SELECT id,status,billing_state FROM workbench_tasks WHERE owner_id=? AND (status NOT IN ('succeeded','failed','cancelled','awaiting-confirmation') OR (status='awaiting-confirmation' AND (reserved_micro<>'0' OR cost_micro<>'0')))",owner).map(row=>({type:'file-task',id:row.id,status:row.status}));}
  function recordUsage(task,eventKey,cost){
   if(FINAL.has(task.status)||task.status!=='running')return false;
   const existing=one('SELECT cost_micro FROM workbench_usage WHERE task_id=? AND event_key=?',task.id,eventKey);
@@ -46,7 +54,7 @@ export function createWorkbenchService({database,socialService,enabled=false,now
   transaction(()=>{
    run('DELETE FROM workbench_files WHERE expires_at<=?',now());
    const stale=all("SELECT * FROM workbench_tasks WHERE status='awaiting-confirmation' AND quote_expires_at<=?",now());
-   for(const task of stale){run("UPDATE workbench_tasks SET status='cancelled',billing_state='settled',version=version+1,updated_at=? WHERE id=?",now(),task.id);event(task,'quote-expired');}
+   for(const task of stale){if(BigInt(task.reserved_micro)>0n||BigInt(task.cost_micro)>0n)settle(task,'cancelled');else run("UPDATE workbench_tasks SET status='cancelled',billing_state='settled',version=version+1,updated_at=? WHERE id=?",now(),task.id);event(task,'quote-expired');}
    run("UPDATE workbench_approvals SET status='expired' WHERE status='pending' AND expires_at<=?",now());
    const owners=all("SELECT DISTINCT owner_id FROM workbench_tasks WHERE status IN ('queued','running')");
    for(const {owner_id:owner} of owners){
@@ -62,11 +70,12 @@ export function createWorkbenchService({database,socialService,enabled=false,now
      if(task.step===2){
       const ids=JSON.parse(task.input_ids);const files=ids.map(id=>one("SELECT * FROM workbench_files WHERE id=? AND owner_id=? AND kind='input' AND expires_at>?",id,owner,now()));
       if(files.some(file=>!file))throw new Error('Input expired');
-      const outputs=processor(files,task.operation);
+      const outputs=processor(files,task.operation,{goal:task.goal,locale:task.locale,plan:task.plan_version?JSON.parse(task.plan_json):null});
       if(!Array.isArray(outputs)||!outputs.length)throw new Error('No artifact');
-      for(const output of outputs){if(!Buffer.isBuffer(output.content)||output.content.length>1024*1024)throw new Error('Output size');run('INSERT INTO workbench_files VALUES(?,?,?,?,?,?,?,?,?,?,?)',randomUUID(),owner,task.id,output.name,output.mime,output.content,digest(output.content),output.content.length,'output',now(),now()+RETENTION_MS);}
+      const quota=one('SELECT count(*) n,coalesce(sum(size),0) bytes FROM workbench_files WHERE owner_id=? AND expires_at>?',owner,now());if(quota.n+outputs.length>200||quota.bytes+outputs.reduce((n,f)=>n+(f.content?.length||0),0)>10*1024*1024)throw new Error('Output quota');
+      for(const output of outputs){if(!Buffer.isBuffer(output.content)||!output.content.length||output.content.length>1024*1024||typeof output.name!=='string'||output.name.length>150||/[\\/\x00-\x1f]/.test(output.name)||!['text/plain; charset=utf-8','text/csv; charset=utf-8','text/markdown; charset=utf-8','application/json; charset=utf-8'].includes(output.mime))throw new Error('Output invalid');run('INSERT INTO workbench_files VALUES(?,?,?,?,?,?,?,?,?,?,?)',randomUUID(),owner,task.id,output.name,output.mime,output.content,digest(output.content),output.content.length,'output',now(),now()+RETENTION_MS);}
      }
-     recordUsage(task,'local-step-'+task.step,STEP_COST);
+     recordUsage(task,(task.plan_version?'plan-'+task.plan_version+'-':'')+'local-step-'+task.step,STEP_COST);
      const fresh=ownTask(owner,task.id);if(fresh.step>=3)settle(fresh,'succeeded');
     }catch(error){
      run("DELETE FROM workbench_files WHERE task_id=? AND kind='output'",task.id);settle(ownTask(owner,task.id),'failed','FILE_PROCESSING_FAILED');
@@ -80,18 +89,24 @@ export function createWorkbenchService({database,socialService,enabled=false,now
   if(!path.startsWith('workbench/'))return undefined;
   const account=socialService.assertAIAccess(token,{write:method==='POST'}),owner=account.id;
   const route=path.slice('workbench/'.length);
-  if(method==='GET'&&route==='capabilities')return {enabled,simulation:true,executor:'local-file-parser',models:[],desktop:{available:false,reason:'尚未配置真实云桌面服务商'},operations:[{id:'analyze',label:'文件统计与格式整理'},{id:'deduplicate',label:'去重并生成报告'}],priceVersion:PRICE_VERSION,payer:'platform-trial',maxBudgetMicro:'1000000',fileLimit:262144,retentionDays:30,marginBasisPoints:3000,notice:'本机文件测试执行器；未连接语言模型、云桌面或真实支付。'};
+  if(method==='GET'&&route==='capabilities')return {enabled,simulation:true,executor:'local-file-parser',planner:'local-rules',goalPlanning:enabled,models:[],desktop:{available:false,reason:'尚未配置真实云桌面服务商'},operations:[{id:'task-draft',label:'任务草稿'},{id:'checklist',label:'待办清单'},{id:'outline',label:'文章大纲'},{id:'analyze',label:'文件统计与格式整理'},{id:'deduplicate',label:'去重并生成报告'},{id:'format-json',label:'JSON 格式化'}],priceVersion:PRICE_VERSION,payer:'platform-trial',maxBudgetMicro:'1000000',fileLimit:262144,retentionDays:30,retentionReminderDays:[7,1],marginBasisPoints:3000,notice:'本地规则式计划与文件工具；未连接语言模型、云桌面或真实支付。'};
+  if(method==='GET'&&route==='catalog')return localServiceCatalog(enabled);
   enabledOrFail();
+  if(method==='POST'&&route==='plan'){fields(input,['requestId','goal','fileIds','locale','budgetMicro']);return command(owner,route,input,()=>newPlan(owner,input));}
+  if(method==='GET'&&route==='retention'){const checkedAt=now();return {checkedAt,reminders:all("SELECT id,name,task_id,expires_at FROM workbench_files WHERE owner_id=? AND kind='output' AND expires_at>? AND expires_at<=? ORDER BY expires_at,id LIMIT 200",owner,checkedAt,checkedAt+7*86400000).map(f=>{const thresholdDays=f.expires_at-checkedAt<=86400000?1:7;return {id:f.id+':'+thresholdDays,fileId:f.id,taskId:f.task_id,name:f.name,expiresAt:f.expires_at,thresholdDays,remainingDays:Math.ceil((f.expires_at-checkedAt)/86400000)}})};}
   if(method==='GET'&&route==='files')return {files:all("SELECT id,name,size,expires_at AS expiresAt FROM workbench_files WHERE owner_id=? AND kind='input' AND expires_at>? ORDER BY created_at DESC LIMIT 100",owner,now())};
+  const fileDetails=/^files\/([a-f0-9-]{36})\/details$/.exec(route);
+  if(method==='GET'&&fileDetails){const f=one('SELECT * FROM workbench_files WHERE id=? AND owner_id=? AND expires_at>?',fileDetails[1],owner,now());if(!f)fail(404,'FILE_NOT_FOUND','文件不存在或已过期。');const content=new TextDecoder('utf-8',{fatal:true}).decode(f.content),limit=16000;return {file:{id:f.id,taskId:f.task_id,name:f.name,mime:f.mime,size:f.size,sha256:f.sha256,kind:f.kind,createdAt:f.created_at,expiresAt:f.expires_at},preview:{type:'text',text:content.slice(0,limit),truncated:content.length>limit}};}
   const download=/^files\/([a-f0-9-]{36})$/.exec(route);
   if(method==='GET'&&download){const file=one('SELECT * FROM workbench_files WHERE id=? AND owner_id=? AND expires_at>?',download[1],owner,now());if(!file)fail(404,'FILE_NOT_FOUND','文件不存在或已过期。');return {binary:Buffer.from(file.content),mime:file.mime,downloadName:file.name};}
   if(method==='GET'&&route==='tasks')return {tasks:all('SELECT * FROM workbench_tasks WHERE owner_id=? ORDER BY created_at DESC,rowid DESC LIMIT 50',owner).map(view)};
   const detail=/^tasks\/([a-f0-9-]{36})$/.exec(route);
   if(method==='GET'&&detail)return {task:view(ownTask(owner,detail[1]))};
   if(method==='POST'&&route==='files')return command(owner,route,input,()=>{
-   const n=one('SELECT count(*) AS n,coalesce(sum(size),0) AS bytes FROM workbench_files WHERE owner_id=? AND expires_at>?',owner,now());if(n.n>=200||n.bytes>10*1024*1024)fail(409,'FILE_QUOTA','文件测试额度已用完。');
+   const n=one('SELECT count(*) AS n,coalesce(sum(size),0) AS bytes FROM workbench_files WHERE owner_id=? AND expires_at>?',owner,now());if(n.n>=200)fail(409,'FILE_QUOTA','文件测试额度已用完。');
    if(typeof input.base64!=='string'||input.base64.length>350000||! /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input.base64))fail(400,'FILE_INVALID','文件内容无效。');
    const bytes=Buffer.from(input.base64,'base64');let checked;try{checked=validateFile(input.name,bytes);}catch(error){fail(400,'FILE_INVALID',error.message);}
+   if(n.bytes+bytes.length>10*1024*1024)fail(409,'FILE_QUOTA','文件测试额度已用完。');
    const id=randomUUID();run('INSERT INTO workbench_files VALUES(?,?,?,?,?,?,?,?,?,?,?)',id,owner,null,input.name,'text/plain; charset=utf-8',bytes,checked.sha256,bytes.length,'input',now(),now()+RETENTION_MS);return {file:{id,name:input.name,size:bytes.length,expiresAt:now()+RETENTION_MS}};
   });
   if(method==='POST'&&route==='estimate')return command(owner,route,input,()=>{
@@ -106,16 +121,40 @@ export function createWorkbenchService({database,socialService,enabled=false,now
    const id=randomUUID();run('INSERT INTO workbench_tasks(id,owner_id,workspace_id,title,operation,input_ids,status,quote_expires_at,estimated_micro,budget_micro,price_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',id,owner,ws.id,title,input.operation,JSON.stringify(input.fileIds),'awaiting-confirmation',now()+60000,priceMicro(STEP_COST*3n,{roundCent:true}).toString(),budget.toString(),PRICE_VERSION,now(),now());
    event({id},'estimated',{steps:['读取与校验文件','统计或去重','生成可下载文件'],estimatedSeconds:5});return {task:view(ownTask(owner,id))};
   });
+  const instructions=/^tasks\/([a-f0-9-]{36})\/instructions$/.exec(route);
+  if(method==='POST'&&instructions){fields(input,['requestId','version','instruction','fileIds']);return command(owner,route,input,()=>{
+   const task=ownTask(owner,instructions[1]);validateVersion(task,input);
+   if(!['awaiting-confirmation','paused','budget-paused','awaiting-user'].includes(task.status))fail(409,'STATE_INVALID','请先暂停任务，再补充要求。');
+   if(task.status==='awaiting-confirmation'&&task.quote_expires_at<=now())fail(409,'QUOTE_EXPIRED','报价已过期，请重新创建任务。');
+   const instruction=text(input.instruction,2000,'补充要求',2),goal=(task.goal||task.title)+'\n'+(task.locale==='en-US'?'Additional instruction: ':'补充要求：')+instruction;
+   if(goal.length>4000||one('SELECT count(*) n FROM workbench_instructions WHERE task_id=?',task.id).n>=20)fail(400,'INSTRUCTION_LIMIT','当前任务的补充要求已达上限，请另建任务。');
+   const files=selectedFiles(owner,input.fileIds??JSON.parse(task.input_ids)),plan=planGoal(goal,files,task.locale,task.cost_micro);
+   if(plan.status!=='ready')return {applied:false,plan,task:view(task)};
+   if(BigInt(plan.estimatedMicro)>1000000n)fail(409,'BUDGET_LIMIT','新计划超过本地单任务预算上限，请结束当前任务后另建任务。');
+   const planVersion=task.plan_version+1;
+   run("UPDATE workbench_tasks SET goal=?,operation=?,input_ids=?,plan_json=?,plan_version=?,step=0,status='awaiting-confirmation',quote_expires_at=?,estimated_micro=?,billing_state='quoted',version=version+1,updated_at=? WHERE id=?",goal,plan.operation,JSON.stringify(files.map(f=>f.id)),JSON.stringify(plan),planVersion,now()+60000,plan.estimatedMicro,now(),task.id);
+   run('INSERT INTO workbench_instructions VALUES(?,?,?,?,?)',randomUUID(),task.id,instruction,planVersion,now());
+   run("UPDATE workbench_approvals SET status='superseded' WHERE task_id=? AND status='pending'",task.id);
+   event(task,'scope-updated',{planVersion,estimatedMicro:plan.estimatedMicro});
+   return {applied:true,plan,task:view(ownTask(owner,task.id))};
+  });}
   const action=/^tasks\/([a-f0-9-]{36})\/(confirm|pause|resume|cancel|takeover|budget-request|approve)$/.exec(route);
   if(method==='POST'&&action)return command(owner,route,input,()=>{
    const task=ownTask(owner,action[1]),name=action[2];validateVersion(task,input);
    if(FINAL.has(task.status))fail(409,'TASK_FINISHED','任务已结束。');
    if(name==='confirm'){
     if(task.status!=='awaiting-confirmation'||task.quote_expires_at<=now())fail(409,'QUOTE_EXPIRED','报价已过期，请重新创建任务。');
-    if(input.priceVersion!==task.price_version||input.budgetMicro!==task.budget_micro||input.acceptTrial!==true)fail(400,'QUOTE_NOT_CONFIRMED','请确认本地测试执行器和预算上限。');
-    run("UPDATE workbench_tasks SET reserved_micro=budget_micro,billing_state='reserved' WHERE id=?",task.id);update(task,'queued');
+    if(input.priceVersion!==task.price_version||input.acceptTrial!==true)fail(400,'QUOTE_NOT_CONFIRMED','请确认本地测试执行器和预算上限。');
+    let budget=BigInt(task.budget_micro);
+    if(task.plan_version){
+     if(input.planVersion!==task.plan_version)fail(409,'PLAN_CHANGED','计划已更新，请核对当前步骤和费用后确认。');
+     budget=amount(input.budgetMicro);if(budget<10000n||budget<priceMicro(task.cost_micro,{roundCent:true}))fail(400,'BUDGET_TOO_SMALL','预算不能低于已完成工作的累计费用，且至少为 0.01 美元。');
+     selectedFiles(owner,JSON.parse(task.input_ids));
+    }else if(input.budgetMicro!==task.budget_micro)fail(400,'QUOTE_NOT_CONFIRMED','请确认原报价中的预算上限。');
+    run("UPDATE workbench_tasks SET budget_micro=?,reserved_micro=?,billing_state='reserved' WHERE id=?",budget.toString(),budget.toString(),task.id);
+    run("UPDATE workbench_workspaces SET controller='ai',controller_task_id=NULL,state='ready',version=version+1,updated_at=? WHERE id=? AND controller_task_id=?",now(),task.workspace_id,task.id);update(task,'queued');
    }else if(name==='cancel'){
-    if(task.status==='awaiting-confirmation'){update(task,'cancelled');run("UPDATE workbench_tasks SET billing_state='settled' WHERE id=?",task.id);}else settle(task,'cancelled');
+    if(task.status==='awaiting-confirmation'&&BigInt(task.reserved_micro)===0n&&BigInt(task.cost_micro)===0n){update(task,'cancelled');run("UPDATE workbench_tasks SET billing_state='settled' WHERE id=?",task.id);}else settle(task,'cancelled');
    }else if(name==='pause'||name==='takeover'){
     if(!['queued','running','paused','budget-paused','awaiting-user'].includes(task.status))fail(409,'STATE_INVALID','当前任务不能暂停。');
     const ws=one('SELECT * FROM workbench_workspaces WHERE id=?',task.workspace_id);
@@ -146,6 +185,6 @@ export function createWorkbenchService({database,socialService,enabled=false,now
   if(method==='POST'&&route==='desktop')fail(503,'DESKTOP_UNCONFIGURED','尚未配置真实云桌面。当前文件执行器没有远程屏幕。');
   fail(404,'WORKBENCH_ROUTE','工作台操作不存在。');
  }
- function cleanupDeletedAccount(owner,{withinTransaction=false}={}){if(pending(owner).length)fail(409,'TASKS_PENDING','请先取消或完成文件任务。');const clean=()=>{run('DELETE FROM workbench_files WHERE owner_id=?',owner);run('DELETE FROM workbench_commands WHERE owner_id=?',owner);run("UPDATE workbench_tasks SET title='已注销账户任务',input_ids='[]' WHERE owner_id=?",owner);run("UPDATE workbench_workspaces SET state='released',controller='ai',controller_task_id=NULL,version=version+1 WHERE owner_id=?",owner);};if(withinTransaction)clean();else transaction(clean);}
+ function cleanupDeletedAccount(owner,{withinTransaction=false}={}){if(pending(owner).length)fail(409,'TASKS_PENDING','请先取消或完成文件任务。');const clean=()=>{run('DELETE FROM workbench_files WHERE owner_id=?',owner);run('DELETE FROM workbench_commands WHERE owner_id=?',owner);run('DELETE FROM workbench_instructions WHERE task_id IN (SELECT id FROM workbench_tasks WHERE owner_id=?)',owner);run("UPDATE workbench_tasks SET title='已注销账户任务',goal='',plan_json='{}',plan_version=0,input_ids='[]' WHERE owner_id=?",owner);run("UPDATE workbench_workspaces SET state='released',controller='ai',controller_task_id=NULL,version=version+1 WHERE owner_id=?",owner);};if(withinTransaction)clean();else transaction(clean);}
  return {handle,tick,getPendingObligations:pending,cleanupDeletedAccount};
 }

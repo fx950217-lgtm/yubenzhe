@@ -103,8 +103,8 @@ function harness(filename=':memory:') {
   await h.befriend(a,b);
   await assert.rejects(h.call(a,'POST','groups',{requestId:randomUUID(),name:'小组',memberIds:[b.profile.userId,c.profile.userId]}),expected(403,'FRIEND_REQUIRED'));
   await h.befriend(a,c);const {conversationId:id}=await h.call(a,'POST','groups',{requestId:randomUUID(),name:'小组',memberIds:[b.profile.userId,c.profile.userId]});
-  await assert.rejects(h.call(b,'POST','conversations/'+id+'/settings',{name:'越权改名'}),expected(403,'OWNER_REQUIRED'));
-  await assert.rejects(h.call(b,'POST','conversations/'+id+'/remove-member',{userId:c.profile.userId}),expected(403,'OWNER_REQUIRED'));
+  await assert.rejects(h.call(b,'POST','conversations/'+id+'/settings',{name:'越权改名'}),expected(403,'MANAGER_REQUIRED'));
+  await assert.rejects(h.call(b,'POST','conversations/'+id+'/remove-member',{userId:c.profile.userId}),expected(403,'MANAGER_REQUIRED'));
   await assert.rejects(h.call(a,'POST','conversations/'+id+'/leave'),expected(409,'TRANSFER_OWNER'));
   await h.call(a,'POST','conversations/'+id+'/remove-member',{userId:c.profile.userId});
   await assert.rejects(h.messages(c,id),expected(404,'CHAT_NOT_FOUND'));
@@ -112,7 +112,7 @@ function harness(filename=':memory:') {
   await assert.rejects(h.call(b,'POST','conversations/'+id+'/invite',{memberIds:[c.profile.userId]}),expected(403,'FRIEND_REQUIRED'));
   await h.call(a,'POST','conversations/'+id+'/invite',{memberIds:[c.profile.userId]});
   await h.call(a,'POST','conversations/'+id+'/owner',{userId:b.profile.userId});
-  await assert.rejects(h.call(a,'POST','conversations/'+id+'/settings',{note:'旧群主越权'}),expected(403,'OWNER_REQUIRED'));
+  await assert.rejects(h.call(a,'POST','conversations/'+id+'/settings',{note:'旧群主越权'}),expected(403,'MANAGER_REQUIRED'));
   await h.call(a,'POST','conversations/'+id+'/leave');
   assert.equal((await h.call(a,'GET','state')).conversations.some(row=>row.id===id),false);
   await h.call(b,'POST','conversations/'+id+'/settings',{name:'新群名',note:'群公告',pinned:true,muted:true});
@@ -345,7 +345,7 @@ test('real account restrictions block publishing and authentication while operat
 test('original social schema upgrades atomically without clearing accounts and safety records survive restart',async()=>{
  const directory=await mkdtemp(join(tmpdir(),'yubenzhe-social-test-')),filename=join(directory,'social.sqlite');let h,raw;
  try{raw=new DatabaseSync(filename);const original=await readFile(new URL('../migrations/003-social.sql',import.meta.url),'utf8');raw.exec('CREATE TABLE social_migrations(version INTEGER PRIMARY KEY,checksum TEXT NOT NULL,applied_at INTEGER NOT NULL);');raw.exec(original);raw.prepare('INSERT INTO social_migrations VALUES(1,?,1)').run(createHash('sha256').update(original).digest('hex'));raw.prepare('INSERT INTO accounts(id,user_id,nickname,password_salt,password_hash,created_at) VALUES(?,?,?,?,?,?)').run('prior-account','73918246','保留旧账号','test-salt','00'.repeat(32),1);raw.close();raw=null;
- h=harness(filename);assert.equal(h.database.raw.prepare('SELECT nickname FROM accounts WHERE id=?').get('prior-account').nickname,'保留旧账号');assert.equal(h.database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,9);const a=await h.register(),b=await h.register();await h.befriend(a,b);await h.call(a,'POST','blocks',{userId:b.profile.userId});const r=(await h.call(a,'POST','reports',{targetType:'user',targetId:b.profile.userId,reason:'spam',detail:'重启保留',requestId:randomUUID()})).report;h.service.moderation.resolve({actor:'migration-test',reportId:r.id,action:'mute-user',reason:'重启持久验证'});h.close();h=null;
+ h=harness(filename);assert.equal(h.database.raw.prepare('SELECT nickname FROM accounts WHERE id=?').get('prior-account').nickname,'保留旧账号');assert.equal(h.database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,11);const a=await h.register(),b=await h.register();await h.befriend(a,b);await h.call(a,'POST','blocks',{userId:b.profile.userId});const r=(await h.call(a,'POST','reports',{targetType:'user',targetId:b.profile.userId,reason:'spam',detail:'重启保留',requestId:randomUUID()})).report;h.service.moderation.resolve({actor:'migration-test',reportId:r.id,action:'mute-user',reason:'重启持久验证'});h.close();h=null;
  h=harness(filename);assert.equal((await h.call(a,'GET','blocks')).blocked[0].userId,b.profile.userId);assert.equal((await h.call(a,'GET','reports')).reports[0].status,'resolved');assert.equal(h.service.moderation.show(r.id).audit.length,1);assert.equal(h.database.raw.prepare('PRAGMA integrity_check').get().integrity_check,'ok');h.database.raw.prepare('UPDATE social_migrations SET checksum=? WHERE version=2').run('tampered');h.close();h=null;assert.throws(()=>openSocialDatabase(filename),/checksum mismatch/);
  }finally{h?.close();raw?.close();const safe=resolve(directory);if(!basename(safe).startsWith('yubenzhe-social-test-')||resolve(join(safe,'..'))!==resolve(tmpdir()))throw new Error('Unexpected cleanup path');await rm(safe,{recursive:true,force:true});}
 });
