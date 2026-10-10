@@ -1,6 +1,6 @@
 {
   "name": "tongban-wallet-preview",
-  "version": "0.13.0",
+  "version": "0.14.0-dev.1",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.19.0",
@@ -12,7 +12,8 @@
   "dependencies": {
     "ethers": "6.17.0",
     "jsqr": "1.4.0",
-    "qrcode": "1.5.4"
+    "qrcode": "1.5.4",
+    "@simplewebauthn/browser": "14.0.0"
   },
   "devDependencies": {
     "esbuild": "0.25.10"

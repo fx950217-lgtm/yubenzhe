@@ -19,12 +19,12 @@ test('a plain transfer action never fills its DOM event object as an address',()
  vm.createContext(ctx);vm.runInContext(transferSource,ctx);ctx.openTransfer({type:'click'});
  assert.match(markup,/name="to" value=""/);assert.doesNotMatch(markup,/object Object/);
 });
-test('scan results look up a numeric account without creating a friendship',async()=>{
+test('scan results look up a valid public account without creating a friendship',async()=>{
  const calls=[];let scanner;
  const ctx={dialog:{open:true},mountQrScanner:(_el,opts)=>{scanner=opts;return()=>{}},showModal:(_t,_h,setup)=>setup({querySelector:()=>({})}),toast:x=>calls.push(['toast',x]),closeModal:()=>calls.push(['close']),openTransfer:to=>calls.push(['transfer',to]),socialClient:{getProfile:()=>({userId:'736281'}),lookup:async id=>{if(id==='827364')return {profile:{userId:id}};throw new Error('没有找到这个 ID');}},navigate:(view,options)=>calls.push(['navigate',view,options])};
  vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function openScan('),source.indexOf('\nfunction mineAction')),ctx);
  ctx.openScan('all');assert.equal(calls.length,0);
- await assert.rejects(scanner.onResult({kind:'friend',id:'lin'}),/旧版/);
+ await assert.rejects(scanner.onResult({kind:'friend',id:'lin'}),/无效/);
  await assert.rejects(scanner.onResult({kind:'friend',id:'924681'}),/没有找到/);assert.equal(calls.length,0);
  await scanner.onResult({kind:'friend',id:'827364'});assert.equal(calls.at(-1)[1],'contacts');assert.equal(calls.at(-1)[2].profileId,'827364');
  await scanner.onResult({kind:'address',address});assert.deepEqual(calls.at(-1),['transfer',address]);

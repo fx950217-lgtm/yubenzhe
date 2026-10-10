@@ -23,7 +23,7 @@ export async function handleSocialHTTP({request,response,url,publicURL,service,r
  const value=await service.handle({method:request.method,path,input,query:Object.fromEntries(url.searchParams),token:bearer||cookie,ip,userAgent:String(request.headers['user-agent']||'').slice(0,300)});
  if(value.token){const secure=publicURL.protocol==='https:'?'; Secure':'';response.setHeader('Set-Cookie','ybz_social='+value.token+'; Path=/api/social; HttpOnly; SameSite=Strict; Max-Age=2592000'+secure);if(!native)delete value.token;}
  if(path==='logout'||value.deleted===true||value.currentSessionRevoked===true)response.setHeader('Set-Cookie','ybz_social=; Path=/api/social; HttpOnly; SameSite=Strict; Max-Age=0'+(publicURL.protocol==='https:'?'; Secure':''));
- if(value.binary){response.writeHead(200,{'Content-Type':value.mime,'Content-Length':value.binary.length});response.end(value.binary);return;}
+ if(value.binary){if(value.downloadName)response.setHeader('Content-Disposition',"attachment; filename=\"download.txt\"; filename*=UTF-8''"+encodeURIComponent(value.downloadName).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase()));response.writeHead(200,{'Content-Type':value.mime,'Content-Length':value.binary.length});response.end(value.binary);return;}
  const serialized=JSON.stringify(value),etag='"'+createHash('sha256').update(serialized).digest('hex')+'"';
  if(request.method==='GET'){response.setHeader('ETag',etag);if(request.headers['if-none-match']===etag){response.writeHead(304);response.end();return;}}
  response.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});response.end(serialized);

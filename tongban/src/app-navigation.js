@@ -1,5 +1,5 @@
 export const MAIN_NAV = Object.freeze([
-  ['messages','message','消息'],['contacts','users','通讯录'],['discover','discover','发现'],['mine','user','我'],
+  ['messages','message','消息'],['contacts','users','通讯录'],['workbench','spark','AI 工作台'],['discover','discover','发现'],['mine','user','我'],
 ]);
 export const isAppView = view => MAIN_NAV.some(item=>item[0]===view)||view==='wallet'||view==='bills';
 export const hashForView = view => view==='wallet'?'#mine/assets':`#${isAppView(view)?view:'messages'}`;

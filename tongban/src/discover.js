@@ -1,6 +1,7 @@
 import './discover.css';
 import { saveJsonFile } from './native-runtime.js';
 import './discover-v5.css';
+import { createCommunityFeature } from './discover-community.js';
 import { createLiveMomentsFeature } from './live-moments.js';
 import { createDiscoveryWorkbench } from './discover-workbench.js';
 import { createTokenStudio } from './discover-token.js';
@@ -206,7 +207,7 @@ export function mountDiscover(container, options = {}) {
   const { toast = () => {}, onNavigate = () => {}, onBalance = () => {}, onProfile = () => {},
     initialRoute = 'hub',initialOwnMoments = false,onRouteChange = () => {},getWalletAddress=()=>'' } = options;
   let view = normalizedRoute(initialRoute),ownMoments = initialOwnMoments === true,data,storageError = '',profileError = '',
-    dialog = null,dead = false,sort = 'desc',savedType = '',draftFilter = 'all',editingDraftId = null,
+    dialog = null,dead = false,editingLocalDraft=false,sort = 'desc',savedType = '',draftFilter = 'all',editingDraftId = null,
     draftQuery='',draftArchive=false,rankFilter='all',rankQuery='',newDraftRevisions={},draftSelections={},storageSnapshot=null;
   try { data = readDiscover();storageSnapshot=localStorage.getItem(STORE); } catch (error) { storageError = error.message; data = seedDiscover(); }
   data.drafts.sort((a,b) => draftTime(b)-draftTime(a));
@@ -233,6 +234,7 @@ export function mountDiscover(container, options = {}) {
 
   const moments=createLiveMomentsFeature({service:options.socialClient||options.service,onAccount:options.onAccount,getLegacyDrafts:()=>data.posts.filter(post=>post.authorId==='me'),showDialog,closeDialog,toast,render,onSaved:()=>go('moments')});
   const shared={socialClient:options.socialClient||options.service,onAccount:options.onAccount,getDraft:latestDraft,getDraftMeta,getDraftKey:type=>getDraftMeta(type)?.id||`new:${type}:${newDraftRevisions[type]||0}`,getDrafts:activeDrafts,saveDraft,showDialog,closeDialog,toast,go,onBalance,render};
+  const community=createCommunityFeature({...shared,container,onNavigate,onBountyPayment:options.onBountyPayment});
   const workbench=createDiscoveryWorkbench({...shared,validateDraft:validateServiceDraft});
   const tokenStudio=createTokenStudio({...shared,validateToken:validateTokenDraft,validateService:validateServiceDraft,getWalletAddress});
 
@@ -257,7 +259,7 @@ export function mountDiscover(container, options = {}) {
   }
   function go(route,config = {}) {
     const {draftId,ownOnly=false}=config;if(Object.hasOwn(config,'draftId')&&draftId===null)newDraftRevisions[route]=(newDraftRevisions[route]||0)+1;
-    view=normalizedRoute(route);
+    view=normalizedRoute(route);editingLocalDraft=typeof draftId==='string'||(Object.hasOwn(config,'draftId')&&draftId===null&&editingLocalDraft);
     if(view==='moments')ownMoments=ownOnly;
     editingDraftId=null;
     if(Object.hasOwn(names,view)){
@@ -290,14 +292,11 @@ export function mountDiscover(container, options = {}) {
     return `<div class="disc-home-top"><div><h2>发现</h2><p class="disc-home-subtitle">和熟悉的人，分享与协作</p></div>${button(`${icon('plus')} 发动态`,'compose','disc-record')}</div>
       <section class="disc-circle-panel disc-simple-circle" aria-label="朋友圈入口"><button type="button" class="disc-circle-entry" data-disc="moments"><span class="disc-circle-symbol">${icon('moment')}</span><span><strong>朋友圈</strong><small>朋友的近况，自己的生活</small></span>${icon('arrow')}</button>
       </section>
-      <section class="disc-work-list disc-simple-entries" aria-label="发现功能"><button class="disc-work-row" type="button" data-disc="ai"><span class="disc-work-icon purple">${icon('ai')}</span><span><strong>AI 工作台</strong><small>本地安装 · 云端使用</small></span>${icon('arrow')}</button><button class="disc-work-row" type="button" data-disc="drafts"><span class="disc-work-icon blue">${icon('file')}</span><span><strong>本机草稿</strong><small>继续编辑、导出或归档</small></span>${icon('arrow')}</button></section>
+      <section class="disc-work-list disc-simple-entries" aria-label="发现功能">${[['bounty','flag','赏金论坛','发布需求、合作与交付'],['provider','shield','服务商','业务服务与云基础设施'],['rank','rank','排行榜','隐私优先，按需展示'],['token','rocket','趣味币发行','测试申请 · 待配置']].map(([route,ico,label,copy])=>`<button class="disc-work-row" type="button" data-disc="${route}"><span class="disc-work-icon purple">${icon(ico)}</span><span><strong>${label}</strong><small>${copy}</small></span>${icon('arrow')}</button>`).join('')}<button class="disc-work-row" type="button" data-disc="ai"><span class="disc-work-icon purple">${icon('ai')}</span><span><strong>AI 工作台</strong><small>本地安装 · 云端使用</small></span>${icon('arrow')}</button><button class="disc-work-row" type="button" data-disc="drafts"><span class="disc-work-icon blue">${icon('file')}</span><span><strong>本机草稿</strong><small>继续编辑、导出或归档</small></span>${icon('arrow')}</button></section>
       ${draft?`<section class="disc-resume-section disc-compact-resume" aria-label="继续草稿"><div class="disc-section-head"><h3>上次未完成</h3>${button('全部草稿','drafts','disc-text')}</div><button type="button" class="disc-resume-card" data-disc="edit-draft" data-id="${esc(draft.id)}"><span class="disc-resume-icon">${icon('file')}</span><span><small>${names[draft.type]} · ${draftStatus(draft.type)}</small><strong>${esc(draftTitle(draft))}</strong></span>${icon('arrow')}</button></section>`:''}
       `;
   }
-  function renderServices() {
-    const entries=[['bounty','flag','赏金任务','整理任务、奖励与交付要求','peach','未开放发布'],['provider','shield','认证服务商','寻找协助，整理服务需求','mint','示例目录'],['rank','rank','排行榜','认识同路的人，先添加好友','blue','示例榜单'],['token','rocket','一键发币','准备自己的趣味代币','purple','未部署']];
-    return `${header('更多服务','按需打开，用完回到朋友身边')}<div class="disc-service-grid">${entries.map(([route,ico,title,copy,tone,tag])=>`<button type="button" class="disc-service-card" data-disc="${route}"><span class="disc-work-icon ${tone}">${icon(ico)}</span><strong>${title}</strong><p>${copy}</p><small>${tag}</small></button>`).join('')}</div><div class="disc-work-list disc-services-bottom"><button type="button" class="disc-work-row" data-disc="drafts"><span class="disc-work-icon mint">${icon('file')}</span><span><strong>我的草稿</strong><small>继续编辑、导出或归档</small></span>${icon('arrow')}</button></div><details class="disc-service-note"><summary>服务与结算说明</summary><p>服务商、赏金与发币目前仅保存本机草稿，不会提交或扣款。未来付费服务统一通过平台余额结算；当前云端 AI 使用免费验收额度。</p></details>`;
-  }
+  function renderServices() { return renderHub(); }
   function renderMoments() { return moments.render({ownOnly:ownMoments}); }
   function rankRows(){
     const list=filterRankPeople(people(),{query:rankQuery,scope:rankFilter,sort});
@@ -325,10 +324,11 @@ export function mountDiscover(container, options = {}) {
   function render() {
     if (dead) return;
     container.classList.add('disc-root');
+    community.routeChanged?.(editingLocalDraft?'drafts':view);
     workbench.routeChanged?.(view);
     moments.routeChanged?.(view,{ownOnly:ownMoments});
     me();
-    const renderers={hub:renderHub,services:renderServices,moments:renderMoments,rank:renderRank,provider:renderProvider,ai:renderAI,bounty:renderBounty,token:renderToken,integration:renderIntegration,business:renderBusiness,drafts:renderDrafts,'token-projects':renderTokenProjects};
+    const renderers={hub:renderHub,services:renderServices,moments:renderMoments,rank:()=>community.render('rank'),provider:()=>editingLocalDraft?renderProvider():community.render('provider'),ai:renderAI,bounty:()=>editingLocalDraft?renderBounty():community.render('bounty'),token:()=>editingLocalDraft?renderToken():community.render('token'),integration:renderIntegration,business:renderBusiness,drafts:renderDrafts,'token-projects':renderTokenProjects};
     const content=(renderers[view] || renderHub)();
     container.innerHTML = `${[storageError,profileError].filter(Boolean).map(message=>`<p class="disc-error" role="alert">${esc(message)}</p>`).join('')}${content}`;
   }
@@ -357,7 +357,7 @@ export function mountDiscover(container, options = {}) {
     const action=target.dataset.disc;
     if(savedType){savedType='';container.querySelector('.disc-saved')?.remove()}
     try {
-      if(moments.handleAction(action,target)||workbench.handleAction(action,target)||tokenStudio.handleAction(action,target))return;
+      if(community.handleAction(action,target)||moments.handleAction(action,target)||workbench.handleAction(action,target)||tokenStudio.handleAction(action,target))return;
       if(routes.has(action)){go(action);return;}
       if(action==='my-moments'){go('moments',{ownOnly:true});return;}
       if(action==='moment-filter'){ownMoments=target.dataset.filter==='mine';render();return;}
@@ -406,13 +406,13 @@ export function mountDiscover(container, options = {}) {
       saveDraft(type,values);
     } catch(error) { form.querySelector('.disc-form-error').textContent=error.message; }
   }
-  function handleInput(event){if(savedType&&Object.hasOwn(names,view)){savedType='';container.querySelector('.disc-saved')?.remove()}moments.handleInput?.(event);workbench.handleInput?.(event);tokenStudio.handleInput?.(event);if(event.target.matches?.('[data-draft-search]')){draftQuery=event.target.value;renderDraftResults()}if(event.target.matches?.('[data-rank-search]')){rankQuery=event.target.value;renderRankResults()}}
+  function handleInput(event){if(community.handleInput(event))return;if(savedType&&Object.hasOwn(names,view)){savedType='';container.querySelector('.disc-saved')?.remove()}moments.handleInput?.(event);workbench.handleInput?.(event);tokenStudio.handleInput?.(event);if(event.target.matches?.('[data-draft-search]')){draftQuery=event.target.value;renderDraftResults()}if(event.target.matches?.('[data-rank-search]')){rankQuery=event.target.value;renderRankResults()}}
   container.addEventListener('input',handleInput);container.addEventListener('change',handleInput);
   container.addEventListener('click',handleClick);
   container.addEventListener('submit',handleSubmit);
   render();
   onRouteChange(view);
-  const cleanup = () => { dead=true;moments.cleanup?.();workbench.cleanup?.();tokenStudio.cleanup?.();closeDialog();container.removeEventListener('input',handleInput);container.removeEventListener('change',handleInput);container.removeEventListener('click',handleClick);container.removeEventListener('submit',handleSubmit);container.classList.remove('disc-root'); };
+  const cleanup = () => { dead=true;community.cleanup();moments.cleanup?.();workbench.cleanup?.();tokenStudio.cleanup?.();closeDialog();container.removeEventListener('input',handleInput);container.removeEventListener('change',handleInput);container.removeEventListener('click',handleClick);container.removeEventListener('submit',handleSubmit);container.classList.remove('disc-root'); };
   cleanup.back = () => { if(dialog){closeDialog();return true} if(view!=='hub'){go('hub');return true} return false; };
   return cleanup;
 }

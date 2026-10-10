@@ -1,3 +1,9 @@
+2026-10-10 本地 M0 开发补充
+当前网页/服务端源码 0.14.0-dev.1，仅隔离本地测试；不等于线上及原生 0.13.0 已升级。
+启动、迁移、API、依赖配置见 ../docs/M0-RUNBOOK.txt，逐项验收与待接项见 ../docs/M0-ACCEPTANCE.txt。
+本轮不接真实邮箱、云桌面/收费模型或主网资金；不得把模拟资产当作真实托管。
+以下保留原历史交付与部署说明。
+
 愚笨者 0.13.0 公开测试版（已部署）
 
 0.13.0 已部署为公开测试版，源码提交 7eb1605747bdb6680f95c619ab9a591fb874218e。新加坡 /opt/yubenzhe/releases/0.13.0 的 frontend 与 admin 均为 0.13.0 且 healthy，公网 healthz 返回 200；原反代与模型容器未重建。Android versionCode 15 已用原签名在模拟器覆盖安装启动；Windows 安装退出码 0，安装 ASAR 与产物一致且客户端已启动；iOS build 16 已经 macOS workflow 37926392645 构建，通过 USB 安装 0.13.0 并打开，日志确认 starting local service / page loaded / ready。4 个新安装包已上传并核对 SHA-256，下载区保留历史版本。用户已确认 iPhone 能看到登录页或正常首页；全部实体设备功能验收尚未完成，旧版本结果仅作历史基线。

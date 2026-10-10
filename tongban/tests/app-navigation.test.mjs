@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MAIN_NAV,viewFromHash,hashForView,activeNavView,isAppView} from '../src/app-navigation.js';
 test('assets is a child of Mine and existing wallet bookmarks remain usable',()=>{
- assert.deepEqual(MAIN_NAV.map(x=>x[2]),['消息','通讯录','发现','我']);
+ assert.deepEqual(MAIN_NAV.map(x=>x[2]),['消息','通讯录','AI 工作台','发现','我']);
  assert.equal(viewFromHash('#mine/assets'),'wallet');assert.equal(viewFromHash('#wallet'),'wallet');
  assert.equal(hashForView('wallet'),'#mine/assets');assert.equal(activeNavView('wallet'),'mine');
  assert.equal(isAppView('wallet'),true);

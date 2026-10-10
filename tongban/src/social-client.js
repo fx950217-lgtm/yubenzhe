@@ -4,6 +4,7 @@ const TOKEN_KEY='yubenzhe.account.session.v1',PROFILE_KEY='tongban.profile.v1';
 const copy=value=>value===null?null:JSON.parse(JSON.stringify(value));
 const clientError=(message,code)=>Object.assign(new Error(message),{code});
 export function createSocialClient({baseURL=isNativeApp()?'https://66.42.56.29':location.origin,native=isNativeApp(),fetcher=globalThis.fetch.bind(globalThis),storage,onChange=()=>{}}={}){
+ let accessRecoveryToken='';
  let current=null,token='',generation=0,cacheVersion=0,readSequence=0,storageWarning='',disposed=false;
  const cache=new Map(),media=new Map(),groupRequests=new Map(),pendingMedia=new Map(),reads=new Map(),controllers=new Set();
  try{storage??=globalThis.localStorage;}catch{}
@@ -12,7 +13,7 @@ export function createSocialClient({baseURL=isNativeApp()?'https://66.42.56.29':
  function clearMedia(){for(const value of media.values())URL.revokeObjectURL(value);media.clear();pendingMedia.clear();}
  function invalidate(){generation++;cacheVersion++;cache.clear();reads.clear();clearMedia();groupRequests.clear();for(const controller of controllers)controller.abort();}
  function forget(){
-  invalidate();token='';current=null;
+  invalidate();token='';current=null;accessRecoveryToken='';
   for(const key of [TOKEN_KEY,PROFILE_KEY])try{storage.removeItem(key);}catch{storageWarning='登录已退出，但本机缓存未能清理，请检查存储权限。';}
   onChange(null);
  }
@@ -96,6 +97,10 @@ export function createSocialClient({baseURL=isNativeApp()?'https://66.42.56.29':
   authenticatedRequest:(path,options)=>request(path,options),
   publicRequest:(path,options)=>request(path,options),
   clearSession:()=>forget(),
+  getAccessRecoveryToken:()=>accessRecoveryToken,
+  setAccessRecoveryToken:value=>{accessRecoveryToken=typeof value==='string'?value:'';},
+  async verifyEmail(input){const revision=generation;return acceptSession(await post('access/email/verify',{...input,native}),revision);},
+  async verifyPasskeyLogin(input){const revision=generation;return acceptSession(await post('access/passkeys/login/verify',{...input,native}),revision);},
   getBlocks:()=>request('blocks'),
   blockUser:userId=>post('blocks',{userId}),
   unblockUser:userId=>post('blocks/remove',{userId}),

@@ -1,9 +1,10 @@
 import { isSafeProfilePhoto } from './profile-photo.js';
 const KEY = 'tongban.profile.v1'; // Keep the existing key so v1 upgrades preserve user data.
 export const PROFILE_AVATARS = Object.freeze(['🌱', '☀️', '🍊', '🌊', '🪴', '✨', '🐱', '🌻']);
-export const USER_ID_LIMITS = Object.freeze({ min: 6, max: 16 });
+export const USER_ID_LIMITS = Object.freeze({ min: 5, max: 24 });
 export function isReservedUserId(id) {
-  const text = String(id);
+  const text = String(id).toLowerCase();
+  if (/^(admin|administrator|root|system|support|official|yubenzhe|security|service|moderator|wallet)(_|$)/.test(text)) return true;
   if (/(\d)\1{3,}/.test(text) || /^(\d{2,3})\1+$/.test(text)) return true;
   if (text.length >= 6) {
     const steps = Array.from(text.slice(1), (value, index) => Number(value) - Number(text[index]));
@@ -12,8 +13,8 @@ export function isReservedUserId(id) {
   return ['100000', '100001', '100100', '520520', '521521', '1314520', '5201314'].includes(text);
 }
 export function validateUserId(input, { allowReserved = false } = {}) {
-  const userId = String(input ?? '').trim();
-  if (!/^\d{6,16}$/.test(userId)) throw new Error('用户 ID 需要 6–16 位数字。');
+  const userId = String(input ?? '').trim().toLowerCase();
+  if (!/^[a-z0-9_]{5,24}$/.test(userId)) throw new Error('账户 ID 需要 5–24 位英文字母、数字或下划线。');
   if (!allowReserved && isReservedUserId(userId)) throw new Error('这个 ID 属于系统保留靓号，请换一个号码。');
   return userId;
 }
@@ -49,7 +50,7 @@ function normalized(input, remote = false) {
   const userId = validateUserId(input.userId, { allowReserved: true });
   if (!Number.isSafeInteger(input.revision) || input.revision < 1) throw new Error('资料版本无效。');
   if (remote && (!Number.isSafeInteger(input.level) || input.level < 1 || input.level > 1000 || typeof input.official !== 'boolean')) throw new Error('账号标识无效。');
-  return { version: 2, ...fields(input), userId, localId: userId, level: remote ? input.level : 1, official: remote ? input.official : false, identityScope: remote ? 'server' : 'local', revision: input.revision };
+  return { version: 2, ...fields(input), userId, localId: userId, level: remote ? input.level : 1, official: remote ? input.official : false, identityScope: remote ? 'server' : 'local', revision: input.revision, ...(remote && ['email','pin'].includes(input.authMode) ? {authMode: input.authMode} : {}) };
 }
 export function getLocalProfile(storage = globalThis.localStorage) {
   let raw;

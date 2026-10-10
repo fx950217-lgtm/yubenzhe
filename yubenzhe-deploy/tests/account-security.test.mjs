@@ -9,7 +9,7 @@ import {createSocialService} from '../server/social-service.mjs';
 const PIN='482615',NEXT='735194';
 const error=(status,code)=>e=>e.status===status&&e.code===code;
 function harness(filename=':memory:'){
- let time=1700000000000;const database=openSocialDatabase(filename),service=createSocialService({database,now:()=>time});
+ let time=1700000000000;const database=openSocialDatabase(filename),service=createSocialService({database,now:()=>time,accessConfig:{hasFinancialExposure:()=>false}});
  const call=(a,method,path,input={},extra={})=>service.handle({method,path,input,token:a?.token??'',ip:'192.0.2.10',userAgent:'Synthetic Windows Chrome/123',...extra});
  const register=()=>call(null,'POST','register',{password:PIN,requestId:randomUUID()});
  const login=(a,pin=PIN)=>call(null,'POST','login',{userId:a.profile.userId,password:pin});
@@ -28,7 +28,7 @@ test('recovery is voluntary, only a hash persists; rotation and revocation inval
 });
 test('recovery revokes all sessions, changes PIN, consumes code and requires explicit login',async t=>{
  const h=harness();t.after(h.close);const a=await h.register(),other=await h.login(a),r=await h.recovery(a);
- assert.deepEqual(await h.call(null,'POST','security/recover',{userId:a.profile.userId,recoveryCode:r.recoveryCode.toLowerCase(),newPassword:NEXT}),{recovered:true,requiresLogin:true});
+ const recovered=await h.call(null,'POST','security/recover',{userId:a.profile.userId,recoveryCode:r.recoveryCode.toLowerCase(),newPassword:NEXT});assert.equal(recovered.recovered,true);assert.equal(recovered.requiresLogin,true);assert.match(recovered.accessRecoveryToken,/^[-_A-Za-z0-9]{43}$/);assert.ok(recovered.protectedUntil>1700000000000);
  for(const actor of [a,other])await assert.rejects(h.call(actor,'GET','me'),error(401,'ACCOUNT_REQUIRED'));
  await assert.rejects(h.login(a),error(401,'BAD_CREDENTIALS'));assert.equal((await h.login(a,NEXT)).profile.userId,a.profile.userId);
  await assert.rejects(h.call(null,'POST','security/recover',{userId:a.profile.userId,recoveryCode:r.recoveryCode,newPassword:NEXT}),error(401,'INVALID_RECOVERY'));

@@ -6,3 +6,5 @@
 .live-media-error small{display:block;font-size:12px;line-height:1.6;color:#9b7967;margin-top:5px}.live-media-error .live-text{padding:8px 0 0;font-size:12px}
 
 .live-message-meta{display:flex;gap:8px;align-items:center}.live-message-action{border:0;background:none;color:#999;font-size:16px;padding:1px 7px;min-height:25px}.live-report-record{padding:16px;border-bottom:1px solid #eee;font-size:14px}.live-report-record>span{float:right;color:#888}.live-report-record p{white-space:pre-wrap;overflow-wrap:anywhere;color:#777}.live-report-record small{color:#999}.live-field select{display:block;width:100%;margin-top:9px;padding:11px 12px;border:1px solid #ddd;border-radius:5px;background:#fff;font:inherit;color:inherit}
+
+.live-gift-card{display:flex;flex-direction:column;gap:8px;border:1px solid #e5d4f4;border-radius:10px;padding:16px;background:#f6edff;color:#6e438e;text-align:left;font:inherit;cursor:pointer}.live-gift-card span{font-size:12px;color:#8b739c}

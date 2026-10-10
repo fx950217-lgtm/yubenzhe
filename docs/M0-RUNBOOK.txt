@@ -1,0 +1,79 @@
+愚笨者 0.14.0-dev.1 本地测试运行说明
+日期：2026-10-10
+
+范围
+这是按 requirements-v0.1.txt 和用户“先完成本地测试版”实现的 M0 网页开发版。
+本轮没有部署服务器，没有改装 Android / iOS / Windows 原生客户端，没有购买服务或发送真实邮件。
+运行数据与线上隔离。SIM-USD / SIM-FUN 无真实价值，不接收真实充值；没有 HTTP 发币水龙头。
+
+从仓库根启动（Node.js 24，pnpm 11）
+1. npm --prefix yubenzhe-deploy ci
+2. pnpm --dir tongban install --frozen-lockfile
+3. pnpm --dir tongban build
+4. npm --prefix yubenzhe-deploy run dev:m0
+5. 在同一电脑打开 http://localhost:18914/ 。通行密钥必须使用 localhost，不要换成服务器 IP。
+手机大小已在浏览器验证；默认只监听本机，不能据此宣称手机实体设备已验收。
+
+本地账户与体验
+邮箱页可使用自己定义的 example.test 测试邮箱。模拟验证码只在本地页显示，不向该邮箱发信。
+基础社交不需要钱包。修改公开 ID 在“我 → 个人资料”，支持 5–24 位字母、数字、下划线。
+“我 → 资产 → 平台资产 → 资金安全”中注册通行密钥并保存、确认一次性账号恢复码后，可操作测试资产。
+浏览器会请求 Windows Hello 或安全密钥；自动验收使用虚拟 CTAP2 验证器，未代替真实设备验证。
+账号恢复码与钱包助记词是两套独立数据。助记词、私钥和解锁密码不上传服务端。
+发现可进入朋友圈、赏金论坛、服务商、排行榜、趣味币发行申请和本机草稿。
+工作台上传 CSV / TXT / MD / JSON，单文件不超过 256 KiB，单任务最多 5 文件。确认预算后实际解析并提供下载。
+无真实模型/远程桌面，能力页明确显示不可用；本地整理不代表通用 AI 自动操作。
+
+测试资产注入（仅操作者命令，不向普通用户开放）
+先在网页创建账号，使用其公开 ID 替换 TEST_USER_ID：
+cd yubenzhe-deploy
+node scripts/m0-assets.mjs --simulation --database ../../yubenzhe-m0-state/social.sqlite --origin http://localhost:18914 deposit --account TEST_USER_ID --asset SIM-USD --amount 10.25 --event manual-001
+相同 event 重试不重复入账；更换金额但复用事件会被拒绝。资金未激活时入账受限，不会绕过开通。
+node scripts/m0-assets.mjs --simulation --database ../../yubenzhe-m0-state/social.sqlite --origin http://localhost:18914 reconcile
+提现只在模拟订单中推进。withdraw-prepare / withdraw-unknown / withdraw-settle / withdraw-reorg 供故障测试；详见脚本 help 与自动测试，不能对真实链广播。
+
+状态与环境
+M0_PORT：本地端口，默认 18914；变更端口也改变通行密钥的来源要求，应重新核对测试身份。
+M0_STATE_DIR：本地状态目录，默认与仓库同级的 yubenzhe-m0-state（不在 Git 目录内）；自动生成访问哈希、OTP 随机密钥、social.sqlite 和 ai.sqlite。
+M0_SIMULATION 默认关闭。dev:m0 显式打开且强制 BIND_HOST=127.0.0.1 / PUBLIC_ORIGIN=http://localhost:<port>。
+该入口移除模型 API key / key file 和推送配置，AI_PROVIDER=disabled；不继承真实模型付费配置。
+不要把 yubenzhe-m0-state、测试恢复码、浏览器账户、钱包和运行日志里的凭据提交 Git。
+停止服务后备份整个 yubenzhe-m0-state 可保留本地记录；不应将其覆盖到线上库。
+
+迁移
+social 数据库新增 008-account-access、009-platform-assets、010-community、011-workbench。
+迁移按校验和执行，旧迁移不修改。现有生产 frontend/admin 均可写库；未来升级应按原部署说明停两个写入者、备份并隔离恢复，再迁移。
+本地启动仅创建/打开隔离测试库，不触碰线上数据。不要把迁移后的库交给旧版镜像。
+
+接口概要（前缀 /api/social/；除登录能力外均验证产品会话）
+access/capabilities；access/email/request、verify：模拟邮件挑战、设备限流与统一失败。
+access/passkeys/login/options、verify：通行密钥登录。
+access/passkeys/register/options、verify；access/passkeys/options、verify：注册与绑定操作用途的强证明。
+access/security-state；access/recovery-code、recovery-code/confirm；access/funds/activate：资金权限。
+access/email/change/request、verify；access/sessions/revoke；access/passkeys/remove：安全设置。
+assets/status、registry、history：测试能力、余额、订单和绑定历史。
+assets/wallet/challenge、bind、unbind、deletion-complete：签名证明绑定，两阶段删除及中断恢复。
+assets/deposits/intent：只生成模拟入账意向，不创建可用钱款。
+assets/withdrawals/quote、confirm、cancel：60 秒报价、强确认和安全撤销。
+gifts；gifts/<id>；gifts/<id>/claim：建立、记录、领取，24 小时截止并独立消息 outbox。
+community/capabilities、identity、activity、preferences、rankings：等级、认证、隐私及榜单。
+community/bounties：赏金列表/发布；条目详情下申请、选人、确认、交付、结束、取消、评论与评价。
+community/providers、tokens、reports：服务商申请、发币申请、举报与本人处理记录。
+workbench/capabilities、files、estimate、tasks：文件、估算、任务；tasks/<id> 下确认、暂停、恢复、取消、接管、预算申请与确认；files/<id> 为所属用户下载。
+/api/admin/community/* 使用独立管理会话；认证、服务商审核、发行审核、举报与等级规则不在消费者端开放。
+确切请求字段与错误代码以对应 server 模块及 tests 为准。写操作使用 requestId（UUID）和版本/报价；相同键不同载荷拒绝，金额均为十进制整数字符串，不用浮点数计算资金。
+
+需要后续接入的参数（本版无需）
+邮件：发信域名、服务端发送适配器、密钥管理、OTP 持久 HMAC secret、真实送达/滥用监控。
+通行密钥：正式 HTTPS origin / RP ID，原生跨端关联与真实设备恢复验证。
+云桌面：供应商、区域、镜像、租户隔离、短期访问令牌、计费/销毁回调、网络和文件策略。
+模型：至少两家服务端 API、地区/授权、报价版本、用量回调/24 小时对账、超时和未知状态处理。
+真实资产：托管与独立签名方案、经核准的链和精确合约白名单、确认数、节点、价格来源、费用、对账和审计。
+运营：主体、地区、客服、政策、原生推送、商店及正式签名、异地备份与外部告警。
+
+验证
+npm --prefix yubenzhe-deploy test
+pnpm --dir tongban test
+node scripts/check-project.mjs --allow-changes
+git diff --check
+验收矩阵见 M0-ACCEPTANCE.txt；原始需求保留在 requirements-v0.1.txt。

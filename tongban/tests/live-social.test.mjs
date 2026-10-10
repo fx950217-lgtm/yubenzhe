@@ -7,20 +7,20 @@ const mediaURL = dataURL(stripCSS(await readFile(new URL('../src/chat-media.js',
 const source = stripCSS(await readFile(new URL('../src/live-social.js', import.meta.url), 'utf8')).replace("'./chat-media.js'", JSON.stringify(mediaURL));
 const { validateFriendId, validateGroup, mergeMessages, safeProfilePhoto, invalidatedConversationIds, catchUpMessages } = await import(dataURL(source));
 
-test('friend IDs use exact ASCII digits with the same account length limits', () => {
-  for (const input of ['000123', '1234567890123456', ' 73648291 ']) assert.equal(validateFriendId(input), input.trim());
-  for (const input of ['', '12345', '12345678901234567', '１２３４５６', 'user123', '0x123456', '123 456', '123456\n7']) assert.throws(() => validateFriendId(input), /数字好友 ID/);
+test('friend IDs use case-insensitive ASCII identifiers with the account length limits', () => {
+  for (const input of ['000123', '123456789012345678901234', ' 73648291 ', ' Hello_User ']) assert.equal(validateFriendId(input), input.trim().toLowerCase());
+  for (const input of ['', '1234', '1234567890123456789012345', '１２３４５６', 'user-name', '123 456', '123456\n7']) assert.throws(() => validateFriendId(input), /好友 ID/);
 });
 
-test('group creation requires two distinct current friends and respects the fifty member limit', () => {
+test('group creation requires two distinct current friends and respects the two hundred member limit', () => {
   const a = '73648291', b = '42873615';
   assert.deepEqual(validateGroup(' 旅行群 ', [a, a, b], [a, b]), { name: '旅行群', memberIds: [a, b] });
-  assert.throws(() => validateGroup('群', [a, a], [a, b]), /2–49/);
+  assert.throws(() => validateGroup('群', [a, a], [a, b]), /2–199/);
   assert.throws(() => validateGroup('群', [a, '999999'], [a, b]), /当前好友/);
   assert.throws(() => validateGroup(' '.repeat(2), [a, b], [a, b]), /群聊名称/);
   assert.throws(() => validateGroup('群'.repeat(25), [a, b], [a, b]), /群聊名称/);
-  const large = Array.from({ length: 50 }, (_, n) => String(100000 + n));
-  assert.throws(() => validateGroup('过大', large, large), /2–49/);
+  const large = Array.from({ length: 200 }, (_, n) => String(100000 + n));
+  assert.throws(() => validateGroup('过大', large, large), /2–199/);
 });
 
 test('overlapping latest and historical pages preserve messages and deduplicate server acknowledgements', () => {

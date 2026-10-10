@@ -1,0 +1,297 @@
+{
+  "version": "0.14.0-dev.1",
+  "date": "2026-10-10",
+  "scope": "Local M0 only; user explicitly selected local test version",
+  "environment": {
+    "os": "Windows",
+    "node": "24.19.0",
+    "url": "http://localhost:18914",
+    "bind": "127.0.0.1",
+    "data": "isolated sibling yubenzhe-m0-state; outside Git"
+  },
+  "productionChanged": false,
+  "nativeClientsChanged": false,
+  "realEmailSent": false,
+  "realFundsEnabled": false,
+  "paidProviderConnected": false,
+  "tests": {
+    "frontend": {
+      "passed": 334,
+      "failed": 0,
+      "command": "node --test tests/*.test.mjs"
+    },
+    "backend": {
+      "passed": 171,
+      "failed": 0,
+      "command": "node --test tests/*.test.mjs"
+    },
+    "mobileAndDesktopLayout": {
+      "passed": 18,
+      "failed": 0,
+      "widths": [
+        320,
+        390,
+        1280
+      ]
+    },
+    "build": {
+      "passed": true
+    },
+    "sourceBoundaryCheck": {
+      "passed": true,
+      "manifestRewritten": false
+    },
+    "diffCheck": {
+      "passed": true
+    },
+    "healthVersionRegression": {
+      "passed": 23,
+      "failed": 0,
+      "overlapsFullBackend": true
+    }
+  },
+  "browser": {
+    "date": "2026-10-10",
+    "environment": "isolated localhost:18914",
+    "verified": [
+      "mobile viewport 390x844 five navigation tabs",
+      "simulated email login two independent accounts",
+      "real virtual WebAuthn registration and UV",
+      "recovery code acknowledgment then funds activation",
+      "letter/numeric ID friend request and acceptance",
+      "trusted CLI confirmed deposit 10.25 SIM-USD",
+      "chat gift sends 1.25 SIM-USD and one authoritative card",
+      "recipient without wallet claims gift; balances 9.0 and 1.25",
+      "actual CSV upload, estimate, confirm, completion and artifact download",
+      "file invoice platform trial 0.03 USD / user charge zero",
+      "private key imported locally and automatically proved default wallet ownership using real EIP191 signature",
+      "two-phase wallet deletion confirmed strong credential; server unbound then local vault removed",
+      "after wallet deletion same account retained 2 SIM-USD, no pending cleanup",
+      "found and fixed missing submit type in local password confirmation; full flow reverified",
+      "recovered interrupted local cleanup after vault already removed",
+      "repeated same-address restore and full deletion completes without manual refresh; 2 SIM-USD remains",
+      "bounty published through real page, persists after reload, explicitly unescrowed and unpaid",
+      "provider application submitted, persists under My applications as pending and is absent from public approved directory"
+    ],
+    "pageErrors": [],
+    "notVerified": [
+      "physical authenticator",
+      "real email delivery",
+      "real remote desktop",
+      "real custody funds",
+      "native clients for this development version"
+    ],
+    "pageErrorsAfterFix": 0
+  },
+  "layout": {
+    "checks": [
+      {
+        "width": 320,
+        "route": "messages",
+        "viewport": 320,
+        "nav": 320,
+        "pass": true
+      },
+      {
+        "width": 320,
+        "route": "contacts",
+        "viewport": 320,
+        "nav": 320,
+        "pass": true
+      },
+      {
+        "width": 320,
+        "route": "workbench",
+        "viewport": 320,
+        "nav": 320,
+        "pass": true
+      },
+      {
+        "width": 320,
+        "route": "discover",
+        "viewport": 320,
+        "nav": 320,
+        "pass": true
+      },
+      {
+        "width": 320,
+        "route": "mine",
+        "viewport": 320,
+        "nav": 320,
+        "pass": true
+      },
+      {
+        "width": 320,
+        "route": "mine/assets",
+        "viewport": 320,
+        "nav": 320,
+        "pass": true
+      },
+      {
+        "width": 390,
+        "route": "messages",
+        "viewport": 390,
+        "nav": 390,
+        "pass": true
+      },
+      {
+        "width": 390,
+        "route": "contacts",
+        "viewport": 390,
+        "nav": 390,
+        "pass": true
+      },
+      {
+        "width": 390,
+        "route": "workbench",
+        "viewport": 390,
+        "nav": 390,
+        "pass": true
+      },
+      {
+        "width": 390,
+        "route": "discover",
+        "viewport": 390,
+        "nav": 390,
+        "pass": true
+      },
+      {
+        "width": 390,
+        "route": "mine",
+        "viewport": 390,
+        "nav": 390,
+        "pass": true
+      },
+      {
+        "width": 390,
+        "route": "mine/assets",
+        "viewport": 390,
+        "nav": 390,
+        "pass": true
+      },
+      {
+        "width": 1280,
+        "route": "messages",
+        "viewport": 1280,
+        "nav": 0,
+        "pass": true
+      },
+      {
+        "width": 1280,
+        "route": "contacts",
+        "viewport": 1280,
+        "nav": 0,
+        "pass": true
+      },
+      {
+        "width": 1280,
+        "route": "workbench",
+        "viewport": 1280,
+        "nav": 0,
+        "pass": true
+      },
+      {
+        "width": 1280,
+        "route": "discover",
+        "viewport": 1280,
+        "nav": 0,
+        "pass": true
+      },
+      {
+        "width": 1280,
+        "route": "mine",
+        "viewport": 1280,
+        "nav": 0,
+        "pass": true
+      },
+      {
+        "width": 1280,
+        "route": "mine/assets",
+        "viewport": 1280,
+        "nav": 0,
+        "pass": true
+      }
+    ],
+    "pageErrors": []
+  },
+  "buildFiles": [
+    {
+      "name": "app.css",
+      "size": 260100,
+      "sha256": "abfa1a69c687fbd19e068ef4c62649102ac9dd777c322eb7e17523e3d4c634fa"
+    },
+    {
+      "name": "app.js",
+      "size": 861105,
+      "sha256": "b0e64038357e564e30d6b951c88f941c36ee6df55c051a0d24c19a310725a9c0"
+    },
+    {
+      "name": "apple-touch-icon.png",
+      "size": 42458,
+      "sha256": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a"
+    },
+    {
+      "name": "icon.png",
+      "size": 348299,
+      "sha256": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42"
+    },
+    {
+      "name": "icon.svg",
+      "size": 354,
+      "sha256": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa"
+    },
+    {
+      "name": "index.html",
+      "size": 1372,
+      "sha256": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea"
+    },
+    {
+      "name": "install-qr.svg",
+      "size": 2421,
+      "sha256": "0d5b0a24c340d1a61bd22879efa6148b1e177fcaf7f0e19b3bdb80197c0437e7"
+    },
+    {
+      "name": "install.html",
+      "size": 7788,
+      "sha256": "5073cbd9134a64494be011c17a3b539a43f904764e7ba9649271614e5c6b8582"
+    },
+    {
+      "name": "manifest.webmanifest",
+      "size": 263,
+      "sha256": "3b0b8c20d9ec6c5d9134992748ad60963f83c6a612d1afb8487a5470867e35ec"
+    },
+    {
+      "name": "privacy.html",
+      "size": 3873,
+      "sha256": "e300ba2623d6ef7989dff40565cd89327ef282a79d35d8ed8e0331cad308fffa"
+    },
+    {
+      "name": "sw.js",
+      "size": 686,
+      "sha256": "3acc33c24695926a89bf85e9267e4dbf5e50836c08317fa3b5aa243663b3ba1d"
+    },
+    {
+      "name": "terms.html",
+      "size": 2634,
+      "sha256": "793e250463b1709882c8723a7edd37fb19bfac009d1a57751da94627bd710965"
+    },
+    {
+      "name": "_headers",
+      "size": 268,
+      "sha256": "736cc28ddb138c353078e8eb49af4529a9453dd8cae8495ee0f6e4da10f736f9"
+    }
+  ],
+  "limitations": [
+    "SIM ledger has no monetary value; no production custody/signing/node indexer",
+    "No real email delivery, remote desktop, paid AI model, hardware wallet or native-client validation",
+    "Full requirements have partial AC items; see docs/M0-ACCEPTANCE.txt",
+    "No claimed production capacity or security audit"
+  ],
+  "health": {
+    "ok": true,
+    "service": "frontend",
+    "version": "0.14.0-dev.1",
+    "stage": "public-preview",
+    "localOnly": true
+  }
+}

@@ -219,10 +219,11 @@ test('draft navigation and filters use actual entries and notify route changes',
   assert.match(app.container.innerHTML,/value="WORK_MARKER"/,'explicit saved selection is remembered per type');
 });
 
-test('discovery exposes real moments, AI and local drafts without advertising sample services',t=>{
+test('discovery restores actual community routes and preserves moments and local drafts without sample facts',t=>{
   const app=mountHarness(t),markup=app.container.innerHTML;
   assert.match(markup,/data-disc="moments"/);assert.match(markup,/data-disc="ai"/);assert.match(markup,/data-disc="drafts"/);
-  assert.doesNotMatch(markup,/data-disc="(?:services|bounty|provider|rank|token)"|disc-resume-section|disc-friend-stack/);
+  for(const route of ['bounty','provider','rank','token'])assert.ok(markup.includes('data-disc="'+route+'"'));
+  assert.doesNotMatch(markup,/示例榜单|示例目录|示例 USDT|disc-resume-section|disc-friend-stack/);
   app.click('drafts');assert.deepEqual(app.seen,['hub','drafts']);
   assert.match(app.container.innerHTML,/仅保存在本机/);
 });

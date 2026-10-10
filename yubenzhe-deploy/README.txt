@@ -1,3 +1,9 @@
+2026-10-10 本地 M0 开发补充
+当前网页/服务端源码 0.14.0-dev.1，仅隔离本地测试；不等于线上及原生 0.13.0 已升级。
+启动、迁移、API、依赖配置见 ../docs/M0-RUNBOOK.txt，逐项验收与待接项见 ../docs/M0-ACCEPTANCE.txt。
+本轮不接真实邮箱、云桌面/收费模型或主网资金；不得把模拟资产当作真实托管。
+以下保留原历史交付与部署说明。
+
 0.13.0 公开测试版（新加坡前后台已部署）
 
 当前源码本地准备：使用 Node 24，在本目录先执行 npm ci，再运行 npm test 或 npm start。0.13.0 新增锁定版本的 web-push 运行依赖，即使未配置推送也需要安装；package-lock.json 必须与 package.json 一同保留。Dockerfile 已执行 npm ci --omit=dev --ignore-scripts。下方 0.9.0 历史说明中的“无 npm 依赖”不适用于当前版本。

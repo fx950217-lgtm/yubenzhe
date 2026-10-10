@@ -21,10 +21,10 @@ test('v1 migration retains old nickname, bio and avatar and never replaces unrea
     store.setItem(key, raw); assert.throws(() => getLocalProfile(store), /无法读取/); assert.throws(() => saveLocalProfile(editable, store), /无法读取/); assert.equal(store.getItem(key), raw);
   }
 });
-test('ID rules enforce digits and retained system numbers without claiming global uniqueness', () => {
-  for (const id of ['12345', '12345678901234567', '123abc', '-123456', '12 3456']) assert.throws(() => validateUserId(id), /6–16/);
+test('ID rules enforce ASCII identifiers and retained system numbers without claiming global uniqueness', () => {
+  for (const id of ['1234', 'abcde'.repeat(5), '１２３４５６', '-123456', '12 3456']) assert.throws(() => validateUserId(id), /5–24/);
   for (const id of ['111111', '123456', '987654', '123123', '121212', '55888826', '5201314']) { assert.equal(isReservedUserId(id), true); assert.throws(() => validateUserId(id), /靓号/); }
-  assert.equal(validateUserId(' 25973186 '), '25973186'); assert.equal(validateUserId('003578'), '003578');
+  assert.equal(validateUserId(' Hello_User '), 'hello_user'); assert.equal(validateUserId(' 25973186 '), '25973186'); assert.equal(validateUserId('003578'), '003578');
 });
 test('validation and concurrent edits do not overwrite saved profile or photo', () => {
   const store = storage(); const original = getLocalProfile(store);

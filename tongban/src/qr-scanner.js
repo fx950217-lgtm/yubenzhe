@@ -13,10 +13,10 @@ export function parseScanPayload(text, mode = 'all') {
   if (!MODES.includes(mode)) throw scanError('扫码模式暂不可用。');
   if (typeof text !== 'string' || !text.trim() || text.length > 2048) throw scanError('内容为空或过长，请使用钱包收款码或愚笨者好友码。');
   const value = text.trim();
-  const friend = /^tongban:\/\/friend\/([a-zA-Z0-9_-]{1,64})$/.exec(value);
+  const friend = /^tongban:\/\/friend\/([a-zA-Z0-9_]{5,24})$/.exec(value);
   if (friend) {
     if (mode === 'transfer') throw scanError('这是好友码，请使用 BSC 测试网收款地址。');
-    return { kind: 'friend', id: friend[1] };
+    return { kind: 'friend', id: friend[1].toLowerCase() };
   }
   let address = value, networkExplicit = false;
   if (/^ethereum:/i.test(value)) {

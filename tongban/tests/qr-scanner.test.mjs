@@ -34,11 +34,11 @@ test('parser rejects zero/checksum errors, unsupported chains, contract function
 });
 
 test('friend IDs use an exact allowlist and the two destination modes cannot be confused', () => {
-  assert.deepEqual(parseScanPayload('tongban://friend/Lime_123-abc'), { kind: 'friend', id: 'Lime_123-abc' });
-  assert.deepEqual(parseScanPayload('tongban://friend/a', 'friend'), { kind: 'friend', id: 'a' });
-  assert.throws(() => parseScanPayload('tongban://friend/a', 'transfer'));
+  assert.deepEqual(parseScanPayload('tongban://friend/Lime_123_abc'), { kind: 'friend', id: 'lime_123_abc' });
+  assert.deepEqual(parseScanPayload('tongban://friend/alice', 'friend'), { kind: 'friend', id: 'alice' });
+  assert.throws(() => parseScanPayload('tongban://friend/alice', 'transfer'));
   assert.throws(() => parseScanPayload(address, 'friend'));
-  for (const payload of ['tongban://friend/', `tongban://friend/${'x'.repeat(65)}`, 'tongban://friend/a/b', 'tongban://friend/a?admin=1', 'tongban://friend/%61', 'tongban://friend/中文', 'tongban://friend/a#b']) assert.throws(() => parseScanPayload(payload));
+  for (const payload of ['tongban://friend/', `tongban://friend/${'x'.repeat(25)}`, 'tongban://friend/a/b', 'tongban://friend/a?admin=1', 'tongban://friend/%61', 'tongban://friend/中文', 'tongban://friend/a#b']) assert.throws(() => parseScanPayload(payload));
   assert.throws(() => parseScanPayload(address, 'unknown'));
 });
 
@@ -138,7 +138,7 @@ test('invalid and wrong-mode manual payloads cannot produce a confirmable result
   assert.equal(app.results.length, 0); assert.equal(app.resultBox.hidden, true);
   app.submit('tongban://friend/Alice_7');
   assert.match(app.resultBox.innerHTML, /查看好友/); assert.match(app.resultBox.innerHTML, /不会直接添加好友/);
-  app.click('confirm'); assert.deepEqual(app.results, [{ kind: 'friend', id: 'Alice_7' }]);
+  app.click('confirm'); assert.deepEqual(app.results, [{ kind: 'friend', id: 'alice_7' }]);
   app.cleanup();
 });
 
@@ -148,7 +148,7 @@ test('a parent rejecting an unknown friend keeps the result and shows its explan
   app.submit('tongban://friend/Unknown_7');
   const button = app.click('confirm'); await tick();
   assert.equal(app.status.textContent, message); assert.equal(button.disabled, false);
-  assert.equal(app.resultBox.hidden, false); assert.match(app.resultBox.innerHTML, /Unknown_7/);
+  assert.equal(app.resultBox.hidden, false); assert.match(app.resultBox.innerHTML, /unknown_7/);
   app.click('confirm', button); await tick(); assert.equal(app.results.length, 2);
   app.cleanup();
 });

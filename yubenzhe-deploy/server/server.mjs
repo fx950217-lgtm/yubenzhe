@@ -40,7 +40,7 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       if (url.pathname === '/healthz' && request.method === 'GET') {
         if (role === 'admin') database.raw.prepare('SELECT 1').get();
         socialService?.health?.();
-        json(response,{ok:true,service:role,version:'0.13.0',stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
+        json(response,{ok:true,service:role,version:'0.14.0-dev.1',stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
       }
       if (request.headers.host !== publicURL.host || url.origin !== publicURL.origin) throw new AdminError(403,'HOST_DENIED','访问地址不匹配，请使用验收地址。');
       if (role === 'frontend' && url.pathname.startsWith('/api/social/')) {
@@ -64,6 +64,19 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       }
       if (url.pathname === '/logout' || url.pathname === '/signout-with-chatgpt') { response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); response.end(gatePage(role,'',true)); return; }
       if (url.pathname.startsWith('/api/')) {
+        if(role==='admin'&&url.pathname.startsWith('/api/admin/community/')){
+          await authorizeAdmin(database,user);
+          if(!socialService?.community)throw new AdminError(503,'COMMUNITY_UNAVAILABLE','社区管理尚未接通。');
+          let input={};
+          if(request.method==='POST'){
+            checkOrigin(request);
+            if(request.headers['content-type']?.split(';')[0].trim().toLowerCase()!=='application/json')throw new AdminError(415,'JSON_REQUIRED','操作仅接受 JSON。');
+            try{input=JSON.parse(await body(request,32768));}catch(error){if(error instanceof AdminError)throw error;throw new AdminError(400,'INVALID_JSON','请求内容无效。');}
+            if(!input||typeof input!=='object'||Array.isArray(input))throw new AdminError(400,'INVALID_JSON','请求内容无效。');
+          }
+          const result=await socialService.community.adminHandle({method:request.method,path:url.pathname.slice('/api/admin/community/'.length),input,actor:user.userId});
+          json(response,result);return;
+        }
         if(role==='admin'&&url.pathname.startsWith('/api/admin/social/')){
           await authorizeAdmin(database,user);
           if(!socialService?.moderation)throw new AdminError(503,'SOCIAL_UNAVAILABLE','真实社交管理暂不可用。');

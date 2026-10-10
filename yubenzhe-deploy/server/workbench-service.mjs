@@ -1,0 +1,151 @@
+import { randomUUID,createHash } from 'node:crypto';
+import { fail } from './social-validation.mjs';
+import { validateFile,processLocalFiles,priceMicro,STEP_COST,PRICE_VERSION,RETENTION_MS } from './workbench-adapters.mjs';
+const FINAL=new Set(['succeeded','failed','cancelled']);
+const ALLOWED=new Set(['analyze','deduplicate']);
+const uuid=value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
+const amount=value=>{if(typeof value!=='string'||!/^\d{1,12}$/.test(value)||BigInt(value)>1000000n)fail(400,'BUDGET_INVALID','测试预算应为不超过 1 美元的整数微美元。');return BigInt(value);};
+const digest=value=>createHash('sha256').update(value).digest('hex');
+export function createWorkbenchService({database,socialService,enabled=false,now=Date.now,processor=processLocalFiles}={}){
+ const db=database.raw,one=(sql,...args)=>db.prepare(sql).get(...args),all=(sql,...args)=>db.prepare(sql).all(...args),run=(sql,...args)=>db.prepare(sql).run(...args);
+ function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(error){db.exec('ROLLBACK');throw error;}}
+ function enabledOrFail(){if(!enabled)fail(503,'WORKBENCH_UNCONFIGURED','文件工作台未配置。当前只有明确启用的本机测试执行器可用。');}
+ function ownTask(owner,id){const task=one('SELECT * FROM workbench_tasks WHERE id=? AND owner_id=?',id,owner);if(!task)fail(404,'TASK_NOT_FOUND','任务不存在。');return task;}
+ function event(task,eventName,payload={}){run('INSERT INTO workbench_events VALUES(?,?,?,?,?)',randomUUID(),task.id,eventName,JSON.stringify(payload),now());}
+ function view(task){return {id:task.id,title:task.title,operation:task.operation,status:task.status,step:task.step,version:task.version,workspaceId:task.workspace_id,workspace:one('SELECT id,state,controller,controller_task_id AS controllerTaskId,version FROM workbench_workspaces WHERE id=?',task.workspace_id),quoteExpiresAt:task.quote_expires_at,estimatedMicro:task.estimated_micro,budgetMicro:task.budget_micro,costMicro:task.cost_micro,reservedMicro:task.reserved_micro,settledMicro:task.settled_micro,releasedMicro:task.released_micro,billingState:task.billing_state,priceVersion:task.price_version,payer:'platform-trial',userChargeMicro:'0',simulation:true,error:task.error_code,createdAt:task.created_at,updatedAt:task.updated_at,outputs:all('SELECT id,name,mime,size,expires_at AS expiresAt FROM workbench_files WHERE task_id=? AND kind=? AND expires_at>?',task.id,'output',now()),events:all('SELECT event,payload,created_at AS createdAt FROM workbench_events WHERE task_id=? ORDER BY created_at,rowid',task.id).map(row=>({...row,payload:JSON.parse(row.payload)})),approvals:all('SELECT id,action,parameters,status,expires_at AS expiresAt,version FROM workbench_approvals WHERE task_id=?',task.id).map(row=>({...row,parameters:JSON.parse(row.parameters)})),invoice:one('SELECT id,cost_micro AS costMicro,total_micro AS totalMicro,user_charge_micro AS userChargeMicro,payer,state FROM workbench_invoices WHERE task_id=?',task.id)||null};}
+ function command(owner,path,input,fn){if(!uuid(input.requestId))fail(400,'REQUEST_ID_REQUIRED','请保留同一个操作标识重试。');const signature=digest(JSON.stringify({path,input:{...input,requestId:undefined}}));return transaction(()=>{const old=one('SELECT * FROM workbench_commands WHERE owner_id=? AND request_id=?',owner,input.requestId);if(old){if(old.signature!==signature)fail(409,'IDEMPOTENCY_CONFLICT','同一操作标识的内容不能改变。');return JSON.parse(old.response);}const result=fn();run('INSERT INTO workbench_commands VALUES(?,?,?,?,?)',owner,input.requestId,signature,JSON.stringify(result),now());return result;});}
+ function update(task,status,extras={}){run('UPDATE workbench_tasks SET status=?,version=version+1,updated_at=? WHERE id=?',status,now(),task.id);event(task,status,extras);}
+ function settle(task,status,error=null){
+  if(FINAL.has(task.status))return;
+  // Platform fault without usable output is free. In the local trial the user is
+  // never charged; this invoice still exercises the quoted cost boundary.
+  const total=status==='failed'?0n:priceMicro(task.cost_micro,{roundCent:true});
+  if(total>BigInt(task.budget_micro))throw new Error('Budget invariant violated');
+  const reserved=BigInt(task.reserved_micro);const released=reserved-total;
+  if(released<0n)throw new Error('Reservation invariant violated');
+  run('INSERT INTO workbench_invoices VALUES(?,?,?,?,?,?,?,?,?)',randomUUID(),task.id,task.owner_id,task.cost_micro,total.toString(),'0','platform-trial','settled',now());
+  run('UPDATE workbench_tasks SET status=?,reserved_micro=?,settled_micro=?,released_micro=?,billing_state=?,authorized_micro=?,error_code=?,version=version+1,updated_at=? WHERE id=?',status,'0',total.toString(),released.toString(),'settled','0',error,now(),task.id);
+  run('UPDATE workbench_approvals SET status=? WHERE task_id=? AND status=?','expired',task.id,'pending');
+  event(task,status,{settledMicro:total.toString(),releasedMicro:released.toString()});
+  run("UPDATE workbench_workspaces SET controller='ai',controller_task_id=NULL,version=version+1,updated_at=? WHERE id=? AND controller_task_id=?",now(),task.workspace_id,task.id);
+  const other=one("SELECT 1 FROM workbench_tasks WHERE workspace_id=? AND id<>? AND status IN ('running','queued')",task.workspace_id,task.id);
+  if(!other)run("UPDATE workbench_workspaces SET state='suspended',version=version+1,updated_at=? WHERE id=?",now(),task.workspace_id);
+ }
+ function validateVersion(task,input){if(!Number.isInteger(input.version)||task.version!==input.version)fail(409,'TASK_CHANGED','任务已在另一设备更新，请刷新后重试。');}
+ function pending(owner){return all("SELECT id,status,billing_state FROM workbench_tasks WHERE owner_id=? AND status NOT IN ('succeeded','failed','cancelled','awaiting-confirmation')",owner).map(row=>({type:'file-task',id:row.id,status:row.status}));}
+ function recordUsage(task,eventKey,cost){
+  if(FINAL.has(task.status)||task.status!=='running')return false;
+  const existing=one('SELECT cost_micro FROM workbench_usage WHERE task_id=? AND event_key=?',task.id,eventKey);
+  if(existing){if(existing.cost_micro!==cost.toString())throw new Error('Usage conflict');return false;}
+  if(priceMicro(BigInt(task.cost_micro)+cost,{roundCent:true})>BigInt(task.budget_micro)){update(task,'budget-paused');return false;}
+  run('INSERT INTO workbench_usage VALUES(?,?,?,?,?,?)',randomUUID(),task.id,eventKey,cost.toString(),task.step,now());
+  run('UPDATE workbench_tasks SET cost_micro=?,authorized_micro=?,step=step+1,version=version+1,updated_at=? WHERE id=?',(BigInt(task.cost_micro)+cost).toString(),'0',now(),task.id);
+  event(task,'step-completed',{step:task.step+1,eventKey});return true;
+ }
+ function tick(){if(!enabled)return;
+  transaction(()=>{
+   run('DELETE FROM workbench_files WHERE expires_at<=?',now());
+   const stale=all("SELECT * FROM workbench_tasks WHERE status='awaiting-confirmation' AND quote_expires_at<=?",now());
+   for(const task of stale){run("UPDATE workbench_tasks SET status='cancelled',billing_state='settled',version=version+1,updated_at=? WHERE id=?",now(),task.id);event(task,'quote-expired');}
+   run("UPDATE workbench_approvals SET status='expired' WHERE status='pending' AND expires_at<=?",now());
+   const owners=all("SELECT DISTINCT owner_id FROM workbench_tasks WHERE status IN ('queued','running')");
+   for(const {owner_id:owner} of owners){
+    let task=one("SELECT * FROM workbench_tasks WHERE owner_id=? AND status='running'",owner);
+    const ws=one('SELECT * FROM workbench_workspaces WHERE owner_id=?',owner);
+    if(ws.controller==='user')continue;
+    if(!task){task=one("SELECT * FROM workbench_tasks WHERE owner_id=? AND status='queued' ORDER BY created_at,id LIMIT 1",owner);if(!task)continue;update(task,'running');run("UPDATE workbench_workspaces SET state='running',version=version+1,updated_at=? WHERE id=?",now(),task.workspace_id);continue;}
+    const account=one('SELECT deleted_at FROM accounts WHERE id=?',owner);
+    if(!account||account.deleted_at){settle(task,'cancelled');continue;}
+    const before=priceMicro(BigInt(task.cost_micro)+STEP_COST,{roundCent:true});
+    if(before>BigInt(task.budget_micro)){update(task,'budget-paused');continue;}
+    try{
+     if(task.step===2){
+      const ids=JSON.parse(task.input_ids);const files=ids.map(id=>one("SELECT * FROM workbench_files WHERE id=? AND owner_id=? AND kind='input' AND expires_at>?",id,owner,now()));
+      if(files.some(file=>!file))throw new Error('Input expired');
+      const outputs=processor(files,task.operation);
+      if(!Array.isArray(outputs)||!outputs.length)throw new Error('No artifact');
+      for(const output of outputs){if(!Buffer.isBuffer(output.content)||output.content.length>1024*1024)throw new Error('Output size');run('INSERT INTO workbench_files VALUES(?,?,?,?,?,?,?,?,?,?,?)',randomUUID(),owner,task.id,output.name,output.mime,output.content,digest(output.content),output.content.length,'output',now(),now()+RETENTION_MS);}
+     }
+     recordUsage(task,'local-step-'+task.step,STEP_COST);
+     const fresh=ownTask(owner,task.id);if(fresh.step>=3)settle(fresh,'succeeded');
+    }catch(error){
+     run("DELETE FROM workbench_files WHERE task_id=? AND kind='output'",task.id);settle(ownTask(owner,task.id),'failed','FILE_PROCESSING_FAILED');
+    }
+   }
+   // Only local workspaces exist in M0; suspending them never bills compute.
+   run("UPDATE workbench_workspaces SET state='suspended',version=version+1 WHERE state='ready' AND updated_at<?",now()-600000);
+  });
+ }
+ async function handle({method,path,input={},token}){
+  if(!path.startsWith('workbench/'))return undefined;
+  const account=socialService.assertAIAccess(token,{write:method==='POST'}),owner=account.id;
+  const route=path.slice('workbench/'.length);
+  if(method==='GET'&&route==='capabilities')return {enabled,simulation:true,executor:'local-file-parser',models:[],desktop:{available:false,reason:'尚未配置真实云桌面服务商'},operations:[{id:'analyze',label:'文件统计与格式整理'},{id:'deduplicate',label:'去重并生成报告'}],priceVersion:PRICE_VERSION,payer:'platform-trial',maxBudgetMicro:'1000000',fileLimit:262144,retentionDays:30,marginBasisPoints:3000,notice:'本机文件测试执行器；未连接语言模型、云桌面或真实支付。'};
+  enabledOrFail();
+  if(method==='GET'&&route==='files')return {files:all("SELECT id,name,size,expires_at AS expiresAt FROM workbench_files WHERE owner_id=? AND kind='input' AND expires_at>? ORDER BY created_at DESC LIMIT 100",owner,now())};
+  const download=/^files\/([a-f0-9-]{36})$/.exec(route);
+  if(method==='GET'&&download){const file=one('SELECT * FROM workbench_files WHERE id=? AND owner_id=? AND expires_at>?',download[1],owner,now());if(!file)fail(404,'FILE_NOT_FOUND','文件不存在或已过期。');return {binary:Buffer.from(file.content),mime:file.mime,downloadName:file.name};}
+  if(method==='GET'&&route==='tasks')return {tasks:all('SELECT * FROM workbench_tasks WHERE owner_id=? ORDER BY created_at DESC,rowid DESC LIMIT 50',owner).map(view)};
+  const detail=/^tasks\/([a-f0-9-]{36})$/.exec(route);
+  if(method==='GET'&&detail)return {task:view(ownTask(owner,detail[1]))};
+  if(method==='POST'&&route==='files')return command(owner,route,input,()=>{
+   const n=one('SELECT count(*) AS n,coalesce(sum(size),0) AS bytes FROM workbench_files WHERE owner_id=? AND expires_at>?',owner,now());if(n.n>=200||n.bytes>10*1024*1024)fail(409,'FILE_QUOTA','文件测试额度已用完。');
+   if(typeof input.base64!=='string'||input.base64.length>350000||! /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input.base64))fail(400,'FILE_INVALID','文件内容无效。');
+   const bytes=Buffer.from(input.base64,'base64');let checked;try{checked=validateFile(input.name,bytes);}catch(error){fail(400,'FILE_INVALID',error.message);}
+   const id=randomUUID();run('INSERT INTO workbench_files VALUES(?,?,?,?,?,?,?,?,?,?,?)',id,owner,null,input.name,'text/plain; charset=utf-8',bytes,checked.sha256,bytes.length,'input',now(),now()+RETENTION_MS);return {file:{id,name:input.name,size:bytes.length,expiresAt:now()+RETENTION_MS}};
+  });
+  if(method==='POST'&&route==='estimate')return command(owner,route,input,()=>{
+   if(!ALLOWED.has(input.operation))fail(400,'OPERATION_INVALID','请选择文件操作。');
+   if(!Array.isArray(input.fileIds)||input.fileIds.length<1||input.fileIds.length>5||new Set(input.fileIds).size!==input.fileIds.length)fail(400,'FILE_REQUIRED','请选择 1–5 个文件。');
+   for(const id of input.fileIds)if(!one("SELECT 1 FROM workbench_files WHERE id=? AND owner_id=? AND kind='input' AND expires_at>?",id,owner,now()+60000))fail(404,'FILE_NOT_FOUND','文件不存在或即将过期。');
+   const title=String(input.title||'整理文件').trim();if(title.length<1||title.length>200)fail(400,'TITLE_INVALID','任务说明限 200 字。');
+   let ws=one('SELECT * FROM workbench_workspaces WHERE owner_id=?',owner);
+   if(!ws){const id=randomUUID();run('INSERT INTO workbench_workspaces(id,owner_id,state,controller,version,created_at,updated_at) VALUES(?,?,?,?,?,?,?)',id,owner,'ready','ai',1,now(),now());ws={id};}
+   const unfinished=one("SELECT count(*) AS n FROM workbench_tasks WHERE owner_id=? AND status NOT IN ('succeeded','failed','cancelled')",owner).n;if(unfinished>=20)fail(409,'TASK_QUOTA','请先完成或取消已有任务。');
+   const budget=amount(input.budgetMicro);if(budget<10000n)fail(400,'BUDGET_TOO_SMALL','测试预算至少 0.01 美元。');
+   const id=randomUUID();run('INSERT INTO workbench_tasks(id,owner_id,workspace_id,title,operation,input_ids,status,quote_expires_at,estimated_micro,budget_micro,price_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',id,owner,ws.id,title,input.operation,JSON.stringify(input.fileIds),'awaiting-confirmation',now()+60000,priceMicro(STEP_COST*3n,{roundCent:true}).toString(),budget.toString(),PRICE_VERSION,now(),now());
+   event({id},'estimated',{steps:['读取与校验文件','统计或去重','生成可下载文件'],estimatedSeconds:5});return {task:view(ownTask(owner,id))};
+  });
+  const action=/^tasks\/([a-f0-9-]{36})\/(confirm|pause|resume|cancel|takeover|budget-request|approve)$/.exec(route);
+  if(method==='POST'&&action)return command(owner,route,input,()=>{
+   const task=ownTask(owner,action[1]),name=action[2];validateVersion(task,input);
+   if(FINAL.has(task.status))fail(409,'TASK_FINISHED','任务已结束。');
+   if(name==='confirm'){
+    if(task.status!=='awaiting-confirmation'||task.quote_expires_at<=now())fail(409,'QUOTE_EXPIRED','报价已过期，请重新创建任务。');
+    if(input.priceVersion!==task.price_version||input.budgetMicro!==task.budget_micro||input.acceptTrial!==true)fail(400,'QUOTE_NOT_CONFIRMED','请确认本地测试执行器和预算上限。');
+    run("UPDATE workbench_tasks SET reserved_micro=budget_micro,billing_state='reserved' WHERE id=?",task.id);update(task,'queued');
+   }else if(name==='cancel'){
+    if(task.status==='awaiting-confirmation'){update(task,'cancelled');run("UPDATE workbench_tasks SET billing_state='settled' WHERE id=?",task.id);}else settle(task,'cancelled');
+   }else if(name==='pause'||name==='takeover'){
+    if(!['queued','running','paused','budget-paused','awaiting-user'].includes(task.status))fail(409,'STATE_INVALID','当前任务不能暂停。');
+    const ws=one('SELECT * FROM workbench_workspaces WHERE id=?',task.workspace_id);
+    if(name==='takeover'){
+     if(ws.controller==='user'&&ws.controller_task_id!==task.id)fail(409,'CONTROL_BUSY','另一任务已被接管，请先恢复或取消该任务。');
+     run("UPDATE workbench_workspaces SET controller='user',controller_task_id=?,state='suspended',version=version+1,updated_at=? WHERE id=?",task.id,now(),task.workspace_id);
+    }
+    update(task,name==='takeover'?'awaiting-user':'paused');
+   }else if(name==='resume'){
+    if(!['paused','budget-paused','awaiting-user'].includes(task.status))fail(409,'STATE_INVALID','当前任务不能恢复。');
+    if(priceMicro(BigInt(task.cost_micro)+STEP_COST,{roundCent:true})>BigInt(task.budget_micro))fail(409,'BUDGET_EXHAUSTED','剩余预算不足，请先批准新的预算。');
+    const ws=one('SELECT * FROM workbench_workspaces WHERE id=?',task.workspace_id);
+    if(ws.controller==='user'&&ws.controller_task_id!==task.id)fail(409,'CONTROL_BUSY','另一任务已被接管，请先恢复或取消该任务。');
+    run("UPDATE workbench_workspaces SET controller='ai',controller_task_id=NULL,state='ready',version=version+1,updated_at=? WHERE id=?",now(),task.workspace_id);update(task,'queued');
+   }else if(name==='budget-request'){
+    if(!['paused','budget-paused','awaiting-user'].includes(task.status))fail(409,'STATE_INVALID','请先暂停任务。');
+    const budget=amount(input.budgetMicro);if(budget<=BigInt(task.budget_micro))fail(400,'BUDGET_INVALID','新预算应大于当前上限。');
+    run("UPDATE workbench_approvals SET status='superseded' WHERE task_id=? AND status='pending'",task.id);
+    const id=randomUUID();run('INSERT INTO workbench_approvals VALUES(?,?,?,?,?,?,?,?,?)',id,task.id,owner,'increase-budget',JSON.stringify({oldBudgetMicro:task.budget_micro,newBudgetMicro:budget.toString(),payer:'platform-trial'}),'pending',task.version,now(),now()+60000);event(task,'approval-requested',{id});
+   }else if(name==='approve'){
+    const approval=one('SELECT * FROM workbench_approvals WHERE id=? AND task_id=? AND owner_id=?',input.approvalId,task.id,owner);
+    if(!approval||approval.status!=='pending'||approval.expires_at<=now()||approval.version!==task.version||input.approvalAction!=='increase-budget')fail(409,'APPROVAL_INVALID','审批已失效，请重新核对。');
+    const parameters=JSON.parse(approval.parameters);if(input.budgetMicro!==parameters.newBudgetMicro)fail(400,'APPROVAL_SCOPE','批准内容必须与审批卡一致。');
+    run("UPDATE workbench_approvals SET status='approved' WHERE id=?",approval.id);run('UPDATE workbench_tasks SET budget_micro=?,reserved_micro=? WHERE id=?',parameters.newBudgetMicro,parameters.newBudgetMicro,task.id);event(task,'budget-approved',parameters);update(task,task.status);
+   }
+   return {task:view(ownTask(owner,task.id))};
+  });
+  if(method==='POST'&&route==='desktop')fail(503,'DESKTOP_UNCONFIGURED','尚未配置真实云桌面。当前文件执行器没有远程屏幕。');
+  fail(404,'WORKBENCH_ROUTE','工作台操作不存在。');
+ }
+ function cleanupDeletedAccount(owner,{withinTransaction=false}={}){if(pending(owner).length)fail(409,'TASKS_PENDING','请先取消或完成文件任务。');const clean=()=>{run('DELETE FROM workbench_files WHERE owner_id=?',owner);run('DELETE FROM workbench_commands WHERE owner_id=?',owner);run("UPDATE workbench_tasks SET title='已注销账户任务',input_ids='[]' WHERE owner_id=?",owner);run("UPDATE workbench_workspaces SET state='released',controller='ai',controller_task_id=NULL,version=version+1 WHERE owner_id=?",owner);};if(withinTransaction)clean();else transaction(clean);}
+ return {handle,tick,getPendingObligations:pending,cleanupDeletedAccount};
+}

@@ -12,3 +12,6 @@ public/frontend/
 caddy-data/
 caddy-config/
 social-state/
+
+# Local development data and one-use test credentials
+.local-m0/

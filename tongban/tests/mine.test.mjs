@@ -78,12 +78,12 @@ test('web installation entry navigates while the installed app omits it and hand
 test('personal center labels local identity and forwards drafts and bills without duplicate moments', () => {
   const app = harness();
   assert.match(app.container.innerHTML, /本机资料/);
-  assert.match(app.container.innerHTML, /愚笨者 · 0.12.1/);
+  assert.match(app.container.innerHTML, /愚笨者 · 0.14.0-dev.1/);
   assert.match(app.container.innerHTML, /<small>3 份<\/small>/);
   assert.doesNotMatch(app.container.innerHTML, /data-mine-action="moments"/);
   app.click('drafts'); app.click('bill-center'); app.click('ai');
   assert.deepEqual(app.calls, [
-    ['navigate', 'discover', { route: 'drafts' }], ['action', 'bill-center'], ['navigate', 'discover', { route: 'ai' }],
+    ['navigate', 'discover', { route: 'drafts' }], ['action', 'bill-center'], ['navigate', 'workbench'],
   ]);
   app.cleanup();
 });

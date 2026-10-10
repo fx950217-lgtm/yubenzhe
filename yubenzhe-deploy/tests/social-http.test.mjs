@@ -118,7 +118,7 @@ test('wrong business password is distinguishable from expired sessions and does 
  const wrong = await f.post('password', { currentPassword: '111222', newPassword: NEXT_PIN }, auth);
  assert.equal(wrong.status, 401); assert.equal(wrong.json().code, 'BAD_PASSWORD'); assert.equal(wrong.headers['set-cookie'], undefined);
  assert.equal((await f.get('me', auth)).status, 200);
- const idChange = await f.post('profile', { ...account.profile, level: undefined, official: undefined, identityScope: undefined, userId: '29573186', currentPassword: '111222' }, auth);
+ const idChange = await f.post('profile', { nickname: account.profile.nickname, bio: account.profile.bio, avatar: account.profile.avatar, avatarImage: account.profile.avatarImage, revision: account.profile.revision, userId: '29573186', currentPassword: '111222' }, auth);
  assert.equal(idChange.status, 401); assert.equal(idChange.json().code, 'BAD_PASSWORD'); assert.equal((await f.get('me', auth)).status, 200);
  const invalid = await f.get('me', nativeHeaders('A'.repeat(43))); assert.equal(invalid.status, 401); assert.equal(invalid.json().code, 'ACCOUNT_REQUIRED');
  const login = await f.post('login', { userId: account.profile.userId, password: '111222' }); assert.equal(login.status, 401); assert.equal(login.json().code, 'BAD_CREDENTIALS');
