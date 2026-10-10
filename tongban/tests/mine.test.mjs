@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { PHOTO_512 } from './helpers/profile-fixtures.mjs';
 import { getLocalProfile, PROFILE_AVATARS } from '../src/profile-store.js';
 
+const { version: packageVersion } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+
 const source = (await readFile(new URL('../src/mine.js', import.meta.url), 'utf8'))
   .replace("import './mine.css';", '')
   .replace("from './profile-store.js'", `from '${new URL('../src/profile-store.js', import.meta.url).href}'`)
@@ -78,7 +80,7 @@ test('web installation entry navigates while the installed app omits it and hand
 test('personal center labels local identity and forwards drafts and bills without duplicate moments', () => {
   const app = harness();
   assert.match(app.container.innerHTML, /本机资料/);
-  assert.match(app.container.innerHTML, /愚笨者 · 0.14.0-dev.2/);
+  assert.ok(app.container.innerHTML.includes(`愚笨者 · ${packageVersion}`), 'personal center displays the current package version');
   assert.match(app.container.innerHTML, /<small>3 份<\/small>/);
   assert.doesNotMatch(app.container.innerHTML, /data-mine-action="moments"/);
   app.click('drafts'); app.click('bill-center'); app.click('ai');
