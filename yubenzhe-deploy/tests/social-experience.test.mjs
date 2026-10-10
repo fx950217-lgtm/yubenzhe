@@ -15,3 +15,34 @@ test('ordinary invitations wait for approval and approved new members only see m
 test('group mute is authoritative, time bounded and removable; read access and peer groups remain unaffected',async t=>{const f=fixture(t),{a,b,c,g}=await group(f),route='conversations/'+g+'/';await f.post(a,route+'role',{userId:b.profile.userId,role:'admin'});await f.post(b,route+'silence',{userId:c.profile.userId,minutes:1});await assert.rejects(f.send(c,g,'不应发送'),code('GROUP_SILENCED'));assert.deepEqual((await f.call(c,'GET',route+'messages')).messages,[]);f.advance(60001);await f.send(c,g,'已到期');await f.post(b,route+'silence',{userId:c.profile.userId,minutes:60});await f.post(b,route+'silence',{userId:c.profile.userId,minutes:0});await f.send(c,g,'已解除');});
 test('private replies reject other conversations, remain content-bound on retry and redact moderated source',async t=>{const f=fixture(t),a=await f.register(),b=await f.register(),c=await f.register(),ab=await f.befriend(a,b),ac=await f.befriend(a,c),source=(await f.send(a,ab,'原消息')).message;await assert.rejects(f.send(a,ac,'跨会话',{replyToId:source.id}),code('INVALID_REPLY'));const input={type:'text',text:'引用回复',clientId:randomUUID(),replyToId:source.id};const r=await f.post(b,'conversations/'+ab+'/messages',input);assert.equal(r.message.reply.text,'原消息');assert.deepEqual(await f.post(b,'conversations/'+ab+'/messages',input),r);await assert.rejects(f.post(b,'conversations/'+ab+'/messages',{...input,replyToId:undefined}),code('MESSAGE_CONFLICT'));f.database.raw.prepare('INSERT INTO message_moderation(message_id,removed_at,reason) VALUES(?,?,?)').run(Number(source.id),Date.now(),'synthetic-review');assert.equal((await f.call(b,'GET','conversations/'+ab+'/messages')).messages[1].reply.unavailable,true);});
 test('deleting an account clears opt-in and greeting payload without leaving foreign-key blockers',async t=>{const f=fixture(t),a=await f.register(),b=await f.register();await f.post(a,'discovery/preferences',{discoverable:true});await f.post(b,'discovery/preferences',{discoverable:true});await f.post(a,'discovery/greet',{userId:b.profile.userId,text:'待清理的合成招呼',requestId:randomUUID()});assert.equal((await f.post(a,'security/delete-account',{confirmation:'注销账号',currentPassword:'482715'})).deleted,true);assert.equal(f.database.raw.prepare('SELECT count(*) n FROM social_greetings').get().n,0);assert.deepEqual((await f.call(b,'GET','discovery/people')).items,[]);});
+
+test('rejoining a group rejects old text and image retries without restoring history or creating duplicates',async t=>{
+ const f=fixture(t),{a,b,c,g}=await group(f),route='conversations/'+g+'/';
+ const source=(await f.send(a,g,'原始旧消息正文')).message;
+ const input={type:'text',text:'重入前的引用回复',clientId:randomUUID(),replyToId:source.id};
+ const original=await f.post(c,route+'messages',input);
+ assert.equal(original.message.reply.text,'原始旧消息正文');
+ assert.deepEqual(await f.post(c,route+'messages',input),original);
+ const imageInput={type:'image',clientId:randomUUID(),image:{src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l7sAAAAASUVORK5CYII=',name:'重入前私密图片.png'}};
+ const image=(await f.post(c,route+'messages',imageInput)).message;
+ assert.ok((await f.call(c,'GET','media/'+image.image.id)).binary);
+ await f.post(c,route+'leave');
+ await assert.rejects(f.post(c,route+'messages',input),code('CHAT_NOT_FOUND'));
+ await f.send(a,g,'退出期间不应可见');
+ await f.post(a,route+'invite',{memberIds:[c.profile.userId]});
+ const state=await f.call(c,'GET','state'),chat=state.conversations.find(x=>x.id===g);
+ assert.ok(chat.historyStartId>=Number(image.id));
+ assert.deepEqual((await f.call(c,'GET',route+'messages')).messages,[]);
+ const countBefore=f.database.raw.prepare('SELECT count(*) n FROM messages WHERE conversation_id=?').get(g).n;
+ await assert.rejects(f.post(c,route+'messages',input),code('MESSAGE_HISTORY_UNAVAILABLE'));
+ await assert.rejects(f.post(c,route+'messages',imageInput),code('MESSAGE_HISTORY_UNAVAILABLE'));
+ await assert.rejects(f.call(c,'GET','media/'+image.image.id),code('MEDIA_NOT_FOUND'));
+ assert.equal(f.database.raw.prepare('SELECT count(*) n FROM messages WHERE conversation_id=?').get(g).n,countBefore);
+ const other=state.conversations.find(x=>x.type==='direct'&&x.members.some(m=>m.userId===a.profile.userId));
+ await assert.rejects(f.post(c,'conversations/'+other.id+'/messages',input),code('MESSAGE_CONFLICT'));
+ const freshInput={type:'text',text:'重入后的新消息',clientId:randomUUID()};
+ const fresh=await f.post(c,route+'messages',freshInput);
+ assert.deepEqual(await f.post(c,route+'messages',freshInput),fresh);
+ assert.deepEqual((await f.call(c,'GET',route+'messages')).messages.map(x=>x.id),[fresh.message.id]);
+ assert.equal((await f.call(b,'GET',route+'messages')).messages.filter(x=>x.id===original.message.id).length,1);
+});

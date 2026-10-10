@@ -1,0 +1,257 @@
+{
+  "version": "0.14.0-dev.2",
+  "startedAt": "2026-10-10T07:28:40.412Z",
+  "scope": "100 independent synthetic product accounts over real loopback HTTP; not 100 browsers or production capacity",
+  "accounts": 100,
+  "origin": "http://localhost:18915",
+  "stateOutsideRepository": true,
+  "checks": [
+    {
+      "name": "100 accounts registered and named through real HTTP",
+      "passed": true,
+      "durationMs": 2460
+    },
+    {
+      "name": "80 member group and friendship setup without relaxing limits",
+      "passed": true,
+      "durationMs": 188
+    },
+    {
+      "name": "20 admission requests, concurrent approval and history boundary",
+      "passed": true,
+      "durationMs": 76,
+      "members": 100
+    },
+    {
+      "name": "100 simultaneous greetings, exact retries and changed payload rejected",
+      "passed": true,
+      "durationMs": 111,
+      "logicalMessages": 100,
+      "retries": 100
+    },
+    {
+      "name": "image, stickers, long text, quote and invalid content",
+      "passed": true,
+      "durationMs": 19
+    },
+    {
+      "name": "role enforcement, mute and release",
+      "passed": true,
+      "durationMs": 19
+    },
+    {
+      "name": "120 second sustained mixed workload with 100 independent clients",
+      "passed": true,
+      "durationMs": 120760,
+      "workers": 100,
+      "elapsedMs": 120759
+    },
+    {
+      "name": "offline catch-up and reverse pagination match every acknowledged message",
+      "passed": true,
+      "durationMs": 223,
+      "compared": 3158,
+      "forwardAndReverse": true
+    },
+    {
+      "name": "remove, leave, media isolation, rejoin and ownership transfer",
+      "passed": true,
+      "durationMs": 28
+    },
+    {
+      "name": "separate deliberate burst activates per-account rate protection",
+      "passed": true,
+      "durationMs": 63,
+      "accepted": 77,
+      "expected429": 23
+    },
+    {
+      "name": "service process restart preserves sessions, group and all messages",
+      "passed": true,
+      "durationMs": 599,
+      "persistedMessages": 3238
+    },
+    {
+      "name": "SQLite integrity, acknowledged persistence and no duplicate sender/client IDs",
+      "passed": true,
+      "persistedMessages": 3239,
+      "duplicates": 0
+    }
+  ],
+  "expectedRejections": {
+    "CHAT_NOT_FOUND": 5,
+    "MANAGER_REQUIRED": 2,
+    "REQUEST_HANDLED": 1,
+    "INVALID_REPLY": 2,
+    "MESSAGE_CONFLICT": 1,
+    "INVALID_TEXT": 1,
+    "INVALID_IMAGE": 1,
+    "OWNER_REQUIRED": 2,
+    "MEMBER_PROTECTED": 2,
+    "GROUP_SILENCED": 5,
+    "MESSAGE_HISTORY_UNAVAILABLE": 1,
+    "MEDIA_NOT_FOUND": 1,
+    "TRANSFER_OWNER": 1,
+    "RATE_LIMITED": 23
+  },
+  "pass": true,
+  "groupId": "981ae21a-db5e-4c7e-9214-2117015cbad6",
+  "observerUserId": "8633344804",
+  "acknowledgedMessages": 3239,
+  "persistedMessages": 3239,
+  "integrity": "ok",
+  "completedAt": "2026-10-10T07:30:45.318Z",
+  "requests": 16161,
+  "statusCounts": {
+    "200": 16113,
+    "400": 4,
+    "403": 11,
+    "404": 6,
+    "409": 4,
+    "429": 23
+  },
+  "unexpectedErrors": [],
+  "latencyMs": {
+    "p50": 4.25,
+    "p95": 25.87,
+    "p99": 46.74,
+    "max": 70.52
+  },
+  "maxInflight": 100,
+  "loadElapsedMs": 120759,
+  "phases": {
+    "100 accounts registered and named through real HTTP": {
+      "requests": 200,
+      "latencyMs": {
+        "p50": 2.44,
+        "p95": 24.52,
+        "p99": 26.54,
+        "max": 30.3
+      }
+    },
+    "80 member group and friendship setup without relaxing limits": {
+      "requests": 204,
+      "latencyMs": {
+        "p50": 0.8,
+        "p95": 1.07,
+        "p99": 4.1,
+        "max": 19.33
+      }
+    },
+    "20 admission requests, concurrent approval and history boundary": {
+      "requests": 71,
+      "latencyMs": {
+        "p50": 0.8,
+        "p95": 1.53,
+        "p99": 17.82,
+        "max": 17.82
+      }
+    },
+    "100 simultaneous greetings, exact retries and changed payload rejected": {
+      "requests": 201,
+      "latencyMs": {
+        "p50": 20.26,
+        "p95": 64.1,
+        "p99": 69.3,
+        "max": 70.52
+      }
+    },
+    "image, stickers, long text, quote and invalid content": {
+      "requests": 24,
+      "latencyMs": {
+        "p50": 0.76,
+        "p95": 1.04,
+        "p99": 1.07,
+        "max": 1.07
+      }
+    },
+    "role enforcement, mute and release": {
+      "requests": 26,
+      "latencyMs": {
+        "p50": 0.79,
+        "p95": 3.65,
+        "p99": 4.33,
+        "max": 4.33
+      }
+    },
+    "120 second sustained mixed workload with 100 independent clients": {
+      "requests": 15052,
+      "latencyMs": {
+        "p50": 4.47,
+        "p95": 25.48,
+        "p99": 45.18,
+        "max": 66.62
+      }
+    },
+    "offline catch-up and reverse pagination match every acknowledged message": {
+      "requests": 132,
+      "latencyMs": {
+        "p50": 1.4,
+        "p95": 1.92,
+        "p99": 14.56,
+        "max": 19.31
+      }
+    },
+    "remove, leave, media isolation, rejoin and ownership transfer": {
+      "requests": 19,
+      "latencyMs": {
+        "p50": 0.52,
+        "p95": 16.72,
+        "p99": 16.72,
+        "max": 16.72
+      }
+    },
+    "separate deliberate burst activates per-account rate protection": {
+      "requests": 100,
+      "latencyMs": {
+        "p50": 0.61,
+        "p95": 0.84,
+        "p99": 1.16,
+        "max": 3.21
+      }
+    },
+    "service process restart preserves sessions, group and all messages": {
+      "requests": 132,
+      "latencyMs": {
+        "p50": 1.55,
+        "p95": 2.23,
+        "p99": 16.73,
+        "max": 21.06
+      }
+    }
+  },
+  "retainedLocalState": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-09\\git-2\\work\\group-100-20261010-1791617320368",
+  "serverRetained": true,
+  "browser": {
+    "engine": "Chromium",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "memberCount": 100,
+    "initialMessages": 50,
+    "afterLoadEarlier": 100,
+    "scriptErrors": [],
+    "screenshotDirectory": "C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/work/group-100-20261010-1791617320368"
+  },
+  "regression": {
+    "backend": {
+      "passed": 208,
+      "failed": 0
+    },
+    "frontendBuild": true,
+    "sourceBoundaryCheck": true,
+    "diffCheck": true
+  },
+  "inspection": {
+    "url": "http://localhost:18915",
+    "serverPid": 34660,
+    "credentialsFile": "observer.json (local state only; not committed)",
+    "automaticTrafficStopped": true
+  },
+  "protocol": "Native social HTTP origin with real bearer sessions; browser observation used ordinary cookie login",
+  "safetyGuard": {
+    "occupiedPortRejected": true,
+    "requestsSentWhenPortOccupied": 0
+  }
+}
