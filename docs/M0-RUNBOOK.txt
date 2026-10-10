@@ -1,37 +1,37 @@
 愚笨者 V0.2 本地开发运行说明
-日期：2026-10-10　源码线：0.14.0-dev.2 / M0
+日期：2026-10-10　源码线：0.14.0-dev.3 / M0
 
 当前状态（先读）
 需求基线为requirements-v0.2.txt；平台托管余额不再是产品能力，本文替代旧运行手册。
-当前V0.2源码已修改，但网页构建受阻，localhost:18914尚未重建、重启，仍提供旧版；实际用户本地库尚未执行015迁移。不要将浏览器现在看到的页面或过去测试结果当作V0.2验收。
+本机localhost:18914已更新并启动0.14.0-dev.3，healthz/version/build-info一致，浏览器已确认工作台、积分与用量、个人中心；应用无错误，仅钱包扩展有警告。原本地库已完成11→13项迁移，账号、聊天和工作任务数据保留。
 线上与Android/iOS/Windows原生基线仍为0.13.0，本轮未更新。详细阶段结果和待办见V02-IMPLEMENTATION.txt。
 
 隔离与依赖
 使用Node.js 24及项目锁文件指定的pnpm。先在仓库根核对依赖，缺失时按实际权限安装：
   npm --prefix yubenzhe-deploy ci
   pnpm --dir tongban install --frozen-lockfile
-构建及测试需要相应读取权限。当前esbuild无法读取C:/Users祖先目录；此前范围过宽的权限请求被自动审核拒绝，未获得允许前不通过其他运行时绕过。
+本轮网页与管理端构建、全部自动测试在GitHub CI完成，验证源码f11f4c1ffc7c6d32c7ecf661ee19e31c50898bee，运行38052669120。下载后23项文件SHA-256一致才安装到本机。本机此前构建权限限制没有被宣称解决；后续本地重建仍须合法取得所需读取权限，不能绕过自动审核拒绝。
 不得提交运行数据库、钱包、OTP秘密、账号恢复码、离线历史归档或测试凭据。
 
 先用新的隔离测试目录
-恢复网页构建能力后，从仓库根构建：
+在具备构建权限与依赖的开发环境，从仓库根构建：
   pnpm --dir tongban build
-先选一个不同于既有yubenzhe-m0-state的新状态目录，并明确M0_STATE_DIR；例如本工作空间work/yubenzhe-v02-test-state。该目录在仓库之外，不能覆盖用户现有记录。可选M0_PORT=18916，避免与仍运行的18914旧服务冲突。
+先选一个不同于既有yubenzhe-m0-state的新状态目录，并明确M0_STATE_DIR；例如本工作空间work/yubenzhe-v02-test-state。该目录在仓库之外，不能覆盖用户现有记录。可选M0_PORT=18916，避免与已运行最新版的18914服务冲突。
 PowerShell示例（只在上述前提满足后执行）：
   $env:M0_STATE_DIR = 'C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/work/yubenzhe-v02-test-state'
   $env:M0_PORT = '18916'
   npm --prefix yubenzhe-deploy run dev:m0
 在同一电脑打开http://localhost:18916/。通行密钥origin与端口绑定，不能随意换成公网IP或沿用另一origin的测试凭据。
-启动入口强制回环监听、M0_SIMULATION=true、AI_PROVIDER=disabled，并移除真实模型密钥和推送配置；没有公开部署、收费模型调用或真实发信。默认端口仍为18914，默认状态目录仍是仓库同级yubenzhe-m0-state，所以不设M0_STATE_DIR直接启动会触及旧库；本轮不要跳过明确目录步骤。
+启动入口强制回环监听、M0_SIMULATION=true、AI_PROVIDER=disabled，并移除真实模型密钥和推送配置；没有公开部署、收费模型调用或真实发信。默认端口仍为18914，默认状态目录仍是仓库同级yubenzhe-m0-state；该目录现在已升级并保留用户记录，不设M0_STATE_DIR直接启动会触及现有库。独立验证不要跳过明确目录步骤，也不要重复启动占用18914的服务。
 
-已有本地库升级（当前尚未执行）
+已有本地库升级（本轮已执行，以下用于后续安全升级）
 1. 核对所有连接该状态目录的本项目写入者，停止对应frontend/admin或本地服务，保留账号、社交与AI记录。不要停止无关项目，不只复制正在写入的SQLite主文件。
 2. 用现有SQLite备份方式保存库与必要状态，在新的隔离目录恢复并验证完整性，明确备份之后数据处理范围。
 3. 在隔离副本运行本轮迁移及测试，确认014-points、015-retire-platform-assets执行结果，核查旧社交和AI归属以及积分独立性。
 4. 015先检查旧asset_registry只有SIM-*、SIM-BSC-97及sim://，仅满足条件才在数据库相邻retired-v01目录生成离线JSON归档及SHA-256校验。归档失败或非SIM数据必须中止，不能删表重建、修改已应用校验和或手工伪装SIM绕过。
 5. 校验成功后删除19张旧托管/内部红包/绑定表、相关触发器及资产榜偏好。该归档只用于历史测试审计，不是平台余额读接口，也不迁移成POINT或链上资产。普通业务不得读取它恢复托管能力。
 6. 隔离验证通过并完成本地新页面验收后，才按相同流程处理真实的本地测试库。不要把升级后的库交给旧代码；回滚需匹配的已核验整套备份，保留本轮新数据的明确处理记录。
-空库也按不可改写的历史迁移顺序升级，最终不保留旧BAL运行表。原009等历史SQL不能直接修改，它们不是仍开放业务的证据。实际用户库尚未完成本流程。
+空库也按不可改写的历史迁移顺序升级，最终不保留旧BAL运行表。原009等历史SQL不能直接修改，它们不是仍开放业务的证据。本轮原本地库已完成本流程：19张SIM旧表68行先离线归档校验，65张保留表数据哈希不变，包括7账号、4消息、6工作任务；见../yubenzhe-deploy/reports/v02-local-upgrade.json。迁移前备份外置于工作空间work/yubenzhe-m0-backups/pre-2026-10-10T12-37-58-220Z，不提交Git。用户打开积分页得到的一次1000POINT欢迎分不是旧资产转换。
 
 新测试流程
 邮箱页使用example.test等合成地址，验证码只在本机显示，不发送邮件。注册后先进入AI工作台；个人资料改ID与钱包分开，内部user_id不变。
@@ -61,11 +61,12 @@ AI：获准模型目录、真实供应商用量、云电脑规格与成本、健
 营销：积分关联发币、Gas补贴、游戏抽奖及代部署的地区与业务范围单独确认，当前默认关闭。
 运营：主体、地区、客服、消费者条款、正式签名/商店、真实推送、异地恢复和告警。
 
-验证命令（尚未全部完成）
+验证命令与本轮结果
   npm --prefix yubenzhe-deploy test
   pnpm --dir tongban test
   pnpm --dir tongban build
   node scripts/check-project.mjs --allow-changes
   git diff --check
 合约验证按contracts/README.md及contracts/TEST-RESULTS.txt执行，不以静态检查替代EVM执行或独立审计。
-当前最终后端207/207通过；前端29文件220项通过，11个文件因权限受阻而明确排除，并非全量通过。当前运行库的只读备份已在隔离副本验证迁移，原库未升级，见V02-IMPLEMENTATION及迁移报告。旧M0-ACCEPTANCE与旧SIM红包测试均为历史，当前有效验收编号见requirements-v0.2.txt第19章。
+GitHub CI https://github.com/fx950217-lgtm/yubenzhe/actions/runs/38052669120 对源码f11f4c1完成前端336/336、后端207/207、合约23/23及网页/管理端构建；下载文件23项哈希校验通过。本机18914与原库升级完成，详细范围见V02-IMPLEMENTATION及本地升级报告。完整浏览器钱包、管理业务、多端与实体设备仍需专项验收。
+当前代码位于公开GitHub仓库的codex/m0-local-test分支，main未更新；主线大规模变更和历史审计删除被自动审核拒绝，主线及历史元数据保留。旧M0-ACCEPTANCE与旧SIM红包结果只作历史，当前有效验收编号见requirements-v0.2.txt第19章。

@@ -1,10 +1,11 @@
 {
-  "version": "0.13.0",
-  "stagedAt": "2026-10-09T11:53:19.588Z",
-  "indexSha256": "1157dda8522e8b6f55291a11258e0a752f2ae7b95602deb9de8cc46092c9c8ea",
-  "appSha256": "5ca6f76737c6e9d2cd07ab4fbbf199122b3f3ae5cd400d9580774f9ca53d893f",
-  "consumerConnected": false,
-  "socialServiceIncluded": true,
-  "cloudAIConnected": true,
-  "adminEntry": false
+  "version": "0.14.0-dev.3",
+  "stagedAt": "2026-10-10T12:45:08.215Z",
+  "sourceCommit": "f11f4c1ffc7c6d32c7ecf661ee19e31c50898bee",
+  "indexSha256": "c6666cf14a8e48a70124ce1111bf630e7b75c3a86da1631b0a1c0093db32dec1",
+  "appSha256": "edb855b22da0f8fcc33e9d1258bce8aebedfa58b8ce20c95c8499a650ca76740",
+  "adminEntry": false,
+  "historicalDownloadsIncluded": false,
+  "deployed": false,
+  "scope": "verified-cloud-build-installed-for-local-development"
 }

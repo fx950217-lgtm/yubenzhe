@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-10T12:45:08.214Z",
+  "version": "0.14.0-dev.3",
+  "requirements": "V0.2",
+  "sourceCommit": "f11f4c1ffc7c6d32c7ecf661ee19e31c50898bee",
+  "branch": "codex/m0-local-test",
+  "repositoryVisibility": "public",
+  "defaultBranchUpdated": false,
+  "ci": {
+    "status": "success",
+    "url": "https://github.com/fx950217-lgtm/yubenzhe/actions/runs/38052669120",
+    "tests": {
+      "frontend": {
+        "pass": 336,
+        "fail": 0
+      },
+      "backend": {
+        "pass": 207,
+        "fail": 0
+      },
+      "contracts": {
+        "pass": 23,
+        "fail": 0
+      }
+    },
+    "builds": {
+      "consumer": "passed",
+      "admin": "passed"
+    }
+  },
+  "artifact": {
+    "name": "yubenzhe-web-0.14.0-dev.3.zip",
+    "verifiedFiles": 23,
+    "sha256": "f4c36a270dbf1b173cf2d618871a8afa59ca359aafcc7c3039d9e507b9e12ef8",
+    "nativePackagesIncluded": false
+  },
+  "localRuntime": {
+    "health": {
+      "ok": true,
+      "service": "frontend",
+      "version": "0.14.0-dev.3",
+      "stage": "public-preview"
+    },
+    "buildInfo": {
+      "version": "0.14.0-dev.3",
+      "builtAt": "2026-10-10T12:39:27.401Z",
+      "requirements": "V0.2",
+      "channel": "local-development"
+    },
+    "url": "http://localhost:18914/?v=0.14.0-dev.3#workbench",
+    "browserObserved": [
+      "AI workbench workflow square",
+      "POINT usage and local trial credit",
+      "personal center with independent self-custody wallet"
+    ],
+    "appErrors": 0,
+    "browserExtensionWarningsPresent": true,
+    "oldSimulationConvertedToPoints": false
+  },
+  "migrationEvidence": "v02-local-upgrade.json",
+  "cleanupEvidence": "latest-cleanup.json",
+  "productionDeployment": false,
+  "nativeInstallation": false,
+  "sourceBoundaryCheck": {
+    "status": "passed",
+    "missingFiles": [],
+    "problems": [],
+    "credentialsRead": false
+  }
+}
