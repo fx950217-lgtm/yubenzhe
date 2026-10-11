@@ -1,15 +1,365 @@
 {
-  "version": "0.9.0",
+  "version": "0.14.0-dev.7",
   "files": [
     {
-      "path": "tongban-admin/package.json",
-      "size": 2171,
-      "sha256": "afbd8643ced4643112d768e7d86d23e6e7bd84b2eebc7694a1050dc4af39f747"
+      "path": ".github/workflows/ios-preview.yml",
+      "size": 1971,
+      "sha256": "242bbbebef639c73760df86b7d1772bea3dfd2a99b36813ef12b6e8d8b31cba2"
     },
     {
-      "path": "tongban-admin/pnpm-lock.yaml",
-      "size": 353918,
-      "sha256": "a218843dfcb8ded2eba8fbbdd8bc8ce76e1492c8bbc5070d1e85c84d0d3c5198"
+      "path": ".github/workflows/verify-latest.yml",
+      "size": 5465,
+      "sha256": "70986c6c8f14de61042dc008a1cd386c73201b009b8bf535c7d1b55b965d46f4"
+    },
+    {
+      "path": ".gitignore",
+      "size": 1681,
+      "sha256": "a8064388aabb8e4cd390b4761731bf12e193b01abf9e6d0b5b9424f78c023771"
+    },
+    {
+      "path": "AGENTS.md",
+      "size": 10096,
+      "sha256": "5850577f5855a9b96f25983e150a1b3a3170c8ab5109f5a68e9b2a2b64eb8704"
+    },
+    {
+      "path": "MANIFEST.0.9.0.json",
+      "size": 53360,
+      "sha256": "fcb65bfe905c934c3d5440741ab48e017dd7be5b057e581376b5fcb15f47e0f8"
+    },
+    {
+      "path": "PROJECT_CONTEXT.md",
+      "size": 11164,
+      "sha256": "bdcd08d39344a281204fc20aa4dbc4d5a5c4f742b1d46dfae59912a4507ef525"
+    },
+    {
+      "path": "PROJECT_IMPORT.json",
+      "size": 917,
+      "sha256": "e05db964d0968215a958f1aff0aca3f3afcb285c5c6819ee106b61a000fbf008"
+    },
+    {
+      "path": "README.md",
+      "size": 7598,
+      "sha256": "d4752f6061a85efab33b98089bdee028d2af32f6f21637d9ed77a277a84e4e06"
+    },
+    {
+      "path": "README.txt",
+      "size": 5596,
+      "sha256": "10198a0bc47b977539a3943266eae608a62058c3b0e6f7f2c6554343414397db"
+    },
+    {
+      "path": "contracts/.gitignore",
+      "size": 81,
+      "sha256": "1793e5a47ff8089b304848ab01e2a6452b81b2a64da39a6f8b7bcee6b080815a"
+    },
+    {
+      "path": "contracts/README.md",
+      "size": 17779,
+      "sha256": "045ae302330cd080514ee20a795ac1abc81c04d038905d11a86a33e4dff872df"
+    },
+    {
+      "path": "contracts/TEST-RESULTS.txt",
+      "size": 6458,
+      "sha256": "ee94a8df73f245b0f94ec06715b30e406a33a7af904e32a758565038b1d7cfae"
+    },
+    {
+      "path": "contracts/exports/EqualDistribution.json",
+      "size": 10139,
+      "sha256": "3df7bc75be4422295e403245b775ce4c786be57170506debbb99b3ba9cf05cd6"
+    },
+    {
+      "path": "contracts/exports/InternalTestToken.json",
+      "size": 6811,
+      "sha256": "62c4d9cf5e5a6fe77a0c353a732ed5b674a9693c25f22e1dc00b7356ae4e1a88"
+    },
+    {
+      "path": "contracts/exports/SingleDistribution.json",
+      "size": 18773,
+      "sha256": "6dc1decc78d33933c05250443d1bebaf74fabb3b2166817e17d2c100f8b3f459"
+    },
+    {
+      "path": "contracts/package-lock.json",
+      "size": 25020,
+      "sha256": "f0763151a44088711429c804a03a8ec89219acd649e73a5cd7e755c6123b8765"
+    },
+    {
+      "path": "contracts/package.json",
+      "size": 705,
+      "sha256": "04f8cc1aefbfa130e7979cc2b4c6de9b79eeb72506cde8d6cacc1b7c88689192"
+    },
+    {
+      "path": "contracts/scripts/compile.mjs",
+      "size": 2974,
+      "sha256": "b90a3a04cbe25c3af73708ca4f50bd1d533cb23e7df21343bbc6df2881311b7e"
+    },
+    {
+      "path": "contracts/scripts/export-abi.mjs",
+      "size": 1145,
+      "sha256": "1657466ade297788b00d95800d22f6ab5366078be685184785b2f3c3b8302f88"
+    },
+    {
+      "path": "contracts/scripts/protocol.mjs",
+      "size": 2370,
+      "sha256": "f2c4d72f8bab7ea2133aceca8fdafa1f6981837d68920ccc60330901a810af74"
+    },
+    {
+      "path": "contracts/scripts/testnet.mjs",
+      "size": 19410,
+      "sha256": "ac367fd889402c6895c9a27846f0ed7dca2c8f89445214c02e40b0ffccc18e59"
+    },
+    {
+      "path": "contracts/src/EqualDistribution.sol",
+      "size": 5597,
+      "sha256": "7d45e67612877c01009a3625141553bf8344377da14d5bd89c2328409aa767fc"
+    },
+    {
+      "path": "contracts/src/InternalTestToken.sol",
+      "size": 543,
+      "sha256": "49f08ae8a7d66d18e70dae1d5f999e09d3ca9da42062ef7db9c7df6d3c925259"
+    },
+    {
+      "path": "contracts/src/SingleDistribution.sol",
+      "size": 12039,
+      "sha256": "567a36faf50e0046c84d07c9edb47df7a9e01bfcf6d01542934392e5cc023311"
+    },
+    {
+      "path": "contracts/test/MockToken.sol",
+      "size": 2082,
+      "sha256": "ace5d9660b81932202ef8921a0e39533c157bdc6e4448d2cac5fe6a8ab09bc8b"
+    },
+    {
+      "path": "contracts/test/distribution.test.mjs",
+      "size": 19812,
+      "sha256": "72a48b4ae26f75dc8d6cfe5ac31a76370037cf3e49cb6af5ae41342d2144c917"
+    },
+    {
+      "path": "contracts/test/equal.test.mjs",
+      "size": 8798,
+      "sha256": "84dfa2e5aa5ac81b057c972bac7cb2a5acce2cd5d2a3fefec7f78d89837604cf"
+    },
+    {
+      "path": "contracts/test/testnet-script.test.mjs",
+      "size": 8186,
+      "sha256": "2c2c69f1e8312527e57763b4148c8be032114f29a2bd7acef781b175410c00eb"
+    },
+    {
+      "path": "contracts/test/wallet-integration.test.mjs",
+      "size": 5651,
+      "sha256": "ec4b88636045ded1a86a2e8929cbd61b07d8273b46ff284a948ebe9da267f06e"
+    },
+    {
+      "path": "design/README.md",
+      "size": 1030,
+      "sha256": "4e020dffa31416cc0b3315006155e9c733b2c6be03e029e0b4e166ada700851b"
+    },
+    {
+      "path": "design/brand-home.html",
+      "size": 27810,
+      "sha256": "97220adf6980a001b704559fb215b95e2487cbea9a722eaa8309c492331e6def"
+    },
+    {
+      "path": "design/brand-posters.html",
+      "size": 18370,
+      "sha256": "dd788711e63241a21f15e933f3024da2fdaaa61ff1380814b8b958a6a10f25f0"
+    },
+    {
+      "path": "design/brand/design-record.json",
+      "size": 1890,
+      "sha256": "4e1fb82ec10e0ac19accf8d2d84e481ca0f3308745e21a4117769450a994fd76"
+    },
+    {
+      "path": "design/brand/orbit-b-lilac.png",
+      "size": 1574181,
+      "sha256": "0881e44af0080a17d68cf433f649424a15fa19120919ab6ae504e5769b678017"
+    },
+    {
+      "path": "design/ui-preview-cn.html",
+      "size": 34215,
+      "sha256": "14b423e22408b8dbd55dc71985356fd2bb431a4fc3815f76a3eef202a37d02fd"
+    },
+    {
+      "path": "design/ui-preview.html",
+      "size": 35669,
+      "sha256": "0d2d29509f1dd6585c0c45ccf87b41a44af089acd0990461642db53c30c56409"
+    },
+    {
+      "path": "design/命名与UI设计规范.md",
+      "size": 8528,
+      "sha256": "b5fa3a5ef84619d1e5c995eeb50793a11864d0709993099b9229db318889704b"
+    },
+    {
+      "path": "docs/CODE-FUNCTION-AUDIT-20261011.txt",
+      "size": 12433,
+      "sha256": "774567f5b56b5def3df3d827604ab92293e784a5020c1dc63da52811d73a9168"
+    },
+    {
+      "path": "docs/DEV7-RELEASE-ACCEPTANCE.txt",
+      "size": 3502,
+      "sha256": "8ae58e972ed92f36a8b6a313eb6255948b52fbefb79568e1fc01e804828b9a25"
+    },
+    {
+      "path": "docs/GROUP-100-SIMULATION.txt",
+      "size": 2986,
+      "sha256": "7ce3a1223585fa260d2d1f60c8f1a1b7935d452aa9d84af69c9569954be42a8e"
+    },
+    {
+      "path": "docs/INTERNAL-PREVIEW-RUNBOOK.txt",
+      "size": 16401,
+      "sha256": "4588916b2a8038060880112f83cd03e392875831366387cbcc99cb28bcf9536e"
+    },
+    {
+      "path": "docs/M0-ACCEPTANCE.txt",
+      "size": 9057,
+      "sha256": "a3647512506b82741efaa2835e72e14a8b36766aaa0e256c203c5ec1aff49e1b"
+    },
+    {
+      "path": "docs/M0-DEVELOPMENT.txt",
+      "size": 3828,
+      "sha256": "343a6dd15dfed33905a87c317417dd3b1e775e737c778f1bb6ec0584752fbe6c"
+    },
+    {
+      "path": "docs/M0-EXPERIENCE.txt",
+      "size": 3884,
+      "sha256": "031ec8c7c602c855f705eb9b5d9689cfc420cc9e95b1d0a0481ef8a3b9c94b71"
+    },
+    {
+      "path": "docs/M0-RUNBOOK.txt",
+      "size": 14862,
+      "sha256": "59b82db1966132cb6e48e3adff19b4ca37633ff3057bdbbe4516b9d9941d9672"
+    },
+    {
+      "path": "docs/THEME-SKINS-ACCEPTANCE.txt",
+      "size": 4331,
+      "sha256": "e6282cee688cbbc8f68eafabe36b6a9d48ebc85d98500a1d9f7435d8109c8611"
+    },
+    {
+      "path": "docs/THEME-SKINS-HANDOFF.md",
+      "size": 4026,
+      "sha256": "c005e4edc27acf12be232d9fed367577b57f917bff6d68ddece91d079e64cd28"
+    },
+    {
+      "path": "docs/V02-IMPLEMENTATION.txt",
+      "size": 11611,
+      "sha256": "7b486903ae02cabf8ff88dee5cfb3444dadb77f6c3b5b00bcf821700b00d72f8"
+    },
+    {
+      "path": "docs/V02-REQUIREMENTS-CHANGELOG.txt",
+      "size": 9379,
+      "sha256": "f11ff3574951394e1fabe3071ba6e2a18fec8e59902ea78daab30914e72af97f"
+    },
+    {
+      "path": "docs/WORKBENCH-20261010-REVISION.txt",
+      "size": 7386,
+      "sha256": "db84a2886e2700d0d3242c87f1e4bf3a6deea66454ad87ee0e30ba49ab65232e"
+    },
+    {
+      "path": "docs/WORKFLOW-BUSINESS-AND-LAUNCH-PLAN.txt",
+      "size": 24280,
+      "sha256": "52d86bed61fe8e971ae91e2e7204d1814a68b253d9777b440c1c0a6f2f2cf2fd"
+    },
+    {
+      "path": "docs/requirements-v0.1.txt",
+      "size": 68934,
+      "sha256": "f66889621a9e91d0398e578c7f52e24219cc1cb96665064fe8026160dce3cdc9"
+    },
+    {
+      "path": "docs/requirements-v0.2.txt",
+      "size": 87699,
+      "sha256": "c3bed52a0adec4064ab099003da6a5901d0a68d081d3300faafdaca58e525a32"
+    },
+    {
+      "path": "reports/group-gifts-100.json",
+      "size": 4594,
+      "sha256": "2b60cb2b6709c041a07773e28ace51881c3ac5100d32b54f27ac1c84b6a9a151"
+    },
+    {
+      "path": "scripts/check-project.mjs",
+      "size": 6286,
+      "sha256": "7dab850a112eb2908062f897de87c7a21e5ad91c35c3b71c93a841e6b9b3fbc5"
+    },
+    {
+      "path": "scripts/native-qa/LocalQaApi.java",
+      "size": 8319,
+      "sha256": "5aef563a8e2ff71ea9c5a91809a8388ea7b61ea528e1cb4553b45b3b2d385c5b"
+    },
+    {
+      "path": "scripts/native-qa/LocalQaApi.swift",
+      "size": 9470,
+      "sha256": "26c9946247302b6917b12a1739c4e646a589af9ce132df57c8bc71dd022b17df"
+    },
+    {
+      "path": "scripts/native-qa/build.mjs",
+      "size": 2267,
+      "sha256": "4098567de2c3d5abb41af012857b6ebae01cabb940a878d86e2915989382f4e7"
+    },
+    {
+      "path": "scripts/native-qa/ios-policy-check.swift",
+      "size": 3101,
+      "sha256": "e87b337097eb151bace54903e97ec6b7aa35ab6e385d71ecd43ec1d39b09213e"
+    },
+    {
+      "path": "scripts/native-qa/ios-qa-web-lock.json",
+      "size": 770,
+      "sha256": "bb3083f376c1885b54b6e4b7f5cb3a81b11b763c80abb9785ee37e205031fb6a"
+    },
+    {
+      "path": "scripts/native-qa/ios-qa.workflow.yml",
+      "size": 2812,
+      "sha256": "e6b9899e104a75ceba7f2a829a93402d7c812dfe6646b5a0f96dc0ab1843a71e"
+    },
+    {
+      "path": "scripts/native-qa/pnpm-collector.cjs",
+      "size": 881,
+      "sha256": "50c546b18894f278cea01af4571e3dd24f15c420495c2b1b1c9a937c3391f002"
+    },
+    {
+      "path": "scripts/native-qa/preload-qa.cjs",
+      "size": 396,
+      "sha256": "9a86bccbf54e7e1e01180c65b792ba88b7aa5d3dff4e653853d07b45cc529470"
+    },
+    {
+      "path": "scripts/native-qa/prepare-ios.mjs",
+      "size": 11529,
+      "sha256": "8e50c9da283d7a8ffb742b6605a7f040a8c36ef9fbdb6f1cfea3216d36f99312"
+    },
+    {
+      "path": "scripts/native-qa/prepare.mjs",
+      "size": 11253,
+      "sha256": "5972dfb5e06b20b887401de02a5c0250b2fe9ee292a3e86d7cc34a127fc7e270"
+    },
+    {
+      "path": "scripts/native-qa/qa-api.cjs",
+      "size": 4009,
+      "sha256": "e9ef2de2785b5bed265feff75749612bb184eaffa79b7c330489f91fb42e4228"
+    },
+    {
+      "path": "scripts/native-qa/qa-runtime.js",
+      "size": 3710,
+      "sha256": "46b328b62294a8d166e8eb58aabca35f3d1c6a57e6db4b70cae98a32c35f3c33"
+    },
+    {
+      "path": "scripts/native-qa/qa.test.mjs",
+      "size": 4945,
+      "sha256": "459b75548b4f44a8b0da9ceac12280fdd57c6b6be31975b0e4d8c4eed208b946"
+    },
+    {
+      "path": "scripts/native-qa/verify-frozen-ios-web.py",
+      "size": 1905,
+      "sha256": "bc50952980a4d0cd227e3a8374caf46481b5cf2626690ac0707dd1d58ccfe0b4"
+    },
+    {
+      "path": "scripts/simulate-group-gifts-100.mjs",
+      "size": 16800,
+      "sha256": "8e40e100dcf0630c5ce412a1e44fb49903a9708851b059068c3c3749d3794b42"
+    },
+    {
+      "path": "tongban-admin/package-lock.json",
+      "size": 1823,
+      "sha256": "6065f201f31bede54ecf3d6b575c4e7f623f0600cdde6488529af03137e6c5c1"
+    },
+    {
+      "path": "tongban-admin/package.json",
+      "size": 336,
+      "sha256": "2be6b49fdc59d4a634e0d59f38fcd3c4e7f129bdc0b08abbd4512898c45f2a41"
     },
     {
       "path": "tongban-admin/pnpm-workspace.yaml",
@@ -33,8 +383,8 @@
     },
     {
       "path": "tongban-android/README.txt",
-      "size": 5241,
-      "sha256": "d13e2ccd00a364bcffa0304bad8b4d6671c124189762faceba4e6537f3d2c557"
+      "size": 4778,
+      "sha256": "149391a341eabf8dde06cfa1189fb855b499ee3cee91ff955479e7108e136e66"
     },
     {
       "path": "tongban-android/android/.gitignore",
@@ -48,8 +398,8 @@
     },
     {
       "path": "tongban-android/android/app/build.gradle",
-      "size": 1884,
-      "sha256": "855d432b85efa417d098322de2aa31e2755d87643f0bc4ffae6ab8fa0789a473"
+      "size": 2098,
+      "sha256": "3700c6cfcbe72f37430f97f22b1fc57be246e95fa867e8907e6b01492cf7b398"
     },
     {
       "path": "tongban-android/android/app/capacitor.build.gradle",
@@ -73,8 +423,8 @@
     },
     {
       "path": "tongban-android/android/app/src/main/assets/capacitor.config.json",
-      "size": 590,
-      "sha256": "5c931da93723a7599338d1f7dc91a6a876fd84c2116fd7ec5e08b9a00aa00a8b"
+      "size": 618,
+      "sha256": "2cfb62bc312c50485c20c2b81fe0ba7b2be9bad5bc735461d5cdb92196cd9242"
     },
     {
       "path": "tongban-android/android/app/src/main/assets/capacitor.plugins.json",
@@ -82,49 +432,9 @@
       "sha256": "dd76b9af197e6fb4cdcbfc9d558c7be0fd41088909f78891336e2f25df5c95f2"
     },
     {
-      "path": "tongban-android/android/app/src/main/assets/public/app.css",
-      "size": 199701,
-      "sha256": "de4f4b3ac5bbea07728ef153ad9702639c4d0f1d9e866341c00e5efaf661b03c"
-    },
-    {
-      "path": "tongban-android/android/app/src/main/assets/public/app.js",
-      "size": 665177,
-      "sha256": "2390eae42041f04a153a12573b55a78f3c78d979839454e0d8b242c37daea46f"
-    },
-    {
-      "path": "tongban-android/android/app/src/main/assets/public/apple-touch-icon.png",
-      "size": 857,
-      "sha256": "e0ce0efd3a6f53efffdf4cfe62bfa711f48eb3a35d461f667327b52c3fb11437"
-    },
-    {
-      "path": "tongban-android/android/app/src/main/assets/public/cordova.js",
-      "size": 0,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    },
-    {
-      "path": "tongban-android/android/app/src/main/assets/public/cordova_plugins.js",
-      "size": 0,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    },
-    {
-      "path": "tongban-android/android/app/src/main/assets/public/icon.svg",
-      "size": 354,
-      "sha256": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa"
-    },
-    {
-      "path": "tongban-android/android/app/src/main/assets/public/index.html",
-      "size": 1304,
-      "sha256": "2a8d8d2c2bc13f73f98d1162d81a0bed70231f9abeae25176a4d20598767b4a4"
-    },
-    {
-      "path": "tongban-android/android/app/src/main/assets/public/manifest.webmanifest",
-      "size": 263,
-      "sha256": "1ff704c7ca4572033217d036e9c06ba7c8678e650c8a7982284d9a50733991d9"
-    },
-    {
-      "path": "tongban-android/android/app/src/main/assets/public/webview-unavailable.html",
-      "size": 1171,
-      "sha256": "f277a87877279176cdb8b724a3e82e48a3a0f5ff1d02ec2734f81363d02504b4"
+      "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/ArtifactPolicy.java",
+      "size": 3031,
+      "sha256": "38fdc26c963320dcf9eb7f3d4f62a50d4ff9e7aeed6cd55b75bd1305ba9780fb"
     },
     {
       "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/DocumentPolicy.java",
@@ -132,14 +442,34 @@
       "sha256": "b91f0714f1bf4a74bb7b0c192ac17ea0c41eb81aa2e3f4a7524c7b62ccfc2c29"
     },
     {
+      "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/InternalPreviewHttps.java",
+      "size": 2755,
+      "sha256": "74a0b9114f4aa4fcfee1523bf810d182e72a26994a538b7a6ddd7cf31974452d"
+    },
+    {
+      "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/InternalPreviewPlugin.java",
+      "size": 3830,
+      "sha256": "47a42e8f8d91fad9f03eba8923d3bb6f8cf97fede7546ba240bb50a6f9099681"
+    },
+    {
+      "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/InternalPreviewPolicy.java",
+      "size": 4082,
+      "sha256": "b2752c6cab9b7f297a587fb7767f51e9a51c66551fcefd03797802f1031dcd94"
+    },
+    {
+      "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/InternalPreviewSession.java",
+      "size": 6618,
+      "sha256": "2ff8baa9b5799b7da16b57e117ce0a0c224dca0952953705723d843713bb4d42"
+    },
+    {
       "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/MainActivity.java",
-      "size": 2938,
-      "sha256": "3f4988f314cf16494cd53e58783a7fed94ed0c0d10e7d48f4ecc06673e65f00e"
+      "size": 3715,
+      "sha256": "6a245122beb0157a1340f3e074c2e226ba6739d6cc1345eb4f513c6a1de7dd2c"
     },
     {
       "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/NavigationPolicy.java",
-      "size": 2202,
-      "sha256": "111ebb23e43da1cbea72846020d605f1f2b7acf3827f6d1c7eb479da9821afe8"
+      "size": 3041,
+      "sha256": "b9cdb20bc8f31043496c50d917dd5f851b7d47e6356a7f0064b0f589833d4cea"
     },
     {
       "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/SafeChromeClient.java",
@@ -148,8 +478,13 @@
     },
     {
       "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/SafeWebViewClient.java",
-      "size": 2081,
-      "sha256": "41f357345f2ddc4198fcb7fd81542db7407d5103169e1f8736a308a790284f9c"
+      "size": 2160,
+      "sha256": "c24e0175fbbaade51686b23bcffbcd285bbf5ceaf26f91cc1ca19cc8fdd230ad"
+    },
+    {
+      "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/SaveArtifactPlugin.java",
+      "size": 3374,
+      "sha256": "e1d187ac3fb479e9c8b771fc73d214a214e37f5e333dbc581c489032f6185ddd"
     },
     {
       "path": "tongban-android/android/app/src/main/java/app/tongban/wallet/demo/SaveDocumentPlugin.java",
@@ -180,6 +515,11 @@
       "path": "tongban-android/android/app/src/main/res/drawable-land-xxxhdpi/splash.png",
       "size": 17683,
       "sha256": "60393ce8636fd263e4e1fea3fd4ab2de948c6295e898fda9b50ac4e5283be809"
+    },
+    {
+      "path": "tongban-android/android/app/src/main/res/drawable-nodpi/orbit_b_lilac.png",
+      "size": 348299,
+      "sha256": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42"
     },
     {
       "path": "tongban-android/android/app/src/main/res/drawable-port-hdpi/splash.png",
@@ -223,13 +563,13 @@
     },
     {
       "path": "tongban-android/android/app/src/main/res/drawable/tongban_launcher.xml",
-      "size": 520,
-      "sha256": "cdfa5d05902d033d8f5db84dac7cd0fe3202536052ab63a4cd5c0d5ec01a8a4e"
+      "size": 200,
+      "sha256": "027e227116f5dd6571e8d1f875bb27bd8830a486cb9d18c5b233bb03ec615776"
     },
     {
       "path": "tongban-android/android/app/src/main/res/drawable/tongban_splash.xml",
       "size": 318,
-      "sha256": "28a99b6048e378141c3162b13c100cadc46026d12dad16c0bf6fe02880fba4a9"
+      "sha256": "2cbd01295e1343bfeecbaeac9ead855926da29c243c9cd639602251cdb869429"
     },
     {
       "path": "tongban-android/android/app/src/main/res/layout/activity_main.xml",
@@ -334,7 +674,7 @@
     {
       "path": "tongban-android/android/app/src/main/res/values/styles.xml",
       "size": 1061,
-      "sha256": "b3d41f73e4369e6924f4fc4dd530f5a6ca09b167cc245e54dae4c5c22abe70ed"
+      "sha256": "d9a54004cfba4f5e6148c60138588e29e96580a00784f426c5359e2f4d1e51ba"
     },
     {
       "path": "tongban-android/android/app/src/main/res/xml/config.xml",
@@ -433,8 +773,8 @@
     },
     {
       "path": "tongban-android/capacitor.config.json",
-      "size": 623,
-      "sha256": "7453378aecb8c02cd15dca1d5660d8012946e2e40240351cdf7bfd0d62fb34cc"
+      "size": 673,
+      "sha256": "3885f50d52cad0419404b8bf2a8955b14bb47c34ad45eb5c87861a082b96d029"
     },
     {
       "path": "tongban-android/native-assets/webview-unavailable.html",
@@ -443,8 +783,8 @@
     },
     {
       "path": "tongban-android/package.json",
-      "size": 601,
-      "sha256": "99275fc0b825025e97224c978ecacae53d5ae8b26eed1b103ea0e0bd20546e19"
+      "size": 754,
+      "sha256": "502f80bd47d4dbc221ac26bb72d8c6876f77f4439e1c116b8616d7207c97252c"
     },
     {
       "path": "tongban-android/pnpm-lock.yaml",
@@ -458,53 +798,33 @@
     },
     {
       "path": "tongban-android/scripts/copy-web.mjs",
-      "size": 1495,
-      "sha256": "89bf159520615de488cc5fd09f073c04a3e2948e26170dbc9595806f809bd8fe"
+      "size": 2695,
+      "sha256": "6fd38a16572ad25127fc0ca1969ace1c75b4e681a524cb3a4e9e34c343dc75b6"
+    },
+    {
+      "path": "tongban-android/scripts/prepare-web.mjs",
+      "size": 526,
+      "sha256": "98c49cf9287c9685e3e5138c50cc83b65284706fd5c7e07274fb47f70932e5c4"
+    },
+    {
+      "path": "tongban-android/tests/ArtifactPolicyTest.java",
+      "size": 2007,
+      "sha256": "446e16a80517bedca97c240d340b7420003bf47bfe9084b34740247601ac0b86"
+    },
+    {
+      "path": "tongban-android/tests/InternalPreviewSessionTest.java",
+      "size": 8848,
+      "sha256": "13d62d9243885b25e7229cb5b81c0d0b6d1767144931bc1e43de916b2314350a"
     },
     {
       "path": "tongban-android/tests/NativePoliciesTest.java",
-      "size": 5010,
-      "sha256": "4da84d2b4fbdfba48ad8b237d38e7f9f0433ee4661ba75d4d0d04d955c62e610"
+      "size": 6959,
+      "sha256": "bdb82dbd4c4ab3c08277c7c8f76652d16313507e37b1c1fe04ae21814ecd3f81"
     },
     {
       "path": "tongban-android/tests/android-security.test.mjs",
-      "size": 4014,
-      "sha256": "4b529757c6d24cafbdabcabf0117fed5793f00e8916e429473ecc4ef76498144"
-    },
-    {
-      "path": "tongban-android/www/app.css",
-      "size": 199701,
-      "sha256": "de4f4b3ac5bbea07728ef153ad9702639c4d0f1d9e866341c00e5efaf661b03c"
-    },
-    {
-      "path": "tongban-android/www/app.js",
-      "size": 665177,
-      "sha256": "2390eae42041f04a153a12573b55a78f3c78d979839454e0d8b242c37daea46f"
-    },
-    {
-      "path": "tongban-android/www/apple-touch-icon.png",
-      "size": 857,
-      "sha256": "e0ce0efd3a6f53efffdf4cfe62bfa711f48eb3a35d461f667327b52c3fb11437"
-    },
-    {
-      "path": "tongban-android/www/icon.svg",
-      "size": 354,
-      "sha256": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa"
-    },
-    {
-      "path": "tongban-android/www/index.html",
-      "size": 1304,
-      "sha256": "2a8d8d2c2bc13f73f98d1162d81a0bed70231f9abeae25176a4d20598767b4a4"
-    },
-    {
-      "path": "tongban-android/www/manifest.webmanifest",
-      "size": 263,
-      "sha256": "1ff704c7ca4572033217d036e9c06ba7c8678e650c8a7982284d9a50733991d9"
-    },
-    {
-      "path": "tongban-android/www/webview-unavailable.html",
-      "size": 1171,
-      "sha256": "f277a87877279176cdb8b724a3e82e48a3a0f5ff1d02ec2734f81363d02504b4"
+      "size": 8413,
+      "sha256": "dedee66ed17d410fd499fdd4fbde1e2eedd83531e665dda65b51297382393b48"
     },
     {
       "path": "tongban/.gitignore",
@@ -518,23 +838,23 @@
     },
     {
       "path": "tongban/README.txt",
-      "size": 11649,
-      "sha256": "fad83496d7fca854b377e3d53c790f277c04b220ceebbd03cb8717eba70831ca"
+      "size": 7263,
+      "sha256": "64d22ab614b8e198783bfe56538fabeb3860d988b10bdad49a8da307c763e29a"
     },
     {
       "path": "tongban/build.mjs",
-      "size": 1073,
-      "sha256": "aef18d57c140b8a12415a5559d92dd18211fa1c04f2a995e75675845584afa62"
+      "size": 2016,
+      "sha256": "888f590e850d18306fd1ff88bd8058c4bb5aabcf3a47ce5af7021edddb4b5271"
     },
     {
       "path": "tongban/package.json",
-      "size": 427,
-      "sha256": "71582ceeb9e95406198326ab70aad121190952184b14140f11c4faf16b5a50b5"
+      "size": 475,
+      "sha256": "229597306e6d3dcadf47cebf8a08e7f945c046e26a957121a86e390cd003a39c"
     },
     {
       "path": "tongban/pnpm-lock.yaml",
-      "size": 18775,
-      "sha256": "d662ffe00b1db6098ae76e24248cd601454001398b4b8775c911c74bf30d4da2"
+      "size": 19060,
+      "sha256": "b7d5cdff662010dcd5fb71f67a044c13bd14cd4f3d2279f9c5be8330785d107b"
     },
     {
       "path": "tongban/pnpm-workspace.yaml",
@@ -543,123 +863,153 @@
     },
     {
       "path": "tongban/releases/README.txt",
-      "size": 278,
-      "sha256": "22a7fe79ab124383242fe4b114af7f90c49bcfb248716a1e6a78d11c815b40fc"
+      "size": 538,
+      "sha256": "febb14520b253810b5be90bf128aac6d977e8a831d26c7939588ae420f0a2142"
     },
     {
       "path": "tongban/releases/SHA256SUMS.txt",
-      "size": 390,
-      "sha256": "bf5d8cd808143a6f04f8935a30bc9a26c7e6c506bd72daf00bd102797ca67c07"
+      "size": 2938,
+      "sha256": "9b5a32e4ab87e655ed046ed14b73f0aedf431542c7e72062acd4710e0fcc01e4"
     },
     {
       "path": "tongban/releases/android-guide.txt",
-      "size": 1671,
-      "sha256": "74d2d97812281b6033293e8d80cb3939e31bd8cee7b6c3c02875fe1ee7263fa8"
+      "size": 360,
+      "sha256": "963c34925b9ca9414c9288d63f396b1ddbe81a846df2f36e68fb4d556eb2e489"
     },
     {
       "path": "tongban/releases/android-verification.json",
-      "size": 1606,
-      "sha256": "169bd00f27936aae50876fb469bbd4989cc06fb195243bc49aa6afeffb978c88"
+      "size": 630,
+      "sha256": "1b885016e463467647e495496229ce026a32e8a4c65bee67ab4c7a55afcb48c1"
     },
     {
       "path": "tongban/releases/ios-build-status.json",
-      "size": 1152,
-      "sha256": "a1eb8ba8d8ed916fe177b0165e755e2abce804040614bf87b0c556dc72b4b96e"
+      "size": 2489,
+      "sha256": "c8258d8e35296318a2dc3750e0debe983aea7219c4907f232baee1682b248c5c"
     },
     {
       "path": "tongban/releases/ios-guide.txt",
-      "size": 6398,
-      "sha256": "6d5fc22f2d65003654560946b10d18cc1a48ab7633585b680a040b6ac8985a80"
+      "size": 537,
+      "sha256": "375e4eefac0bd7df751bfe06d9e4212c195d13e4fe4cda214a491eb805aa907c"
     },
     {
       "path": "tongban/releases/ios-install.html",
-      "size": 1776,
-      "sha256": "18e3552e44fce5fdbc43ee3be730b72521b266e97d4fd531c6a0863310669b82"
+      "size": 1722,
+      "sha256": "44b29429d8a03a49e617ef68d2c1c8db6c451866253098891e264ad48ee48d78"
     },
     {
       "path": "tongban/releases/release-status.json",
-      "size": 1718,
-      "sha256": "7c0eb6b32b629811b5f8abc371c7c589fa4b69c61c353976d3cfcbe2cd4e246b"
+      "size": 7271,
+      "sha256": "99cab4bd8dd5d217b9978f9561ac62b4cf872887f9e51be4785b1d3dbe2ec1f8"
     },
     {
       "path": "tongban/releases/windows-guide.txt",
-      "size": 1750,
-      "sha256": "51331f5e5a15c743db4eb446d90c99b9919cadc9f588723a541a9d2f1162925f"
+      "size": 1961,
+      "sha256": "0dd0b7926f65a54782fe4c3a3d94277b819bc4d6601771ba4e18bead79c30410"
     },
     {
       "path": "tongban/releases/windows-verification.json",
-      "size": 1633,
-      "sha256": "41474e849d902d401b8eb8a058c4fc1ef8a1825f7bb337c4aed4808fbf950b59"
+      "size": 1866,
+      "sha256": "46518bf812ec95349f93872b709d0890bcf305845a7d21707950246a98788534"
     },
     {
       "path": "tongban/server/README.txt",
-      "size": 5303,
-      "sha256": "8454c50640cb28b25d95e626cf8910aab7c99c9a6bc0a647f792f70e9f92e26a"
+      "size": 316,
+      "sha256": "18e6d0b45c9824b3a19af072719f4408c3d72037b8fb7e87ad78de2864471917"
     },
     {
-      "path": "tongban/server/custody-ledger.mjs",
-      "size": 14956,
-      "sha256": "c7a38a716d9001ab0c665059200909670bc77e33b0dd2eb68c2e23e38a1aae3e"
+      "path": "tongban/src/account-access-client.js",
+      "size": 4065,
+      "sha256": "39ddb820ce9529f57c4987d3dc305572dff30a53c67bb93caf4f6710ec7014cf"
+    },
+    {
+      "path": "tongban/src/account-access-ui.js",
+      "size": 8253,
+      "sha256": "a56e4d607b9e7897ca009e958a5f4b40a3f99e39f1d034445fbb47d702c4770c"
+    },
+    {
+      "path": "tongban/src/account-security-client.js",
+      "size": 747,
+      "sha256": "1490978b542d9cb170f50af0ca441549e1e0138b2f5ba1ae653b8e1187644f4a"
+    },
+    {
+      "path": "tongban/src/account-ui.css",
+      "size": 4230,
+      "sha256": "d9a7fbeb20fe7c13d027ae3074533a9d442592ce32914383d246f9b3790b8b95"
+    },
+    {
+      "path": "tongban/src/account-ui.js",
+      "size": 9876,
+      "sha256": "ea1c2c3d426a7411185ab33c5fc57450b299a1ea29f35a7da9554c32d7bc63e0"
     },
     {
       "path": "tongban/src/ai-workspace-client.js",
-      "size": 2485,
-      "sha256": "9b860afba6e8692597e508bea63b9e312892a62374e7d44e65a9ce93e15d3e72"
+      "size": 3451,
+      "sha256": "74b61472a498a72560fba8c880c22eed3ff309af30552d23aec3c8ad2239c7d9"
     },
     {
       "path": "tongban/src/ai-workspace.css",
       "size": 5394,
-      "sha256": "8a12a4a76da8c37b1c49a44eba4ffe69cc1ad9a46cc7047aeb957b6957692875"
+      "sha256": "028d91cbaa6455d2cab700a94259c264993ba5f57fd543c3c82bf82c3d521dd5"
     },
     {
       "path": "tongban/src/ai-workspace.js",
-      "size": 23141,
-      "sha256": "df654e9114d8f4770f7ba868be23373fc0bac40cccd28532a2f66a669a2c5ed2"
+      "size": 23440,
+      "sha256": "b4af1eb76167a2955199aac4357440df65394fc7a215ff15beb324378fa8817c"
     },
     {
       "path": "tongban/src/app-navigation.js",
-      "size": 715,
-      "sha256": "76fff5c2eb25969dcde74b4402c29ba6196bc7cc51fa64c1b59666f6b88ecf98"
+      "size": 3818,
+      "sha256": "2795b572451986aaa4c0e0c2c425b4773ea06cf97c715371a51dcb3b6e5e3463"
     },
     {
       "path": "tongban/src/app-v4.css",
       "size": 2335,
-      "sha256": "4cbaae39986f719da05c496ce2ec1d85d6b0b6085182b5a0ab8203d8d9516eb5"
+      "sha256": "50370da3e1bdf53175c4c5db87aac3fcd407384d23d767bf2fe3a447b5c7c23b"
     },
     {
       "path": "tongban/src/app-v6.css",
-      "size": 1700,
-      "sha256": "d57546518780c79cf3f5fe5d6c101798cc56ce995b7bf520c44a3ab296386dc8"
+      "size": 1776,
+      "sha256": "e6fc7950696658d318d98b4016fa702f2b2c6f3edc3533acb1ab53d2394be437"
     },
     {
       "path": "tongban/src/app.css",
       "size": 19993,
-      "sha256": "09276c0b5153f392d13116f7d0faa512adc3ec547f568757b268ffdc774cdc90"
+      "sha256": "57afa5cf77b1ea89d45f45165ddb2da19f079bdc7a56970045828dc22044f534"
     },
     {
       "path": "tongban/src/app.js",
-      "size": 44519,
-      "sha256": "a4ff2478dd4dff134355ab14b8a56fa3407acf0c6cde4afd41e40a312d677721"
+      "size": 48244,
+      "sha256": "affa2ae6d00f878b2c39f2046926e12e1fa6643eec523df2b014c0090f645bad"
     },
     {
       "path": "tongban/src/apple-touch-icon.png",
-      "size": 857,
-      "sha256": "e0ce0efd3a6f53efffdf4cfe62bfa711f48eb3a35d461f667327b52c3fb11437"
+      "size": 42458,
+      "sha256": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a"
     },
     {
       "path": "tongban/src/bill-center.css",
       "size": 2642,
-      "sha256": "a81628185cace12f7bfa86bd830dd51978f534e27036a08fccb64a5dd985ef8f"
+      "sha256": "6a30864849ad16a89479cdd12ae118a8e18eae0ebafcbcc009dbf34a8fc423b8"
     },
     {
       "path": "tongban/src/bill-center.js",
-      "size": 5882,
-      "sha256": "3972e30b28aff874f4022d8c73d75f91b5d360f331c9248c9d4febb878566559"
+      "size": 5663,
+      "sha256": "0873418530797fbbe92177c51678cc89539315f72d2b34118b6883f972f126d4"
+    },
+    {
+      "path": "tongban/src/chain-preview-config.js",
+      "size": 10836,
+      "sha256": "ca72223f77971f1058e45f7adc57c076dad3ca6f26786be24f36df63fc4505d6"
+    },
+    {
+      "path": "tongban/src/chain-wallet.css",
+      "size": 4218,
+      "sha256": "2448dca4d05a5cd00c77606f56641bf5ca58aea9a07d759837c3a5c3c8b2cb7b"
     },
     {
       "path": "tongban/src/chat-media.css",
       "size": 3653,
-      "sha256": "cbb30e97ebc3ebcfa3594a734a4a8929560ec45cab30f81883f94dc64f4c1e9c"
+      "sha256": "5eaa5842d8e0b559f8891a77c85da6955cd4b13c0330c6797158e30c9f07469c"
     },
     {
       "path": "tongban/src/chat-media.js",
@@ -667,14 +1017,29 @@
       "sha256": "fd03e7512bddb9918503f371fabdbfb00b80ac05385eb4e1ef41ff85b1b223d6"
     },
     {
+      "path": "tongban/src/community-client.js",
+      "size": 2674,
+      "sha256": "9a33ea422e829dc424249325cd06222bdf3fe33d33fc3c581dc39a71034a75f2"
+    },
+    {
       "path": "tongban/src/desktop.css",
       "size": 3433,
-      "sha256": "feb82cb6b5a659acf339ca0f49849246cc1fbb221eec4e9ba6e34562fe2e6a30"
+      "sha256": "158c4ae0e4d8396033f2162629c1ed6e87644963da19e893e59216a44212edd0"
+    },
+    {
+      "path": "tongban/src/discover-community.css",
+      "size": 2674,
+      "sha256": "818bd3f5a8d2557d2671571a1a9f514e08657e92aa692f91011220ad8af845db"
+    },
+    {
+      "path": "tongban/src/discover-community.js",
+      "size": 21154,
+      "sha256": "d3f9a2d9828e044fe1a76f9ce1814ed51c63aeac09357533675b24d5fe7ab127"
     },
     {
       "path": "tongban/src/discover-moments.css",
       "size": 11322,
-      "sha256": "10f7a6bfe3a6e2884cdc08a74f15f0b505a0c569be25181ff179b2ad16a3a292"
+      "sha256": "77a294696e1c34946b0cd37a12e41fcfae618b0fe5281f00e9c13775f82b06cd"
     },
     {
       "path": "tongban/src/discover-moments.js",
@@ -684,37 +1049,62 @@
     {
       "path": "tongban/src/discover-token.css",
       "size": 13532,
-      "sha256": "120d0c27d6e25cf62598d419807421fe1993ccf9b9bcc9b1e92306782a262c44"
+      "sha256": "db07e3e2c14c9e3324a7b9edfd3f83b37a8b9524da059cb938ff70f698253dde"
     },
     {
       "path": "tongban/src/discover-token.js",
-      "size": 26706,
-      "sha256": "07e2b11043a8b0c1f7fb27c4a980c0304a6453f476426e896d1f8d7fb76d34a6"
+      "size": 22007,
+      "sha256": "750f9d06f1bae2a75ccd05e08687f1dbd516bd9523db33b0179d6e582f83b85a"
     },
     {
       "path": "tongban/src/discover-v5.css",
-      "size": 4158,
-      "sha256": "9f2a82804eeb52817e951fe060482a08bc1819c2285e8db0234a6689278c90a1"
+      "size": 6418,
+      "sha256": "685aa9c03c08db0e7bb84b7772a041c7c0881754032158b0b03e743ea40aa03d"
     },
     {
       "path": "tongban/src/discover-workbench.css",
       "size": 15615,
-      "sha256": "a4192142956a5a927dd79d868274939d4823a5d96ab2346b91599c8813956897"
+      "sha256": "57677ce03a360d424ac0f2fe309e10dccac0a38e0cfed3c4cd1de96d39f9fa39"
     },
     {
       "path": "tongban/src/discover-workbench.js",
-      "size": 32233,
-      "sha256": "c375cab8f33d4222fd725f99928cf1cfbed4a524490f06f7d79d3730ba40a3b7"
+      "size": 32289,
+      "sha256": "2d88db2bec416e164d9069fa0795d5c08de49e96a9aa99e19a43164f1a025a43"
     },
     {
       "path": "tongban/src/discover.css",
-      "size": 43456,
-      "sha256": "f805fa0fe4b1cc0eff2babdd176f9298c62d6b2d2b8121c1cd7d3d644970cb71"
+      "size": 43429,
+      "sha256": "314ef22def41d615983a1e2b58d460bc7a9c9ead37d9e72cae7a9cc5ceab8aaf"
     },
     {
       "path": "tongban/src/discover.js",
-      "size": 40162,
-      "sha256": "915c7dc10b9acddf6cc7c13aa599588f22916f965ec7a9ca57718c4d4584b96d"
+      "size": 33701,
+      "sha256": "ffbaa3337c8fd1d98704bad54cd9bbd0e9f438456390bfe4ff4d38c261614be5"
+    },
+    {
+      "path": "tongban/src/distribution-preview.js",
+      "size": 8211,
+      "sha256": "e28450017c646f651b8e6e63882efd61e4824380fb773aa532d09cedf31b41ed"
+    },
+    {
+      "path": "tongban/src/favorites.css",
+      "size": 2065,
+      "sha256": "7e661e021f49818f43678ceb13f4870231d40e3ea11a80e61d9bd34b3986acac"
+    },
+    {
+      "path": "tongban/src/favorites.js",
+      "size": 6895,
+      "sha256": "7bec8caffaf7f771765597c6425633d7147f885a6ec21c91643f73e82447866b"
+    },
+    {
+      "path": "tongban/src/i18n.js",
+      "size": 3029,
+      "sha256": "11168372cd21ca11eba3ab298a89686b3f410012b2442b9e66f3f1d54a1ba765"
+    },
+    {
+      "path": "tongban/src/icon.png",
+      "size": 348299,
+      "sha256": "1c943ecc9643b407706b635a5970ec2b1ea3fdc7f2d3cfe9f6d473cfecbeba42"
     },
     {
       "path": "tongban/src/icon.svg",
@@ -723,8 +1113,8 @@
     },
     {
       "path": "tongban/src/index.html",
-      "size": 1304,
-      "sha256": "2a8d8d2c2bc13f73f98d1162d81a0bed70231f9abeae25176a4d20598767b4a4"
+      "size": 1320,
+      "sha256": "4dcedbb37d8450fcfb8710038ad3e2512e6fecf3a98c1f7934c63f6eebe44099"
     },
     {
       "path": "tongban/src/install-qr.svg",
@@ -733,98 +1123,263 @@
     },
     {
       "path": "tongban/src/install.html",
-      "size": 7474,
-      "sha256": "973dddf380e12374c952fae6aa0f150c10f96619f209d6d2c7a1389ad0d42b63"
+      "size": 2556,
+      "sha256": "33e21a4d613cc14217666180be72ab1781e1b833dc5ebcf6db5d5aa40b0b8111"
+    },
+    {
+      "path": "tongban/src/live-moments.css",
+      "size": 4395,
+      "sha256": "5ed75f7af2b2ef3cbe7ddbd75888e1d6db9c17f353f189d4710aec71e189df94"
+    },
+    {
+      "path": "tongban/src/live-moments.js",
+      "size": 20896,
+      "sha256": "1fae0da82dc616e63f1fc2586a2c4e880c4819ff05bc33519819a16083ba4b23"
+    },
+    {
+      "path": "tongban/src/live-people.js",
+      "size": 6178,
+      "sha256": "b8e2c5b4cef19039385a9d610d0541c0d9a3e7061c38531ed4370279011eee0e"
+    },
+    {
+      "path": "tongban/src/live-social.css",
+      "size": 20269,
+      "sha256": "224444f38a4d1b9fbe87896d40e80055f1256a74af30bd42f8b031c251bb5e2e"
+    },
+    {
+      "path": "tongban/src/live-social.js",
+      "size": 69802,
+      "sha256": "b016b1f9788d0615110c5f528387c33b55f20a7cb169ee5ed367e16dcbc133b4"
     },
     {
       "path": "tongban/src/manifest.webmanifest",
-      "size": 263,
-      "sha256": "1ff704c7ca4572033217d036e9c06ba7c8678e650c8a7982284d9a50733991d9"
+      "size": 236,
+      "sha256": "5e6354ca06f442dae529b11a0e6cd38638ae8ca1e822896e373a106a269e99d5"
+    },
+    {
+      "path": "tongban/src/mine-minimal.css",
+      "size": 14188,
+      "sha256": "5e63e70524b9b17e6e800332a965da59d5a869ccb2a5371caf248cffd1343b54"
     },
     {
       "path": "tongban/src/mine.css",
-      "size": 14569,
-      "sha256": "c595139531c844d56860e31681349f7f5f5a96a5d237e79800c1e5e791c0dc45"
+      "size": 17620,
+      "sha256": "74bff7a1e5ed62ff69eb71af845b40957231e7c2e4c3b8c204f0fb84424fd510"
     },
     {
       "path": "tongban/src/mine.js",
-      "size": 18144,
-      "sha256": "90eb546365b472e5bbf015659bc20f25acf022663afb54d37c3c5e662cef87a7"
+      "size": 29615,
+      "sha256": "91420bace8f20dd5b71c97388a4c5db9224f22c0ececd5788cd81879b9e4dc80"
+    },
+    {
+      "path": "tongban/src/native-preview.css",
+      "size": 1001,
+      "sha256": "044518bfea0cac9c3c2be508292f8c7395124fc9d5c1f4cfed762cfb2fc6ffc2"
+    },
+    {
+      "path": "tongban/src/native-preview.js",
+      "size": 6235,
+      "sha256": "b60aa8708897b6c987a1ad62e7b3796147bf24e3ca824959fa6228515145024f"
     },
     {
       "path": "tongban/src/native-runtime.js",
-      "size": 4026,
-      "sha256": "2ee1f22a314ef55da860649afdb9e86ea02772550877c098e20d4eacfc046ecf"
+      "size": 5995,
+      "sha256": "7e730db97dbb4fc5befbd1548ce61d8a4e8400a96456ea86e8d7e12e00a2d2f9"
     },
     {
-      "path": "tongban/src/platform-transfers.js",
-      "size": 6074,
-      "sha256": "981562bb4b5c76dac5266091240a2e01eefe4053d2e6b2c296b74aad209c65e3"
+      "path": "tongban/src/notification-settings.js",
+      "size": 4129,
+      "sha256": "6e7ee0bfa169d9fd397d3d57b18a6f8837c643d88a0ebe5ef0846305dc5402bc"
+    },
+    {
+      "path": "tongban/src/points.css",
+      "size": 1180,
+      "sha256": "0587c960823a02afae2c387bedaf418cdcf2b1dcc5d799b1e7f957ddca47987a"
+    },
+    {
+      "path": "tongban/src/points.js",
+      "size": 4040,
+      "sha256": "3a895698fcbc64634cf99410e7f6d7d41588d108a023e8f849f756c9dab81f12"
+    },
+    {
+      "path": "tongban/src/privacy.html",
+      "size": 3873,
+      "sha256": "eaa65fcd754ca84a2b8c4d40d1c720114dfa4fb9862496593264ac831a420c1f"
+    },
+    {
+      "path": "tongban/src/profile-photo.js",
+      "size": 7755,
+      "sha256": "e48d1cd9e7d8be1cc243875f2ce425782b4b5b5c27c3930ff2d440f0ff553d3f"
     },
     {
       "path": "tongban/src/profile-store.js",
-      "size": 1536,
-      "sha256": "582553cc1c338ee95855c5c73046c51f640efd994f2e2a8c231ce0c66d299477"
+      "size": 5715,
+      "sha256": "a11e401ed77f193ed478b38dad4d58e7d9c40960c469a6d56d42e0f11b32cce5"
     },
     {
       "path": "tongban/src/qr-scanner.css",
       "size": 4066,
-      "sha256": "513ed52e17fb1214e481a1b9bfe7fd3eec22a00400bd26f04d11abf8f3211303"
+      "sha256": "1c69705ebf95d90dbb7cb472e8fa85f92b6733d3e775831e6d13d3dc17102acb"
     },
     {
       "path": "tongban/src/qr-scanner.js",
-      "size": 19033,
-      "sha256": "dbbce5b3ec4e1cb4225d40e07512afc95756f63fa1a13fbca33fb6f03cac5cb9"
+      "size": 19126,
+      "sha256": "3e3b08b1f40c7e730ee16fbe4e69d698fea257b091447608ea80c66e5cf60d63"
     },
     {
-      "path": "tongban/src/redpacket-model.js",
-      "size": 14184,
-      "sha256": "85b4d8436245d0013e55988838e6088bf5cdf21f801660fd7528622344aa830c"
+      "path": "tongban/src/social-client.js",
+      "size": 11796,
+      "sha256": "31193e77ce1a108b36a1258273175ca23b929dc80c1854eeec9d49c467bc7fdf"
+    },
+    {
+      "path": "tongban/src/social-minimal.css",
+      "size": 12834,
+      "sha256": "b8bdf7932f80e0c5fa214250ee971ec9c3c668048e1e421eb29c95ec8fc12588"
     },
     {
       "path": "tongban/src/social-v3.css",
       "size": 20534,
-      "sha256": "ec21a98dbf602fa312e7750d0353fd9824bd7d06052a09e7d83f60381c6677a9"
+      "sha256": "18cb973420428350084720fcb25bd20ae5ae1ca164e84aa0f9ac2da9fbaab2d2"
     },
     {
       "path": "tongban/src/social-v4.css",
-      "size": 3343,
-      "sha256": "c0059fddb46dff6f593b0f70cafc057829053cf4eebe7ec60d780cfaa776019d"
+      "size": 3423,
+      "sha256": "3e3327846d5fbb935ae27af18509ab3a8c665a2d299c24509f1ce9155420afe3"
     },
     {
       "path": "tongban/src/social.css",
       "size": 33290,
-      "sha256": "c6d174e5c42b06ffa758c4539293af991648036ac006075415372ebdd7d13c9b"
+      "sha256": "ff3b96391ec49ec46695979523bd126722f8f987c86320a8864003472cb9e8d4"
     },
     {
-      "path": "tongban/src/social.js",
-      "size": 92970,
-      "sha256": "cf3c1bbde0266ec78683c7d4d4a9b2731f95bc8dfddc3cef0204daf372028aca"
+      "path": "tongban/src/sw.js",
+      "size": 686,
+      "sha256": "3acc33c24695926a89bf85e9267e4dbf5e50836c08317fa3b5aa243663b3ba1d"
+    },
+    {
+      "path": "tongban/src/terms.html",
+      "size": 2619,
+      "sha256": "815e88d3e9c8b56156e43f3b77cec5c7ccc05860f7bb8c57172505b39de4a60b"
+    },
+    {
+      "path": "tongban/src/theme-lilac.css",
+      "size": 6006,
+      "sha256": "4ae741d02f558abb93d41dbef09257e41ec9fbc98b09af5f8d0fb55b5ca37082"
+    },
+    {
+      "path": "tongban/src/theme-minimal.css",
+      "size": 10254,
+      "sha256": "e8ce589c12907ffc96f9de8f157342fe78b0f74245dafe1607233418453f0a48"
+    },
+    {
+      "path": "tongban/src/theme-skins.css",
+      "size": 43915,
+      "sha256": "3c61cde80248f2c641dbee32c76e8ef54b3bbad3cb18a6d92213aba04317027e"
+    },
+    {
+      "path": "tongban/src/theme-skins.js",
+      "size": 1636,
+      "sha256": "9ffefadc35ffdce12d17b46e55f22a90151b5a8e48cdb6593b5e3f4132b0f680"
+    },
+    {
+      "path": "tongban/src/wallet-compatibility.js",
+      "size": 7061,
+      "sha256": "da0dd4542beb245f5d4e5afa38cc8e081c2db9b47787cb4e923ebd6846f599f4"
+    },
+    {
+      "path": "tongban/src/wallet-fees.js",
+      "size": 468,
+      "sha256": "43cc837347102b664e915936c90c509d395dea0603cdeea7b9d01a8413831f5f"
+    },
+    {
+      "path": "tongban/src/wallet-import-ui.js",
+      "size": 11059,
+      "sha256": "9ab52b0ba85512c75337aa7e47ad63dd7499b886a4189289cb5d458d97803b78"
+    },
+    {
+      "path": "tongban/src/wallet-watchlist.js",
+      "size": 3076,
+      "sha256": "1b776f7a22d51dd99cc6c5cfdae4276740561013cac22b4989e85b97813b569b"
     },
     {
       "path": "tongban/src/wallet.js",
-      "size": 18427,
-      "sha256": "0523f2b864f815a5bf35034bbd264efa59c12c17df89f6a77a01fa64dd2936ad"
+      "size": 28485,
+      "sha256": "35fe5318fef4f023a58dd64fd268f3c7525a549d45f45ea48119ba2c669277f5"
+    },
+    {
+      "path": "tongban/src/workbench-hub.css",
+      "size": 8856,
+      "sha256": "0a56a5012ac25c90581b31873e295d1493b0fb85b721282744d7b164d4d7a054"
+    },
+    {
+      "path": "tongban/src/workbench-hub.js",
+      "size": 21059,
+      "sha256": "a2fbaaf400825ae05489f6208c2a9b0b713b9913620b418db4bfe3d67df96e86"
+    },
+    {
+      "path": "tongban/src/workbench.css",
+      "size": 9309,
+      "sha256": "e84d6e28c1d3ba1e6f901595c20cf3d645d03d1acc73710b5d9db9df6a299a6f"
+    },
+    {
+      "path": "tongban/src/workbench.js",
+      "size": 33848,
+      "sha256": "dc53532306e4e68487770ab6bde1ec2ad50e6fa510c73248c9cfcf7dd6ea5004"
+    },
+    {
+      "path": "tongban/tests/account-access-client.test.mjs",
+      "size": 2382,
+      "sha256": "92fb624a13969656ea02477e29e4a854f1eb654ce8c126879323337078868e16"
+    },
+    {
+      "path": "tongban/tests/account-preview-copy.test.mjs",
+      "size": 1151,
+      "sha256": "8a920276bff601aaa4586f4ca57d15d6c88ce81a92f4627a7813533be714d317"
+    },
+    {
+      "path": "tongban/tests/account-ready-route.test.mjs",
+      "size": 1115,
+      "sha256": "490c3e551c00d5ec6751df0953754114e1bb0e3de5dc64127aef980be704bb75"
+    },
+    {
+      "path": "tongban/tests/account-security-client.test.mjs",
+      "size": 9303,
+      "sha256": "04b5ae4c84cb29d7cd361693f274ebc76139b38007049fb0f71dfb6dd48f6a46"
     },
     {
       "path": "tongban/tests/ai-workspace.test.mjs",
-      "size": 13177,
-      "sha256": "388194e86e4284afaca94680a0d4a3b77e7837d0bb6a4a9c7243d0195ecd510a"
+      "size": 14618,
+      "sha256": "c875c84a8004d0b642b2b13630079ddf02f12aa6c67791499d848ca47e787d9f"
     },
     {
       "path": "tongban/tests/app-navigation.test.mjs",
-      "size": 955,
-      "sha256": "5ce5025a636a292e0e9e99f151f30ea966f9b638e578a7239bc9c2dd35695cca"
+      "size": 3282,
+      "sha256": "d33431d1e2d3cbed1324206ae98977aab8afe41564d85d1c750693436c7397bb"
+    },
+    {
+      "path": "tongban/tests/artifact-export.test.mjs",
+      "size": 1122,
+      "sha256": "3df2f6c2a85e24f91a5f38c7da1cd6470e87956c612cd33a3637fff78ed26ada"
+    },
+    {
+      "path": "tongban/tests/asset-gift-route.test.mjs",
+      "size": 7434,
+      "sha256": "068b397a1a411f5113a0344088472735b3486acb8051bd04c585ba4da094edac"
     },
     {
       "path": "tongban/tests/asset-route-state.test.mjs",
-      "size": 1777,
-      "sha256": "f5238025411a1dfac15be71fce2b6cc3e4b61ac53da17a668ddc6296ecc88bff"
+      "size": 1205,
+      "sha256": "d5e575ce08cf27186deb6a7d976f62f7dd18b75d13b6b1dff3cc2aa3d672cbe2"
     },
     {
       "path": "tongban/tests/bill-center.test.mjs",
-      "size": 1732,
-      "sha256": "350167b5f4b39f1a373902cb7aa90a41d8595debfdee890c31b20503016db240"
+      "size": 5731,
+      "sha256": "9d5c02ca68b7304b5ac7d69cbabb1f46464422d6958bfaca5c2ea51ff1e8cae1"
+    },
+    {
+      "path": "tongban/tests/chain-preview.test.mjs",
+      "size": 6782,
+      "sha256": "76fc2bcfead27ebe8b62fde8ce5c743b420676243d8c8378de9835a6966196c3"
     },
     {
       "path": "tongban/tests/chat-media.test.mjs",
@@ -832,9 +1387,9 @@
       "sha256": "69f4d9c9364d3de5654206304f37258d62bb8011fb9a85bf5efbc51f981f0d8e"
     },
     {
-      "path": "tongban/tests/custody-ledger.test.mjs",
-      "size": 19338,
-      "sha256": "1d2d51cb610c09c669ede9b4201fc527ec394eadd4ace41871f60054ac5c75cf"
+      "path": "tongban/tests/discover-community.test.mjs",
+      "size": 14900,
+      "sha256": "43163dcf967bca3912c27a9dc5fd0c6f59fd305bf0edd612ddfa367f5f07d1d6"
     },
     {
       "path": "tongban/tests/discover-moments.test.mjs",
@@ -843,23 +1398,63 @@
     },
     {
       "path": "tongban/tests/discover-token.test.mjs",
-      "size": 10472,
-      "sha256": "559dcfcd895a527a2e92315ac741bea2cf3f6d91cef5df6d2191d3b1f3bdd468"
+      "size": 10236,
+      "sha256": "db44c5ea15bd57cac984bfbc55343aeec4bd57891bdb8bc2eed44ce4ff459ea3"
     },
     {
       "path": "tongban/tests/discover-workbench.test.mjs",
-      "size": 17328,
-      "sha256": "4829aca03b948e71e72734eb5bedf76234144d983f675171b33e3d1fe088fd3b"
+      "size": 17346,
+      "sha256": "4f5019bd383b9160d48be66177abbd8531cd0770e089c67b5eebd5ee0fe9ab78"
     },
     {
       "path": "tongban/tests/discover.test.mjs",
-      "size": 18572,
-      "sha256": "33de5f8335ba971b4be3f66b58200c859e00e1ef3fc7980d15c83ff649187999"
+      "size": 21463,
+      "sha256": "4e337d97500aa949f84c75111dfb775f7f43d3747ce8c761a1209dd286ddc751"
+    },
+    {
+      "path": "tongban/tests/distribution-signing.test.mjs",
+      "size": 6182,
+      "sha256": "620d87f41016ff5765a02b4cfb0460915ac360ec257766affde3bf02b8b4ecc7"
+    },
+    {
+      "path": "tongban/tests/favorites.test.mjs",
+      "size": 4742,
+      "sha256": "6d32e2c19c07df8054e2996d50350dc0497acba148ffadd5c54b0434ec61dae0"
+    },
+    {
+      "path": "tongban/tests/helpers/profile-fixtures.mjs",
+      "size": 11345,
+      "sha256": "7355fadd014a30453683688c243411d89d81816726285860032bb4ad4d0211f2"
+    },
+    {
+      "path": "tongban/tests/i18n.test.mjs",
+      "size": 2496,
+      "sha256": "e07da36efb1019131a25756c7fd68dfb390237c10c433c34bfc3394d17858224"
+    },
+    {
+      "path": "tongban/tests/live-moments.test.mjs",
+      "size": 9766,
+      "sha256": "698899a65e72d47f0215659686f3213c87f880b4be893dbca639aadc17fa110f"
+    },
+    {
+      "path": "tongban/tests/live-people.test.mjs",
+      "size": 3180,
+      "sha256": "9cd0a4002c1e8669c87ab0345be3504eb587951b344f17dde6d14c7f510cd1e2"
+    },
+    {
+      "path": "tongban/tests/live-social.test.mjs",
+      "size": 11113,
+      "sha256": "9ef8f4ffe03141aaabc5c13cf29028704c9b497afec08292092a46c1ccb3a484"
     },
     {
       "path": "tongban/tests/mine.test.mjs",
-      "size": 11254,
-      "sha256": "f099b0149fd903f01f3471f54a5c1b8b203cd41430f8bea0c0680873276b7223"
+      "size": 25336,
+      "sha256": "2ae03ad53cb03619d43eaf49a5ce908e8713f13ef7adc19ec3d5027988bea8e7"
+    },
+    {
+      "path": "tongban/tests/native-preview.test.mjs",
+      "size": 3001,
+      "sha256": "d8a427adb4fc1f73ce8a3eeeac130fcbbb43b5a51475837b3e57bca1b688c246"
     },
     {
       "path": "tongban/tests/native-runtime.test.mjs",
@@ -867,54 +1462,89 @@
       "sha256": "33425dcfa66607338b18dab9f352538e2058e802c80f9a6d1625548be5cc8fe3"
     },
     {
-      "path": "tongban/tests/packet-authorization.test.mjs",
-      "size": 5135,
-      "sha256": "df301389e781257523f5ae955982e7c8c443db20c96dcf095c1691cb12c37a2d"
+      "path": "tongban/tests/native-wallet-lifecycle.test.mjs",
+      "size": 1736,
+      "sha256": "9d31c74050f590bfa317f2a8c2eeb937dad4aca641d1f7971cec383dd5f9499a"
     },
     {
-      "path": "tongban/tests/platform-transfers.test.mjs",
-      "size": 9427,
-      "sha256": "a215295d87ba7eca3cdd553a08965bd94a745475ebca32a93a3508cc74877609"
+      "path": "tongban/tests/notification-settings.test.mjs",
+      "size": 4185,
+      "sha256": "e9d6228ecdb6107d9296172a01dd6ecc2ea4885fab679ec03c00f237da1a0fd7"
+    },
+    {
+      "path": "tongban/tests/points.test.mjs",
+      "size": 5150,
+      "sha256": "2a78189022156ede72b8da4cd72ad1174db5a436594cdebe4dbb86e50f49ee74"
+    },
+    {
+      "path": "tongban/tests/profile-photo.test.mjs",
+      "size": 4063,
+      "sha256": "e9a20d955579b7bee0f1b744d9881bb07639dae1e4302fd5cf6ba5160e6e1158"
     },
     {
       "path": "tongban/tests/profile-store.test.mjs",
-      "size": 1831,
-      "sha256": "9670ebf6bd9a6f301dad2337714116a4a70b043d6169ec015f76912d41d317ec"
+      "size": 5371,
+      "sha256": "f7e8ef73c8cb94753578f06916de2f1b47685c8fab76488974cfa542438b2636"
     },
     {
       "path": "tongban/tests/qr-scanner.test.mjs",
-      "size": 15243,
-      "sha256": "004f7e9a5153a4890493533e503589d3d78c5a2612a568e560447ac0fd53216f"
-    },
-    {
-      "path": "tongban/tests/redpacket-model.test.mjs",
-      "size": 10166,
-      "sha256": "e85888dc48bd8be43be9fbc280d0ade308ce92efa8f4a00983ff1d8159f7722f"
+      "size": 15923,
+      "sha256": "9ee32da7a55c71986d31226174f6d75cd3d308209dc72451aaf75eb77d88e4c8"
     },
     {
       "path": "tongban/tests/scan-transfer-flow.test.mjs",
-      "size": 2815,
-      "sha256": "6bffc5bf8de38817720eea8fdb8429dbabb4b0936fbbe827a2d586c8487eed6b"
+      "size": 4134,
+      "sha256": "b861b66338d1f51035693738613e59a85e5923a7c48ca9eb185d1213d9436be8"
     },
     {
-      "path": "tongban/tests/social-ledger.test.mjs",
-      "size": 6115,
-      "sha256": "81409c77297b2ac20c865650334e1452f5f877f2d99f059b3c77248ca12c4bab"
+      "path": "tongban/tests/social-client.test.mjs",
+      "size": 15041,
+      "sha256": "027300379dae5f7651a7cc7602aa451857e98c8351403109c179bf1a0899bd0f"
     },
     {
-      "path": "tongban/tests/social-permissions.test.mjs",
-      "size": 6399,
-      "sha256": "2ffe2005cc35e7bcdd2e3516c6d1bae1d247dcc87ed72eb1760be36b6eb86ac1"
+      "path": "tongban/tests/theme-contrast.test.mjs",
+      "size": 12096,
+      "sha256": "7d92af23a31c7d75fd54924fffe0bfd5dd8565d8509d96bf9dc37ff63c707ece"
     },
     {
-      "path": "tongban/tests/social-session.test.mjs",
-      "size": 14004,
-      "sha256": "f461f5a63704584ce7a3b4cd9522c97264bdbb17a786e872e38189e02420e001"
+      "path": "tongban/tests/theme-skins.test.mjs",
+      "size": 8035,
+      "sha256": "ff1c3f2e94409e142e64de1536def61d01ed5293eb49f1d167a6a18881d20f25"
+    },
+    {
+      "path": "tongban/tests/v02-consumer-boundary.test.mjs",
+      "size": 2206,
+      "sha256": "87f64828330d8476c72628ff47dac6d1286846ff505774f58399a0d3034c4fcd"
+    },
+    {
+      "path": "tongban/tests/wallet-compatibility.test.mjs",
+      "size": 12928,
+      "sha256": "b7e0f948974c90368e1451b964cce8486d257d444b143b9b4841dad35b8344bf"
+    },
+    {
+      "path": "tongban/tests/wallet-deletion-ui.test.mjs",
+      "size": 3409,
+      "sha256": "aff528338fda573c6bcbe39aea8c6d0a03a9d0b59634136372bdd3bc8f5e847d"
+    },
+    {
+      "path": "tongban/tests/wallet-fees.test.mjs",
+      "size": 2217,
+      "sha256": "3d4bdf7eb4d80433113e53f9855163d067c50e30fd4eddd68c88f5c0a6dfebb2"
+    },
+    {
+      "path": "tongban/tests/wallet-import-ui.test.mjs",
+      "size": 15830,
+      "sha256": "e79cb64525ad8702ad8da2d891f3becfa17fa71fe0c5c1a29fd0d6cbf48e06e5"
     },
     {
       "path": "tongban/tests/wallet-intent.test.mjs",
-      "size": 1462,
-      "sha256": "bcd18331d35b194ffb5502fbe4f7eb50fbbf7cf6e6b01ad7b05580b62cda728a"
+      "size": 3412,
+      "sha256": "d8cce03b96f4acd86275b634946712738891cecd78d5fcb19b66bc7534027a8b"
+    },
+    {
+      "path": "tongban/tests/wallet-local-deletion.test.mjs",
+      "size": 4293,
+      "sha256": "2fc0916b7ccb58198e991405790b8dade9e4067230144c83170100db74632e0e"
     },
     {
       "path": "tongban/tests/wallet-setup-cancellation.test.mjs",
@@ -923,23 +1553,43 @@
     },
     {
       "path": "tongban/tests/wallet.test.mjs",
-      "size": 8515,
-      "sha256": "f52e298cd192582aba2fc956c6bb525a1d6a5e8537ec2e8e47d26071e6c219e8"
+      "size": 10364,
+      "sha256": "001382e224e95b66f63728b8b8f7a8b28f28126b079a7a54295bf4eb4246781b"
+    },
+    {
+      "path": "tongban/tests/workbench-cost-ui.test.mjs",
+      "size": 8664,
+      "sha256": "5f04babb7b80e1cb11926336b8dfdb4ab765854f9b8f60be5db9860dc938d7b0"
+    },
+    {
+      "path": "tongban/tests/workbench-experience-ui.test.mjs",
+      "size": 14414,
+      "sha256": "7378a95743b5986fdbceec4c1ebe1a941f4315181690737571b600eb8709876a"
+    },
+    {
+      "path": "tongban/tests/workbench-hub.test.mjs",
+      "size": 17419,
+      "sha256": "7a6cb9e5c49b4846e85ecfa93be34502a83e6bc6edcb40b5e6d9453080ec1475"
+    },
+    {
+      "path": "tongban/tests/workbench.test.mjs",
+      "size": 13814,
+      "sha256": "d3a48f47a5d498d5ea9eb8c4a2d2356f654dbd6366f2e93a38cc4e479b3a5f8f"
     },
     {
       "path": "yubenzhe-deploy/.dockerignore",
-      "size": 167,
-      "sha256": "109f3a560103669113eb0b29e70a5b0880659de35f0a9a6c4d7380cd46fea311"
+      "size": 181,
+      "sha256": "f7e95a755e64ccb512a293824e8c8bd6884b7d1d7f6f0bbd31a9cb6e1d9ecb6e"
     },
     {
       "path": "yubenzhe-deploy/.env.example",
-      "size": 413,
-      "sha256": "526dc39a4c350f8f6d7883c5e37189e5914132a6a046de54df4bd2f3a3c91b9b"
+      "size": 1445,
+      "sha256": "808fb742c97d067f1bb2a61e0e69f1818e056fbf1cc86bb8fc1c5802d0725680"
     },
     {
       "path": "yubenzhe-deploy/.gitignore",
-      "size": 65,
-      "sha256": "4d060b3ae33c1fa597be3721d409ac64b2b98d63e41f799f4ca864da449518cf"
+      "size": 248,
+      "sha256": "919fb49ac2f06f762b477325cd363526e0c0f94907d1281e1bfa668c6a03d838"
     },
     {
       "path": "yubenzhe-deploy/AI-OPERATIONS.txt",
@@ -947,19 +1597,39 @@
       "sha256": "cb264cc3e2aeadbece2150ec62572d31a099ce4159c718e712a6d866872dc775"
     },
     {
+      "path": "yubenzhe-deploy/Caddyfile.public",
+      "size": 200,
+      "sha256": "672bfa4c2d915c8f796660297555e69871c4602ac15602b972694d2f3faaeff8"
+    },
+    {
       "path": "yubenzhe-deploy/Dockerfile",
-      "size": 478,
-      "sha256": "d313359bbe5ddddf27d3ed0a6e32debd0d60cfb6352f8ec584c260b9cb62411b"
+      "size": 562,
+      "sha256": "8f92ae5e1412a696611cf79ee99867fc427d0110275ed51fa68212799567fd7b"
+    },
+    {
+      "path": "yubenzhe-deploy/MAIL-DELIVERY.txt",
+      "size": 2479,
+      "sha256": "65709b0f7651143a2aae7730d2efbd348b005f161f8a09a0a186f3e58c6ccef5"
     },
     {
       "path": "yubenzhe-deploy/README.txt",
-      "size": 9651,
-      "sha256": "46f16db7074a25cea3ea8f45a0085392a95be5aa43809d4b31f729c002eaadb0"
+      "size": 10478,
+      "sha256": "6b65fdf8bac10b5d94d77828420594633830897b8df6c7b24170d85ccca2db06"
+    },
+    {
+      "path": "yubenzhe-deploy/compose.internal.yaml",
+      "size": 759,
+      "sha256": "90e0f39b246d41838d5b9455cbf1a5f07b04182b737c4bc2fd1bdc323d32f599"
+    },
+    {
+      "path": "yubenzhe-deploy/compose.public.yaml",
+      "size": 671,
+      "sha256": "6a0cc5da12f76c05263af0a3aa49460c0fc8053ed1d0152fa65d79b1b5280ab2"
     },
     {
       "path": "yubenzhe-deploy/compose.yaml",
-      "size": 3005,
-      "sha256": "55db7415ccbc9126a760a77506a6368a4fe6db44808f10ab84b29cd5a5e0cab5"
+      "size": 3167,
+      "sha256": "7e9ddb0c16acc92b548328ee316f3349aab3cedfa6675d26ad6e61d77f305abd"
     },
     {
       "path": "yubenzhe-deploy/migrations/001-admin.sql",
@@ -972,39 +1642,114 @@
       "sha256": "a54559627342dd67a47833b2484ab8e1bf4478c0522cb17a4dbc4cb63152b442"
     },
     {
+      "path": "yubenzhe-deploy/migrations/003-social.sql",
+      "size": 3302,
+      "sha256": "20d1f7bf37dda25da428e4358847c6df28529b3409613359e3426e6ad4428d69"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/004-social-safety.sql",
+      "size": 1467,
+      "sha256": "0ca98cdb3260cedd6723414fc1933b766e3a744c6c0c944624c4233a42409588"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/005-account-security.sql",
+      "size": 950,
+      "sha256": "8e84fa5c14141804c3096707d975d5709c15c91cf2f986fe36a20c7ae2d20ff9"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/006-social-moments.sql",
+      "size": 1667,
+      "sha256": "7ded87e5530b1c99f70ffa103d7f49c027a4ae81df107c8c5263e759554487b9"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/007-social-notifications.sql",
+      "size": 956,
+      "sha256": "f15771d63c12722e3e183e35c497240d68b01a5a93a73182cea61a8c9ee44d98"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/008-account-access.sql",
+      "size": 2862,
+      "sha256": "0d06a26caae22978b0655ac3b7944734d875aadb797f4a5bebdf15efbea045f2"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/009-platform-assets.sql",
+      "size": 4976,
+      "sha256": "3bd1a85e5cfe5e9cf4ee5e869929b2fbd2c32b6011bddb3b558b51c0ebec8028"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/010-community.sql",
+      "size": 4858,
+      "sha256": "fa26a42f905a1a1b384e1bcb161c7731ae3dcb1ec33ed755bf9547f6c2faecd8"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/011-workbench.sql",
+      "size": 2915,
+      "sha256": "f2881b4c9d671fb3bab45d39a3a670001dad47128fdefec227c071ee8f7899f9"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/012-workbench-experience.sql",
+      "size": 596,
+      "sha256": "4c164c3e99fae48be472e050dd6656f38ecf880655146923cb833d30c797ae46"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/013-social-experience.sql",
+      "size": 1978,
+      "sha256": "e17785a3ece8a78f0ddf93d164644c1d36a00a46796badfbf4728eec5f0070aa"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/014-points.sql",
+      "size": 1769,
+      "sha256": "7919a814b7b32d52d694be953c9e85db06a4a604b9185c8474c4e030891bf6b8"
+    },
+    {
+      "path": "yubenzhe-deploy/migrations/015-retire-platform-assets.sql",
+      "size": 798,
+      "sha256": "9dc8b573fe9f729c3d6a9b88125387165864f68defa65e1f53cfffc297679093"
+    },
+    {
       "path": "yubenzhe-deploy/ops/Caddyfile.acceptance.example",
       "size": 598,
       "sha256": "89e7617192cd93f25917c13c416eac8949b9a5b0280f81f360f5dfffc7133440"
     },
     {
+      "path": "yubenzhe-deploy/ops/production/backup.sh",
+      "size": 965,
+      "sha256": "ffd5af5ef638a0d650489a7cb7d71d6b50ea49e72be2194cfe20c5c5ed7a0e0d"
+    },
+    {
+      "path": "yubenzhe-deploy/ops/production/health.sh",
+      "size": 604,
+      "sha256": "763158038f2ffec1a7eef07f0403333f0574bb543b9883e7bfea9817808d06b8"
+    },
+    {
+      "path": "yubenzhe-deploy/ops/production/yubenzhe-backup.service",
+      "size": 159,
+      "sha256": "7c37e6f25ad87871300b65461b27a4d59565ed82517ac8de9cc018021a25332c"
+    },
+    {
+      "path": "yubenzhe-deploy/ops/production/yubenzhe-backup.timer",
+      "size": 164,
+      "sha256": "4fd825ffca621c167ebd188944b9c989c3a4d198372bd0ec1d46c9e3f07dfc8c"
+    },
+    {
+      "path": "yubenzhe-deploy/ops/production/yubenzhe-health.service",
+      "size": 159,
+      "sha256": "709c087455c01ecf42a9d8617934fd4884cb8fe6026912fc2429cd33857db477"
+    },
+    {
+      "path": "yubenzhe-deploy/ops/production/yubenzhe-health.timer",
+      "size": 146,
+      "sha256": "01442319274b287a408b57e29fcf6cdeff03c628748cff096cafccf83e4c35e6"
+    },
+    {
+      "path": "yubenzhe-deploy/package-lock.json",
+      "size": 23145,
+      "sha256": "7a91e0b89be1786fab39b593d6105bf3e373c4bf0138430fcf9d9af9250ebc0f"
+    },
+    {
       "path": "yubenzhe-deploy/package.json",
-      "size": 345,
-      "sha256": "55b7d0d712c93489e95bb91135be6f0201901e0ccd68af9fbde64f1197544717"
-    },
-    {
-      "path": "yubenzhe-deploy/public/admin/app.css",
-      "size": 30987,
-      "sha256": "5c9a1f5252ad4122752f3c3c2dc3bd25da2c71a13890efe85c58ef3654ebe98a"
-    },
-    {
-      "path": "yubenzhe-deploy/public/admin/app.js",
-      "size": 265714,
-      "sha256": "50ede3ae144c6f5769d6f494b670352064d306a2459480f1ffdcb4aff884c78e"
-    },
-    {
-      "path": "yubenzhe-deploy/public/admin/app.js.LEGAL.txt",
-      "size": 3376,
-      "sha256": "5a26fd7c8ede95648551c3be260831a1f4774956c4324e5590fd8f97bffb6979"
-    },
-    {
-      "path": "yubenzhe-deploy/public/admin/favicon.svg",
-      "size": 281,
-      "sha256": "703d6318af9e1dfb444636e35b23cf9633e3a5d1678403ef17a5df120e5e5140"
-    },
-    {
-      "path": "yubenzhe-deploy/public/admin/index.html",
-      "size": 391,
-      "sha256": "c6837b64137b6a36b53e881ba7e3978f77f11a7e0c228c9eea0ad5b59b2b5911"
+      "size": 508,
+      "sha256": "08d2d4f4246792374f5445410a20795c2e249f9a1e2e9f3e3b16bf8d9f18a039"
     },
     {
       "path": "yubenzhe-deploy/reports/ai-workspace-verification.json",
@@ -1012,14 +1757,94 @@
       "sha256": "3a389c44594fe452085ca6ababf42096faf239e1db56ca1dcb1d384b329b66b4"
     },
     {
+      "path": "yubenzhe-deploy/reports/brand-ui-verification.json",
+      "size": 3635,
+      "sha256": "a571f842b33762fe6e561b1cad03c0d6f5ad04518f05f22fba4f58d1b0633319"
+    },
+    {
       "path": "yubenzhe-deploy/reports/deployment-verification.json",
-      "size": 2784,
-      "sha256": "179d6d14a78e7d7c844d82e64f9b042b9f6cc46ed2a430a2f761160c587ad5ad"
+      "size": 3079,
+      "sha256": "30ddd5c078423d594898a986dba7dcfedfc14a8b39c691e7dea05ba2fe120bb8"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/dev7-release-acceptance.json",
+      "size": 2479,
+      "sha256": "545c20a9021cca25a4c9694c13a5b6f865663ed410876182536c36997cec6f43"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/dev7-server-release.json",
+      "size": 3136,
+      "sha256": "c498eacf7885ddd132888e0c5ce7a903f2c586152938cfeebde76244b8071da8"
     },
     {
       "path": "yubenzhe-deploy/reports/frontend-staging.json",
-      "size": 736,
-      "sha256": "cd52bedebd1b7f77fe2cd436c47b1db625da51618b07caf03c3651989e369e12"
+      "size": 368,
+      "sha256": "25396be7e5daf082a696db5d49ec6a90f0ccfb3231a346cb8fee21a8039acc06"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/group-100-simulation.json",
+      "size": 6608,
+      "sha256": "e6c96dd97dea21b3a7c87cd049604a6529eeeaa2a2e9d0d9c3bb3ad09e93bfdd"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/internal-browser-check.json",
+      "size": 1168,
+      "sha256": "7a458773bdc5f14a71bac2290a6a9162a5a57abb4993399c479ceaa267455bbf"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/internal-chain-acceptance.json",
+      "size": 4060,
+      "sha256": "a7603ee6a537f497dbe031a565713319eb577805fbbdb969ba7a9f4fd2bfb758"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/internal-final-boundary-checks.json",
+      "size": 2496,
+      "sha256": "66b5cb5fe8249a22db0e3417ba7dec8f5fc1617774542a9cb6e172a713ad6c50"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/internal-migration-rehearsal.json",
+      "size": 3712,
+      "sha256": "477b195810e24e2939f674a8eb1caf82931f3fde610968780903829afbb64a50"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/internal-model-check.json",
+      "size": 177,
+      "sha256": "eafa60018ed3b2646284539d35b8d6d3e9ef691f50479b9ea3a4895a07d953b4"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/internal-preview-release.json",
+      "size": 4217,
+      "sha256": "bb800b4e210eebb4bbbeb940e37d570097caaf276449ccb6d539548854623200"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/internal-production-workflow-check.json",
+      "size": 194,
+      "sha256": "bb1201d67789836b07c66f2beb5eb7e24a1d7eb8bb7991974e0b62237b99e723"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/internal-public-boundary-checks.json",
+      "size": 3080,
+      "sha256": "165dc17ea67cf9b96a8dcad776e5e6faf71d220798817ca15e6c96042585a55a"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/latest-cleanup.json",
+      "size": 968,
+      "sha256": "880c25751318101b8fa77a2a60b87ae8e4ab76b3cf8a9ae23f82acfca64128de"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/latest-verification.json",
+      "size": 1854,
+      "sha256": "03692ff55515cb7576459620ed9063a6396903acbbc403d01d883b908e8b7029"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/m0-experience-verification.json",
+      "size": 5781,
+      "sha256": "110c143c7c0a3909dfdec087992cfdf9f9f5ee64aae577e677e756d309ea3947"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/m0-local-verification.json",
+      "size": 7810,
+      "sha256": "bc0f88e3733cc060508f6aec28cce583d571236bcf04c7db41ae82ace144cc6a"
     },
     {
       "path": "yubenzhe-deploy/reports/release-0.9-verification.json",
@@ -1027,9 +1852,69 @@
       "sha256": "b918692caf19e08710f17c70b99254307a2773ffa1dc6a37b8901664edcc2172"
     },
     {
+      "path": "yubenzhe-deploy/reports/release-013-verification.json",
+      "size": 7832,
+      "sha256": "2fe17e8551d3a07fe2e3212357b837d9f331d0605ff1fea74dfa1fc90a69e14a"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/social-011-verification.json",
+      "size": 5992,
+      "sha256": "659548ecd7f6c130b1882fd598a4d5c83a64b9ccbfc0310c3f50bbebd92f5133"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/social-013-load.json",
+      "size": 1190,
+      "sha256": "cf7878175205f88aeb1aeb95f73d07c155b84a513df6252e4e9a6ffc3c0670d1"
+    },
+    {
       "path": "yubenzhe-deploy/reports/thousand-users.json",
       "size": 26115,
       "sha256": "1857acbefae3c782d63d6f2ed7e65d288080fe90082e18222ef4994b7948dbcd"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/ui-0111-verification.json",
+      "size": 7965,
+      "sha256": "1023c27aecb094d2c168f9f538a6f3ff35a159f8ecb9dcddebd1d119666f84ca"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/ui-012-verification.json",
+      "size": 12605,
+      "sha256": "69afb19ea6d4d3131cb794beb31b711b4ba3438347836e24e4a48a383938d3ca"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/ui-0121-verification.json",
+      "size": 6641,
+      "sha256": "b25365e521e7a2f25917cec6aaced509e1ff28b94ce2e30ee9d65d0333604a83"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/ui-entry-simplification.json",
+      "size": 1900,
+      "sha256": "bed0fad676d4ec04dc77c7839f05224bd72abb244db2eea3a1fcb9e55b1fd93e"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/user-journeys-100.json",
+      "size": 1628166,
+      "sha256": "0f5bef2a1326e5ac1e88fd8abeb7f3844df78488cf108c489f3507de302995bf"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/user-journeys-100.txt",
+      "size": 8041,
+      "sha256": "806af065dd95da25a5f02b3ba222b332c7e73feeebf6a8c16f02a9b950eb4a79"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/v02-local-upgrade.json",
+      "size": 2402,
+      "sha256": "7bf05cbfe45aa46cfb08ef363403a9a436e8abccf7d4318de9400583fc795ade"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/v02-local-verification.json",
+      "size": 1822,
+      "sha256": "5a35204c3c85f364d86df930d6b03200645bfa147922cb12bb67a5395851265e"
+    },
+    {
+      "path": "yubenzhe-deploy/reports/v02-migration-rehearsal.json",
+      "size": 2370,
+      "sha256": "13e5db7e088865f19709cd2571f12d317a1d7bfbd601fd5e6e21eeaa696eeac2"
     },
     {
       "path": "yubenzhe-deploy/reports/yubenzhe-ai-singapore-verification.json",
@@ -1042,14 +1927,19 @@
       "sha256": "ec60996b302e600b682c288ffd7dd8f243fbf5cd6eb560a75d1bdade3c3925ee"
     },
     {
+      "path": "yubenzhe-deploy/scripts/backup-suite.mjs",
+      "size": 5163,
+      "sha256": "7fdc1c8d018e889e11e195077573331624df8353a2ee2d4f5d4884dc01b4f6d4"
+    },
+    {
       "path": "yubenzhe-deploy/scripts/backup.mjs",
       "size": 840,
       "sha256": "0e7a76c9c42834c8784f0b997583b7eba0a4cf1e325e940cc7caa1405bea2bca"
     },
     {
       "path": "yubenzhe-deploy/scripts/build-admin.mjs",
-      "size": 1538,
-      "sha256": "f044a4272c7344fb28a81f604cb63e9d1e25b47aaa6991a0f72d0f64ea2210f6"
+      "size": 3137,
+      "sha256": "0ab7bc56a87d8e43a966a75138d8e129b69a471beb886d0ac58c34f02f1754e6"
     },
     {
       "path": "yubenzhe-deploy/scripts/create-auth.mjs",
@@ -1057,14 +1947,64 @@
       "sha256": "23b62401c3796dba32e9931f48b19314da6367110872cb81809bba892fcd4012"
     },
     {
+      "path": "yubenzhe-deploy/scripts/create-push-config.mjs",
+      "size": 814,
+      "sha256": "48819d6eef6174eb9b9db09bde6618c17e1c9b0518b7056fe9041eca1cd5f464"
+    },
+    {
+      "path": "yubenzhe-deploy/scripts/health-probe.mjs",
+      "size": 1967,
+      "sha256": "45b8ffb28ea5984d79812cc26a3037fb698c66b5ac31c0fa58a4de8a71ba9ac1"
+    },
+    {
+      "path": "yubenzhe-deploy/scripts/load-social.mjs",
+      "size": 7318,
+      "sha256": "1ba26bcaec4dd33bfb9a492a3002cfea62deacc16c299f3df992a42e49c68bc8"
+    },
+    {
       "path": "yubenzhe-deploy/scripts/preflight.sh",
       "size": 945,
       "sha256": "3b62dc9ba32600e801769bedec71bb76dab508767dbde793120a6be1c75d2708"
     },
     {
+      "path": "yubenzhe-deploy/scripts/simulate-group-100.mjs",
+      "size": 17232,
+      "sha256": "c41d4843b78fc6ba363578b3f0639f5d931aec2650e6e1f0d4d0293bcc61ef06"
+    },
+    {
+      "path": "yubenzhe-deploy/scripts/simulate-user-journeys-100.mjs",
+      "size": 29356,
+      "sha256": "62e8f7a001ce7f4fc3c89c7d9997f48e6a59cafab345acc0d068657ca7b3d001"
+    },
+    {
       "path": "yubenzhe-deploy/scripts/stage-frontend.mjs",
-      "size": 2117,
-      "sha256": "7a1fb72364e1a8f383fd3a887bb1406dfbfac66cd63376e42da6485e99e838b0"
+      "size": 3353,
+      "sha256": "2746496b15e7cf69b50d2455c87caed569d8722de053fc89affce577ec2490c9"
+    },
+    {
+      "path": "yubenzhe-deploy/scripts/start-m0.mjs",
+      "size": 1875,
+      "sha256": "e153367bace6955bfb8a91fc6940bde6f0e9431e55db40fb3cfb5349a11a63cc"
+    },
+    {
+      "path": "yubenzhe-deploy/scripts/upgrade-verify.mjs",
+      "size": 1985,
+      "sha256": "4f56e480df689166c752019c09f6fbcabbbc9f5d2f5d69b5411117b25047ebfd"
+    },
+    {
+      "path": "yubenzhe-deploy/server/account-access.mjs",
+      "size": 28691,
+      "sha256": "831cab1ef9fb270d5ccdef54bbcadcbbc83601b346c4539b71db3ba35341b032"
+    },
+    {
+      "path": "yubenzhe-deploy/server/account-mail.mjs",
+      "size": 5374,
+      "sha256": "0a272a0644b30e119046e61827612897bba2a3a04004f02b5705ff406c80e0c7"
+    },
+    {
+      "path": "yubenzhe-deploy/server/account-security.mjs",
+      "size": 12752,
+      "sha256": "43ead8467d4a5742920b62d739902f3144a1be44f66e9354593520e7901284c1"
     },
     {
       "path": "yubenzhe-deploy/server/ai-database.mjs",
@@ -1073,13 +2013,13 @@
     },
     {
       "path": "yubenzhe-deploy/server/ai-provider.mjs",
-      "size": 11162,
-      "sha256": "90b3405fc5548a742c3226454eaa3e5ffe044cbb0e48c240fe1a5c2f97f8fb2f"
+      "size": 11166,
+      "sha256": "1b983cd82c1bf15b49f5657f6c62c107d56ff7e1d0a9e4abbdae13367dcc12bd"
     },
     {
       "path": "yubenzhe-deploy/server/ai-service.mjs",
-      "size": 21230,
-      "sha256": "d53521d8c28c0dc59c8b56679c1287f602531508c65ef5b7619a51bea3b0de70"
+      "size": 22538,
+      "sha256": "0db16df1b3d51fceeb56839ebbd93ce1c1523c0b732b38dd5916b103b912812d"
     },
     {
       "path": "yubenzhe-deploy/server/auth.mjs",
@@ -1087,9 +2027,84 @@
       "sha256": "d87f9112a4d583cbcb8109e8c0defd4d981deac3ba9dbd61e65529ff83abbf9b"
     },
     {
+      "path": "yubenzhe-deploy/server/chain-preview-config.mjs",
+      "size": 1388,
+      "sha256": "63f5cc3ed46ec7f29b439c2a9317da744e815864687f135536e67c7a08c3d84c"
+    },
+    {
+      "path": "yubenzhe-deploy/server/community-service.mjs",
+      "size": 34241,
+      "sha256": "84ac102eceadd9bd5d54ede8cfa6418da316d465fec48140fa97dacf85094f70"
+    },
+    {
+      "path": "yubenzhe-deploy/server/internal-preview.mjs",
+      "size": 1104,
+      "sha256": "41e5613f146c85fc565fcd756925955af799849b5e23dcd02d5d0960ed84da7a"
+    },
+    {
+      "path": "yubenzhe-deploy/server/points-service.mjs",
+      "size": 9805,
+      "sha256": "af5b98cb9d62f6e54e887a84727b37d3dd2d8f0526ceccde978bd731cf8114e2"
+    },
+    {
+      "path": "yubenzhe-deploy/server/product-admin.mjs",
+      "size": 13566,
+      "sha256": "228616efdf1cdaab77c195477e24032919460625d37a76a2e31327926d416d03"
+    },
+    {
+      "path": "yubenzhe-deploy/server/product-modules.mjs",
+      "size": 3989,
+      "sha256": "27662e188d320595c41543401ac30a5a885486511a19235a5f942071a9520fed"
+    },
+    {
+      "path": "yubenzhe-deploy/server/retire-platform-assets.mjs",
+      "size": 2354,
+      "sha256": "bf89c1d8a99d7a11ee872956774bd87701debdd343a0213e87cf487bac27e53c"
+    },
+    {
       "path": "yubenzhe-deploy/server/server.mjs",
-      "size": 12553,
-      "sha256": "7ca917060132e6592e11c057574f5dcbaa04a725c4997703dec3886b08cccd16"
+      "size": 19320,
+      "sha256": "174588105c6f0f4b1c1d983461491d1a8f36e9d490d63e82102bee43e1cda383"
+    },
+    {
+      "path": "yubenzhe-deploy/server/social-ai.mjs",
+      "size": 2139,
+      "sha256": "5faac45c15f76e4fedaab347774aa690167afb988e97c07a86c5aaa72188baf6"
+    },
+    {
+      "path": "yubenzhe-deploy/server/social-database.mjs",
+      "size": 2137,
+      "sha256": "824acc75da6febf50917bdb81e30a27e19c9c71cc98b0a30305e4daec8052bc6"
+    },
+    {
+      "path": "yubenzhe-deploy/server/social-http.mjs",
+      "size": 4385,
+      "sha256": "d0a02926c62d84425fd8552cadbfd1486f277d316f2c020cf880a665e6223ddc"
+    },
+    {
+      "path": "yubenzhe-deploy/server/social-moderation.mjs",
+      "size": 10610,
+      "sha256": "292f390aa73e382e8b0f46f4c9cdbe9bd186b46c20c29faac1b97177692f2598"
+    },
+    {
+      "path": "yubenzhe-deploy/server/social-moments.mjs",
+      "size": 11122,
+      "sha256": "b78219a5f0c6930ca9d826f8e06e8f38abff1244f5bc079c37d78345c8b3b297"
+    },
+    {
+      "path": "yubenzhe-deploy/server/social-notifications.mjs",
+      "size": 6988,
+      "sha256": "08e10768868508d4370f950a791301443f36b336b342b918de39ae08a6617ec0"
+    },
+    {
+      "path": "yubenzhe-deploy/server/social-service.mjs",
+      "size": 42226,
+      "sha256": "52ca5328c5ebfc8434af06f76de439e06418efc95947d1fbea0f907996601787"
+    },
+    {
+      "path": "yubenzhe-deploy/server/social-validation.mjs",
+      "size": 3926,
+      "sha256": "a5475c66b33b78d0a8caacdbe190d9e770d804cfdef54266b6d125c36d445bc7"
     },
     {
       "path": "yubenzhe-deploy/server/sqlite-adapter.mjs",
@@ -1098,18 +2113,148 @@
     },
     {
       "path": "yubenzhe-deploy/server/start.mjs",
-      "size": 1418,
-      "sha256": "6c63209a9c0b9b7e8db5ef37e1d77570bb62f406309db34ee6dd636646b1dff6"
+      "size": 4802,
+      "sha256": "1928aac8c03e819b89fa50ab2a84f57863a3f68d372d747f224d5182d315917c"
+    },
+    {
+      "path": "yubenzhe-deploy/server/workbench-adapters.mjs",
+      "size": 21927,
+      "sha256": "bd0893789158838643e20492b5296186dc0a51cc4c7b4346cfa9de9279b992bc"
+    },
+    {
+      "path": "yubenzhe-deploy/server/workbench-service.mjs",
+      "size": 33728,
+      "sha256": "dc63d1b3d2bd7956b66dda77f39abcb30049177e28c52268b5289716eff2b372"
     },
     {
       "path": "yubenzhe-deploy/tests/acceptance.test.mjs",
-      "size": 9698,
-      "sha256": "f93ac82644a4f788cc6bd87d92e041cd8f3e6429f4871f92acff4b1c535f4ae4"
+      "size": 11186,
+      "sha256": "7d50c2b44f587f9d2fca3634355c06f2d1b7c2539507aafec63b717cc8b159b6"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/account-access.test.mjs",
+      "size": 14069,
+      "sha256": "dcaf0b7a457065d1934e223cb78dc824fb98ef271b2c98cd0b4d23451085f6b5"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/account-mail.test.mjs",
+      "size": 16641,
+      "sha256": "a58dc080958528fd7ac0337db1e43862b823d6171e8882c4d42d098091aeb4f0"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/account-security.test.mjs",
+      "size": 18980,
+      "sha256": "7e3b9396a1d3eb4eb5b293bb0fbc3c852ec1a28b5ceeb2d76c388cea2c14e32e"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/admin-retirement.test.mjs",
+      "size": 8515,
+      "sha256": "b3f8db2f75c783ca7faa855a6476bc25adb5053fc4e677b7e26688ff857d38e1"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/admin-social-http.test.mjs",
+      "size": 3846,
+      "sha256": "993e5a8c376b50f137cfb13b76ca1c2711814acc65896b026a486d859f0077af"
     },
     {
       "path": "yubenzhe-deploy/tests/ai-workspace.test.mjs",
-      "size": 21140,
-      "sha256": "77b82b5e4dfa27d71caf03d0531cb01ff8c8f8b36cbbbbc9d5d8ec479503e267"
+      "size": 21254,
+      "sha256": "8d9a292991857249f7bfaa2073ed96ad71d022921a2722189bbcbb64b0a7fb4d"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/backup-suite.test.mjs",
+      "size": 2586,
+      "sha256": "033fbbe2267731a7eed58458a8503e2db8767c9d414531a1a0ec8b57f3129b66"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/community-service.test.mjs",
+      "size": 17358,
+      "sha256": "d0e660634e0eab3990195873468855ae4e9fb86cf53693efee1fae7cfc5a9bff"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/internal-preview.test.mjs",
+      "size": 18192,
+      "sha256": "120217c9ca58aae66c3eba34af37ee644970d39286dc667d8d1711a432e39f7a"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/points-service.test.mjs",
+      "size": 16253,
+      "sha256": "6ce972392af849b0ce3c5a9f1a3ab354771bb092dc8fb940da5a0b099dc56389"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/product-admin.test.mjs",
+      "size": 15322,
+      "sha256": "92b8f8edb81f584fc247bf6c0041ae05b404730c8f2926ca8d3645b5a553337e"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/product-modules.test.mjs",
+      "size": 11705,
+      "sha256": "d2c7f53ad1e89f0929cb6734f456f4c234ff2b5a481b0264dcf3640b1285d3a1"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/social-ai-http.test.mjs",
+      "size": 7029,
+      "sha256": "a0c1a0df9bdf5b213c8ab4760a7ca0b3b6b566a59821c76a756d06ee61b7a778"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/social-ai-start.test.mjs",
+      "size": 3891,
+      "sha256": "58a23fe9e0e9cdb7769a0f249e3235d86b7ddcd562443f1004dae7a2719857fc"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/social-ai.test.mjs",
+      "size": 8469,
+      "sha256": "bab06e311d4d4c82e753f72ad871378060f7315b9e4258db4ac3cca25fc98d9b"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/social-experience.test.mjs",
+      "size": 13135,
+      "sha256": "061abe74bc7eae77790ca3e06da4d59975af4b593cee980c836c628e16bd306e"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/social-http.test.mjs",
+      "size": 18824,
+      "sha256": "bcf84787edcaf6eea6e2f22166f25339d87dc98719cb426b9a4967fdb55ad28e"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/social-moments.test.mjs",
+      "size": 13863,
+      "sha256": "9e80d06a2db7444d2d8cf1153ffb4c130965eb7c7369103985a597d85458d276"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/social-notifications.test.mjs",
+      "size": 5690,
+      "sha256": "8aa7c41ee42caf0f1119e198bd8c1cc138bae848dc607e0198853f67c1cdc927"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/social-service.test.mjs",
+      "size": 41898,
+      "sha256": "8e72a57b967cf4e87478c2f1670b0449ff1f70dbd35d7d5a888ca88a66f5799c"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/v02-points-http.test.mjs",
+      "size": 5241,
+      "sha256": "c979baefae4892f218155a3476c5b4efbb78069e14c4d853387f137fcc287daf"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/v02-points-query.test.mjs",
+      "size": 1430,
+      "sha256": "b95919e558da457a98eb1f43867f1d518e6c6d89fb4527cf3eb04cc31f956ea3"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/v02-retirement.test.mjs",
+      "size": 4169,
+      "sha256": "6cfd338cc94ee63f815dadd24cca0fd2d7ce227539ef7cfa0d8ce8fe6a3c2c9b"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/workbench-experience.test.mjs",
+      "size": 23428,
+      "sha256": "c42d48a32fc89c417c3244badcf6ed89e469737c159fef6c4e0caf881d677b8b"
+    },
+    {
+      "path": "yubenzhe-deploy/tests/workbench.test.mjs",
+      "size": 11913,
+      "sha256": "6096fc934b0a65765e7c0de176a29abd73d49e974c083dba50b7696c7f0a2bab"
     },
     {
       "path": "yubenzhe-deploy/ui/admin-client.ts",
@@ -1118,8 +2263,8 @@
     },
     {
       "path": "yubenzhe-deploy/ui/admin-console.tsx",
-      "size": 33522,
-      "sha256": "6bb2014b6a78e2650ff8d67472ee0054731f3c3bffc94517a413cd572c9d9142"
+      "size": 33106,
+      "sha256": "9c2804578d94cc5f7d9124997abe5c480b3ae3ca35ff102789351100dbe78bdd"
     },
     {
       "path": "yubenzhe-deploy/ui/admin.css",
@@ -1138,8 +2283,8 @@
     },
     {
       "path": "yubenzhe-deploy/ui/ai-admin.tsx",
-      "size": 24449,
-      "sha256": "412a5f67cb8330f338d22124a73f905c7c02a85a7ae87a3f0c8c51a906cafcaf"
+      "size": 24470,
+      "sha256": "0c67842cc5c0c842961098381fb8d23dcb7fc4f4271207dc0ca0706b655bf416"
     },
     {
       "path": "yubenzhe-deploy/ui/entry.tsx",
@@ -1152,14 +2297,44 @@
       "sha256": "9493853f946151c7d332d805a6d51b7342a33236ad1ad8941836cab070a7520c"
     },
     {
+      "path": "yubenzhe-deploy/ui/product-ops.css",
+      "size": 2974,
+      "sha256": "7d50f7039dc3bfa41039802b264c9a6ff2fa391379f7bb30ad9137873992ce8a"
+    },
+    {
+      "path": "yubenzhe-deploy/ui/product-ops.html",
+      "size": 1521,
+      "sha256": "88543ec517bc149424413ccdc262a641992675a7e28a5557f267ed8c5404e500"
+    },
+    {
+      "path": "yubenzhe-deploy/ui/product-ops.js",
+      "size": 16436,
+      "sha256": "a801e605fd7e80180642629b007f88619d28b390f9aa8b42986dea8d7bf781ff"
+    },
+    {
+      "path": "yubenzhe-deploy/ui/social-ops.css",
+      "size": 2965,
+      "sha256": "8ec02ec07fd0c0405fb83e3fa712916ea44b4bfac5cbfdef7547993a73913f3a"
+    },
+    {
+      "path": "yubenzhe-deploy/ui/social-ops.html",
+      "size": 1525,
+      "sha256": "468e32c67143c12c1126831fb72ffb1adfe1a1fdcc204dd3ef26ce7530bdae29"
+    },
+    {
+      "path": "yubenzhe-deploy/ui/social-ops.js",
+      "size": 8564,
+      "sha256": "8c42f417cba17cfc3752b23a6483008cb930511a2606332b3ec19d999d1d8dab"
+    },
+    {
       "path": "yubenzhe-deploy/upstream/admin/core.mjs",
-      "size": 15642,
-      "sha256": "e9cd2a77b8d7e27105ba5d476216f276a12a085a4aca57694ad4bd6cfb5861b0"
+      "size": 16294,
+      "sha256": "78338d39d45b83ec294420407340ad6dcea5a941e2dcff734fd89cd3aa5441be"
     },
     {
       "path": "yubenzhe-deploy/upstream/admin/seed.mjs",
-      "size": 6061,
-      "sha256": "c41f9de427c2f34a9580ff020bede425a881ddb8212aa78f8bcd2778f901b80c"
+      "size": 4859,
+      "sha256": "253469b2e624bf88de022efa27c02e40ab12b1138094a719df36a796c4aba75a"
     },
     {
       "path": "yubenzhe-desktop/.gitignore",
@@ -1168,18 +2343,18 @@
     },
     {
       "path": "yubenzhe-desktop/README.txt",
-      "size": 3608,
-      "sha256": "f98c63c6f0c92cff78f6a613aff91aa5dec5c411c12034a26a4911d0f4685924"
+      "size": 1700,
+      "sha256": "1b507c6c38825b7b9b0b801f8487a8c31798b8189ec1ef62805c34500645f068"
     },
     {
       "path": "yubenzhe-desktop/build/icon.ico",
-      "size": 12639,
-      "sha256": "1cc347f3047026c545d83170a8de4f45e9f105c0b0733900e95e923f93433b8f"
+      "size": 142798,
+      "sha256": "53a11ab62ba7723f8d5bf6d9ad06893b0e29ab47ae5a8d56840bc3f038d37263"
     },
     {
       "path": "yubenzhe-desktop/package.json",
-      "size": 1750,
-      "sha256": "05f75dbb43497e3dfab9dd06e6797949c8ad1ef08d9ae57d465824cb3297b375"
+      "size": 2035,
+      "sha256": "dfb425767612d851151a61a9f8bd72765fa45ea992842834db7b037db8a17729"
     },
     {
       "path": "yubenzhe-desktop/pnpm-lock.yaml",
@@ -1188,18 +2363,28 @@
     },
     {
       "path": "yubenzhe-desktop/release-verification.json",
-      "size": 1633,
-      "sha256": "41474e849d902d401b8eb8a058c4fc1ef8a1825f7bb337c4aed4808fbf950b59"
+      "size": 1848,
+      "sha256": "4704fa314779f95ddfc3ebb8e7ad3cfaaaf2efdffa04aa57941a79577d4bfc67"
     },
     {
       "path": "yubenzhe-desktop/scripts/copy-web.mjs",
-      "size": 1263,
-      "sha256": "f3c459c1e9eeb30e46c8419b69bc18d0d2be3a0fcf8d78a3715a3aadf71b1814"
+      "size": 2651,
+      "sha256": "f48a2e1a66d0f24f8f33a749c9c8ffacdd9bf62a385deebfcf1ecb3c5ac72eb9"
+    },
+    {
+      "path": "yubenzhe-desktop/scripts/prepare-web.mjs",
+      "size": 526,
+      "sha256": "112d76cc7bc6c29f8481b9e4e118fe2945dbc89f86d8921741362f1e3fca77b6"
     },
     {
       "path": "yubenzhe-desktop/scripts/verify-release.cjs",
-      "size": 3891,
-      "sha256": "1610fa9541e8982f37f9dbb22f513a450d048e2b9e4778fd5b3f6f842f9211c0"
+      "size": 4796,
+      "sha256": "56f122bf727dbc8f155fac1caf6a30a5d16e0ed18110553d29b75f7d86c79285"
+    },
+    {
+      "path": "yubenzhe-desktop/src/internal-preview.cjs",
+      "size": 4886,
+      "sha256": "066a3bf7179cac6c33f06027ce1f8dab3c22cfe63dc3ac9c191558af7d3aab06"
     },
     {
       "path": "yubenzhe-desktop/src/local-ai.cjs",
@@ -1208,23 +2393,33 @@
     },
     {
       "path": "yubenzhe-desktop/src/main.cjs",
-      "size": 7514,
-      "sha256": "b214bd1e8a1d178e080839a8ad3ec1b86963fc656fad5ab5eaad43d580dac202"
+      "size": 8857,
+      "sha256": "ecaed18706e3a6c0e56f87517737775606904684331a5711d9e0240e8b7a6fe0"
     },
     {
       "path": "yubenzhe-desktop/src/preload.cjs",
-      "size": 1349,
-      "sha256": "a48adb9773c05f113cd8109532ee65eedf17f0b2e25eebbc9d8801bf0c4d6b31"
+      "size": 1953,
+      "sha256": "9c7665eedac99cd6f1bf2f4f760e4a7f8505dffb742c0364f0a4f51c0563b0eb"
     },
     {
       "path": "yubenzhe-desktop/src/security.cjs",
-      "size": 3298,
-      "sha256": "ba74667846664cfc20a4082df924a789c7726de7f997f5a1724604e963e82242"
+      "size": 5636,
+      "sha256": "48e144fc5db1cb948eacecbdc9fe13aa12895135122585ff6c1911bed9c46a58"
+    },
+    {
+      "path": "yubenzhe-desktop/tests/artifact-export.test.cjs",
+      "size": 1325,
+      "sha256": "7e3e6522c8d78dc5082defed98abfe4b555ddc70a30d425d1415c60457ba002f"
     },
     {
       "path": "yubenzhe-desktop/tests/host.test.cjs",
-      "size": 9120,
-      "sha256": "afc64932fa64acaab6819cc5b4eee36dd6856b35a6fd45d56ed10e7f0068bb35"
+      "size": 10804,
+      "sha256": "56dc9ad49f85f1c55f78f673d78b5aef1945180b14676a451e4166c056b82ecf"
+    },
+    {
+      "path": "yubenzhe-desktop/tests/internal-preview.test.cjs",
+      "size": 5172,
+      "sha256": "1dd0386643ddce9a90420371cd0db748434e80c4fac4364df7e38bc0ec927d8c"
     },
     {
       "path": "yubenzhe-desktop/tests/local-ai.test.cjs",
@@ -1233,43 +2428,8 @@
     },
     {
       "path": "yubenzhe-desktop/tests/security.test.cjs",
-      "size": 3309,
-      "sha256": "2c864bdc065d6af01480017f6436b25f6a51a67135c2a42d5df255c23635bda9"
-    },
-    {
-      "path": "yubenzhe-desktop/web-assets-verification.json",
-      "size": 600,
-      "sha256": "41f62b9453137f2fd3d689871f35f638d968395822a501a406d798bf2c0a4f06"
-    },
-    {
-      "path": "yubenzhe-desktop/web/app.css",
-      "size": 199701,
-      "sha256": "de4f4b3ac5bbea07728ef153ad9702639c4d0f1d9e866341c00e5efaf661b03c"
-    },
-    {
-      "path": "yubenzhe-desktop/web/app.js",
-      "size": 665177,
-      "sha256": "2390eae42041f04a153a12573b55a78f3c78d979839454e0d8b242c37daea46f"
-    },
-    {
-      "path": "yubenzhe-desktop/web/apple-touch-icon.png",
-      "size": 857,
-      "sha256": "e0ce0efd3a6f53efffdf4cfe62bfa711f48eb3a35d461f667327b52c3fb11437"
-    },
-    {
-      "path": "yubenzhe-desktop/web/icon.svg",
-      "size": 354,
-      "sha256": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa"
-    },
-    {
-      "path": "yubenzhe-desktop/web/index.html",
-      "size": 1304,
-      "sha256": "2a8d8d2c2bc13f73f98d1162d81a0bed70231f9abeae25176a4d20598767b4a4"
-    },
-    {
-      "path": "yubenzhe-desktop/web/manifest.webmanifest",
-      "size": 263,
-      "sha256": "1ff704c7ca4572033217d036e9c06ba7c8678e650c8a7982284d9a50733991d9"
+      "size": 7299,
+      "sha256": "fdae4222998fa6b49f1a0df4cb0a1e9c541c43dc45cab847966e5ee1314a6e76"
     },
     {
       "path": "yubenzhe-ios/.gitignore",
@@ -1288,83 +2448,83 @@
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-ios-marketing-1024.png",
-      "size": 29309,
-      "sha256": "40cf1aebd2a70632e9a7acce578028cdf1dfad3118b4eb3d42b38a2f6834fb25"
+      "size": 1171274,
+      "sha256": "c9e30575e4deff7897937ff7cb69505ba987adb870931919f3ecd9fde45b098b"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-ipad-152.png",
-      "size": 7699,
-      "sha256": "7c01da9f25ca1799a4d61a46184fc5d3461db5f5ca105a6b480f95b88ab250e2"
+      "size": 31251,
+      "sha256": "04c1242b6e3f342ed8864b8d43827bbacab8d27d371b8e02d6c356bf8f2394a8"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-ipad-167.png",
-      "size": 8621,
-      "sha256": "87c1328c81e8b88b03adb8be078d2c5969f3a45b05711f61d2e23c9cc98c2ae2"
+      "size": 37201,
+      "sha256": "d6d3128cf00d9bd40142ef07000e5aaf9da6cb36f06913231193ce785d8ae721"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-ipad-20.png",
-      "size": 678,
-      "sha256": "4301be3edb931f1aee6f3f9e9f643130714721ac187ab9a06df636744193b129"
+      "size": 914,
+      "sha256": "8f95fac8c0e8c987303cf88f764eeb39186af95d129d3327203664e2d566e2a5"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-ipad-29.png",
-      "size": 1083,
-      "sha256": "4d721d3f8cde02fcdc5f4a529ff5941109ca33e8e38b05ef6cd15722bc150b92"
+      "size": 1677,
+      "sha256": "2fc837b955b880f1a5512110a655c159e6c17dccd8b2db3b5295c4fda223b6f9"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-ipad-40.png",
-      "size": 1610,
-      "sha256": "394deeae50d4597300835f98c2ac1c99ad33eacee9a253740d841faac976917a"
+      "size": 2887,
+      "sha256": "cf336b0d8d94f2877a20a6eee519797077762b922210786914587c2e72866dbe"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-ipad-58.png",
-      "size": 2587,
-      "sha256": "59703cfe0aad84dc6d02db9bc211015465c8f42e70f8bd483ad4b6afbf1fbe00"
+      "size": 5551,
+      "sha256": "b6ca9f68e00fc7b59e073742d21ed9cee46ec930f66a3be7704e74a36751f5cd"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-ipad-76.png",
-      "size": 3565,
-      "sha256": "5a7db318232fdc175f9022e986f87d2af82e72421f8457b2e78e61acf50776ce"
+      "size": 8945,
+      "sha256": "d32d49ccc3020634f3a11f66df4de0ed19e8ecdf6239c2fb6803516a8232d376"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-ipad-80.png",
-      "size": 3883,
-      "sha256": "d627501590c13377d4701a0069a68e4846d220292783395da71ba4f5bfa1bd66"
+      "size": 9747,
+      "sha256": "1c9b46c8e1575b071eebd360f5edca5d9596e4057f29cc5873fe64f255548ae6"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-iphone-120.png",
-      "size": 6139,
-      "sha256": "4a3125d71c36ec8ce3a38a9d3a583a29feb7fc4375f1770c1fc669d28d2e1391"
+      "size": 20246,
+      "sha256": "5a6003bd8b132e1876460f85b412ed3e281a7f70ea5e26d6059bc7915b74e0d7"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-iphone-180.png",
-      "size": 9251,
-      "sha256": "ebde0dcc3c24cae3ccb2a9bcd8dd9819c798d9fb5eb60552c8adb05ba03514da"
+      "size": 42458,
+      "sha256": "84f076db47ce07d5d23bd74035d091c43fc54b9dcc820f644324bf14bd2fa69a"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-iphone-40.png",
-      "size": 1610,
-      "sha256": "394deeae50d4597300835f98c2ac1c99ad33eacee9a253740d841faac976917a"
+      "size": 2887,
+      "sha256": "cf336b0d8d94f2877a20a6eee519797077762b922210786914587c2e72866dbe"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-iphone-58.png",
-      "size": 2587,
-      "sha256": "59703cfe0aad84dc6d02db9bc211015465c8f42e70f8bd483ad4b6afbf1fbe00"
+      "size": 5551,
+      "sha256": "b6ca9f68e00fc7b59e073742d21ed9cee46ec930f66a3be7704e74a36751f5cd"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-iphone-60.png",
-      "size": 2759,
-      "sha256": "671fff4d53e0249fbc6da3fbab560029a257eb9b9a5693ae11f28a9e1fc6605e"
+      "size": 5827,
+      "sha256": "aa5f338aabb074fe0afecd72712ae8f3c977d51d8df2cf094b2ae019e529bcdf"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-iphone-80.png",
-      "size": 3883,
-      "sha256": "d627501590c13377d4701a0069a68e4846d220292783395da71ba4f5bfa1bd66"
+      "size": 9747,
+      "sha256": "1c9b46c8e1575b071eebd360f5edca5d9596e4057f29cc5873fe64f255548ae6"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/AppIcon.appiconset/icon-iphone-87.png",
-      "size": 4216,
-      "sha256": "7eca9b36086713569ace8acda83338729105757ef5087f1b3de105f7798ca688"
+      "size": 11359,
+      "sha256": "e09ee4502695dd935969a8664b3b5a62b967dae9a2ad1a6ef1d50ea3583b273b"
     },
     {
       "path": "yubenzhe-ios/App/Assets.xcassets/Contents.json",
@@ -1373,53 +2533,28 @@
     },
     {
       "path": "yubenzhe-ios/App/BrowserViewController.swift",
-      "size": 13034,
-      "sha256": "4c162596fe9288fa1a3f07d433d8914e562d9f9148660c34ef6cc7579ef0091a"
+      "size": 14737,
+      "sha256": "b445cd9367fd6806cdfbbb15e2bd7b1b2f4966fa0f604f566a8f0c51257a7dc6"
     },
     {
       "path": "yubenzhe-ios/App/Info.plist",
-      "size": 1817,
-      "sha256": "d9bc94910b5779a5641e6612eaf721b5959371435b066c3f913fcbcff7ed7ca7"
+      "size": 1834,
+      "sha256": "23556593fde6287fc3c21734493e2cea18217167998d82d990636f0a3533a59d"
     },
     {
       "path": "yubenzhe-ios/App/LocalAssetServer.swift",
-      "size": 5670,
-      "sha256": "5918894b69b18e067072ceff36b4d5f909388009066e4590f8405ae5a72bed21"
+      "size": 5861,
+      "sha256": "208791123803a3eaa27df037a7c8bdce4e8d3e8556c3dd2dceb348d8679af6c0"
+    },
+    {
+      "path": "yubenzhe-ios/App/Preview.entitlements",
+      "size": 369,
+      "sha256": "ae9deda45c514072fdb9c3eecfcee11f4dab84f2e99a6521e38500540f85675d"
     },
     {
       "path": "yubenzhe-ios/App/PrivacyInfo.xcprivacy",
       "size": 359,
       "sha256": "80786716c3d3883870940efc2559177240bc5ce812f5ea63801f0a12d9159c91"
-    },
-    {
-      "path": "yubenzhe-ios/App/Web/app.css",
-      "size": 192785,
-      "sha256": "6228cb5cc89b674458813415bace9910c46fcc8f024e80ee9b7d9ce0f8263e1a"
-    },
-    {
-      "path": "yubenzhe-ios/App/Web/app.js",
-      "size": 639969,
-      "sha256": "2e1c0cee480ad58892c5d4a41a7bad219ffd55f86247c887c446d594e44811c7"
-    },
-    {
-      "path": "yubenzhe-ios/App/Web/apple-touch-icon.png",
-      "size": 857,
-      "sha256": "e0ce0efd3a6f53efffdf4cfe62bfa711f48eb3a35d461f667327b52c3fb11437"
-    },
-    {
-      "path": "yubenzhe-ios/App/Web/icon.svg",
-      "size": 354,
-      "sha256": "fbd941151ffe37a3b31050d20281736e12f435fa6898570a50106ec92778dcfa"
-    },
-    {
-      "path": "yubenzhe-ios/App/Web/index.html",
-      "size": 1304,
-      "sha256": "2a8d8d2c2bc13f73f98d1162d81a0bed70231f9abeae25176a4d20598767b4a4"
-    },
-    {
-      "path": "yubenzhe-ios/App/Web/manifest.webmanifest",
-      "size": 263,
-      "sha256": "1ff704c7ca4572033217d036e9c06ba7c8678e650c8a7982284d9a50733991d9"
     },
     {
       "path": "yubenzhe-ios/App/bridge.js",
@@ -1428,13 +2563,13 @@
     },
     {
       "path": "yubenzhe-ios/README.txt",
-      "size": 6398,
-      "sha256": "6d5fc22f2d65003654560946b10d18cc1a48ab7633585b680a040b6ac8985a80"
+      "size": 3407,
+      "sha256": "647f5ef5d06c73478e4a5e461e20e9b5209ce48398c794f4852d736f0ae99438"
     },
     {
       "path": "yubenzhe-ios/Yubenzhe.xcodeproj/project.pbxproj",
-      "size": 13507,
-      "sha256": "a6fd5f955c24ca3c8c0764453f2ff1898cacedf361e92916d9b1787abc21a1e6"
+      "size": 13511,
+      "sha256": "4fe862f6f49ee90c3e782c963cf955b8ee87b765c6774f4faa6bcc52fdb63c65"
     },
     {
       "path": "yubenzhe-ios/Yubenzhe.xcodeproj/xcshareddata/xcschemes/Yubenzhe.xcscheme",
@@ -1443,8 +2578,8 @@
     },
     {
       "path": "yubenzhe-ios/ios-build-status.json",
-      "size": 1152,
-      "sha256": "a1eb8ba8d8ed916fe177b0165e755e2abce804040614bf87b0c556dc72b4b96e"
+      "size": 2489,
+      "sha256": "c8258d8e35296318a2dc3750e0debe983aea7219c4907f232baee1682b248c5c"
     },
     {
       "path": "yubenzhe-ios/repo-template/index.html",
@@ -1453,8 +2588,8 @@
     },
     {
       "path": "yubenzhe-ios/scripts/build-ios.sh",
-      "size": 852,
-      "sha256": "ce93a909b737ff9bacd5d29d5390d3b43d50737573f1d69897831f5b8fa7163d"
+      "size": 925,
+      "sha256": "469214354d5e0ef2919a3a34cc28c8a4b2041e201cc7ef7f43ea785f070267e9"
     },
     {
       "path": "yubenzhe-ios/scripts/build-repo.py",
@@ -1463,23 +2598,23 @@
     },
     {
       "path": "yubenzhe-ios/scripts/generate-project.py",
-      "size": 5912,
-      "sha256": "eeb04c24f448e5eb6d4735a0e9a8c7e4c557d991b69391a779357d16e19ec033"
+      "size": 6102,
+      "sha256": "ec0bc2fa8f7bc0ac905c846f84277749c71193a53aa7bf531a766836dfa445c2"
     },
     {
       "path": "yubenzhe-ios/scripts/package-deb.py",
-      "size": 3316,
-      "sha256": "acfae6ac18282fbdef2806b2c6777c3f3405b35e51ce32ec45f7348ddcd52d48"
+      "size": 3876,
+      "sha256": "3cbeafed1e90ab71fe964aad63ae297a01e7cc48f59ee1215580214e8c55010d"
     },
     {
       "path": "yubenzhe-ios/scripts/sync-web.py",
-      "size": 1526,
-      "sha256": "21fc6b7b3732f7762d165c96db2d7e5ce7f74f23f09a41de95869bcb6a0546a8"
+      "size": 2533,
+      "sha256": "be427c07c085d148797e6a57361bbc2bd2537d4e26e291becb5d103ac97e6719"
     },
     {
       "path": "yubenzhe-ios/scripts/verify_app.py",
-      "size": 3134,
-      "sha256": "c4fa56f7874bd9f36f085ef42903bb5e470d94553eae23448cf0e3f0254a03c0"
+      "size": 3777,
+      "sha256": "f8e1597dde7040239f2987d2bd91b25191bf96366f0a5d9ffb39e0019e5eea81"
     },
     {
       "path": "yubenzhe-ios/tests/bridge.test.mjs",
@@ -1488,13 +2623,8 @@
     },
     {
       "path": "yubenzhe-ios/tests/test_packaging.py",
-      "size": 3710,
-      "sha256": "8bb05884d8de710b36a551461c5cb00f327e379a25c7aaf1588478a12e940fde"
-    },
-    {
-      "path": "yubenzhe-ios/web-snapshot.json",
-      "size": 518,
-      "sha256": "f01f490e423d190137fdbec5483d4198f2777911aec2d3adcb74c03d4c90f782"
+      "size": 7410,
+      "sha256": "4fb2e830252a01bc166f60d056b7b98afe641d3869c5e354e4fbe8667669fdd6"
     }
   ]
 }
