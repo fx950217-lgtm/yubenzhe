@@ -4,8 +4,8 @@ import { AdminError } from '../upstream/admin/core.mjs';
 
 export const AI_LIMITS=Object.freeze({dailyTasks:10,dailyOwnerTasks:20,dailyGlobalTasks:50,maxOutputTokens:1000,maxInputChars:6000,globalConcurrency:2,workspaceConcurrency:1});
 export const AI_USE_CASES=Object.freeze([{id:'content',label:'内容创作'},{id:'customer_service',label:'客服答复草稿'},{id:'research',label:'资料整理'}]);
-const ENDPOINT='https://api.openai.com/v1';
-const ALLOWED_HOSTS=new Set(['api.openai.com']);
+const ENDPOINT='https://api.deepseek.com/v1';
+const ALLOWED_HOSTS=new Set(['api.deepseek.com']);
 const PURPOSE_INSTRUCTIONS={
  content:'你协助起草内容与文案。输出为待用户审阅的草稿，不自行发布。',
  customer_service:'你协助编写客服答复草稿。不能代表平台承诺退款、划转资金、批准账户或已经联系客户。',
