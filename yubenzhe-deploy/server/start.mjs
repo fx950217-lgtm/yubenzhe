@@ -11,6 +11,7 @@ import { createAiProvider } from './ai-provider.mjs';
 import { createAiService } from './ai-service.mjs';
 import { openSocialDatabase } from './social-database.mjs';
 import { createProductModules } from './product-modules.mjs';
+import {createMailAdapterFromEnvironment} from './account-mail.mjs';
 import {validateInternalPreview} from './internal-preview.mjs';
 process.umask(0o077);
 const role=process.env.ROLE, port=Number(process.env.PORT || 8080), host=process.env.BIND_HOST || '127.0.0.1';
@@ -19,12 +20,14 @@ const internalPreview=process.env.INTERNAL_PREVIEW==='true',simulation=process.e
 validateInternalPreview({internalPreview,role,origin:process.env.PUBLIC_ORIGIN,publicFrontend,simulation});
 if(simulation&&!['127.0.0.1','::1','localhost'].includes(host))throw new Error('M0 simulation must bind to loopback only.');
 if(internalPreview&&(!process.env.EMAIL_OTP_SECRET||process.env.EMAIL_OTP_SECRET.length<32))throw new Error('INTERNAL_PREVIEW requires a persistent EMAIL_OTP_SECRET of at least 32 characters.');
+// Validate explicitly enabled real delivery before opening any persistent database.
+const mailAdapter=!internalPreview&&!simulation&&(role==='frontend'||process.env.SOCIAL_DATABASE_PATH)?createMailAdapterFromEnvironment():undefined;
 const authConfig=readAuthFile(process.env.AUTH_CONFIG_FILE);
 const database=role==='admin' ? openDatabase(process.env.DATABASE_PATH || './state/acceptance.sqlite') : null;
 const aiDatabase=openAiDatabase(process.env.AI_DATABASE_PATH || './ai-state/workspaces.sqlite');
 const aiService=createAiService({database:aiDatabase,provider:createAiProvider()});
 const socialDatabase=(role==='frontend'||process.env.SOCIAL_DATABASE_PATH) ? openSocialDatabase(process.env.SOCIAL_DATABASE_PATH || './social-state/social.sqlite') : null;
-const modules=socialDatabase ? createProductModules({database:socialDatabase,origin:process.env.PUBLIC_ORIGIN,simulation,internalPreview,otpSecret:process.env.EMAIL_OTP_SECRET}) : null;
+const modules=socialDatabase ? createProductModules({database:socialDatabase,origin:process.env.PUBLIC_ORIGIN,simulation,internalPreview,mailAdapter,otpSecret:process.env.EMAIL_OTP_SECRET}) : null;
 const socialService=modules?.social;
 const pushConfig=process.env.PUSH_CONFIG_FILE ? JSON.parse(readFileSync(process.env.PUSH_CONFIG_FILE,'utf8')) : null;
 if(pushConfig)webpush.setVapidDetails(pushConfig.subject,pushConfig.publicKey,pushConfig.privateKey);

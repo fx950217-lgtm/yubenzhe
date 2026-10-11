@@ -1,0 +1,18 @@
+YBZ HTTP 邮件投递适配器（显式开启；2026-10-11）
+
+默认不开启真实邮件。EMAIL_PROVIDER 未设置或为 disabled 时，普通服务仍是 disabled；既有 M0 回环模拟与 HTTPS 内测模拟不变，不因 EMAIL_* 环境变量变成真实发信。显式注入的 mailAdapter 优先于这三种自动选择。
+
+配置：EMAIL_PROVIDER=http；EMAIL_ENDPOINT 必须是 HTTPS，且没有用户名、密码、查询参数或片段；EMAIL_FROM 为合法邮箱；EMAIL_OTP_SECRET 是至少 32 字符的持久密钥。任何已启用但不完整/非法的配置会在 start.mjs 打开数据库前拒绝启动，不退回模拟。
+
+密钥：优先 EMAIL_API_KEY_FILE，其文件必须是普通文件、不超过 8192 字节且组/其他用户权限位为零（Unix 0600 等）。文件失败不回退 EMAIL_API_KEY。EMAIL_API_KEY 仅作可选的直接环境变量后备。Windows 文件系统不能满足该权限要求时应失败，不放宽校验；正式容器使用受限 secret 文件。不要提交配置、真实密钥或运行数据。
+
+接口为中性网关契约，不假定兼容任何厂商：
+POST 到配置的 EMAIL_ENDPOINT
+Authorization: Bearer <key>
+Content-Type: application/json
+正文 JSON：{"from":"no-reply@yourdomain.com","to":"recipient@example.test","subject":"...","text":"..."}
+响应 2xx 代表 HTTP 服务接受请求，不代表邮件已到达收件箱；其他状态、重定向、连接失败及最多 10 秒超时均视为失败。适配器不读取/记录上游响应体，不记录地址、验证码或密钥；没有投递回执/退信跟踪。不得直接假设上述字段能用于 SendGrid、Resend 等厂商，需先确认其协议或使用兼容网关。
+
+OTP 中英两版包含六位验证码、UTC 有效期和非本人操作可忽略说明。只支持 otp 与 security-notice；安全通知没有验证码或过期时间，使用固定文案，不反射任意 event 文本。均不索要助记词、私钥或密码。真实 provider API 不向浏览器返回 simulationCode；发送失败会消耗该 challenge，沿用既有重发限流与验证规则。
+
+本次不注册/购买服务、不配置实际发信域、不进行真实发信。现有 compose 文件不变，部署者需将 EMAIL_* 显式传入目标服务并挂载 secret 文件，仅修改宿主 .env 不保证传入容器。测试仅使用 mock HTTP 和合成账号；实际域名认证、收件箱到达率和服务商回执仍待运营接入验证。

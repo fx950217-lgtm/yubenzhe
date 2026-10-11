@@ -1,20 +1,20 @@
 import {createSocialService} from './social-service.mjs';
-import {createSimulationMailAdapter,createInternalPreviewMailAdapter} from './account-mail.mjs';
+import {createSimulationMailAdapter,createInternalPreviewMailAdapter,createMailAdapterFromEnvironment} from './account-mail.mjs';
 import {requireInternalPreviewSession,validateInternalPreview} from './internal-preview.mjs';
 import {createPointsService} from './points-service.mjs';
 import {createCommunityService} from './community-service.mjs';
 import {createWorkbenchService} from './workbench-service.mjs';
 import {fail} from './social-validation.mjs';
 import {createProductAdmin} from './product-admin.mjs';
-export function createProductModules({database,origin,simulation=false,internalPreview=false,now=Date.now,mailAdapter,otpSecret}={}){
+export function createProductModules({database,origin,simulation=false,internalPreview=false,now=Date.now,mailAdapter,otpSecret,mailEnv=process.env}={}){
  const url=new URL(origin);
  validateInternalPreview({internalPreview,role:'frontend',origin,simulation});
  const testServices=simulation||internalPreview;
  if(simulation&&!['localhost','127.0.0.1','[::1]'].includes(url.hostname))throw Error('M0 simulation must use a loopback origin.');
  let points,community,workbench;
- const mail=mailAdapter||(internalPreview?createInternalPreviewMailAdapter({origin}):simulation?createSimulationMailAdapter({origin}):undefined);
+ const mail=mailAdapter||(internalPreview?createInternalPreviewMailAdapter({origin}):simulation?createSimulationMailAdapter({origin}):createMailAdapterFromEnvironment({env:mailEnv}));
  const social=createSocialService({database,now,
-  accessConfig:{origin,mailAdapter:mail,otpSecret,hasFinancialExposure:()=>false},
+  accessConfig:{origin,mailAdapter:mail,otpSecret:otpSecret??mailEnv.EMAIL_OTP_SECRET,hasFinancialExposure:()=>false},
   profileExtras:id=>community?.profileExtras(id)||{},
   beforeDeleteAccount:account=>{
    if(workbench.getPendingObligations(account.id).length)fail(409,'TASKS_PENDING','请先取消或完成文件任务。');
