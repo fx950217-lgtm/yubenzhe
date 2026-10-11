@@ -18,6 +18,8 @@ export async function compile() {
     }
   }
   await add('src/SingleDistribution.sol');
+  await add('src/EqualDistribution.sol');
+  await add('src/InternalTestToken.sol');
   await add('test/MockToken.sol');
   const input = JSON.stringify({ language: 'Solidity', sources, settings: {
     optimizer: { enabled: true, runs: 200 }, evmVersion: 'paris',
@@ -41,7 +43,7 @@ export async function compile() {
   }
   const errors = (output.errors ?? []).filter(e => e.severity === 'error');
   if (errors.length) throw new Error(errors.map(e => e.formattedMessage).join('\n'));
-  return { contracts: output.contracts, warnings: (output.errors ?? []).filter(e => e.severity !== 'error') };
+  return { contracts: output.contracts, standardInput:JSON.parse(input), warnings: (output.errors ?? []).filter(e => e.severity !== 'error') };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

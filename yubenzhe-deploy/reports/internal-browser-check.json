@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-10-11T01:05:28.052Z",
+  "origin": "https://66.42.56.29",
+  "version": "0.14.0-dev.6",
+  "gateLogin": "passed using generated internal gate",
+  "productLogin": "synthetic internal-review .test identity",
+  "workbench": "970 POINT and completed smoke task visible",
+  "wallet": "self-custody page and testnet disclaimer visible",
+  "distribution": {
+    "chainId": 97,
+    "chainVerified": true,
+    "distributionAddress": "0x6E12639fa9477eE4Acdd58acC974ec1734c50b9D",
+    "tokenAddress": "0xD19c2Fc5e03980DBE89Ca927ec40105b42829e4a",
+    "amount": "10003.0 YBZt",
+    "recipients": 2,
+    "state": "已到期退回",
+    "withoutWallet": "no signing actions exposed",
+    "remaining": "0.0 YBZt"
+  },
+  "bundlesMatchLocal": [
+    {
+      "file": "app.js",
+      "matches": true
+    },
+    {
+      "file": "app.css",
+      "matches": true
+    },
+    {
+      "file": "index.html",
+      "matches": true
+    }
+  ],
+  "screenshotInspected": true,
+  "reviewPage": "Final gated review page visible with plan, source and real-chain receipt links; screenshot inspected",
+  "sessionAfterRestart": "gate re-login retained product identity and 970 POINT"
+}

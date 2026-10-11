@@ -20,6 +20,8 @@ let code = '0x';
 let gasPrice = '0x3b9aca00';
 let receipt = null;
 let rejectBroadcast = false;
+let transactionVisible = true;
+let canonicalHash = '0x'+'a'.repeat(64);
 const requests = [];
 const signedTransactions = [];
 
@@ -37,6 +39,8 @@ globalThis.fetch = async (_url, options) => {
     case 'eth_estimateGas': result = '0x5208'; break;
     case 'eth_blockNumber': result = '0x64'; break;
     case 'eth_getTransactionReceipt': result = receipt; break;
+    case 'eth_getTransactionByHash': result = transactionVisible ? {hash:request.params[0]} : null; break;
+    case 'eth_getBlockByNumber': result = {hash:canonicalHash}; break;
     case 'eth_sendRawTransaction': {
       const signed = request.params[0];
       signedTransactions.push(Transaction.from(signed));
@@ -149,11 +153,11 @@ test('self-custody wallet lifecycle and pinned testnet transfer safeguards', asy
 
   await t.test('tracks pending, confirmed and failed receipt states', async () => {
     assert.equal((await wallet.getTransactionStatus(successfulTransfer.hash)).status, 'pending');
-    receipt = { transactionHash: successfulTransfer.hash, status: '0x1', blockNumber: '0x63' };
+    receipt = { transactionHash: successfulTransfer.hash, status: '0x1', blockNumber: '0x63', blockHash: canonicalHash };
     const status = await wallet.getTransactionStatus(successfulTransfer.hash);
     assert.equal(status.status, 'confirmed');
     assert.equal(status.confirmations, 2);
-    assert.equal(status.actualGasFee, undefined);
+    assert.equal(status.actualGasFee, null);
     assert.equal(wallet.getRecords()[0].status, 'confirmed');
     receipt.gasUsed = '0x5208';
     receipt.effectiveGasPrice = '0x77359400';
@@ -166,6 +170,13 @@ test('self-custody wallet lifecycle and pinned testnet transfer safeguards', asy
     await assert.rejects(wallet.getTransactionStatus(successfulTransfer.hash));
     assert.equal(JSON.stringify(wallet.getRecords()), beforeInvalid);
     receipt.gasUsed = '0x5208';
+    canonicalHash = '0x'+'b'.repeat(64);
+    const reorganized = await wallet.getTransactionStatus(successfulTransfer.hash);
+    assert.equal(reorganized.status,'unknown');
+    assert.equal(wallet.getRecords()[0].actualGasFee,null);
+    assert.equal(wallet.getRecords()[0].broadcastUncertain,true);
+    await assert.rejects(wallet.prepareTransfer(to,'0.2'),{code:'TRANSACTION_PENDING'});
+    canonicalHash = receipt.blockHash;
     receipt.status = '0x0';
     assert.equal((await wallet.getTransactionStatus(successfulTransfer.hash)).status, 'failed');
     receipt = null;
@@ -182,6 +193,13 @@ test('self-custody wallet lifecycle and pinned testnet transfer safeguards', asy
     assert.equal(wallet.getRecords()[0].hash, transfer.hash);
     await assert.rejects(wallet.confirmTransfer(preview.id, password), { code: 'PREVIEW_EXPIRED' });
     assert.equal(signedTransactions.length, 2);
+    transactionVisible=false;
+    const unknown = await wallet.getTransactionStatus(transfer.hash);
+    assert.equal(unknown.status,'unknown');
+    assert.equal(wallet.getRecords()[0].status,'unknown');
+    await assert.rejects(wallet.prepareTransfer(to,'0.03'),{code:'TRANSACTION_PENDING'});
+    receipt={transactionHash:transfer.hash,status:'0x1',blockNumber:'0x63',blockHash:canonicalHash};
+    await wallet.getTransactionStatus(transfer.hash);receipt=null;transactionVisible=true;
   });
 
   await t.test('locking during password verification prevents later signing', async () => {

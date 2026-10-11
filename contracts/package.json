@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Local-only ERC20 distribution prototype; unaudited and not deployed",
+  "description": "Internal BSC testnet equal distribution and experimental random prototype; unaudited",
   "scripts": {
     "compile": "node scripts/compile.mjs",
-    "test": "node --test --test-concurrency=1 test/distribution.test.mjs"
+    "test": "node --test --test-concurrency=1 test/distribution.test.mjs test/equal.test.mjs test/testnet-script.test.mjs",
+    "export-abi": "node scripts/export-abi.mjs",
+    "testnet": "node scripts/testnet.mjs",
+    "test:wallet-integration": "node --test test/wallet-integration.test.mjs"
   },
   "devDependencies": {
     "@openzeppelin/contracts": "5.0.2",

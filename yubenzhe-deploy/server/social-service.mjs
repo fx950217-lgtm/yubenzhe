@@ -42,7 +42,7 @@ export function createSocialService({database,now=()=>Date.now(),accessConfig={}
  return {profile:profile(a,{full:true}),friends,requests,outgoingRequests,conversations,blocked:moderation.ownBlocks(a)};}
  const context={db,now,one,all,run,transaction,fail,fields,text,userId,profile,accountById,accountByUserId,authenticate,verify,derive,session,limit,hash,SESSION_AGE,isFriend,membership,isBlocked:(a,b)=>moderation.isBlocked(a,b),restriction:id=>moderation.restriction(id),isRestricted:id=>moderation.restriction(id).state!=='active',assertCanPublish:a=>moderation.assertCanPublish(a),reportEvidence:input=>moments.reportEvidence(input),moderateContent:input=>moments.moderate(input),getAccountAccess:()=>access,beforeDeleteAccount,deleteAccountData:account=>{run('DELETE FROM social_discovery WHERE account_id=?',account.id);run('DELETE FROM social_discovery_dismissals WHERE account_id=? OR target_id=?',account.id,account.id);run('DELETE FROM social_greetings WHERE account_id=? OR target_id=?',account.id,account.id);run("UPDATE friend_requests SET greeting='' WHERE sender=? OR recipient=?",account.id,account.id);run("UPDATE group_join_requests SET status='rejected',reviewed_at=? WHERE (target_id=? OR inviter_id=?) AND status='pending'",now(),account.id,account.id);deleteAccountData(account);}};
  const moderation=createSocialModeration(context),security=createAccountSecurity(context),moments=createSocialMoments(context),access=createAccountAccess(context,accessConfig);
- async function handle({method,path,input={},query={},token='',ip='unknown',userAgent=''}){
+ async function handle({method,path,input={},query={},token='',ip='unknown',userAgent='',internalPreviewSession}){
  // Avatar URLs are deliberately shareable opaque image capabilities, unlike
  // private chat media. A replacement or removal revokes the old URL immediately.
  if(method==='GET'&&path.startsWith('avatars/')){
@@ -62,7 +62,7 @@ export function createSocialService({database,now=()=>Date.now(),accessConfig={}
   }
   const id=userId(input.userId,true);limit('login:'+id,8,900000);const a=accountByUserId(id);if(!await verify(a,input.password))fail(401,'BAD_CREDENTIALS','ID 或密码不正确。');const latest=accountById(a.id);if(latest.password_hash!==a.password_hash||latest.password_salt!==a.password_salt)fail(409,'ACCOUNT_CHANGED','账号已更新，请重新登录。');run('DELETE FROM social_limits WHERE key=?','login:'+id);return session(latest,{userAgent,ip});
  }
- const args={method,path,input,query,token,ip,userAgent};
+ const args={method,path,input,query,token,ip,userAgent,internalPreviewSession};
  for(const extension of [access,security]){const publicResult=await extension.handlePublic(args);if(publicResult!==undefined){await access.flushNotifications();return publicResult;}}
  const a=authenticate(token,{allowRestricted:path.startsWith('security/')||['access/security-state','access/passkeys/options','access/passkeys/verify','access/passkeys/remove','access/recovery-code','access/recovery-code/confirm','access/sessions/revoke'].includes(path)||path==='logout'||path==='reports'&&(method==='GET'||input.targetType==='feedback')});
  const privateArgs={...args,account:a};

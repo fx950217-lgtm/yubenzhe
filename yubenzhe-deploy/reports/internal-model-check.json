@@ -1,0 +1,5 @@
+{
+  "returncode": 0,
+  "stdout": "{\"ready\":true,\"provider\":\"ollama\",\"output\":\"连接正常。\",\"usage\":{\"inputTokens\":161,\"outputTokens\":4}}\n",
+  "stderr": ""
+}

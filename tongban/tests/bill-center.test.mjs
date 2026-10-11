@@ -62,3 +62,5 @@ test('malicious stored fee and transaction text stay inert in both list and deta
  assert.match(app.container.innerHTML,/&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
  assert.doesNotMatch(app.container.innerHTML,/<img|<script|<svg|javascript:|href=|手续费 \$0\.01/);
 });
+
+test('distribution approvals are not mislabeled as native transfers and unknown states remain explicit',()=>{const {items}=collectBills({chain:()=>[{hash:'0x'+'c'.repeat(64),kind:'distribution',action:'approve',title:'授权本次测试代币',tokenAmount:'5.0',tokenSymbol:'TST',amount:'0.0',status:'unknown',gasFee:'0.0001'}]});assert.equal(items[0].title,'授权本次测试代币');assert.equal(items[0].asset,'TST');assert.equal(items[0].amount,'5.0');assert.equal(items[0].direction,'neutral');assert.equal(items[0].status,'广播状态待核实');assert.match(items[0].detail,/授权不等于转账/);});

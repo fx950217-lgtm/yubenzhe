@@ -1,14 +1,20 @@
 V0.2 实施与验收状态
-日期：2026-10-10　当前版本：0.14.0-dev.5 / 本地 M0
+日期：2026-10-11　当前网页版本：0.14.0-dev.6 / 公网内部预览
 需求：requirements-v0.2.txt（22章、51项有效验收）；编号与章节变更见V02-REQUIREMENTS-CHANGELOG.txt。
 用户本轮确认的导航结构覆盖技术需求全文中的旧页面结构；业务要求和技术边界不变，未重写需求全文。
 
 1. 当前结论
-dev.5 验证状态：前端全量 404/404、消费者网页及独立管理端构建通过；已核对桌面与 390px 手机五页、三皮肤、云机/收藏/通讯录/近期任务路径和工作台默认落地，本地 healthz 与 build-info 均为 0.14.0-dev.5。 本轮报告为 ../yubenzhe-deploy/reports/brand-ui-verification.json；本机入口 localhost:18914。当前工作是 YBZ 品牌 UI 重做，不以旧版本验收作为新版本结果。
+2026-10-11，公网网页已切换至 0.14.0-dev.6 内部预览：https://66.42.56.29/，healthz 的 stage 为 internal-preview。前端 419/419、后端 219/219、合约 38/38，共 676 项测试通过（含真实钱包签名的本地 EVM 联测）；服务器 Ollama qwen3:0.6b 实测返回连接正常。公网未登录时静态页面与 PDF 显示门禁，产品 API 返回 401；登录门禁后可读取网页、build-info、只读链配置与 PDF，旧 /api/ai/* 入口返回 404。
+公网内部预览需要先通过共享外层门禁，再使用独立产品账号。模拟邮箱仅允许 .test 保留域（如 tester@example.test），验证码只在已通过门禁的页面显示，不发送真实邮件；共享门禁与测试邮件不等于真实多租户邮箱认证，同一测试邮箱不应存放需对其他受邀者保密的数据。旧真实邮箱不能用模拟码接管；旧 ID＋密码和恢复码流程保留。
+本轮交付仅为网页内部预览。Android、iOS、Windows 旧原生包仍为 0.13.0，未重打包，且不支持新增外层门禁；不能据网页验收声称原生已更新。
+BSC 测试网（chainId 97）已完成真实钱包验收：2 笔部署及 approve、fund、原生 tBNB 转账、claim、refund 共 7 笔交易全部成功，均至少 3 次确认并完成主链区块一致性核验。10003 YBZt 供资后，A 领取 5001.5 YBZt，B 未领的 5001.5 YBZt 到期退回发起者；remaining、allowance、contractToken 均为 0，金额守恒。服务器链配置已启用；样例活动已结束，仅供审核，不能继续领取。合约地址与交易详见内部预览运行手册；验收报告：../yubenzhe-deploy/reports/internal-chain-acceptance.json。区块浏览器源码验证尚未提交，可复现的 standard JSON 已提供。
+发布范围：公网网页与后端内部模式；测试不是商店审核、完整真机或正式经营验收。访问与回滚说明见 INTERNAL-PREVIEW-RUNBOOK.txt。
+
+历史 dev.5 验证状态：前端全量 404/404、消费者网页及独立管理端构建通过；已核对桌面与 390px 手机五页、三皮肤、云机/收藏/通讯录/近期任务路径和工作台默认落地，本地 healthz 与 build-info 均为 0.14.0-dev.5。 该轮报告为 ../yubenzhe-deploy/reports/brand-ui-verification.json；本机入口 localhost:18914。该轮仅为 YBZ 品牌 UI 重做的历史证据。
 历史 dev.4：消费者网页和管理端构建成功，前端全量356/356通过，服务备份重启后healthz与build-info确认dev.4。
 历史 dev.4 浏览器验证电脑及390px手机个人页、业务返回和收藏/历史草稿刷新往返，见../yubenzhe-deploy/reports/ui-entry-simplification.json。
-dev.5 UI 改造没有新增数据库迁移；现有账号、聊天、任务与钱包数据继续保留。历史 dev.4 重启前备份在仓库外 work/yubenzhe-m0-backups/pre-ui-*，不提交 Git。后端207/207与合约23/23仅作历史基线，本轮结果以最终报告为准。
-本轮仅更新本机。线上和Android/iOS/Windows原生仍为0.13.0，没有生成新版原生包、部署服务器或购买服务。界面与自动测试通过不代表全部产品、真机或正式上线验收完成。
+历史 dev.5 UI 改造没有新增数据库迁移；现有账号、聊天、任务与钱包数据继续保留。历史 dev.4 重启前备份在仓库外 work/yubenzhe-m0-backups/pre-ui-*，不提交 Git。当时引用的后端207/207与合约23/23仅作历史基线，当前 dev.6 测试数量见上文。
+历史 dev.5 只更新本机，没有生成原生包或部署服务器；当前 dev.6 已完成获准公网内部预览切换，原生没有升级。
 
 2. 当前页面结构
 中文名：愚笨者；全球英文主名：YBZ。品牌主张：技能交给 AI，判断留给自己。英文：Let AI do the doing. You do the deciding. 三要素固定为：思维——知道要什么、为什么；决策——定方向、做取舍、担结果；创造性——把不相干的东西连起来。
@@ -23,14 +29,15 @@ dev.5 UI 改造没有新增数据库迁移；现有账号、聊天、任务与�
 平台托管BAL及内部红包已退出运行服务，旧资产、赠送和资金激活路径返回410，资产榜不恢复。独立管理端关闭旧账务及接入申请的读取、审批和旧请求重放，新样本不再生成这些业务；历史管理记录和审计保留。
 POINT为独立服务积分：每账号一次1000本地欢迎分，整数复式分录、幂等预留/核销/释放；不可转赠、提现、兑换Gas或链上资产，客户端不可自行奖励。欢迎分不是旧资产兑换，不是现金或可兑现权益。
 本地文件任务每完成一步10分，取消按已完成步骤核销，失败释放预留。入口调整不改变确认计划与预算、任务权限、成果读取或迟到结果保护。
-自托管钱包与产品账号、积分分开。chain-gifts尚未接通，积分核销发币和Gas代付默认关闭，不扣积分、不签名、不产生链上交易。
+自托管钱包与产品账号、积分分开。链上分发已具备独立内测入口、本地钱包联测与已部署的 BSC 测试网代币/Equal 合约；approve、fund、原生 tBNB 转账、claim、refund 已确认且金额守恒，样例活动已结束；正式 chain-gifts 业务仍待完成。只读 GET /api/chain-preview/config 受门禁保护，服务器配置已 enabled=true，未配置环境仍返回 enabled=false；积分核销发币和 Gas 代付继续关闭。
 
 4. 数据升级与历史验收基线
+2026-10-11 公网切换先完成隔离副本演练，最终停止 frontend/admin 两个写入者后成套备份，再运行 upgrade-verify 核对保留旧记录不变；social、ai、admin 三库 integrity/foreign-key 检查正常。回滚点为 /opt/yubenzhe/backups/pre-internal-cutover-20261011T004550Z，发布目录为 /opt/yubenzhe/releases/0.14.0-dev.6；ops/current、ops/image 已切换，自动任务已恢复。未删除旧账号或以新库替换旧数据；旧原生包未更新。
 上一轮新增014-points及015-retire-platform-assets，保持历史迁移及校验和不变。本地原库已从11项迁移到13项：19张旧SIM表68行先归档并校验，再删除旧表及相关对象；65张保留表数据哈希一致，包括7账号、4消息、6工作任务。证据为../yubenzhe-deploy/reports/v02-local-upgrade.json；dev.4未再次迁移，dev.5也没有新增迁移。
 上一轮迁移前备份在仓库外work/yubenzhe-m0-backups/pre-2026-10-10T12-37-58-220Z。015只接受SIM数据，遇非SIM或归档失败拒绝；归档只用于旧测试审计，不成为运行时余额服务。备份、归档、凭据和钱包不进入Git。
 上一轮GitHub CI：https://github.com/fx950217-lgtm/yubenzhe/actions/runs/38052669120 ，验证源码f11f4c1，前端336/336、后端207/207、合约23/23和网页/管理端构建成功，下载23项文件SHA-256一致。该CI只作为dev.3历史基线，不代表dev.4或dev.5已经完成新CI、后端或合约重测。
-历史项目边界检查474文件通过及综合记录见../yubenzhe-deploy/reports/latest-verification.json；dev.4界面结果见ui-entry-simplification.json，dev.5本轮结果以brand-ui-verification.json为准。
-合约尚未部署、未接钱包、未完成索引重组处理或独立审计；进程内EVM23项测试不能替代上述工作。说明见../contracts/README.md及../contracts/TEST-RESULTS.txt。
+历史项目边界检查474文件通过及综合记录见../yubenzhe-deploy/reports/latest-verification.json；dev.4界面结果见ui-entry-simplification.json，dev.5 历史 UI 结果见 brand-ui-verification.json，不覆盖为 dev.6 报告。
+当前合约测试为 38/38，包含真实钱包签名的本地 EVM 联测；BSC 测试网的 2 笔部署与 approve、fund、原生转账、claim、refund 共 7 笔交易全部成功，均至少 3 次确认且主链区块一致；10003 YBZt 已按领取 5001.5 与退回 5001.5 完成守恒核对，合约剩余资产与授权为 0，样例已结束。完整链上索引重组处理与独立审计仍未完成；单个样例成功不能替代通用业务验收或独立审计。区块浏览器源码验证尚未提交，可复现 standard JSON 已提供。说明见../contracts/README.md及../contracts/TEST-RESULTS.txt。
 
 5. Git与清理边界
 公开仓库https://github.com/fx950217-lgtm/yubenzhe，当前开发分支codex/m0-local-test；main与历史元数据保留。此前主线大规模变更和历史审计批量删除被自动审核拒绝，不能将分支更新表述为主线更新。
@@ -38,6 +45,6 @@ POINT为独立服务积分：每账号一次1000本地欢迎分，整数复式�
 
 6. 后续验收与关闭项
 继续完成真实钱包收发/删除、完整管理流程、多端三皮肤和实体设备验收；本轮导航及收藏检查不替代这些步骤。
-链上仍需测试网部署、签名/事件集成、重组与未知广播测试及独立审计。真实云电脑、多AI协作、凭据保险箱、作者分佣、商店与服务商生产接入仍待落实。
+测试网合约已部署，完整样例 7 笔交易、主链区块及领取/退款金额守恒已验收；链上仍需完成通用索引重组、未知广播处理与独立审计，区块浏览器源码验证尚未提交。真实云电脑、多AI协作、凭据保险箱、作者分佣、商店与服务商生产接入仍待落实。
 保持关闭：主网与真实收费、积分兑资产/Gas、积分转赠提现、平台代签用户资产、未确认营销抽奖、无授权模型/订阅路径、未经确认部署和付费操作。
 M1B为获准服务积分收费与经审计链上功能，不再包含平台资金业务；自托管或积分核销不自动等于任何地区免牌照。

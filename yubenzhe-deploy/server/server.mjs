@@ -4,15 +4,17 @@ import { readFile, stat, realpath } from 'node:fs/promises';
 import { resolve, extname, basename, relative, isAbsolute, sep } from 'node:path';
 import { createAuthentication } from './auth.mjs';
 import { handleSocialHTTP } from './social-http.mjs';
+import {validateInternalPreview} from './internal-preview.mjs';
+import {readChainPreviewConfig} from './chain-preview-config.mjs';
 import { AdminError, assertSameOrigin, authorizeAdmin, setupAdmin, getBootstrap, listRecords, getRecord, applyAction, listAudit } from '../upstream/admin/core.mjs';
 
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const APP_VERSION=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version;
-const types = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon','.woff2':'font/woff2','.webmanifest':'application/manifest+json','.apk':'application/vnd.android.package-archive','.deb':'application/vnd.debian.binary-package','.exe':'application/octet-stream','.zip':'application/zip','.txt':'text/plain; charset=utf-8' };
+const types = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon','.woff2':'font/woff2','.webmanifest':'application/manifest+json','.apk':'application/vnd.android.package-archive','.deb':'application/vnd.debian.binary-package','.exe':'application/octet-stream','.zip':'application/zip','.txt':'text/plain; charset=utf-8','.pdf':'application/pdf' };
 function json(response, value, status = 200) { response.writeHead(status, { 'Content-Type':'application/json; charset=utf-8' }); response.end(JSON.stringify(value)); }
 function redirect(response, location = '/') { response.writeHead(303, { Location: location }); response.end(); }
 function gatePage(role, error = '', logout = false) {
-  return `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>愚笨者 · 受限验收</title><style>body{margin:0;background:#f3f8f5;color:#204235;font:15px/1.8 system-ui,sans-serif;display:grid;place-items:center;min-height:100dvh}main{max-width:390px;margin:24px;padding:32px;background:#fff;border:1px solid #deebe2;border-radius:18px}small{color:#678573}h1{font-size:27px;margin:12px 0}p{font-size:13px;color:#6f8276}label{display:block;margin:17px 0;font-size:13px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cdddce;border-radius:7px;font:inherit}button{width:100%;background:#14835f;color:#fff;border:0;padding:13px;border-radius:7px;font:inherit;cursor:pointer}.error{color:#a64438}</style><main><small>PRIVATE ACCEPTANCE · ${APP_VERSION}</small><h1>愚笨者${role === 'admin' ? '管理后台' : '体验验收'}</h1><p>仅限受邀验收。AI 工作台申请、审核和任务记录真实保存在服务器；模型需要配置与审核开通。消费者账号与聊天使用独立服务；平台不托管用户资产，链上钱包由用户自行保管密钥。服务积分仅用于平台服务。</p>${error ? `<p role="alert" class="error">${escape(error)}</p>` : ''}<form method="post" action="${logout ? '/logout' : '/login'}">${logout ? '<p>退出当前验收会话后，需要重新输入访问凭证。</p>' : '<label>验收账号<input name="username" autocomplete="username" maxlength="40" required></label><label>访问密码<input name="password" type="password" autocomplete="current-password" maxlength="256" required></label>'}<button type="submit">${logout ? '确认退出' : '进入受限验收'}</button></form></main></html>`;
+  return `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YBZ 愚笨者 · 内部预览</title><style>body{margin:0;background:#F7F7F9;color:#1A1A1A;font:15px/1.8 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;letter-spacing:.5px;display:grid;place-items:center;min-height:100dvh}main{box-sizing:border-box;width:min(420px,calc(100% - 40px));margin:28px 0;padding:32px;background:#fff;border:1px solid #E8E8EE;border-radius:20px}small{color:#666;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}h1{color:#1B1B1F;font-size:26px;line-height:1.5;margin:12px 0 16px}p{font-size:14px;color:#666;margin:0 0 24px}label{display:block;margin:20px 0;font-size:13px}input{box-sizing:border-box;width:100%;margin-top:8px;padding:13px 14px;border:1px solid #E8E8EE;border-radius:8px;background:#fff;color:#1A1A1A;font:inherit}input:focus-visible,button:focus-visible{outline:2px solid #6C5CE7;outline-offset:3px}button{width:100%;margin-top:8px;background:linear-gradient(90deg,#6C5CE7,#A29BFE);color:#1B1B1F;border:0;padding:14px;border-radius:14px;font:inherit;font-size:19px;font-weight:700;line-height:1.5;cursor:pointer}.error{color:#C02F28}</style><main><small>YBZ · ${APP_VERSION}</small><h1>YBZ 愚笨者 ${role === 'admin' ? '管理后台' : '内部预览'}</h1><p>仅供内部体验与反馈。链上功能使用 BSC 测试网。</p>${error ? `<p role="alert" class="error">${escape(error)}</p>` : ''}<form method="post" action="${logout ? '/logout' : '/login'}">${logout ? '<p>退出后，需要重新输入访问凭证。</p>' : '<label>内部账号<input name="username" autocomplete="username" maxlength="40" required></label><label>访问密码<input name="password" type="password" autocomplete="current-password" maxlength="256" required></label>'}<button type="submit">${logout ? '确认退出' : '进入内部预览'}</button></form></main></html>`;
 }
 async function body(request,limit=16384) {
   if (Number(request.headers['content-length'] || 0) > limit) throw new AdminError(413,'BODY_TOO_LARGE','请求内容过大。');
@@ -21,8 +23,9 @@ async function body(request,limit=16384) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-export function createAcceptanceServer({ role, origin, authConfig, database, aiService = null, socialService = null, publicFrontend = false, staticRoot, reportFile = new URL('../reports/thousand-users.json', import.meta.url) }) {
+export function createAcceptanceServer({ role, origin, authConfig, database, aiService = null, socialService = null, publicFrontend = false, internalPreview = false, chainPreviewConfigFile, staticRoot, reportFile = new URL('../reports/thousand-users.json', import.meta.url) }) {
   if (!['admin','frontend'].includes(role)) throw new Error('ROLE must be admin or frontend.');
+  validateInternalPreview({internalPreview,role,origin,publicFrontend});
   const publicURL = new URL(origin);
   if (!['http:','https:'].includes(publicURL.protocol) || publicURL.pathname !== '/' || publicURL.search || publicURL.hash || publicURL.username || publicURL.password) throw new Error('PUBLIC_ORIGIN must be a single origin.');
   if (publicURL.protocol === 'http:' && !['localhost','127.0.0.1','[::1]'].includes(publicURL.hostname)) throw new Error('Plain HTTP is permitted only through loopback/SSH forwarding.');
@@ -41,10 +44,10 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       if (url.pathname === '/healthz' && request.method === 'GET') {
         if (role === 'admin') database.raw.prepare('SELECT 1').get();
         socialService?.health?.();
-        json(response,{ok:true,service:role,version:APP_VERSION,stage:role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
+        json(response,{ok:true,service:role,version:APP_VERSION,stage:internalPreview ? 'internal-preview' : role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
       }
       if (request.headers.host !== publicURL.host || url.origin !== publicURL.origin) throw new AdminError(403,'HOST_DENIED','访问地址不匹配，请使用验收地址。');
-      if (role === 'frontend' && url.pathname.startsWith('/api/social/')) {
+      if (!internalPreview && role === 'frontend' && url.pathname.startsWith('/api/social/')) {
         await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body}); return;
       }
       if (url.pathname === '/login' && request.method === 'POST') {
@@ -58,10 +61,19 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       if (url.pathname === '/logout' && request.method === 'POST') { checkOrigin(request); response.setHeader('Set-Cookie',auth.logout(request)); redirect(response); return; }
       const user = auth.user(request);
       if (!user) {
-        if (url.pathname.startsWith('/api/')) { json(response,{error:'验收会话已失效，请刷新页面重新登录。',code:'SIGN_IN_REQUIRED'},401); return; }
+        if (url.pathname.startsWith('/api/')) { json(response,{error:internalPreview?'请先登录内部预览，再使用产品账号。':'验收会话已失效，请刷新页面重新登录。',code:internalPreview?'INTERNAL_PREVIEW_REQUIRED':'SIGN_IN_REQUIRED'},401); return; }
         if (role !== 'frontend' || !publicFrontend || url.pathname === '/login') {
           response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); response.end(gatePage(role)); return;
         }
+      }
+      if (internalPreview && role === 'frontend' && url.pathname.startsWith('/api/social/')) {
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,internalPreviewUser:user}); return;
+      }
+      if (internalPreview && url.pathname.startsWith('/api/ai/'))throw new AdminError(404,'NOT_FOUND','请使用产品账号工作台入口。');
+      if (internalPreview && url.pathname === '/api/chain-preview/config') {
+        if(request.method!=='GET')throw new AdminError(405,'METHOD_NOT_ALLOWED','配置接口仅支持读取。');
+        if(request.headers.origin&&request.headers.origin!==publicURL.origin||request.headers['sec-fetch-site']==='cross-site')throw new AdminError(403,'ORIGIN_DENIED','配置仅限当前内部预览读取。');
+        json(response,await readChainPreviewConfig(chainPreviewConfigFile));return;
       }
       if (url.pathname === '/logout' || url.pathname === '/signout-with-chatgpt') { response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); response.end(gatePage(role,'',true)); return; }
       if (url.pathname.startsWith('/api/')) {
@@ -141,6 +153,11 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       if (error instanceof AdminError) json(response,{error:error.message,code:error.code},error.status);
       else json(response,{error:'验收服务暂不可用，数据未被重置。',code:'SERVICE_UNAVAILABLE'},503);
     }
+  });
+  // No WebSocket transport is implemented. Never let an upgrade bypass the gate.
+  if(internalPreview)server.on('upgrade',(request,socket)=>{
+    const allowed=request.headers.host===publicURL.host&&(!request.headers.origin||request.headers.origin===publicURL.origin)&&auth.user(request);
+    socket.end('HTTP/1.1 '+(allowed?'404 Not Found':'401 Unauthorized')+'\r\nConnection: close\r\nCache-Control: no-store\r\nContent-Length: 0\r\n\r\n');
   });
   server.requestTimeout=15000; server.headersTimeout=10000; server.keepAliveTimeout=5000;
   return server;

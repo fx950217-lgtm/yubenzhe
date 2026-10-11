@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 import { isIP } from 'node:net';
 import { fail } from './social-validation.mjs';
+import {INTERNAL_PREVIEW_SESSION} from './internal-preview.mjs';
 export const NATIVE_SOCIAL_ORIGINS=Object.freeze(['https://localhost','http://127.0.0.1:45931','yubenzhe://app']);
-export async function handleSocialHTTP({request,response,url,publicURL,service,readBody}){
+export async function handleSocialHTTP({request,response,url,publicURL,service,readBody,internalPreviewUser=null}){
  const origin=request.headers.origin||'',native=NATIVE_SOCIAL_ORIGINS.includes(origin),same=origin===publicURL.origin;
  const path=url.pathname.slice('/api/social/'.length);
  const avatarPath=/^avatars\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(path);
@@ -20,7 +21,7 @@ export async function handleSocialHTTP({request,response,url,publicURL,service,r
  const bearer=/^Bearer ([-_A-Za-z0-9]{43})$/.exec(request.headers.authorization||'')?.[1];
  const cookie=String(request.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('ybz_social='))?.slice(11)||'';
  let ip=request.socket.remoteAddress||'unknown';if(['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip)){const forwarded=String(request.headers['x-forwarded-for']||'').split(',').at(-1).trim();if(isIP(forwarded))ip=forwarded;}
- const value=await service.handle({method:request.method,path,input,query:Object.fromEntries(url.searchParams),token:bearer||cookie,ip,userAgent:String(request.headers['user-agent']||'').slice(0,300)});
+ const value=await service.handle({method:request.method,path,input,query:Object.fromEntries(url.searchParams),token:bearer||cookie,ip,...(internalPreviewUser?{internalPreviewSession:INTERNAL_PREVIEW_SESSION}:{}),userAgent:String(request.headers['user-agent']||'').slice(0,300)});
  if(value.token){const secure=publicURL.protocol==='https:'?'; Secure':'';response.setHeader('Set-Cookie','ybz_social='+value.token+'; Path=/api/social; HttpOnly; SameSite=Strict; Max-Age=2592000'+secure);if(!native)delete value.token;}
  if(path==='logout'||value.deleted===true||value.currentSessionRevoked===true)response.setHeader('Set-Cookie','ybz_social=; Path=/api/social; HttpOnly; SameSite=Strict; Max-Age=0'+(publicURL.protocol==='https:'?'; Secure':''));
  if(value.binary){if(value.downloadName)response.setHeader('Content-Disposition',"attachment; filename=\"download.txt\"; filename*=UTF-8''"+encodeURIComponent(value.downloadName).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase()));response.writeHead(200,{'Content-Type':value.mime,'Content-Length':value.binary.length});response.end(value.binary);return;}

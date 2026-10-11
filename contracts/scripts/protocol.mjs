@@ -1,4 +1,4 @@
-import { AbiCoder, getAddress, keccak256, concat, id } from 'ethers';
+import { AbiCoder, getAddress, keccak256, concat, id, ZeroAddress } from 'ethers';
 const abi = AbiCoder.defaultAbiCoder();
 export const tags = {
   leaf: id('YUBENZHE_DISTRIBUTION_LEAF_V1'),
@@ -20,6 +20,8 @@ const pair = (a, b) => keccak256(concat(BigInt(a) < BigInt(b) ? [a, b] : [b, a])
 export function invitations({ chainId, sender, campaignId, members }) {
   if (members.length < 2 || members.length > 200) throw new Error('Need 2..200 fixed recipients');
   const normalized = members.map(m => ({ account: getAddress(m.account), salt: m.salt }));
+  if (normalized.some(m => m.account === ZeroAddress)) throw new Error('Zero address cannot be a recipient');
+  if (normalized.some(m => m.account === getAddress(sender))) throw new Error('Sender cannot be a recipient');
   if (new Set(normalized.map(m => m.account)).size !== members.length) throw new Error('Duplicate recipient');
   const leaves = normalized.map((m, index) => leaf({ chainId, sender, campaignId, index, ...m }));
   const layers = [leaves];

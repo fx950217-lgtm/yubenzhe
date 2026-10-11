@@ -1,14 +1,17 @@
 import {createSocialService} from './social-service.mjs';
-import {createSimulationMailAdapter} from './account-mail.mjs';
+import {createSimulationMailAdapter,createInternalPreviewMailAdapter} from './account-mail.mjs';
+import {requireInternalPreviewSession,validateInternalPreview} from './internal-preview.mjs';
 import {createPointsService} from './points-service.mjs';
 import {createCommunityService} from './community-service.mjs';
 import {createWorkbenchService} from './workbench-service.mjs';
 import {fail} from './social-validation.mjs';
-export function createProductModules({database,origin,simulation=false,now=Date.now,mailAdapter,otpSecret}={}){
+export function createProductModules({database,origin,simulation=false,internalPreview=false,now=Date.now,mailAdapter,otpSecret}={}){
  const url=new URL(origin);
+ validateInternalPreview({internalPreview,role:'frontend',origin,simulation});
+ const testServices=simulation||internalPreview;
  if(simulation&&!['localhost','127.0.0.1','[::1]'].includes(url.hostname))throw Error('M0 simulation must use a loopback origin.');
  let points,community,workbench;
- const mail=mailAdapter||(simulation?createSimulationMailAdapter({origin}):undefined);
+ const mail=mailAdapter||(internalPreview?createInternalPreviewMailAdapter({origin}):simulation?createSimulationMailAdapter({origin}):undefined);
  const social=createSocialService({database,now,
   accessConfig:{origin,mailAdapter:mail,otpSecret,hasFinancialExposure:()=>false},
   profileExtras:id=>community?.profileExtras(id)||{},
@@ -19,10 +22,11 @@ export function createProductModules({database,origin,simulation=false,now=Date.
   },
   deleteAccountData:account=>{community.deleteAccount(account.id);workbench.cleanupDeletedAccount(account.id,{withinTransaction:true});points.closeAccount?.(account.id,{withinTransaction:true});}
  });
- points=createPointsService({database,socialService:social,enabled:simulation,now});
+ points=createPointsService({database,socialService:social,enabled:testServices,now});
  community=createCommunityService({database,socialService:social,now});
- workbench=createWorkbenchService({database,socialService:social,now,enabled:simulation,pointsService:points});
+ workbench=createWorkbenchService({database,socialService:social,now,enabled:testServices,pointsService:points});
  function handle(request){
+  if(internalPreview)requireInternalPreviewSession(request);
   const path=request.path;
   if(path==='assets'||path.startsWith('assets/')||path==='gifts'||path.startsWith('gifts/')||path==='access/funds/activate'){
    social.authenticate(request.token);fail(410,'PLATFORM_ASSETS_REMOVED','平台托管余额与内部红包已移除。链上收付由你自己的钱包签名；积分仅用于平台服务。');
@@ -35,6 +39,6 @@ export function createProductModules({database,origin,simulation=false,now=Date.
   return social.handle(request);
  }
  let tickInFlight;
- function tick(){if(tickInFlight)return tickInFlight;tickInFlight=Promise.resolve().then(async()=>{if(simulation)workbench.tick();await social.accountAccess.flushNotifications();}).finally(()=>{tickInFlight=null;});return tickInFlight;}
+ function tick(){if(tickInFlight)return tickInFlight;tickInFlight=Promise.resolve().then(async()=>{if(testServices)workbench.tick();await social.accountAccess.flushNotifications();}).finally(()=>{tickInFlight=null;});return tickInFlight;}
  return {social,points,community,workbench,mail,handle,tick};
 }

@@ -1,6 +1,8 @@
-# 链上一次分发：本地研发原型
+# 链上一次分发：BSC 测试网内部审核
 
-本目录独立于网页和服务端，未接真实钱包、节点或资金。当前合约未经独立审计，不构成可直接用于主网的安全保证，也不构成任何地区的许可判断。
+本目录独立于网页和服务端，提供固定地址等额分发、专用无价值测试代币及可复现的部署工具。新增脚本只接受 BSC 测试网 chainId 97；2026-10-11 已在 BSC 测试网真实部署测试代币与等额分发合约；部署及交易事实见 TEST-RESULTS.txt 和 ../yubenzhe-deploy/reports/internal-chain-acceptance.json。当前合约未经独立审计，不用于主网或真实资金。
+
+默认内审模式为 `EqualDistribution`。`SingleDistribution` 随机原型保留用于本地研究，选择性中止边界尚未解决，部署脚本与消费者写操作不开启随机模式。
 
 ## 运行
 
@@ -9,14 +11,81 @@
 ```text
 npm ci --ignore-scripts --no-audit --no-fund --cache .npm-cache
 npm run compile
+npm run export-abi
 npm test
 ```
 
-安装锁定版本的 OpenZeppelin Contracts 5.0.2、Solidity 0.8.20、ethers 6.17.0、Ganache 7.9.2。测试仅创建进程内 EVM，不监听网络、不读取真实钱包、不接受 RPC URL，也不部署到测试网或主网。Ganache 原生加速模块不可用时可回退至 JavaScript。
+安装同级 `tongban` 锁定依赖后，可额外运行 `npm run test:wallet-integration`。该测试直接调用实际消费者钱包的加密 vault、预览及确认签名，将所有 HTTP 请求拦截到进程内 chainId 97 EVM，验证 approve/fund/claim/refund；不会连接公网节点。
+
+安装锁定版本的 OpenZeppelin Contracts 5.0.2、Solidity 0.8.20、ethers 6.17.0、Ganache 7.9.2。`npm test` 仅创建进程内 EVM，不监听网络、不读取真实钱包、不接受外部 RPC URL，也不部署到外部链。部署脚本测试使用临时合成账户验证本地签名与回执；Ganache 原生加速模块不可用时可回退至 JavaScript。
 
 可选：已有匹配的官方 solc 0.8.20 时设置 SOLC_BINARY 为其可执行文件绝对路径；编译脚本用 --standard-json 调用，不借助 shell。默认使用锁定的 solc-js。目标 EVM 为 paris，未使用 transient storage。
 
-实际编译与测试结果见 TEST-RESULTS.txt。编译产物、依赖、缓存不提交 Git；仅保留源码、锁文件和验证记录。
+实际编译与测试结果见 TEST-RESULTS.txt。完整编译产物、依赖、缓存不提交 Git；`exports/*.json` 是可供 ethers 使用的已版本化 ABI 与创建代码哈希，执行 `export-abi` 可从锁定源码复现。导出文件里的 `not-deployed` 指它们是通用接口，链上事实必须以具体部署回执和 `chain-preview.json` 为准。
+
+## 默认等额协议与前端接口
+
+`EqualDistribution` 构造函数仅接受 chainId 97，为 `constructor(Config c, address[] recipients)`，Config 字段按顺序为 `token, campaignId, amount(uint128), claimStart(uint64), expiresAt(uint64)`。地址名单固定 1..200 个，不允许零地址、重复地址、发送者自身或活动合约自身。分发额使用代币最小单位整数；每人获得 `amount / count`，尾差每个最小单位依次给名单靠前的固定名额，领取顺序不会改变金额。没有随机或罚金。
+
+- sender 本机签名创建活动；向活动地址 `approve(totalAmount)` 后本人调用 `fund()`，必须在 claimStart 至少 60 秒前完整供资。
+- `[claimStart, expiresAt)` 由固定接收地址本人调用 `claim(index)`；不接收可改写收款方参数。重复、旁观者、复制交易或越过窗口的领取不能改变名额。
+- 到期后任何地址可调用 `refundExpired()`，未领取额只回不可更改的 sender。单个领取失败原子回滚，可在窗口内重试；代币永久冻结仍可能阻断退款。
+- `recipientIndex(address)` 返回从 1 开始的名额；0 表示未入选。`participants(index)` 返回 `(account, claimed, allocation, received)`；还有 `recipientCount, claimable(index), funded, refunded, claimedCount, totalAmount, remaining, totalPaid, totalRefunded, claimStart, expiresAt, token, sender, campaignId, phase`。
+- phase：0 Locked（未供资或未起始）、1 Active（已供资且可领取）、2 Closed（已领空、到期或已退款）。到期 Closed 不等于已退款，仍需查看 refunded/remaining。
+- 事件：`Funded(sender,amount)`、`Claimed(index,recipient,paid)`、`Refunded(sender,amount)`。记录区块哈希、交易哈希与日志序号，并等待确认；链重组时退回核查。
+- 没有管理员、升级、平台提款、提前撤销、改接收人、代付或积分兑换入口。等额活动不会调用通用随机原型的 commit/reveal/finalize。
+
+固定名单地址及全部资金操作在链上公开；不要在链上写入邮箱、产品用户 ID、聊天关系或私密文件。这里没有证明某地址对应唯一自然人，产品还需独立完成账户与地址控制权核对。
+
+`InternalTestToken` 只允许部署在 chainId 97，固定名称 `YBZ Internal Test Token`、符号 `YBZt`、精度 18，创建时向部署者发行 1,000,000 枚；没有后续 mint、owner、暂停、税费或升级接口。它没有经济价值，不冒充稳定币，也不承诺兑换。
+
+## 测试网部署：先准备，再核对，最后显式签名
+
+部署计划不包含任何密钥。示例（尖括号内容必须替换成审核过的实际测试值；时间是 Unix 秒）：
+
+```json
+{
+  "schemaVersion": 1,
+  "chainId": 97,
+  "mode": "equal",
+  "sender": "<专用测试发送地址>",
+  "tokenAddress": null,
+  "campaignId": "<非零32字节活动ID>",
+  "amount": "1000000000000000000",
+  "recipients": ["<接收地址1>", "<接收地址2>"],
+  "claimStart": 0,
+  "expiresAt": 0,
+  "confirmations": 3,
+  "maxFeePerTxWei": "50000000000000000"
+}
+```
+
+`tokenAddress: null` 会先创建固定供应测试币，再创建等额活动。使用已有测试币必须通过与本地编译版本完全相同的运行代码及供应量检查。只创建代币时将 mode 改为 `token-only`，只保留 schemaVersion/chainId/mode/sender/confirmations/maxFeePerTxWei。起始需留出部署、供资与审核时间，脚本要求至少距链上当前时间 300 秒；建议内审预留更充裕的人工操作窗口。每笔实际 Gas 仍由相应签名人承担，没有固定美元费用。
+
+```text
+node scripts/testnet.mjs prepare --plan review-plan.json --out prepared/review.json
+node scripts/testnet.mjs check --plan review-plan.json --rpc https://明确核准的测试网RPC
+node scripts/testnet.mjs deploy --plan review-plan.json --rpc https://明确核准的测试网RPC --key-file C:\安全目录\ybz-test-key.json --out deployments/internal-review --confirm-testnet
+node scripts/testnet.mjs receipt --journal deployments/internal-review/deployment.json --rpc https://明确核准的测试网RPC
+```
+
+prepare 完全离线，不读取密钥。check 只读取网络、时间、测试 BNB 与代币身份，零测试 BNB 会明确显示待补充，不伪称可部署。deploy 必须显式提供专用测试密钥文件绝对路径，文件在 Git 仓库之外，格式如下，POSIX 权限须为 0600；Windows 请限制文件 ACL。严禁使用有真实资产的钱包、助记词或服务器密钥：
+
+```json
+{"purpose":"ybz-bsc-testnet-only","chainId":97,"expectedAddress":"<计划sender>","privateKey":"<仅专用测试私钥>"}
+```
+
+脚本不从环境变量、默认钱包、控制台或普通 plan 读取私钥，不打印密钥、签名原文或原始 RPC 错误。支持 HTTPS RPC，拒绝 URL 用户名/密码；访问令牌如需包含在 RPC URL 中也不得贴入公开日志。签名前核对 sender/chainId/Gas 最高费用，广播前再次验证链。不会替用户 approve 或 fund，资金锁定继续由钱包界面明确预览和签署。
+
+`deployment.json` 在广播前先落盘保存确定的交易哈希、nonce、CREATE 预期地址、公开创建数据和费用上限，后续更新采用临时文件落盘及原子替换。广播结果未知时立即停止，禁止自动重发、换 nonce 或重复创建；运行 receipt 查询同一交易。已有输出目录的部署日志不能被覆盖。如第一笔测试币成功而第二笔活动尚未部署，先核查现有日志，再用已确认 tokenAddress 和新计划/新输出目录只创建缺失的活动，不能重新创建测试币。
+
+prepare 的 `sourceVerification` 和部署目录 `verification-input.json` 包含确切 Solidity Standard JSON 与编译器版本，可用于区块浏览器提交源码验证。工具不持有区块浏览器 API Key，也不把本地字节码核对称为浏览器已公开验证；如果未提交，应明确显示尚未完成源码公开验证。
+
+receipt 校验 chainId 97、确认数、规范区块哈希、原发送人/nonce、完整创建字节码与构造参数、代币代码、活动不可变字段和固定名单，生成 `chain-preview.json`。它包含 mode、chainId、distributionAddress、tokenAddress、campaignId、runtimeHash、tokenRuntimeHash、noEconomicValue；无密钥或参与者秘密。只有相互匹配的完整已确认部署才 enabled=true；仅代币、未确认、回滚、未知结果均不开启活动写操作。运行字节码哈希来自具体部署（活动含 immutable 值），不能用带占位值的编译运行代码哈希替代。
+
+前端从可信同源配置读取上述字段，再核对链及链上代码；不可从任意页面参数信任合约地址。当前只开放 equal 写操作，随机模式继续实验停用。公开运行前仍需独立审计与目标链钱包端到端验收。
+
+## 以下为保留的随机原型协议（不在默认内审中开放）
 
 ## 资产与权限
 
@@ -73,7 +142,7 @@ expiry: remaining -> immutable sender, never -> platform admin
 
 测试覆盖：不可变参数和窗口、sender/allowance/余额、白名单与复制承诺、commit/reveal各阶段、秘密错误/重复/域重放、揭示顺序、分配和转账金额守恒、时间衰减/最小单位、缺席到期退款、失败领取隔离与重试、false返回/手续费币、退款重试、代币回调重入、无管理员ABI。
 
-仍需独立审计、目标链与精确代币审查、最大人数Gas测量、正式钱包与UI端到端联调、节点故障/重组事件处理及法律意见。没有主网地址、部署脚本或自动签名入口；不得把本地测试通过称为可安全承载真实资金。
+仍需独立审计、目标链与精确代币审查、正式钱包与UI端到端联调、节点故障/重组事件处理及法律意见。随机原型不通过新增部署脚本开放；没有主网地址或主网自动签名入口。等额最大人数本地 Gas 结果见 TEST-RESULTS.txt，不得把本地测试通过称为可安全承载真实资金。
 
 官方参考（2026-10-10查阅）：
 - Solidity 安全注意事项及 CEI：https://docs.soliditylang.org/en/latest/security-considerations.html

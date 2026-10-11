@@ -7,7 +7,7 @@ export function collectBills(sources){
   for(const [type,read] of Object.entries(sources).filter(([type])=>type==='chain')){
     try{const rows=read();if(!Array.isArray(rows))throw new Error('记录格式异常');
       for(const r of rows){
-        if(type==='chain')items.push({id:r.id||r.hash,type,title:'链上转出',amount:r.amount,asset:'tBNB',fee:walletFeeText(r),direction:'out',status:r.status==='confirmed'?'链上已确认':r.status==='failed'?'链上执行失败':r.broadcastUncertain?'广播状态待核实':'等待链上确认',createdAt:r.createdAt,address:r.to,hash:/^0x[a-fA-F0-9]{64}$/.test(r.hash)?r.hash:null,detail:'BSC 测试网 · 本机发起记录。提交不代表到账，以链上确认状态为准。'});
+        if(type==='chain')items.push({id:r.id||r.hash,type,title:r.kind==='distribution'?r.title||'等额分发操作':'链上转出',amount:r.kind==='distribution'?r.tokenAmount:r.amount,asset:r.kind==='distribution'?r.tokenSymbol:'tBNB',fee:walletFeeText(r),direction:r.kind==='distribution'?(r.action==='fund'?'out':r.action==='claim'?'in':'neutral'):'out',status:r.status==='confirmed'?'链上已确认':r.status==='failed'?'链上执行失败':r.broadcastUncertain||r.status==='unknown'?'广播状态待核实':'等待链上确认',createdAt:r.createdAt,address:r.to,hash:/^0x[a-fA-F0-9]{64}$/.test(r.hash)?r.hash:null,detail:r.kind==='distribution'?'BSC 测试网 · 等额分发操作。显示的是确认时的代币数量，授权不等于转账，提交不代表执行成功，以链上回执为准。':'BSC 测试网 · 本机发起记录。提交不代表到账，以链上确认状态为准。'});
       }
     }catch(e){errors.push({type,message:e.message||'记录读取失败'})}
   }

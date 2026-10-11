@@ -1,44 +1,70 @@
-2026-10-10 本地验证结果（已完成Solidity编译与进程内EVM验证）
+2026-10-11 内部测试网验证
 
-运行环境与依赖
-- Windows x64，Node v24.19.0。
-- 已经用户授权联网安装，官方npm registry，缓存限定contracts/.npm-cache。
-- OpenZeppelin Contracts 5.0.2、ethers 6.17.0、Ganache 7.9.2、solc 0.8.20。
-- 已生成package-lock.json；没有执行依赖生命周期脚本、npm审计或募捐请求。
+第一阶段：部署前本地验证（下列离线测试没有向外部链发送交易；后续真实测试网验收追加在本文末尾）
+
+运行环境
+Windows x64 / Node 24.19.0；锁定OpenZeppelin Contracts 5.0.2、ethers 6.17.0、Ganache 7.9.2、solc 0.8.20。
+Ganache缺少本机Node ABI137的µWS原生模块，按官方包行为回退JavaScript；不是测试失败。
 
 实际执行
-1. npm install --ignore-scripts --no-audit --no-fund --cache .npm-cache：成功。
-2. node scripts/compile.mjs：成功；优化200次，EVM目标paris。
-   SingleDistribution运行时代码8825字节，无编译警告。
-3. node --test --test-concurrency=1 test/distribution.test.mjs：退出码0。
-   23/23通过，0失败、0跳过；17个顶层场景及6个子用例，记录耗时42443.3653ms。
-   Ganache没有适用于本机Node ABI137的µWS原生模块，已明确回退JavaScript实现；这不是测试失败。
-4. README已更新锁文件复现方式；node_modules/artifacts/.npm-cache均忽略，不提交产物或依赖。
+1. node scripts/compile.mjs：成功，无编译警告；优化200次，EVM paris。
+   EqualDistribution运行代码4525字节，InternalTestToken 1824字节，SingleDistribution 8897字节。
+2. node scripts/export-abi.mjs：成功，exports三个ABI及创建代码哈希已从当前源码复现。
+3. node --test --test-concurrency=1 test/distribution.test.mjs test/equal.test.mjs test/testnet-script.test.mjs test/wallet-integration.test.mjs
+   38/38通过，0失败、0跳过，退出码0，耗时72184.8069ms。完整输出在本轮任务的工具执行记录中。
+4. testnet.mjs prepare实际CLI离线执行成功，输出prepared-not-deployed、chainId97、精确Standard JSON来源；不读取密钥。
 
-实际通过范围
-- 不可变配置、时间窗口、人数/金额边界、发送者权限、授权与足额精确转入。
-- 白名单、名额、邀请与承诺绑定；复制承诺不能抢领；跨合约/领取者重放不能揭示。
-- commit/reveal边界、错误秘密、重复操作、全员承诺与揭示要求。
-- 揭示顺序不影响种子/分配；最小单位、非整除和uint128最大金额守恒。
-- 独立领取、衰减扣减、零金额重试、到期原发送者退款。
-- 转账明确失败的状态回滚、其他领取者隔离、恢复后重试；false返回与手续费币拒绝。
-- 退款失败后可重试；代币回调不能重入；ABI无管理员/升级/任意提款接口。
+本轮已验证
+- EqualDistribution固定1..200地址、sender/零地址/重复地址拒绝、精确金额和尾差守恒。
+- 新等额合约和无价值测试币构造仅允许chainId97；脚本计划、RPC和签名均锁97。
+- sender独立approve/fund，本人claim，到期退款仅到原sender，无管理员/任意提款/升级。
+- 时间边界、重复操作、旁观者/复制领取拒绝、转账失败原子回滚、失败退款重试、回调重入保护。
+- 200名额本地部署Gas 15,090,760；随机地址字节带来轻微构造Gas差异，该数不是目标链固定费用或成功保证。
+- 随机原型新增sender资格禁用、协议拒绝sender/零地址/重复名单；原随机测试继续通过，但仍存在选择性中止边界，默认部署与消费者写路径关闭。
+- 部署脚本完整本地签名/广播/3确认回执、创建代码与参数核验、sender/nonce/地址核对、固定名单及代码hash。
+- 零测试Gas、费用超限、主网RPC、随机模式、错误专用key文件和覆盖已有日志全部拒绝；没有伪造部署成功。
+- 广播后模拟断线时先存交易hash，receipt恢复同一笔交易，未重新创建；token-only不会开启活动写操作。
+- 日志广播前落盘，更新原子替换；生成可复现Solidity Standard JSON（verification-input.json）。
 
-仍未验证/交付
-- 独立安全审计、最大200人数Gas测量、目标链及具体真实代币审查。
-- 正式钱包/UI端到端接入、节点重组/事件索引处理、真实网络运行。
-- 平台代付Gas、积分核销发链上资产或主网部署；本原型不包含这些服务。
-- 纯commit-reveal仍有最后揭示者选择中止及全员协调要求；此测试不改变README列出的限制。
+真实消费者钱包联调（额外集成测试）
+直接import tongban/src/wallet.js，实际本机加密vault导入进程内合成私钥，prepare/confirm签署4笔approve、fund、claim、refund。
+所有fetch完全拦截并转到同一进程内Ganache；不监听网络端口，不访问外部RPC。
+授权10003最小单位后供资10003，本人领取5002，到期退5001至sender；四笔回执、区块hash和实际Gas均验证，重复领取拒绝、金额守恒。
+该集成测试需要同级tongban已安装锁定依赖，可单独运行npm run test:wallet-integration。npm test运行合约和部署脚本37项。
 
-范围边界
-全部测试只使用进程内Ganache自动生成的合成测试账户和MockToken；不监听RPC端口，不读取真实密钥，不连接外部RPC，不部署到任何真实链，不接真实资产。
-测试通过不等同安全审计、法律许可或可承载真实资金。
+未完成/不冒充
+部署准备阶段未执行BSC外部部署。后续真实测试网结果见本文末尾；仍未执行主网部署、真实资产操作或平台Gas代付。公开审计、真实节点重组/事件索引仍须分别验收。
+测试部署使用合成临时账户及无价值代币，不持有用户钱包或服务器密钥。部署脚本具备能力不等于已有真实合约地址。
+平台积分与链上资产完全分离。测试通过不等于独立审计或真实资金安全保证。
 
 源码与锁文件SHA-256
-src/SingleDistribution.sol  ca36dfc4f4512b87f4d40614c11e1c94a69805eeee0910c546fd8f3c7d4e03c6
-test/MockToken.sol  ace5d9660b81932202ef8921a0e39533c157bdc6e4448d2cac5fe6a8ab09bc8b
-test/distribution.test.mjs  59683a23d7178778c9393fd452621573c8d3d11ec9598f7fcc4cae900e1b9de5
+src/EqualDistribution.sol  7d45e67612877c01009a3625141553bf8344377da14d5bd89c2328409aa767fc
+src/InternalTestToken.sol  49f08ae8a7d66d18e70dae1d5f999e09d3ca9da42062ef7db9c7df6d3c925259
+src/SingleDistribution.sol  567a36faf50e0046c84d07c9edb47df7a9e01bfcf6d01542934392e5cc023311
+scripts/testnet.mjs  ac367fd889402c6895c9a27846f0ed7dca2c8f89445214c02e40b0ffccc18e59
+scripts/compile.mjs  b90a3a04cbe25c3af73708ca4f50bd1d533cb23e7df21343bbc6df2881311b7e
+scripts/protocol.mjs  f2c4d72f8bab7ea2133aceca8fdafa1f6981837d68920ccc60330901a810af74
+scripts/export-abi.mjs  1657466ade297788b00d95800d22f6ab5366078be685184785b2f3c3b8302f88
+test/equal.test.mjs  84dfa2e5aa5ac81b057c972bac7cb2a5acce2cd5d2a3fefec7f78d89837604cf
+test/testnet-script.test.mjs  2c2c69f1e8312527e57763b4148c8be032114f29a2bd7acef781b175410c00eb
+test/wallet-integration.test.mjs  ec4b88636045ded1a86a2e8929cbd61b07d8273b46ff284a948ebe9da267f06e
 package-lock.json  f0763151a44088711429c804a03a8ec89219acd649e73a5cd7e755c6123b8765
 
-完整本地输出：artifacts/evm-validation.log（被Git忽略）。
-后续复现：npm ci --ignore-scripts --no-audit --no-fund --cache .npm-cache，然后npm run compile与npm test。
+第二阶段：真实 BSC 测试网验收（2026-10-11）
+
+已实际部署 InternalTestToken：0xD19c2Fc5e03980DBE89Ca927ec40105b42829e4a
+已实际部署 EqualDistribution：0x6E12639fa9477eE4Acdd58acC974ec1734c50b9D
+实际使用 tongban/src/wallet.js 的本机加密 vault 与 prepare/confirm 签名，真实外部 RPC，未使用模拟链替代。
+共 7 笔交易：两次部署及 approve/fund/原生转账/claim/refund；均至少 3 确认，当前规范区块哈希与状态成功核对。
+10003 YBZt 供资，固定 A 地址领取 5001.5，B 未领取的 5001.5 到期退回原 sender；活动剩余、合约代币和剩余授权均为 0，金额守恒。
+此活动已经结束，作为内部审核成功样例保留。新的活动须重新核对固定名单、链上时间、金额与费用。
+deploy-token 0x78cafc6cc3cba250dbf0b1c114901da2f89525d512db760fe48489d31cb545eb Gas 0.0000558549 tBNB
+deploy-equal 0x28a23490dfa0d9b28a034e5555a73d6df918e344629e5c2ca03fdf13132a0fdb Gas 0.0001213587 tBNB
+approve 0xe1a49faaf0477255e4a5d54df59311bd3e1e53a5112200868473e3ba7eec1217 Gas 0.0000046395 tBNB
+fund 0x01d43fd2a8ae9cab45070d166ce178cf62a6557d8ae0b299ea95decf076d6025 Gas 0.0000106418 tBNB
+transfer 0xdc5745daf067a6861ea9471ba111db5e76fab58c5bc9968e8c67950ac693a61b Gas 0.0000021 tBNB
+claim 0xa28226f7fed3b49fc58ebb8673eb246386bc96c8c50f7d0ac69c3a2891c792e3 Gas 0.0000145466 tBNB
+refund 0x346a0fdcab82d757dbecc34f8c8cad3d7c5fa87300e1f68ff2423f34285666d4 Gas 0.0000068908 tBNB
+
+完整公开验收证据：../yubenzhe-deploy/reports/internal-chain-acceptance.json。密钥留在本机仓库外私密目录，未上传服务器或 Git。
+区块浏览器源码公开验证尚未提交；已提供精确 Solidity Standard JSON。主网、真实资金、Gas 代付、随机分发与独立审计仍未开放/完成。

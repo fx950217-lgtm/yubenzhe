@@ -1,0 +1,113 @@
+{
+  "checkedAt": "2026-10-11T01:03:20.194Z",
+  "chainId": 97,
+  "rpc": "https://bsc-testnet-dataseed.bnbchain.org",
+  "walletImplementation": "tongban/src/wallet.js, actual encrypted local vault and prepare/confirm signing",
+  "config": "same confirmed chain-preview config as server",
+  "contracts": {
+    "token": "0xD19c2Fc5e03980DBE89Ca927ec40105b42829e4a",
+    "equal": "0x6E12639fa9477eE4Acdd58acC974ec1734c50b9D"
+  },
+  "campaignId": "0x09fab2ecf7162da0749a9f6c4024321727cd942f5d43961856440d4cff4f44b1",
+  "recipients": [
+    "0xDb5DE648314d6820c89145e45D9f9926f680Cd5c",
+    "0x2e1c81aD3dcd326005C294fAEB8C41F44AFBb327"
+  ],
+  "finalState": {
+    "funded": true,
+    "refunded": true,
+    "claimedCount": "1",
+    "totalYBZt": "10003.0",
+    "paidYBZt": "5001.5",
+    "returnedYBZt": "5001.5",
+    "remainingYBZt": "0.0",
+    "recipientAClaimed": true,
+    "recipientBClaimed": false,
+    "contractTokenUnits": "0",
+    "remainingAllowanceUnits": "0",
+    "conservation": true
+  },
+  "receipts": [
+    {
+      "kind": "deploy-token",
+      "transactionHash": "0x78cafc6cc3cba250dbf0b1c114901da2f89525d512db760fe48489d31cb545eb",
+      "status": "confirmed",
+      "blockNumber": 136073257,
+      "blockHash": "0x24b1689951ccec184397b3f2403e41d96d03fe3867e4b3f8f8aa1954322136c7",
+      "confirmations": 1110,
+      "gasUsed": "558549",
+      "feeWei": "55854900000000",
+      "feeTBNB": "0.0000558549"
+    },
+    {
+      "kind": "deploy-equal",
+      "transactionHash": "0x28a23490dfa0d9b28a034e5555a73d6df918e344629e5c2ca03fdf13132a0fdb",
+      "status": "confirmed",
+      "blockNumber": 136073304,
+      "blockHash": "0x0bd351a6af5198ae9240821450a90d42383989ec00725c21282582d7f55c8711",
+      "confirmations": 1063,
+      "gasUsed": "1213587",
+      "feeWei": "121358700000000",
+      "feeTBNB": "0.0001213587"
+    },
+    {
+      "kind": "approve",
+      "transactionHash": "0xe1a49faaf0477255e4a5d54df59311bd3e1e53a5112200868473e3ba7eec1217",
+      "status": "confirmed",
+      "blockNumber": 136073381,
+      "blockHash": "0x1de10714d46986344ae9c35bedbfec721ef1e6e390c0ca41d35e5f00aa07bcf1",
+      "confirmations": 986,
+      "gasUsed": "46395",
+      "feeWei": "4639500000000",
+      "feeTBNB": "0.0000046395"
+    },
+    {
+      "kind": "fund",
+      "transactionHash": "0x01d43fd2a8ae9cab45070d166ce178cf62a6557d8ae0b299ea95decf076d6025",
+      "status": "confirmed",
+      "blockNumber": 136073409,
+      "blockHash": "0x4eae8a5bf13e093617b06c29d519fb6f062729fadd804f7c54f5fe01f618eb72",
+      "confirmations": 958,
+      "gasUsed": "106418",
+      "feeWei": "10641800000000",
+      "feeTBNB": "0.0000106418"
+    },
+    {
+      "kind": "transfer",
+      "transactionHash": "0xdc5745daf067a6861ea9471ba111db5e76fab58c5bc9968e8c67950ac693a61b",
+      "status": "confirmed",
+      "blockNumber": 136073416,
+      "blockHash": "0xc8af163677dafca656ed7033c40f582d2062bfb1ed0b3f7a0dfd04f2b08fd0a1",
+      "confirmations": 951,
+      "gasUsed": "21000",
+      "feeWei": "2100000000000",
+      "feeTBNB": "0.0000021"
+    },
+    {
+      "kind": "claim",
+      "transactionHash": "0xa28226f7fed3b49fc58ebb8673eb246386bc96c8c50f7d0ac69c3a2891c792e3",
+      "status": "confirmed",
+      "blockNumber": 136074121,
+      "blockHash": "0x1078985d312713b683e0c9db0686a22db91c6e5c019e0766c1faca3a880a29db",
+      "confirmations": 246,
+      "gasUsed": "145466",
+      "feeWei": "14546600000000",
+      "feeTBNB": "0.0000145466"
+    },
+    {
+      "kind": "refund",
+      "transactionHash": "0x346a0fdcab82d757dbecc34f8c8cad3d7c5fa87300e1f68ff2423f34285666d4",
+      "status": "confirmed",
+      "blockNumber": 136074363,
+      "blockHash": "0xcee74fb82ac0fcb91033fbf4d29f643001860ea2d281a2908b4a487ff261abf3",
+      "confirmations": 4,
+      "gasUsed": "68908",
+      "feeWei": "6890800000000",
+      "feeTBNB": "0.0000068908"
+    }
+  ],
+  "mainnetEnabled": false,
+  "noEconomicValue": true,
+  "keysStored": "local private directory outside Git; never uploaded to server",
+  "explorerSourceVerification": "not submitted; exact Solidity standard JSON provided"
+}

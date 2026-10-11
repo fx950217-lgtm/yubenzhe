@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import {walletFeeText} from '../src/wallet-fees.js';
+import {mountDistributionPreview} from '../src/distribution-preview.js';
 
 const source=await readFile(new URL('../src/app.js',import.meta.url),'utf8');
 function block(start,end){const at=source.indexOf(start),last=source.indexOf(end,at+start.length);assert.ok(at>=0&&last>at,'application function boundaries remain available');return source.slice(at,last)}
@@ -11,11 +12,11 @@ const shortSource=source.split('\n').find(line=>line.startsWith('const short='))
 const walletSource=block('function displayedBalance()','function showModal(');
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return{promise,resolve,reject}};
 function walletHarness({exists=true,initialBalance='12.5',hidden=false,section='assets',records=[],getBalance=async()=> '24.75'}={}){
- const page={innerHTML:''},toasts=[];let reads=0,disposals=0;
+ const page={innerHTML:''},toasts=[];let reads=0,disposals=0,recordRefreshes=0;
  const walletState={exists,address:exists?'0x1111111111111111111111111111111111111111':null,unlocked:false};
- const context=vm.createContext({walletFeeText,chainSection:section,currentView:'wallet',balance:initialBalance,balanceError:'',hideBalance:hidden,loadingBalance:false,state:()=>walletState,document:{querySelector:selector=>selector==='#page'?page:null},wallet:{getRecords:()=>records,getBalance:()=>{reads++;return getBalance()}},walletProblem:()=>{},icon:name=>'<svg data-icon="'+name+'"></svg>',toast:message=>toasts.push(message)});
+ const context=vm.createContext({walletFeeText,chainSection:section,currentView:'wallet',balance:initialBalance,balanceError:'',hideBalance:hidden,loadingBalance:false,state:()=>walletState,document:{querySelector:selector=>selector==='#page'?page:null},wallet:{getRecords:()=>records,getBalance:()=>{reads++;return getBalance()},refreshRecords:async()=>{recordRefreshes++;return []}},walletProblem:()=>{},icon:name=>'<svg data-icon="'+name+'"></svg>',toast:message=>toasts.push(message)});
  new vm.Script(escapeSource+'\n'+shortSource+'\n'+walletSource).runInContext(context);
- return{context,page,toasts,get reads(){return reads},get disposals(){return disposals},render:()=>context.renderWallet(page),refresh:(show=false)=>context.refreshBalance(show)};
+ return{context,page,toasts,get reads(){return reads},get recordRefreshes(){return recordRefreshes},get disposals(){return disposals},render:()=>context.renderWallet(page),refresh:(show=false)=>context.refreshBalance(show)};
 }
 
 test('wallet home preserves real chain amounts and has one primary action',()=>{
@@ -39,7 +40,7 @@ test('bills use real local records and refreshing chain balances preserves the s
  const h=walletHarness({section:'bills',records,getBalance:()=>wait.promise});h.render();
  assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-bills"/);assert.match(h.page.innerHTML,/id="recent-records"/);assert.match(h.page.innerHTML,/1\.125 tBNB/);assert.doesNotMatch(h.page.innerHTML,/id="token-balance"/);
  const pending=h.refresh(true);assert.equal(h.reads,1);assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/data-action="chain-bills"/);wait.resolve('24.75');await pending;
- assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-bills"/);assert.match(h.page.innerHTML,/id="balance-number">24\.75/);assert.deepEqual(h.toasts,['链上资产已更新']);
+ assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-bills"/);assert.match(h.page.innerHTML,/id="balance-number">24\.75/);assert.deepEqual(h.toasts,['链上资产与交易状态已更新']);assert.equal(h.recordRefreshes,1);
 });
 
 test('switching section during an in-flight refresh keeps the latest selection after success or failure',async()=>{
@@ -52,4 +53,15 @@ test('switching section during an in-flight refresh keeps the latest selection a
 });
 
 
-test('red-packet entry is an explanation only and never reads or moves any funds',()=>{const dialogs=[];const fail=()=>{throw Error('No wallet, points or platform mutation allowed')};const context=vm.createContext({showModal:(title,html)=>dialogs.push({title,html}),socialClient:new Proxy({},{get:()=>fail}),wallet:new Proxy({},{get:()=>fail})});vm.runInContext(block('function openDistributionInfo()','function openWalletManagement()'),context);context.openDistributionInfo();assert.match(dialogs[0].html,/尚未部署/);assert.match(dialogs[0].html,/不能转赠/);assert.doesNotMatch(dialogs[0].html,/<form|<input|data-gift-composer/);assert.doesNotMatch(source,/mountPlatformAssets|mountGiftComposer|assets\/|gifts\/|autoBindCreatedWallet/);});
+test('distribution entry mounts the real preview and an unconfigured deployment cannot transact',async()=>{
+ const dialogs=[],refreshButton={onclick:null};let configurationReads=0,localCancellations=0;
+ const root={innerHTML:'',querySelector:selector=>selector==='[data-distribution-refresh]'?refreshButton:null};
+ const forbidden=()=>{throw Error('Unconfigured deployment must not sign, broadcast, charge or query assets');};
+ const localWallet={getWalletState:()=>({exists:false,address:null,unlocked:false}),cancelCreation:()=>localCancellations++,prepareDistributionAction:forbidden,confirmDistributionAction:forbidden,prepareTransfer:forbidden,confirmTransfer:forbidden,getBalance:forbidden};
+ let cleanup;
+ const context=vm.createContext({showModal:(title,html,setup,dispose)=>{dialogs.push({title,html});setup({querySelector:selector=>{assert.equal(selector,'[data-distribution-root]');return root;}});cleanup=dispose;},mountDistributionPreview:(node,options)=>mountDistributionPreview(node,{...options,load:async()=>{configurationReads++;return {enabled:false,chainId:97,mode:'equal',reason:'链上内测活动尚未部署或未启用。'};}}),wallet:localWallet,beginWalletSetup:forbidden,unlockModal:forbidden,refreshBalance:forbidden});
+ vm.runInContext(block('function openDistributionInfo()','function openWalletManagement()'),context);context.openDistributionInfo();await Promise.resolve();await Promise.resolve();
+ assert.equal(dialogs[0].title,'链上等额内测');assert.match(dialogs[0].html,/data-distribution-root/);assert.match(root.innerHTML,/尚未部署/);assert.match(root.innerHTML,/不会签名、扣除积分或增加链上资产/);assert.doesNotMatch(root.innerHTML,/<form|<input|data-distribution-action|data-gift-composer/);assert.equal(configurationReads,1);
+ await refreshButton.onclick();assert.equal(configurationReads,2);assert.doesNotMatch(root.innerHTML,/data-distribution-action/);cleanup();assert.equal(localCancellations,1);
+ assert.doesNotMatch(source,/mountPlatformAssets|mountGiftComposer|assets\/|gifts\/|autoBindCreatedWallet/);
+});

@@ -144,6 +144,7 @@ contract SingleDistribution is ReentrancyGuard {
         external nonReentrant
     {
         if (!funded || block.timestamp < commitStart || block.timestamp >= commitEnd) revert WrongPhase();
+        if (msg.sender == sender) revert Unauthorized();
         if (index >= recipientCount || commitment == bytes32(0)) revert InvalidCommitment();
         if (participants[index].account != address(0) || hasCommitted[msg.sender]) revert DuplicateAction();
         if (!MerkleProof.verifyCalldata(proof, whitelistRoot, whitelistLeaf(index, msg.sender, invitationSalt))) {

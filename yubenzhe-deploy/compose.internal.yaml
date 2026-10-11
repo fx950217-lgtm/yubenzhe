@@ -1,0 +1,22 @@
+# Private internet preview. Do not combine with compose.public.yaml.
+services:
+  frontend:
+    image: yubenzhe-public:${RELEASE_TAG:?Set RELEASE_TAG}
+    mem_limit: 384m
+    env_file: [./secrets/internal.env]
+    environment:
+      PUBLIC_FRONTEND: "false"
+      INTERNAL_PREVIEW: "true"
+      M0_SIMULATION: "false"
+      PUBLIC_ORIGIN: https://66.42.56.29
+      PUSH_CONFIG_FILE: /run/ybz-secrets/push.json
+      CHAIN_PREVIEW_CONFIG_FILE: /run/ybz-chain/config.json
+    volumes:
+      - ./secrets/push.json:/run/ybz-secrets/push.json:ro
+      - ./chain-preview:/run/ybz-chain:ro
+  admin:
+    image: yubenzhe-public:${RELEASE_TAG:?Set RELEASE_TAG}
+    environment:
+      PUBLIC_FRONTEND: "false"
+      INTERNAL_PREVIEW: "false"
+      M0_SIMULATION: "false"

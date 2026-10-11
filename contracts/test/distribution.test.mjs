@@ -81,6 +81,7 @@ test('wallet funding needs sender authority, approval, exact balance, one fundin
 test('whitelist binds address, slot and invitation; copied mempool commit cannot claim a slot', async t => {
   const f = await fixture(t); await f.fund(); await f.at(f.config.commitStart);
   const e = f.entries[0];
+  await f.bad(f.campaign.commit.staticCall(e.index,e.commitment,e.salt,e.proof),'Unauthorized');
   assert.equal(await f.campaign.whitelistLeaf(e.index, e.account, e.salt), e.leaf);
   await f.bad(f.campaign.connect(f.stranger).commit.staticCall(e.index, e.commitment, e.salt, e.proof), 'InvalidProof');
   await f.bad(f.campaign.connect(e.signer).commit.staticCall(1, e.commitment, e.salt, e.proof), 'InvalidProof');
@@ -89,6 +90,11 @@ test('whitelist binds address, slot and invitation; copied mempool commit cannot
   await f.bad(f.campaign.connect(e.signer).commit.staticCall(0, e.commitment, e.salt, e.proof), 'DuplicateAction');
   await f.bad(f.campaign.connect(e.signer).commit.staticCall(1, e.commitment, e.salt, e.proof), 'DuplicateAction');
   assert.equal(await f.campaign.committedCount(), 1n);
+});
+
+test('invitation helper rejects sender, zero address and duplicate recipients before deployment',async t=>{
+ const f=await fixture(t),sender=await f.sender.getAddress(),campaignId=f.config.campaignId;
+ for(const members of [[{account:sender,salt:id('a')},{account:f.entries[0].account,salt:id('b')}],[{account:ZeroAddress,salt:id('a')},{account:f.entries[0].account,salt:id('b')}],[{account:f.entries[0].account,salt:id('a')},{account:f.entries[0].account,salt:id('b')}]] )assert.throws(()=>invitations({chainId:31337,sender,campaignId,members}));
 });
 
 test('commit/reveal phase boundaries, wrong secrets and duplicate reveals cannot change commitments', async t => {

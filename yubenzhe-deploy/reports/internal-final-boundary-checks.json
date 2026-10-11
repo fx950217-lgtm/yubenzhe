@@ -1,0 +1,78 @@
+{
+  "checkedAt": "2026-10-11T01:04:36.236Z",
+  "version": "0.14.0-dev.6",
+  "boundaries": [
+    {
+      "path": "/",
+      "anonymousStatus": 200,
+      "anonymousGate": true,
+      "authenticatedStatus": 200,
+      "bytes": 1350,
+      "sha256": "5760f5775b52425ff0672c87e5aac1fc42a791830dbefc867ae00b65ac83ceb9"
+    },
+    {
+      "path": "/app.js",
+      "anonymousStatus": 200,
+      "anonymousGate": true,
+      "authenticatedStatus": 200,
+      "bytes": 864751,
+      "sha256": "006bf59f4d93a1316dab92f9a0dd15379228965d0ddbf3fa01b01fb9a10efa1c"
+    },
+    {
+      "path": "/internal/index.html",
+      "anonymousStatus": 200,
+      "anonymousGate": true,
+      "authenticatedStatus": 200,
+      "bytes": 2737,
+      "sha256": "d12ad0632cdf9292c7206c3cf9b6ce0e6656e2ad8d340383cb89df359298f22d"
+    },
+    {
+      "path": "/internal/business-plan.pdf",
+      "anonymousStatus": 200,
+      "anonymousGate": true,
+      "authenticatedStatus": 200,
+      "bytes": 516327,
+      "sha256": "a0feeec060b0fc1b0e381a911cb80c16fc0b8fbddd7141cb38150c954cceb57d"
+    },
+    {
+      "path": "/internal/chain-acceptance.json",
+      "anonymousStatus": 200,
+      "anonymousGate": true,
+      "authenticatedStatus": 200,
+      "bytes": 4060,
+      "sha256": "a7603ee6a537f497dbe031a565713319eb577805fbbdb969ba7a9f4fd2bfb758"
+    },
+    {
+      "path": "/internal/contract-verification-input.json",
+      "anonymousStatus": 200,
+      "anonymousGate": true,
+      "authenticatedStatus": 200,
+      "bytes": 74660,
+      "sha256": "890f697f5ade7ca732816393298851a28b223362d7aa107ac7f01e69ed728e37"
+    },
+    {
+      "path": "/api/chain-preview/config",
+      "anonymousStatus": 401,
+      "anonymousGate": false,
+      "authenticatedStatus": 200,
+      "bytes": 424,
+      "sha256": "be3672b30f65267b020a9a50735e55279b9076622885468a092ada2bc4d16b46"
+    },
+    {
+      "path": "/api/social/me",
+      "anonymousStatus": 401,
+      "authenticatedGateOnlyStatus": 401,
+      "productSessionStatus": 200
+    }
+  ],
+  "chainConfig": {
+    "enabled": true,
+    "chainId": 97,
+    "mode": "equal",
+    "distributionAddress": "0x6E12639fa9477eE4Acdd58acC974ec1734c50b9D",
+    "tokenAddress": "0xD19c2Fc5e03980DBE89Ca927ec40105b42829e4a",
+    "campaignId": "0x09fab2ecf7162da0749a9f6c4024321727cd942f5d43961856440d4cff4f44b1",
+    "runtimeHash": "0xd7609974fcc4f139fcf2066f607b38ebe9cb4fb6b69776be7b6510dda89a8ce6",
+    "tokenRuntimeHash": "0x35626453c9dec579021fa580822d0a126249fb13ce6345875472413f962324bf"
+  }
+}

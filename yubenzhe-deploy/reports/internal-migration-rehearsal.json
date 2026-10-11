@@ -1,0 +1,170 @@
+{
+  "returncode": 0,
+  "report": {
+    "verifiedAt": "2026-10-11T00:44:46.305Z",
+    "databases": [
+      {
+        "kind": "social",
+        "integrity": "ok",
+        "existingRecordsUnchanged": true,
+        "tables": [
+          {
+            "table": "accounts",
+            "preserved": 2
+          },
+          {
+            "table": "user_ids",
+            "preserved": 2
+          },
+          {
+            "table": "registrations",
+            "preserved": 2
+          },
+          {
+            "table": "social_sessions",
+            "preserved": 2
+          },
+          {
+            "table": "social_limits",
+            "preserved": 2
+          },
+          {
+            "table": "friend_requests",
+            "preserved": 0
+          },
+          {
+            "table": "friendships",
+            "preserved": 0
+          },
+          {
+            "table": "conversations",
+            "preserved": 0
+          },
+          {
+            "table": "conversation_members",
+            "preserved": 0
+          },
+          {
+            "table": "social_media",
+            "preserved": 0
+          },
+          {
+            "table": "messages",
+            "preserved": 0
+          },
+          {
+            "table": "group_requests",
+            "preserved": 0
+          },
+          {
+            "table": "social_blocks",
+            "preserved": 0
+          },
+          {
+            "table": "account_restrictions",
+            "preserved": 0
+          },
+          {
+            "table": "message_moderation",
+            "preserved": 0
+          },
+          {
+            "table": "social_reports",
+            "preserved": 0
+          },
+          {
+            "table": "social_moderation_audit",
+            "preserved": 0
+          },
+          {
+            "table": "account_recovery",
+            "preserved": 0
+          },
+          {
+            "table": "account_verifications",
+            "preserved": 0
+          },
+          {
+            "table": "moments",
+            "preserved": 0
+          },
+          {
+            "table": "moment_media",
+            "preserved": 0
+          },
+          {
+            "table": "moment_comments",
+            "preserved": 0
+          },
+          {
+            "table": "moment_likes",
+            "preserved": 0
+          },
+          {
+            "table": "moment_requests",
+            "preserved": 0
+          },
+          {
+            "table": "push_subscriptions",
+            "preserved": 0
+          },
+          {
+            "table": "push_jobs",
+            "preserved": 0
+          },
+          {
+            "table": "push_cursor",
+            "preserved": 1
+          }
+        ]
+      },
+      {
+        "kind": "ai",
+        "integrity": "ok",
+        "existingRecordsUnchanged": true,
+        "tables": [
+          {
+            "table": "ai_workspaces",
+            "preserved": 1
+          },
+          {
+            "table": "ai_tasks",
+            "preserved": 1
+          },
+          {
+            "table": "ai_requests",
+            "preserved": 6
+          },
+          {
+            "table": "ai_audit",
+            "preserved": 7
+          },
+          {
+            "table": "ai_provider_health",
+            "preserved": 1
+          }
+        ]
+      },
+      {
+        "kind": "admin",
+        "integrity": "ok",
+        "existingRecordsUnchanged": true,
+        "tables": [
+          {
+            "table": "admin_audit",
+            "preserved": 1
+          },
+          {
+            "table": "admin_records",
+            "preserved": 1284
+          },
+          {
+            "table": "admin_settings",
+            "preserved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "stderr": ""
+}

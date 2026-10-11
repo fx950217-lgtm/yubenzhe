@@ -2,3 +2,6 @@ node_modules/
 artifacts/
 coverage/
 .npm-cache/
+deployments/
+prepared/
+*.key.json

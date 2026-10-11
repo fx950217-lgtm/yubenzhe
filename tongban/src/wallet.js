@@ -301,11 +301,42 @@ async function quote(url, from, to, value) {
   return { gasPrice, gasLimit, gasFee, nonce: Number(nonceValue) };
 }
 
+const READ_METHODS = new Set(['eth_getCode','eth_call','eth_getBalance','eth_getTransactionReceipt','eth_getTransactionByHash','eth_getBlockByNumber','eth_blockNumber','eth_getTransactionCount']);
+// Public chain data only. Callers cannot use this path to broadcast or ask a node to sign.
+export async function createChainReader() {
+  const url=await connectRpc();
+  return (method,params=[])=>{if(!READ_METHODS.has(method))throw fail('不支持该链上查询。','RPC_METHOD_BLOCKED');return rpc(url,method,params);};
+}
+export async function readChain(method, params = []) {
+  if (!READ_METHODS.has(method)) throw fail('不支持该链上查询。', 'RPC_METHOD_BLOCKED');
+  return rpc(await connectRpc(), method, params);
+}
+
+function requireNoPending(address) {
+  if (readRecords(address).some(item => ['pending', 'unknown'].includes(item.status))) {
+    throw fail('还有交易等待核实，请先刷新转账记录；不要重复签名或转账。', 'TRANSACTION_PENDING');
+  }
+}
+
+export async function refreshRecords() {
+  const address = readVault()?.address;
+  if (!address) return [];
+  const results = [];
+  for (const record of readRecords(address).slice(0, 20)) {
+    if (readVault()?.address !== address) break;
+    try { results.push(await getTransactionStatus(record.hash)); }
+    catch (error) { results.push({hash:record.hash,error:error.code || 'RPC_UNAVAILABLE'}); }
+  }
+  return results;
+}
+
 export async function getBalance() {
   const vault = readVault();
   if (!vault) return '0.0';
   const url = await connectRpc();
-  return formatEther(quantity(await rpc(url, 'eth_getBalance', [vault.address, 'latest'])));
+  const result = formatEther(quantity(await rpc(url, 'eth_getBalance', [vault.address, 'latest'])));
+  if (readVault()?.address !== vault.address) throw fail('钱包已变化，请重新刷新资产。', 'WALLET_CHANGED');
+  return result;
 }
 
 // This reads a public chain address only. A watch entry never supplies a signer.
@@ -317,6 +348,7 @@ export async function getWatchBalance(address) {
 
 export async function prepareTransfer(to, amount) {
   const vault = requireSession();
+  requireNoPending(vault.address);
   prepared = null;
   const startEpoch = epoch;
   const transfer = validateTransfer(to, amount, vault.address);
@@ -324,7 +356,7 @@ export async function prepareTransfer(to, amount) {
   const fees = await quote(url, vault.address, transfer.to, transfer.value);
   requireSameSession(startEpoch, vault.address, vault.encryptedJson);
   const id = globalThis.crypto.randomUUID();
-  prepared = { id, ...transfer, ...fees, from: vault.address, expiresAt: Date.now() + PREVIEW_MS };
+  prepared = { id, kind:'transfer', ...transfer, ...fees, from: vault.address, expiresAt: Date.now() + PREVIEW_MS };
   return {
     id, to: transfer.to, amount: formatEther(transfer.value),
     gasFee: formatEther(fees.gasFee), total: formatEther(transfer.value + fees.gasFee),
@@ -362,9 +394,10 @@ export async function confirmTransfer(id, password) {
   const vault = requireSession();
   const tx = prepared;
   prepared = null; // A confirmation is single-use, including failed confirmations.
-  if (!tx || tx.id !== id || tx.expiresAt <= Date.now() || tx.from !== vault.address) {
+  if (!tx || tx.kind !== 'transfer' || tx.id !== id || tx.expiresAt <= Date.now() || tx.from !== vault.address) {
     throw fail('转账预览已过期，请重新核对金额和手续费。', 'PREVIEW_EXPIRED');
   }
+  requireNoPending(vault.address);
   const startEpoch = epoch;
   confirming = true;
   try {
@@ -387,7 +420,7 @@ export async function confirmTransfer(id, password) {
     const hash = keccak256(signed);
     const record = {
       hash, from: tx.from, to: tx.to, amount: formatEther(tx.value), gasFee: formatEther(fresh.gasFee),
-      createdAt: Date.now(), chainId: 97, symbol: NETWORK.symbol, status: 'pending',
+      createdAt: Date.now(), chainId: 97, symbol: NETWORK.symbol, status: 'pending', nonce: fresh.nonce, kind: 'transfer',
     };
     // Store only public transaction details, never the signed transaction or secrets.
     saveRecord(vault.address, record, true);
@@ -408,27 +441,82 @@ export async function confirmTransfer(id, password) {
   } finally { confirming = false; }
 }
 
+async function quoteContract(url, from, action) {
+ const input={from,to:action.to,data:action.data,value:'0x0'};
+ const [balanceResult,gasPriceResult,nonceResult,gasResult]=await Promise.all([
+  rpc(url,'eth_getBalance',[from,'pending']),rpc(url,'eth_gasPrice'),rpc(url,'eth_getTransactionCount',[from,'pending']),rpc(url,'eth_estimateGas',[input]),rpc(url,'eth_call',[input,'pending'])
+ ]);
+ const balance=quantity(balanceResult),gasPrice=quantity(gasPriceResult),nonce=quantity(nonceResult),estimate=quantity(gasResult),gasLimit=(estimate*120n+99n)/100n;
+ if(nonce>BigInt(Number.MAX_SAFE_INTEGER)||estimate<21000n||gasLimit>5000000n||gasPrice<=0n||gasPrice>parseEther('0.000001'))throw fail('合约手续费数据异常，已阻止交易。','FEE_INVALID');
+ const gasFee=gasPrice*gasLimit;if(balance<gasFee)throw fail('测试 BNB 不足以支付网络手续费。','BALANCE_INSUFFICIENT');
+ return {gasPrice,gasLimit,gasFee,nonce:Number(nonce)};
+}
+
+export async function prepareDistributionAction(action) {
+ if(confirming)throw fail('上一笔交易正在处理中。','TRANSACTION_BUSY');
+ const vault=requireSession();requireNoPending(vault.address);prepared=null;const startEpoch=epoch;
+ const {loadDistributionSnapshot,buildEqualAction}=await import('./chain-preview-config.js');
+ const snapshot=await loadDistributionSnapshot({address:vault.address});
+ const call=buildEqualAction(snapshot,action,vault.address),url=await connectRpc(),fees=await quoteContract(url,vault.address,call);
+ requireSameSession(startEpoch,vault.address,vault.encryptedJson);
+ const id=globalThis.crypto.randomUUID();prepared={id,kind:'distribution',...call,...fees,from:vault.address,expiresAt:Date.now()+PREVIEW_MS};
+ return {id,...call,from:vault.address,chainId:97,gasFee:formatEther(fees.gasFee),expiresAt:prepared.expiresAt};
+}
+
+export async function confirmDistributionAction(id,password) {
+ if(confirming)throw fail('上一笔交易正在处理中。','TRANSACTION_BUSY');
+ const vault=requireSession();requireNoPending(vault.address);const tx=prepared;prepared=null;
+ if(!tx||tx.kind!=='distribution'||tx.id!==id||tx.expiresAt<=Date.now()||tx.from!==vault.address)throw fail('链上操作预览已过期，请重新核对。','PREVIEW_EXPIRED');
+ const startEpoch=epoch;confirming=true;
+ try {
+  const signer=await decrypt(vault,password);requireSameSession(startEpoch,vault.address,vault.encryptedJson);
+  const {loadDistributionSnapshot,buildEqualAction}=await import('./chain-preview-config.js');
+  const snapshot=await loadDistributionSnapshot({address:vault.address});const action=buildEqualAction(snapshot,tx.action,vault.address);
+  if(['to','data','distributionAddress','tokenAddress','campaignId','runtimeHash','tokenRuntimeHash','amount','recipient'].some(k=>action[k]!==tx[k]))throw fail('链上活动或操作内容已变化，请重新预览。','QUOTE_CHANGED');
+  const url=await connectRpc(),fresh=await quoteContract(url,vault.address,action);
+  if(fresh.nonce!==tx.nonce||fresh.gasPrice!==tx.gasPrice||fresh.gasLimit!==tx.gasLimit)throw fail('手续费或账户状态已变化，请重新预览。','QUOTE_CHANGED');
+  if(tx.expiresAt<=Date.now())throw fail('链上操作预览已过期。','PREVIEW_EXPIRED');
+  await assertChain(url);requireSameSession(startEpoch,vault.address,vault.encryptedJson);
+  const signed=await signer.signTransaction({type:0,chainId:97,to:tx.to,data:tx.data,value:0n,nonce:fresh.nonce,gasPrice:fresh.gasPrice,gasLimit:fresh.gasLimit});
+  requireSameSession(startEpoch,vault.address,vault.encryptedJson);const hash=keccak256(signed);
+  const record={hash,from:tx.from,to:tx.to,amount:'0.0',gasFee:formatEther(fresh.gasFee),createdAt:Date.now(),chainId:97,symbol:NETWORK.symbol,status:'pending',nonce:fresh.nonce,kind:'distribution',action:tx.action,title:tx.title,distributionAddress:tx.distributionAddress,tokenAddress:tx.tokenAddress,tokenAmount:tx.amount,tokenSymbol:tx.symbol};
+  saveRecord(vault.address,record,true);let broadcastUncertain=false;
+  try{const remote=await rpc(url,'eth_sendRawTransaction',[signed]);broadcastUncertain=typeof remote!=='string'||remote.toLowerCase()!==hash.toLowerCase();}catch{broadcastUncertain=true;}
+  const result={...record,broadcastUncertain};saveRecord(vault.address,result);return result;
+ }catch(error){if(error.code&&/^[\u3400-\u9fff]/.test(error.message||''))throw error;throw fail('链上操作未提交，请重新核对。','TRANSACTION_FAILED');}
+ finally{confirming=false;}
+}
+
 export async function getTransactionStatus(hash) {
   if (typeof hash !== 'string' || !/^0x[0-9a-f]{64}$/i.test(hash)) throw fail('交易哈希无效。', 'HASH_INVALID');
+  const vault = readVault();
+  const previous = vault && readRecords(vault.address).find(item => item.hash.toLowerCase() === hash.toLowerCase());
   const url = await connectRpc();
   const receipt = await rpc(url, 'eth_getTransactionReceipt', [hash]);
-  if (!receipt) return { hash, status: 'pending', confirmations: 0 };
-  if (receipt.transactionHash?.toLowerCase() !== hash.toLowerCase() || !['0x0', '0x1'].includes(receipt.status)) {
-    throw fail('交易回执数据异常，请在区块浏览器中核对。', 'RECEIPT_INVALID');
+  let result;
+  if (!receipt) {
+    const transaction = await rpc(url, 'eth_getTransactionByHash', [hash]);
+    if (transaction && transaction.hash?.toLowerCase() !== hash.toLowerCase()) throw fail('交易查询数据异常。', 'RECEIPT_INVALID');
+    result = {hash, status:transaction ? 'pending' : 'unknown', confirmations:0, blockNumber:null, blockHash:null, actualGasFee:null, broadcastUncertain:!transaction};
+  } else {
+    if (receipt.transactionHash?.toLowerCase() !== hash.toLowerCase() || !['0x0', '0x1'].includes(receipt.status) || !/^0x[0-9a-f]{64}$/i.test(receipt.blockHash || '')) {
+      throw fail('交易回执数据异常，请在区块浏览器中核对。', 'RECEIPT_INVALID');
+    }
+    const block = quantity(receipt.blockNumber);
+    const [latestResult, canonical] = await Promise.all([rpc(url, 'eth_blockNumber'), rpc(url, 'eth_getBlockByNumber', [receipt.blockNumber, false])]);
+    const latest = quantity(latestResult);
+    if (block > BigInt(Number.MAX_SAFE_INTEGER) || latest > BigInt(Number.MAX_SAFE_INTEGER)) throw fail('区块数据异常。', 'RECEIPT_INVALID');
+    if (!canonical || canonical.hash?.toLowerCase() !== receipt.blockHash.toLowerCase() || latest < block) {
+      result = {hash,status:'unknown',confirmations:0,blockNumber:null,blockHash:null,actualGasFee:null,broadcastUncertain:true,reorg:true};
+    } else {
+      result = {hash,status:receipt.status === '0x1' ? 'confirmed' : 'failed',confirmations:Number(latest - block + 1n),blockNumber:Number(block),blockHash:receipt.blockHash,broadcastUncertain:false,reorg:false,actualGasFee:null};
+      if (receipt.gasUsed !== undefined && receipt.effectiveGasPrice !== undefined) {
+        result.actualGasFee = formatEther(quantity(receipt.gasUsed) * quantity(receipt.effectiveGasPrice));
+      }
+    }
   }
-  const block = quantity(receipt.blockNumber);
-  const latest = quantity(await rpc(url, 'eth_blockNumber'));
-  const result = {
-    hash, status: receipt.status === '0x1' ? 'confirmed' : 'failed',
-    confirmations: Number(latest >= block ? latest - block + 1n : 0n), blockNumber: Number(block),
-  };
-  if (receipt.gasUsed !== undefined && receipt.effectiveGasPrice !== undefined) {
-    result.actualGasFee = formatEther(quantity(receipt.gasUsed) * quantity(receipt.effectiveGasPrice));
-  }
-  const vault = readVault();
-  if (vault && readRecords(vault.address).some(item => item.hash.toLowerCase() === hash.toLowerCase())) {
-    saveRecord(vault.address, { ...result, broadcastUncertain: false });
-  }
+  // Never leave a stale success/fee after a missing receipt or chain reorganization.
+  if (previous && readVault()?.address === vault.address) saveRecord(vault.address, result);
   return result;
 }
 

@@ -1,0 +1,126 @@
+{
+  "checkedAt": "2026-10-11T00:48:34.791Z",
+  "unauthenticated": [
+    {
+      "path": "/healthz",
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "gate": false,
+      "data": {
+        "ok": true,
+        "service": "frontend",
+        "version": "0.14.0-dev.6",
+        "stage": "internal-preview"
+      }
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "gate": true
+    },
+    {
+      "path": "/app.js",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "gate": true
+    },
+    {
+      "path": "/internal/business-plan.pdf",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "gate": true
+    },
+    {
+      "path": "/api/social/state",
+      "status": 401,
+      "type": "application/json; charset=utf-8",
+      "gate": false,
+      "data": {
+        "error": "请先登录内部预览，再使用产品账号。",
+        "code": "INTERNAL_PREVIEW_REQUIRED"
+      }
+    },
+    {
+      "path": "/api/social/access/capabilities",
+      "status": 401,
+      "type": "application/json; charset=utf-8",
+      "gate": false,
+      "data": {
+        "error": "请先登录内部预览，再使用产品账号。",
+        "code": "INTERNAL_PREVIEW_REQUIRED"
+      }
+    },
+    {
+      "path": "/api/chain-preview/config",
+      "status": 401,
+      "type": "application/json; charset=utf-8",
+      "gate": false,
+      "data": {
+        "error": "请先登录内部预览，再使用产品账号。",
+        "code": "INTERNAL_PREVIEW_REQUIRED"
+      }
+    }
+  ],
+  "authenticated": [
+    {
+      "path": "/build-info.json",
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "bytes": 133,
+      "data": {
+        "version": "0.14.0-dev.6",
+        "builtAt": "2026-10-11T00:45:45.697Z",
+        "requirements": "V0.2",
+        "channel": "local-development"
+      }
+    },
+    {
+      "path": "/api/chain-preview/config",
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "bytes": 93,
+      "data": {
+        "enabled": false,
+        "chainId": 97,
+        "mode": "equal",
+        "reason": "测试网分发合约尚未配置。"
+      }
+    },
+    {
+      "path": "/internal/business-plan.pdf",
+      "status": 200,
+      "type": "application/pdf",
+      "bytes": 516327,
+      "pdf": true
+    },
+    {
+      "path": "/api/ai/workspaces",
+      "status": 404,
+      "type": "application/json; charset=utf-8",
+      "bytes": 70,
+      "data": {
+        "error": "请使用产品账号工作台入口。",
+        "code": "NOT_FOUND"
+      }
+    },
+    {
+      "path": "/api/social/access/capabilities",
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "bytes": 178,
+      "data": {
+        "emailMode": "simulation",
+        "passkeys": true,
+        "simulation": true,
+        "simulationScope": "internal-preview",
+        "publicId": {
+          "min": 5,
+          "max": 24,
+          "caseSensitive": false
+        },
+        "recoveryProtectionHours": 48
+      }
+    }
+  ]
+}

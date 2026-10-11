@@ -1,0 +1,129 @@
+YBZ 愚笨者 公网内部预览运行与回滚手册
+日期：2026-10-11　当前网页服务：0.14.0-dev.6
+适用目标：新加坡服务器 66.42.56.29（yubenzhe-sg-01）上的 /opt/yubenzhe
+需求与边界：requirements-v0.2.txt、V02-IMPLEMENTATION.txt；本地回环模式另见 M0-RUNBOOK.txt。
+
+一、已完成的发布状态
+
+访问入口：https://66.42.56.29/
+当前 healthz：version=0.14.0-dev.6，stage=internal-preview。
+当前发布目录：/opt/yubenzhe/releases/0.14.0-dev.6。
+最终切换前备份：/opt/yubenzhe/backups/pre-internal-cutover-20261011T004550Z。
+ops/current 与 ops/image 已指向本轮核对的发布目录和镜像；此前暂停的定时任务已恢复。
+这只说明任务已恢复，不保证以后每次备份都会成功，仍须检查最新运行结果和恢复演练。
+
+本轮先在隔离副本完成升级演练，再停止 frontend/admin 两个写入者、取得最终成套备份并执行 upgrade-verify。保留的旧记录未改写，social、ai、admin 三库 integrity_check 与 foreign_key_check 正常。没有用空库替换旧用户数据。
+本轮测试：前端 419/419，后端 219/219，合约 38/38，共 676 项通过（包含真实钱包签名的本地 EVM 联测）。
+公网已核对：未登录的静态页、PDF 只能看到门禁；产品 API 为 401；通过门禁后网页、build-info、链配置和 PDF 可读；旧 /api/ai/* 为 404。
+服务器既有 Ollama qwen3:0.6b 已实测返回连接正常，不等于通用多 AI 工作流或云电脑已接通。
+dev.5 的 404/404 和 brand-ui-verification.json 等历史报告保持原样，不能改名作为本轮证据。
+
+本轮交付是网页内部预览。Android、iOS、Windows 旧原生包仍为 0.13.0，未重新打包；它们没有本轮外层门禁会话，不能直接用于此次内测。后续原生交付需单独设计门禁接入、构建并完成真机验收。
+BSC 测试网（chainId 97）已完成真实钱包样例验收：2 笔部署及 approve、fund、原生 tBNB 转账、claim、refund 共 7 笔交易均成功，至少 3 次确认，并逐笔核验 canonical block（主链区块一致性）。服务器 chain-preview/config.json 已 enabled=true。供资 10003 YBZt，A 领取 5001.5 YBZt，B 未领取的 5001.5 YBZt 到期退回发起者；remaining、allowance、contractToken 均为 0，金额守恒。活动已经结束，是可审核的成功样例，不能继续领取。
+验收报告：../yubenzhe-deploy/reports/internal-chain-acceptance.json。部署、交易回执与实际 Gas 是独立证据，本地 EVM 测试不替代链上核对。区块浏览器源码验证尚未提交，可复现 standard JSON 已提供；本轮验收也不替代独立安全审计。
+
+测试代币 Token：0xD19c2Fc5e03980DBE89Ca927ec40105b42829e4a
+部署交易：0x78cafc6cc3cba250dbf0b1c114901da2f89525d512db760fe48489d31cb545eb
+浏览器：https://testnet.bscscan.com/tx/0x78cafc6cc3cba250dbf0b1c114901da2f89525d512db760fe48489d31cb545eb
+Equal 分发合约：0x6E12639fa9477eE4Acdd58acC974ec1734c50b9D
+部署交易：0x28a23490dfa0d9b28a034e5555a73d6df918e344629e5c2ca03fdf13132a0fdb
+浏览器：https://testnet.bscscan.com/tx/0x28a23490dfa0d9b28a034e5555a73d6df918e344629e5c2ca03fdf13132a0fdb
+A 领取交易：0xa28226f7fed3b49fc58ebb8673eb246386bc96c8c50f7d0ac69c3a2891c792e3
+浏览器：https://testnet.bscscan.com/tx/0xa28226f7fed3b49fc58ebb8673eb246386bc96c8c50f7d0ac69c3a2891c792e3
+到期退款交易：0x346a0fdcab82d757dbecc34f8c8cad3d7c5fa87300e1f68ff2423f34285666d4
+浏览器：https://testnet.bscscan.com/tx/0x346a0fdcab82d757dbecc34f8c8cad3d7c5fa87300e1f68ff2423f34285666d4
+以上仅为测试网地址，不用于主网或真实资产；不得填写成其他链的收款地址。
+
+二、访问与身份边界
+
+1. 先用受邀内部访问凭据通过外层门禁，再登录或创建产品账号。两层身份用途不同：外层控制谁能进入内测，产品内部 UUID 控制消息、文件、任务和积分的归属。
+2. 外层会话为 HttpOnly、SameSite=Strict、HTTPS Secure Cookie，默认一小时，保存在当前服务进程内。服务重启后需要重新通过门禁；这不代表产品账号或持久数据被删除。
+3. 模拟邮箱仅允许保留的 .test 域，例如 tester@example.test。验证码只在已通过门禁的页面显示，不会真正发送邮件。真实邮箱请求及历史真实邮箱验证码兑换在内部模拟模式下拒绝，不能借模拟码进入旧真实邮箱账号。
+4. 共享外层凭据加模拟验证码不等于真实多租户邮箱认证。知道同一个测试邮箱的受邀者可以使用模拟码进入该测试身份；仅放合成或允许内部共享的数据，不把模拟码当作真实邮箱所有权证明。正式邮箱登录必须接入实际发信服务后另行验收。
+5. 旧 ID＋密码、已建立的恢复码和产品会话继续受原凭据、保护期及内部 UUID 规则约束。改公开 ID 不迁移数据，不授予其他产品身份。
+6. 产品 AI 必须通过 /api/social/ai 按 social:内部UUID 隔离。内部模式关闭共享验收身份的旧 /api/ai/*，返回 404；旧 AI 数据保留，admin 管理端仍是独立认证。
+7. 所有产品 API、头像、媒体、任务附件、网页资源、安装下载与 internal/ 内 PDF/TXT 都必须先过外层门禁。消息媒体、工作文件和成果在此之后继续校验产品成员资格或文件所有者。头像仍是可分享资料图片，但仅能由已进入内测的人读取。
+8. 当前没有 WebSocket 传输；升级请求明确拒绝，不能通过 Upgrade 绕过门禁。/healthz 只公开 ok、service、version、stage；/login 公开的仅是表单和通用错误，不包含验证码或业务数据。
+9. 保持登录限速、Origin/Host 校验和角色隔离。不将 X-Forwarded-For、任意身份请求头或请求 JSON 字段当成内部身份；代理也不能额外暴露绕过应用门禁的静态目录或社交 API。
+
+三、运行配置
+
+以下只列配置名与安全开关，不记录密码、私钥、恢复码、OTP 秘密或测试钱包种子；这些材料保存在仓库之外，通过运行时秘密文件或既有受控配置注入。
+
+frontend：
+  INTERNAL_PREVIEW=true
+  PUBLIC_FRONTEND=false
+  M0_SIMULATION=false
+  PUBLIC_ORIGIN=https://66.42.56.29
+  AUTH_CONFIG_FILE：显式访问凭据记录文件，Linux 权限 0600/0400，不放入静态目录。
+  EMAIL_OTP_SECRET：至少 32 字符的持久随机秘密，不随重启重新生成。
+  CHAIN_PREVIEW_CONFIG_FILE：可选，显式指定只读配置文件，放在静态目录之外。
+admin：
+  不开启 INTERNAL_PREVIEW，保持原独立管理认证、角色及数据库挂载。
+
+PUBLIC_FRONTEND=true、HTTP origin、admin 角色或与 M0_SIMULATION 同时启用，都不能与 INTERNAL_PREVIEW 混用；启动应拒绝这些组合。
+本地 dev:m0 脚本强制回环和禁用模型，不用于公网容器。公网保留已有获准 Ollama 配置，不能为开启内部模式而无故替换或关闭现有模型。
+数据库持久挂载和原 userId 不得因更换配置文件、镜像或目录而改变。缺失现有数据库应中止核查，不能自动以新空库替代。
+代理仅向当前内部预览服务转发，保持原服务 TLS、Host 和 Origin 边界；新增配置或回滚不得覆盖另一项目。
+
+四、只读链配置与测试网开放条件
+
+接口：GET /api/chain-preview/config，同源、外层门禁后可读；其他方法返回 405。未登录为 401，外部 Origin 拒绝。
+未配置环境的安全回退示例（不是当前服务器状态）：
+  {"enabled":false,"chainId":97,"mode":"equal","reason":"测试网分发合约尚未配置。"}
+
+enabled=true 时只允许 BSC 测试网 chainId=97、mode=equal；必须有非零 distributionAddress、tokenAddress、bytes32 campaignId，可选 runtimeHash 与 tokenRuntimeHash，分别为分发合约与 ERC20 已部署字节码的 keccak256。接口只返回白名单字段，不返回 RPC 私密参数或任何秘密。
+客户端还应核对链 ID、链上代码、配置哈希及合约 token/campaignId 关系。改 JSON 或显示按钮不代表合约已存在或交易成功。
+当前服务器已启用显式配置，使用上文两份已部署合约；approve、fund、原生 tBNB 转账、claim、refund 已确认并核对金额守恒。该样例活动已经结束，已无可领取或可退款额度，页面只展示可审核结果，不能宣传为仍可参与领取。更换配置或部署新活动仍须先核对代码、资产、参与人、授权数量、交易费用与回执，不引入主网资产。钱包签名仍在用户设备，平台不代签，不把私钥交给 AI 或服务器。
+积分兑资产、积分兑 Gas、Gas 代付、主网和真实收费继续关闭。本地钱包联测与 38 项合约测试不是独立安全审计。
+
+五、日常检查与停止条件
+
+每次发布或重启至少核对：
+- healthz 的版本和 stage，门禁后的 build-info 与静态资源确实属于同一版本。
+- 未登录的 /、资源文件、internal/ 文档和下载地址没有返回产品内容；/api/social/*、/api/chain-preview/config 返回 401。
+- 通过门禁后，旧共享 /api/ai/* 仍为 404；产品账号不能读取其他账号的任务、文件或私聊媒体。
+- .test 注册、自己的账号恢复、任务计划/确认/积分结算和真实成果下载；无效码、过期外层会话与注销产品会话应被拒绝。
+- 禁止真实邮箱取得模拟码；密码、OTP 和签名材料不得出现在访问日志、报告、错误响应或网页源码。
+- 自动备份和健康检查服务的最近结果、备份完整性及磁盘容量；定时器 active 不能替代实际恢复演练。
+- 对实际启用模型做独立健康检查。规则式文件任务和 Ollama 会话分别验证，不能相互代替。
+
+若出现门禁绕过、跨账号读取、数据库校验失败、实际镜像/挂载与记录不符或敏感信息外泄，应暂停相关公开入口和写入，保全现场与当前数据，再决定修复或回滚。不要反复重启、清缓存或删除数据库掩盖错误。
+本手册不宣称正式 SLA、真实邮件、原生通知、跨地域恢复、通用云电脑或商店审核已完成。
+
+六、升级、恢复与回滚
+
+1. 先核对目标仅为 /opt/yubenzhe，本项目 frontend/admin 当前镜像、环境、持久挂载、ops/current、ops/image 和定时任务。记录拟恢复版本与其数据库兼容范围。
+2. 暂停本项目相关自动任务并停止 frontend/admin 两个写入者。若回滚到不支持内部门禁的旧代码，必须先保持入口维护/拒绝访问；旧版可能让社交 API 绕过旧验收门禁，不能只把旧镜像启动后直接向公网开放。
+3. 回滚前另取当前版本的完整备份，保留切换以来新增账号、聊天、文件、任务及审计。不要直接覆盖这段新数据。说明预计损失和后续合并/恢复处理，已注销账号的删除要求不能因恢复旧库被撤销。
+4. 选择和目标版本匹配的、已验证的三库成套备份。当前切换前回滚点为 /opt/yubenzhe/backups/pre-internal-cutover-20261011T004550Z；其具体文件名、哈希和备份格式以实际清单为准，不假定目录等同于 scheduled snapshot 格式。
+5. SQLite 在线备份使用 backup API，不能仅复制正在写入的主 .sqlite 文件而忽略 WAL。逐库在线备份也不自动等于同一业务时刻的跨库快照；迁移回滚点必须停写成套取得。
+6. 先恢复到新的隔离目录并验证完整性、外键、表/记录及文件哈希。backup-suite.mjs 的 restore-drill 只接受它自身生成的带 manifest.json 的完整 snapshot，目标目录必须不存在。不要把非同格式备份硬套此工具。
+7. upgrade-verify.mjs 会打开并迁移传入数据库，不是只读检查。只能在已备份、所有写入者停止的既定升级目标上运行；优先隔离副本演练。不得将未确认的生产路径作为试验参数。
+8. 确认兼容性与数据处置后再实施实际恢复，成套恢复匹配的数据库、必要配置、镜像和发布资源。不把 dev.6 升级后的数据库直接交给不兼容的 0.13.0 镜像；不重建空库、不修改已应用迁移校验和、不手工伪装旧数据。
+9. 保留持久目录权限与所有者（现有部署使用应用 uid/gid 1000:1000，目录 0700、数据库和秘密文件 0600）。不能为了恢复扩大到无关项目或把秘密放进公开静态目录。
+10. 切换 ops/current 和 ops/image 后先启动一个匹配版本的写入服务完成核对，再启动另一个相同版本服务。核对门禁、数据与核心流程通过后，才恢复对外内部访问和已暂停的定时任务。
+11. 保存升级/恢复核验结论、所用备份和版本信息，但不把实际凭据、钱包、数据库、备份或包含秘密的运行输出提交 Git。发布状态变化后更新本手册和 V02-IMPLEMENTATION.txt，历史报告保持原样。
+
+工具入口（先读源码及当前运行环境，再按实际隔离路径调用）：
+  scripts/backup.mjs：SQLite backup API。
+  scripts/backup-suite.mjs：backup <sources> <backups> [retention-days]；restore-drill <snapshot> <new-directory>。
+  scripts/upgrade-verify.mjs：social.sqlite ai.sqlite admin.sqlite，包含升级写入。
+  ops/production/backup.sh、health.sh：依赖已经核对的 ops/current 和 ops/image。
+
+七、内部资料的保管与重新发布
+
+商业计划、品宣 PDF/TXT 与 internal/index.html 属于内部资料，不提交公开 Git，也不复制到无门禁站点。它们必须继续经过本手册的外层认证，不因网页构建而变成公开下载。
+当前仓库外发布副本位于：
+  C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/output/yubenzhe-internal-preview-0.14.0-dev.6/internal
+该路径以本任务 git-2 目录为基准，不在 work/yubenzhe 代码仓库内。线上已有发布目录也保留副本；恢复使用前应核对来源、文件清单与版本。
+
+stage-frontend.mjs 会重建 yubenzhe-deploy/public/frontend，不能假定此前手工加入的 internal 目录会被保留。下一轮发布顺序必须为：
+1. 完成网页构建并运行 stage-frontend.mjs。
+2. 从上述仓库外副本复制已核准内部资料到 yubenzhe-deploy/public/frontend/internal。
+3. 核对 internal/index.html 及所链接 PDF/TXT 的文件清单和相对链接，再构建部署镜像。不得先构建镜像再补文件。
+4. 部署后检查未登录不能读取内部资料，通过门禁后入口、PDF 和 TXT 都能正常访问。
+
+Git 暂存前单独检查文件清单，确保内部材料、访问凭据、钱包、数据库及备份没有进入公开提交。不要把产物被暂存脚本重建解释为可以删除仓库外唯一副本；旧线上 release 的副本也须在新版本核验后按既有保留规则处理。
+
+公网内部预览已经部署不代表代码已自动推送 Git，也不代表已完成 App Store/Google Play 或原生交付。任何后续收费、主网、商业服务商接入仍须按实际授权与验收边界推进。

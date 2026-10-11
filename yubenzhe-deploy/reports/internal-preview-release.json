@@ -1,0 +1,131 @@
+{
+  "version": "0.14.0-dev.6",
+  "checkedAt": "2026-10-11T01:03:39.973Z",
+  "sourceBaseCommit": "65aeddc",
+  "deployment": {
+    "origin": "https://66.42.56.29",
+    "server": "66.42.56.29",
+    "release": "/opt/yubenzhe/releases/0.14.0-dev.6",
+    "image": "yubenzhe-public:0.14.0-dev.6",
+    "stage": "internal-preview",
+    "publicFrontend": false,
+    "adminAccess": "loopback only",
+    "health": "frontend and admin healthy",
+    "backupTimers": "active",
+    "backupVerified": true,
+    "previousRelease": "0.13.0",
+    "consistentRollbackBackup": "/opt/yubenzhe/backups/pre-internal-cutover-20261011T004550Z",
+    "initialArchiveSha256": "531edf808e0a468822a30b44ae600a28fc355060a6d046a504af8e4bd37b94da",
+    "finalImageId": "sha256:b6df936c93477ed7cb3620d8801a67d3bfa97f5e51b1ce2eb17aadf2dfdfc9dd",
+    "finalPayloadSha256": "3edfb2f2d234cf0b3a4c340262389e74893a9906cd20021f9a838eeb30deeb11",
+    "finalVerifiedAt": "2026-10-11T01:05:14.228Z"
+  },
+  "dataPreservation": {
+    "rehearsal": true,
+    "finalMigration": [
+      {
+        "kind": "social",
+        "integrity": "ok",
+        "existingRecordsUnchanged": true
+      },
+      {
+        "kind": "ai",
+        "integrity": "ok",
+        "existingRecordsUnchanged": true
+      },
+      {
+        "kind": "admin",
+        "integrity": "ok",
+        "existingRecordsUnchanged": true
+      }
+    ],
+    "newSmokeData": "one synthetic internal .test account and one workflow task"
+  },
+  "tests": {
+    "frontend": {
+      "passed": 419,
+      "failed": 0
+    },
+    "backend": {
+      "passed": 219,
+      "failed": 0
+    },
+    "contractsIncludingActualWalletEvm": {
+      "passed": 38,
+      "failed": 0
+    },
+    "independentAdminBuild": true,
+    "consumerBuild": true,
+    "publicBoundaryChecks": true,
+    "publicWorkflow": {
+      "checkedAt": "2026-10-11T00:51:53.841Z",
+      "account": "internal synthetic .test email",
+      "taskStatus": "succeeded",
+      "spentTrialPoints": "30",
+      "outputStatus": 200,
+      "outputBytes": 498
+    },
+    "serverModel": {
+      "provider": "ollama",
+      "model": "qwen3:0.6b",
+      "readiness": true,
+      "actualOutput": "连接正常。"
+    },
+    "readOnlyContractReview": "Exact deployment input, chain97, both runtime hashes and wallet unknown-transaction protection checked; no internal testnet blocker found",
+    "productSessionSurvivedRestart": true,
+    "finalBoundaryEvidence": "internal-final-boundary-checks.json"
+  },
+  "wallet": {
+    "chainId": 97,
+    "realRpcChecked": true,
+    "localEncryptedSigning": true,
+    "receiptVerification": true,
+    "mainnetEnabled": false,
+    "testnetDeployed": true,
+    "testnetTransactionsSent": 7,
+    "dedicatedTestAddress": "0xf8821AEebBd31869cac02C1df48089374570a066",
+    "privateKeysOnServer": false,
+    "chainConfigEnabled": true,
+    "tokenAddress": "0xD19c2Fc5e03980DBE89Ca927ec40105b42829e4a",
+    "distributionAddress": "0x6E12639fa9477eE4Acdd58acC974ec1734c50b9D",
+    "actions": [
+      "deploy-token",
+      "deploy-equal",
+      "approve",
+      "fund",
+      "transfer",
+      "claim",
+      "refund"
+    ],
+    "finalState": {
+      "funded": true,
+      "refunded": true,
+      "claimedCount": "1",
+      "totalYBZt": "10003.0",
+      "paidYBZt": "5001.5",
+      "returnedYBZt": "5001.5",
+      "remainingYBZt": "0.0",
+      "recipientAClaimed": true,
+      "recipientBClaimed": false,
+      "contractTokenUnits": "0",
+      "remainingAllowanceUnits": "0",
+      "conservation": true
+    },
+    "evidence": "internal-chain-acceptance.json",
+    "explorerSourceVerification": "pending; reproducible compiler input provided"
+  },
+  "access": {
+    "staticAndDownloads": "login gate",
+    "productApis": "401 without outer session",
+    "legacySharedAi": "404 after gate",
+    "simulationEmailDomain": ".test only",
+    "secretsCommitted": false
+  },
+  "limitations": [
+    "Internal shared gate is not organization RBAC",
+    "Simulated .test email is not real email ownership verification",
+    "Cloud desktop, actual mail sending, payments and mainnet remain unconfigured",
+    "Older native packages lack the new gate session; web preview is the current review surface",
+    "Random distribution remains disabled"
+  ]
+}
