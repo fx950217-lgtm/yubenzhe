@@ -1,0 +1,84 @@
+YBZ 愚笨者代码功能资产审计
+日期：2026-10-11
+范围：当前未提交的 0.14.0-dev.7 源码；以 AGENTS.md、PROJECT_CONTEXT.md、V0.2 需求和本轮 diff 为依据。
+本报告不包含凭据、数据库内容或钱包秘密；没有删除任何源码，没有部署或提交 Git。
+
+一、结论
+当前仓库不是只有界面：真实产品账号、社交、积分任务、成果文件、社区审核和自托管测试网钱包已有可运行链路。仍需区分“已运行”“外部服务未接通”“只作开发验证”，不能按旧文件名或目录名批量删除。tongban 是兼容工程名和应用标识，不是应删的旧品牌。
+本轮主要增量是实际产品后台对齐、Android/Windows 内部门禁桥及成果导出。审计时包版本已改为 dev.7，但构建、安装、生产部署是否完成应以主任务最后的交付证据为准。现有 AGENTS/PROJECT_CONTEXT 中 dev.6 网页已部署、旧原生 0.13 的段落是本轮起点，不能直接当作 dev.7 交付状态。
+
+二、正在使用的功能资产：保留
+1. 网页入口和品牌导航
+   tongban/src/app.js、app-navigation.js、theme-skins.js/.css 是真实入口。五 Tab 为工作台、消息、钱包、发现、我的；默认工作台。发现保留朋友圈、认识新朋友、收藏，业务入口移到工作台。app.js 最后导入 theme-skins.css，最终覆盖顺序有业务意义。
+   app-v4.css、app-v6.css、theme-lilac.css、theme-minimal.css、social-minimal.css、mine-minimal.css、discover-v5.css 虽含旧版名字，仍在实际导入链。不能仅凭文件名认定无用。后续可合并样式，但须先做三皮肤及各断点回归。
+
+2. 独立产品账号和社交
+   前端 social-client、account-access-client/ui、account-security-client、account-ui、profile-photo、live-social、live-people、live-moments；后端 social-service、account-access、community 等模块承担注册恢复、公开 ID、头像、好友、群成员权限、聊天、朋友圈和治理。
+   产品身份依赖内部 UUID，公开 ID 修改不更换数据主人。消息页通讯录和三项加号菜单仍是实际功能。账号恢复、注销、钱包删除属于不同生命周期。
+
+3. 工作台和积分
+   workbench-hub、workbench、points、ai-workspace 是当前导入链；后端 product-modules 挂载 points-service、workbench-service、community-service。
+   可运行的文件流程有计划确认、积分预留、逐步执行、实际成果、取消结算、失败释放及任务权限。不能把“可执行文件规则”描述成所有业务均可由通用 AI 自动赚钱。
+   本轮后台限制账号后，未完成任务停止并释放未用积分；真实产品后台可核对账号、积分和任务，避免只展示旧管理样本。
+
+4. 赏金、服务商、发行申请与管理端
+   discover-community.js、discover-workbench.js、discover-token.js 仍被当前界面模块引用；入口迁移并未让它们失效。
+   yubenzhe-deploy/server/product-admin.mjs 与 ui/product-ops.* 是本轮真实产品运营视图；通过 modules.operations 接入 server。账号限制采用内部 UUID、版本与请求幂等，审核有合法状态约束。服务商审批、赏金交付或发行申请通过不代表真实付款、商家资质全部具备或链上代币已部署。
+   管理端仍依赖 upstream/admin/core.mjs 和存储适配器；不能删除整个 upstream/admin。旧样本记录不能拿来充当真实产品运营数据。
+
+5. 本机收藏和历史内容保护
+   favorites.js 实现本机文字/链接收藏，写入 tongban.favorites.v1；支持乐观快照校验、容量限制和保存失败提示。它不是服务器同步收藏。
+   旧草稿与历史收藏读取仍在当前发现/收藏路径中，不能因新入口改名删除旧存储键；旧内容不自动上传。
+
+6. 钱包和链上样例
+   wallet、wallet-compatibility、wallet-import-ui、wallet-watchlist、wallet-fees、distribution-preview、chain-preview-config 都在运行入口的依赖图中。
+   本机加密保管与签名支持 EVM 助记词、私钥、keystore、只读观察等能力；助记词与产品账号密码分离。实际手续费取回执，未知或预估不能伪装成固定 0.01 美元。
+   contracts/src/EqualDistribution.sol 与 InternalTestToken.sol 已有 BSC97 真实验收记录。已结束的活动只能审核，不应表述为还可领取。链上样例不等于主网业务、Gas 代付或积分兑换开放。
+
+7. 原生封装与构建输入
+   native-preview.js/native-runtime.js，以及 yubenzhe-desktop/src/internal-preview.cjs/security.cjs/main.cjs/preload.cjs 是本轮真实原生连接/导出路径。Android 对应 Java 插件有独立门禁、会话和文件策略。
+   Windows 保留既有 appId 与 persist:yubenzhe 分区；本轮没有主动清空钱包/账号存储。包升级实际保留情况仍需安装验收，静态审查不能替代。
+   Android wrapper JAR、desktop build/icon.ico、锁文件、原生配置与复制网页脚本是构建输入，不是普通缓存。
+   src/sw.js 虽不在 app.js 的静态模块 import 图中，build.mjs 会复制，notification-settings.js 会注册；它不能作为未引用文件删除。
+
+三、保留但有外部接入或验收缺口
+1. 邮箱：内测 .test 模拟码只供通过外门禁者使用，不发送真实邮件；共享门禁不等于真实多租户邮箱认证。真实发信和恢复渠道仍需服务商与投递验收。
+2. AI：服务器已有 Ollama qwen3:0.6b 对话健康证据，不能说完全没有模型；付费模型、通用多代理执行、工具授权、生产级质量和成本治理不是由这条健康检查证明。
+3. 云机、工具凭据、作者佣金、真实收费、营销代币和 Gas 代付：保留清楚的入口/能力状态，未接通时不能假成功或将积分当可转让资金。云机入口不等于已经提供可用云电脑。
+4. 推送：Web Push 代码及配置接口存在，浏览器/原生真实投递、后台保活、离线状态需分别验收，不能以 service worker 文件存在推断完成。
+5. iOS：本轮新内测桥限定 Android/Windows；不能把旧 iOS 越狱快照当作已同步的 App Store 包。签名、最新快照、审核账户、商店合规和真机生命周期需要独立交付。
+6. 钱包：硬件钱包直连、跨链、独立合约审计、区块浏览器公开源码验证与主网运营均不能从现有测试网样例推断完成。
+7. tongban/src/i18n.js 有独立单元测试，但未进入当前 app.js 运行导入链。保留为语言基础设施；不能据此宣称完整双语界面已接通。
+
+四、历史、开发、测试资产：不进入用户能力宣传，暂不删源码
+1. tongban/src/discover-moments.js/.css：旧本机模拟朋友圈组件，当前活跃朋友圈由 live-moments 实现；旧组件仍有专用测试。后续可以决定归档，但先核对历史数据读取，不恢复为真实社交入口。
+2. social.css、social-v3.css、social-v4.css：在已核对的网页入口及构建脚本中未发现当前引用，列为待归档候选，不宣称已安全删除。对比上一节仍被导入的旧名 CSS，不可一概处理。
+3. scripts/simulate-group-gifts-100.mjs：明确失效的旧 SIM 托管红包模拟脚本；仍 import 已移除的 yubenzhe-deploy/server/platform-assets.mjs。它不是当前业务构建入口，不能直接用于本版验收。应归档/标注历史；不能为让它运行而恢复已下线的平台托管账务。
+4. contracts/src/SingleDistribution.sol：随机分发研究原型，编译/ABI 导出/测试仍引用；选择性中止边界未解决，当前部署与消费者写入不开启随机模式。它是保留研究代码，不是上线承诺，也不是毫无引用的垃圾。
+5. tests、reports、模拟脚本、设计参考及历史版本报告用于回归、审计和交接，不能拿旧通过数覆盖新版本，也不能为“精简”删掉升级证据。
+6. migrations 014/015、retire-platform-assets 等是升级和离线归档边界。已应用迁移与校验和不得改写；旧 SIM 数据不转换成 POINT。旧资产接口返回 410 是兼容保护，不是恢复旧产品能力。
+7. node_modules、dist、构建缓存、旧安装包通常可重建，但清理前须核对路径、可复现输入与当前交付包。数据库、钱包、本机收藏、签名材料和备份不属于缓存。
+8. 商业计划/品宣 PDF、TXT 和 internal/index.html 是内部资料；发布副本在仓库外，不能为了补齐静态资源放入公开 Git。stage-frontend 后需按运行手册重新复制内部资料。
+
+五、本轮原生专项审查结果
+已复现并修复的问题：
+A. 持有钱包且从 #wallet 冷启动，内部门禁替换页面后不存在 #page；余额刷新/后台锁定仍渲染导致异常，刷新标志可能卡住。现有 renderWallet 空节点保护与 try/finally 已修复，相关回归通过。
+B. 原生桥缓存产品 ybz_social Cookie 时，退出后迟到的登录/密码响应可重新合并 Cookie。现桥仅保留外门禁 ybz_front_session，产品身份继续使用独立 Bearer；迟到产品 Cookie 不再恢复账号。桌面回归通过，Android 已由负责代理同步策略和断言。
+
+C. Windows 实际启动发现空白页：生成的 index 引用带版本参数的 app.js/app.css，旧自定义协议拒绝所有查询参数。已将资源规则收敛为仅接受固定两项资源且版本必须等于包装版本，增加读取真实构建 index 的回归。33 项桌面测试通过，最终 NSIS 安装后可访问树确认内测页面正常。
+
+独立复测：前端 native-preview/native-wallet-lifecycle/artifact-export 共 9/9；桌面 internal-preview/artifact-export/host 共 20/20，通过。
+确认的防护包括固定 HTTPS 主机、请求路径和头白名单、不跟随凭据跳转、主窗口主 Frame IPC 校验、sandbox/contextIsolation、无 renderer Node、原生导出文件类型/大小/UTF-8 检查、取消保存不冒充成功、门禁过期锁钱包。
+外门禁密码没有落入新持久存储；产品 Bearer 仍使用原有账号存储设计。此结论不是全面渗透审计，也不替代真实安装、弱网、应用升级和前后台切换测试。
+
+非阻断收尾已核实修正：server/start.mjs 启动日志现为 0.14.0-dev.7；旧 chain-gifts/capabilities 已移除错误的未部署结论，明确聊天分发与积分活动仍关闭，钱包内测合约状态由钱包页面独立查询。没有借此开启旧活动或积分换资产。
+
+六、100 轮真实 HTTP 业务旅程证据
+脚本：yubenzhe-deploy/scripts/simulate-user-journeys-100.mjs
+明细：yubenzhe-deploy/reports/user-journeys-100.json 与 .txt
+最终 dev.7 复跑：2026-10-11 01:30:07–01:30:15 UTC，100/100 轮、300 个合成产品账号、2504 次真实 HTTP 请求、1200 项业务断言通过，失败 0。22 次 BUSY/429 通过有限退避恢复，未降低服务端并发哈希限制；新测试状态与既有/生产数据隔离，social/admin 数据库完整性正常、外键错误 0、worker 错误 0。
+覆盖注册恢复、资料 ID/头像、好友私聊、群权限/文件隔离、朋友圈、任务积分预算与真实成果、取消/失败边界、赏金交付、服务商/发行审核、举报、后台账号限制/恢复和越权拒绝。
+这是自动模拟用户，不是 100 位真人；不是把 100 个单元测试称为用户实测。当前两份报告来自冻结后 dev.7 源码重新执行，JSON 的 sourceVersion 为 0.14.0-dev.7，没有改写旧跑测版本号。此前 dev.6 两份报告已保留至仓库外 work/dev7-qa/previous-user-journeys/（文件名带原始开始时间）。本次新隔离状态为工作空间 tmp/ybz-user-journeys-2026-10-11T01-30-07-546Z-841d2c；未读取旧库、未访问生产。HTTP 旅程不覆盖原生桥和 UI；收藏的真实本机操作、浏览器 UI、原生 UI、邮件服务、支付、真实云机和真实硬件钱包仍需另列证据。
+
+七、建议执行顺序
+先完成 dev.7 全量测试与网页/后台构建，再同步原生快照、安装验证账号/钱包保留和成果保存，最后更新当前交接文档与交付清单。修复上述历史脚本和未引用资源的归档位置可以单独做小范围变更；本轮不以删除源码制造“已整理完成”的假象。

@@ -1,5 +1,6 @@
 'use strict';
 
+const APP_VERSION = require('../package.json').version;
 const LOCAL_ORIGIN = 'yubenzhe://app';
 const LOCAL_FILES = Object.freeze({
   '/': ['index.html', 'text/html; charset=utf-8'],
@@ -25,7 +26,7 @@ function isLocalUrl(value) {
 function localAsset(value) {
   if (!isLocalUrl(value)) return null;
   const url = parsed(value);
-  if (url.search) return null;
+  if (url.search && !(['/app.js','/app.css'].includes(url.pathname) && url.search === '?v=' + APP_VERSION)) return null;
   return Object.hasOwn(LOCAL_FILES, url.pathname) ? LOCAL_FILES[url.pathname] : null;
 }
 function isExternalUrl(value) {
@@ -65,4 +66,17 @@ function validateJsonExport(value) {
   return { filename, content };
 }
 
-module.exports = { LOCAL_ORIGIN, CSP, isLocalUrl, localAsset, isExternalUrl, isSocialApiUrl, isSocialAvatarUrl, isAllowedRequest, validCameraRequest, validateJsonExport };
+module.exports = { validateArtifactExport, LOCAL_ORIGIN, CSP, isLocalUrl, localAsset, isExternalUrl, isSocialApiUrl, isSocialAvatarUrl, isAllowedRequest, validCameraRequest, validateJsonExport };
+
+function validateArtifactExport(value){
+  const types={txt:'text/plain',csv:'text/csv',md:'text/markdown',json:'application/json'};
+  if(!value||typeof value!=='object')throw Error('交付文件无效。');
+  const {filename,mimeType,bodyBase64}=value;
+  const ext=typeof filename==='string'?filename.split('.').pop().toLowerCase():'';
+  if(typeof filename!=='string'||filename.length>120||/^[. ]|[. ]$|[\\/:*?"<>|\x00-\x1f\x7f]/.test(filename)||!types[ext]||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(filename)||mimeType!==types[ext])throw Error('交付文件名或类型无效。');
+  if(typeof bodyBase64!=='string'||bodyBase64.length>22369624||bodyBase64.length%4!==0||!/^[A-Za-z0-9+/]*={0,2}$/.test(bodyBase64))throw Error('交付文件无效或过大。');
+  const bytes=Buffer.from(bodyBase64,'base64');
+  if(bytes.length>16*1024*1024||bytes.toString('base64')!==bodyBase64)throw Error('交付文件无效或过大。');
+  new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  return {filename,ext,bytes};
+}

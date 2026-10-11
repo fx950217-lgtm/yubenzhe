@@ -1,0 +1,107 @@
+{
+  "version": "0.14.0-dev.7",
+  "archiveSha256": "510c50a26075af0285f91c3aeb4ac271a5c4d799b685b76d50f0d57358e78982",
+  "newImage": "sha256:754236219f12f802ea935a0a2e19eba3e4b9dbe5d081f869f1371586ccc74387",
+  "backup": "/opt/yubenzhe/backups/pre-dev7-cutover-20261011T013045Z/snapshot-20261011T013045375Z-92db66a1",
+  "allExistingRecordsUnchanged": true,
+  "persistentMountsPreserved": true,
+  "databases": {
+    "social": {
+      "integrity": "ok",
+      "foreignKeyViolations": 0
+    },
+    "ai": {
+      "integrity": "ok",
+      "foreignKeyViolations": 0
+    },
+    "admin": {
+      "integrity": "ok",
+      "foreignKeyViolations": 0
+    }
+  },
+  "http": {
+    "health": {
+      "ok": true,
+      "service": "frontend",
+      "version": "0.14.0-dev.7",
+      "stage": "internal-preview"
+    },
+    "anonymous:/": "gate",
+    "anonymous:/build-info.json": "gate",
+    "anonymous:/internal/index.html": "gate",
+    "anonymous:/internal/business-plan.pdf": "gate",
+    "anonymous:/install.html": "gate",
+    "anonymous:/api/social/access/capabilities": 401,
+    "anonymous:/api/chain-preview/config": 401,
+    "authenticatedBuildVersion": "0.14.0-dev.7",
+    "chainConfig": {
+      "enabled": true,
+      "chainId": 97,
+      "mode": "equal",
+      "preserved": true
+    },
+    "authenticated:/internal/index.html": 200,
+    "authenticated:/internal/business-plan.pdf": 200,
+    "authenticated:/internal/business-plan.txt": 200,
+    "authenticated:/internal/chain-acceptance.json": 200,
+    "oldAI:/api/ai/capabilities": 404,
+    "oldAI:/api/ai/workspaces": 404,
+    "crossOriginConfig": 403,
+    "adminAnonymous": "gate",
+    "adminAnonymousAPI": 401,
+    "adminVersion": "0.14.0-dev.7"
+  },
+  "downloads": [
+    {
+      "file": "YBZ-0.14.0-dev.7-android.apk",
+      "anonymous": "gate",
+      "authenticatedHead": 200,
+      "bytes": 4198472,
+      "contentType": "application/vnd.android.package-archive"
+    },
+    {
+      "file": "yubenzhe-0.14.0-dev.7-windows-x64-setup.exe",
+      "anonymous": "gate",
+      "authenticatedHead": 200,
+      "bytes": 112382457,
+      "contentType": "application/octet-stream"
+    },
+    {
+      "file": "yubenzhe-0.14.0-dev.7-windows-x64.zip",
+      "anonymous": "gate",
+      "authenticatedHead": 200,
+      "bytes": 153976317,
+      "contentType": "application/zip"
+    }
+  ],
+  "model": {
+    "provider": "ollama",
+    "model": "qwen3:0.6b",
+    "connected": true
+  },
+  "proxyAndModelContainersUnchanged": true,
+  "timersRestored": {
+    "yubenzhe-health.timer": true,
+    "yubenzhe-backup.timer": true
+  },
+  "scheduledJobManualCheck": {
+    "yubenzhe-backup.service": {
+      "Result": "success",
+      "ExecMainStatus": "0",
+      "ActiveState": "inactive"
+    },
+    "yubenzhe-health.service": {
+      "Result": "success",
+      "ExecMainStatus": "0",
+      "ActiveState": "inactive"
+    }
+  },
+  "publicScriptPermissionsVerified": true,
+  "initialAttempt": {
+    "validationScriptError": "CookieJar namespace collision",
+    "automaticallyRolledBack": true,
+    "previousVersion": "0.14.0-dev.6",
+    "databaseOverwrites": false
+  },
+  "completedAt": "2026-10-11T01:31:48.125210+00:00"
+}

@@ -42,7 +42,7 @@ async function host({ saveResult = { canceled: true }, writeError = null, camera
   const fakeFs = { readFile: async () => Buffer.from('local content'), writeFile: async (...args) => { if (writeError) throw writeError; calls.writes.push(args); } };
   const filename = path.resolve(__dirname, '../src/main.cjs');
   vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {
-    require: name => name === 'electron' ? electron : name === 'node:fs/promises' ? fakeFs : name === './security.cjs' ? security : name === './local-ai.cjs' ? {createLocalAI:()=>({status:async()=>({available:true,models:[]}),generate:async()=>({text:'test'}),cancel:()=>true})} : require(name),
+    require: name => name === 'electron' ? electron : name === 'node:fs/promises' ? fakeFs : name === './security.cjs' ? security : name === './internal-preview.cjs' ? {createInternalPreview:()=>({status:async()=>({authenticated:false}),login:async()=>({authenticated:true}),logout:async()=>({authenticated:false}),request:async()=>({status:200,bodyBase64:'',headers:{}}),clear:()=>{calls.previewCleared=true;}})} : name === './local-ai.cjs' ? {createLocalAI:()=>({status:async()=>({available:true,models:[]}),generate:async()=>({text:'test'}),cancel:()=>true})} : require(name),
     __dirname: path.dirname(filename), URL, Response, Buffer, console, Set,
   }, { filename });
   await new Promise(resolve => setImmediate(resolve));
@@ -135,3 +135,6 @@ test('local AI IPC accepts only the trusted main frame and scoped cancellation',
   win.webContents.mainFrame.url='https://evil.example';
   await assert.rejects(ipc.handlers['yubenzhe:local-ai-generate'](event(),{}));
 });
+
+test('internal preview IPC refuses other frames and clears access when window closes',async()=>{const{ipc,event,win,calls}=await host();for(const method of ['status','login','logout','request'])await assert.rejects(ipc.handlers['yubenzhe:internal-'+method]({...event(),senderFrame:{url:'yubenzhe://app/index.html'}}));assert.equal((await ipc.handlers['yubenzhe:internal-status'](event())).authenticated,false);win.emit('closed');assert.equal(calls.previewCleared,true);});
+test('artifact export needs trusted frame, handles cancel and preserves chosen text extension',async()=>{const payload={filename:'订单.csv',mimeType:'text/csv',bodyBase64:Buffer.from('a,b\n1,2').toString('base64')};const h=await host({saveResult:{canceled:false,filePath:'/selected/订单.csv'}});await assert.rejects(h.ipc.handlers['yubenzhe:save-artifact']({...h.event(),senderFrame:{url:'https://elsewhere.test'}},payload));assert.equal((await h.ipc.handlers['yubenzhe:save-artifact'](h.event(),payload)).saved,true);assert.equal(h.calls.writes[0][1].toString(),'a,b\n1,2');const cancel=await host();assert.equal((await cancel.ipc.handlers['yubenzhe:save-artifact'](cancel.event(),payload)).saved,false);const wrong=await host({saveResult:{canceled:false,filePath:'/selected/x.exe'}});await assert.rejects(wrong.ipc.handlers['yubenzhe:save-artifact'](wrong.event(),payload));assert.equal(wrong.calls.writes.length,0);});

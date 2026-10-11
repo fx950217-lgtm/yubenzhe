@@ -4,7 +4,9 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const { createLocalAI } = require('./local-ai.cjs');
 const localAI = createLocalAI();
-const { LOCAL_ORIGIN, CSP, isLocalUrl, localAsset, isExternalUrl, isAllowedRequest, validCameraRequest, validateJsonExport } = require('./security.cjs');
+const {createInternalPreview} = require('./internal-preview.cjs');
+const internalPreview = createInternalPreview();
+const { LOCAL_ORIGIN, CSP, isLocalUrl, localAsset, isExternalUrl, isAllowedRequest, validCameraRequest, validateJsonExport, validateArtifactExport } = require('./security.cjs');
 
 app.enableSandbox();
 app.setName('愚笨者');
@@ -80,12 +82,18 @@ async function initialize() {
   // A native permission/save dialog belongs to this app; do not tear down the scanner/export behind it.
   window.on('blur', () => { if (!cameraPrompt && !saving) lockWallet(); });
   window.on('minimize', lockWallet);
-  window.on('closed', () => { localAI.cancel(); window = null; });
+  window.on('closed', () => { localAI.cancel(); internalPreview.clear(); window = null; });
   window.once('ready-to-show', () => window?.show());
   powerMonitor.on('lock-screen', lockWallet);
   powerMonitor.on('suspend', lockWallet);
   await window.loadURL(`${LOCAL_ORIGIN}/index.html`);
 }
+
+for (const method of ['status','login','logout','request']) ipcMain.handle('yubenzhe:internal-'+method, async (event, value) => {
+  if (!trustedSender(event)) throw new Error('无法确认内部预览请求来源。');
+  if (method === 'login' && !window.isFocused()) throw new Error('请在当前应用中输入访问凭证。');
+  return internalPreview[method](value);
+});
 
 ipcMain.on('yubenzhe:open-external', (event, url) => {
   if (trustedSender(event) && isExternalUrl(url)) shell.openExternal(url).catch(() => {});
@@ -115,6 +123,18 @@ ipcMain.handle('yubenzhe:save-json', async (event, payload) => {
     return { saved: true, method: 'desktop' };
   } catch { throw new Error('未能保存文件，请检查保存位置后重试。'); }
   finally { saving = false; }
+});
+
+ipcMain.handle('yubenzhe:save-artifact',async(event,payload)=>{
+ if(!trustedSender(event)||!window.isFocused())throw Error('请在当前应用中保存文件。');
+ if(saving)throw Error('请先完成当前保存操作。');
+ const value=validateArtifactExport(payload);saving=true;
+ try{
+  const result=await dialog.showSaveDialog(window,{title:'保存交付文件',defaultPath:value.filename,filters:[{name:'交付文件',extensions:[value.ext]}],properties:['showOverwriteConfirmation','createDirectory']});
+  if(result.canceled||!result.filePath)return {saved:false};
+  if(path.extname(result.filePath).toLowerCase()!=='.'+value.ext)throw Error('请保留交付文件扩展名。');
+  await fs.writeFile(result.filePath,value.bytes,{mode:0o600});return {saved:true};
+ }finally{saving=false;}
 });
 
 if (!app.requestSingleInstanceLock()) app.quit();

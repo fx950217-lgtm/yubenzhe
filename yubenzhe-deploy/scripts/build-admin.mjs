@@ -46,7 +46,7 @@ try {
   }
   writeFileSync(resolve(temporary, 'index.html'), '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>愚笨者 · 独立验收后台</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>');
   copyFileSync(resolve(source, 'public/favicon.svg'), resolve(temporary, 'favicon.svg'));
-  for (const name of ['social-ops.html', 'social-ops.js', 'social-ops.css']) copyFileSync(resolve(root, 'ui', name), resolve(temporary, name));
+  for (const name of ['social-ops.html', 'social-ops.js', 'social-ops.css', 'product-ops.html', 'product-ops.js', 'product-ops.css']) copyFileSync(resolve(root, 'ui', name), resolve(temporary, name));
   writeFileSync(resolve(temporary, 'build-info.json'), JSON.stringify({ version, kind: 'admin', builtAt: new Date().toISOString() }, null, 2) + '\n');
   removeOutput(target);
   renameSync(temporary, target);

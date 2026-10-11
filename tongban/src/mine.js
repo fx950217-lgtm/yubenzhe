@@ -45,7 +45,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   function home() {
     return `<h1 class="mine-page-title">我的</h1><section class="mine-home-profile" aria-label="个人资料"><span class="mine-avatar" aria-hidden="true">${avatarContent('愚', profile?.avatarImage)}</span><div class="mine-home-profile-copy"><h2>${profile ? esc(profile.nickname) : '个人资料暂不可用'}</h2>${profile ? '' : '<p>原始资料已保留</p>'}<div class="mine-profile-meta">${identity()}</div>${!remote() && profile ? '<span>本机资料 · ID 尚未云端登记</span>' : ''}</div></section>${profileError ? `<div class="mine-inline-error" role="alert">${profileService ? '账号资料暂不可读，请检查网络后重新连接。' : '本机资料无法读取，请检查存储权限。'}${button('retry-profile', '重新读取资料')}</div>` : ''}
       <section class="mine-list mine-home-links" aria-label="个人入口">${row('account', '账号', '', 'account')}${row('settings', '设置', '', 'settings')}${row('cloud', '云机', '', 'cloud')}${row('about', '关于', '', 'about')}</section>
-      <p class="mine-footnote mine-home-footnote"><span lang="en">YBZ</span> · 愚笨者 · <span class="mine-number">0.14.0-dev.6</span></p>`;
+      <p class="mine-footnote mine-home-footnote"><span lang="en">YBZ</span> · 愚笨者 · <span class="mine-number">0.14.0-dev.7</span></p>`;
   }
   function account() {
     return heading('账号', '') + '<section class="mine-list mine-home-links" aria-label="账号选项">' +

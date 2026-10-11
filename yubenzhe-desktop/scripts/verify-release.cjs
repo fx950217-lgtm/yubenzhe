@@ -37,7 +37,7 @@ function pe(file) {
     assert.equal(hash(fs.readFileSync(path.join(root, '../tongban/dist', file))), sha256, `Current consumer asset: ${file}`);
     assert.equal(hash(asar.extractFile(archive, `web/${file}`)), sha256, file);
   }
-  for (const file of ['main.cjs', 'preload.cjs', 'security.cjs', 'local-ai.cjs']) assert.deepEqual(asar.extractFile(archive, `src/${file}`), fs.readFileSync(path.join(root, 'src', file)), file);
+  for (const file of ['main.cjs', 'preload.cjs', 'security.cjs', 'local-ai.cjs', 'internal-preview.cjs']) assert.deepEqual(asar.extractFile(archive, `src/${file}`), fs.readFileSync(path.join(root, 'src', file)), file);
   const pkg = JSON.parse(asar.extractFile(archive, 'package.json').toString());
   assert.equal(pkg.version, sourcePackage.version); assert.equal(pkg.productName, '愚笨者');
   const runtimePath = path.join(dist, 'win-unpacked/Yubenzhe.exe');

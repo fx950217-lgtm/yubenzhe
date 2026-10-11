@@ -1,7 +1,7 @@
 {
   "name": "yubenzhe-desktop",
   "productName": "愚笨者",
-  "version": "0.13.0",
+  "version": "0.14.0-dev.7",
   "description": "愚笨者桌面客户端，钱包与熟人社交",
   "private": true,
   "main": "src/main.cjs",

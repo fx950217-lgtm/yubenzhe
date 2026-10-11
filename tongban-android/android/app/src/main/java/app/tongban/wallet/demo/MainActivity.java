@@ -8,19 +8,30 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityManager;
 import android.content.Context;
 import android.webkit.WebView;
+import androidx.webkit.WebViewFeature;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     private long lastTouch = -10000;
     private SafeChromeClient safeChromeClient;
+    private boolean secureMainFrameBridge;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(SaveDocumentPlugin.class);
+        registerPlugin(InternalPreviewPlugin.class);
+        registerPlugin(SaveArtifactPlugin.class);
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         if (bridge == null) return;
         WebView webView = bridge.getWebView();
+        // Never permit Capacitor's legacy all-frame bridge fallback. Modern listener
+        // registrations remain intact; an unsupported WebView fails closed.
+        webView.removeJavascriptInterface("androidBridge");
+        secureMainFrameBridge = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
+            && !bridge.getConfig().isUsingLegacyBridge()
+            && bridge.getAllowedOriginRules().size() == 1
+            && bridge.getAllowedOriginRules().contains("https://localhost");
         WebView.setWebContentsDebuggingEnabled(false);
         webView.getSettings().setAllowFileAccess(false);
         webView.getSettings().setAllowFileAccessFromFileURLs(false);
@@ -33,6 +44,8 @@ public class MainActivity extends BridgeActivity {
         webView.setWebChromeClient(safeChromeClient);
         webView.setWebViewClient(new SafeWebViewClient(bridge));
     }
+
+    boolean hasSecureMainFrameBridge() { return secureMainFrameBridge; }
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {

@@ -1,0 +1,6 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+const {validateArtifactExport}=require('../src/security.cjs');
+const input=(filename='整理报告.txt',mimeType='text/plain',bytes=Buffer.from('订单\n你好'))=>({filename,mimeType,bodyBase64:bytes.toString('base64')});
+test('workbench text export preserves Chinese UTF-8, binary bytes and type',()=>{const value=validateArtifactExport(input());assert.equal(value.bytes.toString(),'订单\n你好');assert.equal(value.ext,'txt');assert.equal(validateArtifactExport(input('客户.csv','text/csv')).ext,'csv');});
+test('file exports reject path traversal, executable aliases, wrong MIME, binary and large files',()=>{for(const name of ['../x.txt','x.exe','a.txt.exe','C:\\x.txt','a/b.txt','CON.txt','nul.csv','.x.txt','a.txt '])assert.throws(()=>validateArtifactExport(input(name)));assert.throws(()=>validateArtifactExport(input('x.csv','text/plain')));assert.throws(()=>validateArtifactExport(input('x.txt','text/plain',Buffer.from([255]))));assert.throws(()=>validateArtifactExport(input('x.txt','text/plain',Buffer.alloc(16*1024*1024+1))));assert.throws(()=>validateArtifactExport({...input(),bodyBase64:'abc==='}));assert.equal(validateArtifactExport(input('x.txt','text/plain',Buffer.alloc(1024*1024,65))).bytes.length,1024*1024);});

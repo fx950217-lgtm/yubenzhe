@@ -2,7 +2,7 @@
 
 ## 当前基线
 
-先读 `PROJECT_CONTEXT.md`、`docs/requirements-v0.2.txt`、`docs/V02-IMPLEMENTATION.txt` 与 `docs/M0-RUNBOOK.txt`，再读涉及子项目的说明和实现。需求基线是 V0.2（22 章、51 项有效验收）；当前网页版本为 0.14.0-dev.6 / 公网内部预览；本地 M0 是独立回环测试模式。公网运行与回滚先读 `docs/INTERNAL-PREVIEW-RUNBOOK.txt`。发布、原生安装与测试结果必须由本轮证据确认，不能沿用历史结果。
+先读 `PROJECT_CONTEXT.md`、`docs/requirements-v0.2.txt`、`docs/V02-IMPLEMENTATION.txt` 与 `docs/M0-RUNBOOK.txt`，再读涉及子项目的说明和实现。需求基线是 V0.2（22 章、51 项有效验收）；当前网页、Android、Windows 版本为 0.14.0-dev.7 / 公网内部预览；本地 M0 是独立回环测试模式。公网运行与回滚先读 `docs/INTERNAL-PREVIEW-RUNBOOK.txt`。发布、原生安装与测试结果必须由本轮证据确认，不能沿用历史结果。
 
 用户最新 UI 约定覆盖需求全文中的旧页面结构。五 Tab 固定顺序：工作台 → 消息 → 钱包 → 发现 → 我的；工作台为默认落地页和第一主任务。工作台首页呈现深色 Hero、品牌主张、积分卡、任务入口与近期动态；具体模板仍进入工作流广场查看，赏金、服务商、活跃榜、趣味币与积分归工作台。通讯录从消息进入。发现仅保留朋友圈、认识新朋友、收藏；我的仅保留账号、设置、云机、关于，个人资料与登录管理归账号，外观、安全、帮助和安装归设置，云机指向工作台设备页。 聊天保留免费云端模型、本机模型两入口。旧 mine/points 兼容，不能因入口迁移丢失本机文字/链接收藏或历史草稿；保持返回来源及刷新路径。
 
@@ -27,12 +27,14 @@ AI 工作台为首入口。POINT 与自托管钱包分开：本地欢迎积分�
 
 ## 工程与验证
 
+- 2026-10-11 dev.7 最新交付：公网内部预览已更新至 0.14.0-dev.7，保留内测门禁和既有数据；Android 与 Windows 已同版打包。真实产品运营台入口为独立管理端 /product-ops.html。前端430、后端226、Windows33、Android8项自动测试通过；另有Android184项策略断言。最终100轮自动用户旅程通过（300个合成账号、2504次真实HTTP、1200项业务断言），不是100名真人。安卓模拟器完成覆盖升级、账号、任务、积分和文件实际保存；Windows完成安装/正常门禁画面及原生模块真实HTTPS认证/撤销联测，完整登录后UI与实体设备专项未全部验收。iOS本轮未更新，未新增链上交易。详见 docs/DEV7-RELEASE-ACCEPTANCE.txt 与 yubenzhe-deploy/reports/user-journeys-100.json。
+
 - 保持各子项目同级；`tongban` 是兼容构建路径和应用标识，不为改品牌批量重命名。
 - 使用 Node 24 与各项目锁定依赖。保留 Android wrapper JAR 和 Windows `build/icon.ico` 等必要输入。
 - `app.js` 的 theme-skins CSS 导入保持在所有 CSS 之后；新增颜色使用皮肤变量。YBZ 使用规定的墨色 Hero 和紫色主按钮两种渐变；其他区域不堆装饰渐变，2.2px 线性图标、等宽数字、中文 +0.5px/英文 -0.7px 字距、小标题 12.5px、Tab 10.5px，每个界面最多一个主行动。保留三皮肤能力，验收见 `docs/THEME-SKINS-HANDOFF.md`，不能用网页检查代替真机结果。
 - 修改后执行相关测试和网页构建。仅在交付原生版本时同步对应快照；记录受阻检查及原因，不称未运行项目已通过。
-- 2026-10-11，公网网页已切换至 0.14.0-dev.6 内部预览：https://66.42.56.29/，healthz 的 stage 为 internal-preview。前端 419/419、后端 219/219、合约 38/38，共 676 项测试通过（含真实钱包签名的本地 EVM 联测）；服务器 Ollama qwen3:0.6b 实测返回连接正常。公网未登录时静态页面与 PDF 显示门禁，产品 API 返回 401；登录门禁后可读取网页、build-info、只读链配置与 PDF，旧 /api/ai/* 入口返回 404。
-- 本轮交付仅为网页内部预览。Android、iOS、Windows 旧原生包仍为 0.13.0，未重打包，且不支持新增外层门禁；不能据网页验收声称原生已更新。
+- 历史 dev.6：2026-10-11，公网网页已切换至 0.14.0-dev.6 内部预览：https://66.42.56.29/，healthz 的 stage 为 internal-preview。前端 419/419、后端 219/219、合约 38/38，共 676 项测试通过（含真实钱包签名的本地 EVM 联测）；服务器 Ollama qwen3:0.6b 实测返回连接正常。公网未登录时静态页面与 PDF 显示门禁，产品 API 返回 401；登录门禁后可读取网页、build-info、只读链配置与 PDF，旧 /api/ai/* 入口返回 404。
+- 历史 dev.6 仅交付网页，三端旧原生包当时为0.13.0。当前Android/Windows已dev.7，iOS未在本轮更新；本轮证据见上方。
 - BSC 测试网（chainId 97）已完成真实钱包验收：2 笔部署及 approve、fund、原生 tBNB 转账、claim、refund 共 7 笔交易全部成功，均至少 3 次确认并完成主链区块一致性核验。10003 YBZt 供资后，A 领取 5001.5 YBZt，B 未领的 5001.5 YBZt 到期退回发起者；remaining、allowance、contractToken 均为 0，金额守恒。服务器链配置已启用；样例活动已结束，仅供审核，不能继续领取。合约地址与交易详见内部预览运行手册；验收报告：yubenzhe-deploy/reports/internal-chain-acceptance.json。区块浏览器源码验证尚未提交，可复现的 standard JSON 已提供。主网、真实收费、Gas 代付和积分兑资产仍关闭。
 - 历史 dev.5 验证状态：前端全量 404/404、消费者网页及独立管理端构建通过；已核对桌面与 390px 手机五页、三皮肤、云机/收藏/通讯录/近期任务路径和工作台默认落地，本地 healthz 与 build-info 均为 0.14.0-dev.5。 该轮结果记录于 `yubenzhe-deploy/reports/brand-ui-verification.json`，只作历史 UI 验收，不改写历史报告。
 - 历史 dev.4 前端全量 356/356、本地消费者网页/管理端构建与电脑/390px 手机导航通过；收藏/历史草稿刷新往返及 healthz、build-info 的 dev.4 检查已完成，该轮无新迁移，业务数据保留。历史 f11f4c1 CI 的后端 207/207、合约 23/23 只作历史基线；当前公网与原生状态见上方 dev.6 说明。

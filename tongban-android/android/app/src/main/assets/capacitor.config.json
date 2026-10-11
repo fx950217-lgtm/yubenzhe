@@ -13,7 +13,8 @@
 		"allowMixedContent": false,
 		"webContentsDebuggingEnabled": false,
 		"captureInput": false,
-		"minWebViewVersion": 105
+		"minWebViewVersion": 105,
+		"useLegacyBridge": false
 	},
 	"plugins": {
 		"CapacitorHttp": {

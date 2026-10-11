@@ -58,3 +58,5 @@ test('remote avatars use only an exact public UUID image route', () => {
   const images = CSP.split(';').find(rule => rule.trim().startsWith('img-src')).trim().split(/\s+/);
   assert.deepEqual(images, ['img-src', "'self'", 'data:', 'blob:', 'https://66.42.56.29/api/social/avatars/']);
 });
+
+test('the real generated index can load its exact versioned JS and CSS in the local protocol',()=>{const fs=require('node:fs'),path=require('node:path'),version=require('../package.json').version;const html=fs.readFileSync(path.resolve(__dirname,'../web/index.html'),'utf8');const assets=[...html.matchAll(/(?:src|href)="(\.\/app\.(?:js|css)[^"]*)"/g)].map(m=>m[1]);assert.equal(assets.length,2);for(const asset of assets){const url=new URL(asset,'yubenzhe://app/index.html').href;assert.ok(localAsset(url),url);assert.equal(isAllowedRequest(url,asset.includes('.js')?'script':'stylesheet'),true);}for(const suffix of ['?path=x','?v='+version+'&file=x','?v=old','?v='+version+'#x']){const url='yubenzhe://app/app.js'+suffix;if(!suffix.includes('#'))assert.equal(localAsset(url),null,url);}assert.equal(localAsset('yubenzhe://app/privacy.html?v='+version),null);});

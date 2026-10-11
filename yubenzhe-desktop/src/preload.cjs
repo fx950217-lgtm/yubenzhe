@@ -3,12 +3,19 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('YubenzheDesktop', Object.freeze({
   platform: 'windows',
-  version: '0.13.0',
+  version: '0.14.0-dev.7',
+  internalPreview: Object.freeze({
+    status: () => ipcRenderer.invoke('yubenzhe:internal-status'),
+    login: value => ipcRenderer.invoke('yubenzhe:internal-login', {username:value?.username,password:value?.password}),
+    logout: () => ipcRenderer.invoke('yubenzhe:internal-logout'),
+    request: value => ipcRenderer.invoke('yubenzhe:internal-request', {path:value?.path,method:value?.method,body:value?.body,headers:value?.headers}),
+  }),
   localAI: Object.freeze({
     status: () => ipcRenderer.invoke('yubenzhe:local-ai-status'),
     generate: value => ipcRenderer.invoke('yubenzhe:local-ai-generate', { model:value?.model, prompt:value?.prompt, requestId:value?.requestId }),
     cancel: requestId => ipcRenderer.invoke('yubenzhe:local-ai-cancel', requestId),
   }),
+  saveArtifact: value => ipcRenderer.invoke('yubenzhe:save-artifact',{filename:value?.filename,mimeType:value?.mimeType,bodyBase64:value?.bodyBase64}),
   saveJson: (value) => ipcRenderer.invoke('yubenzhe:save-json', {
     filename: value?.filename,
     mimeType: value?.mimeType,

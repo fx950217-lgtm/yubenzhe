@@ -1,12 +1,15 @@
 V0.2 实施与验收状态
-日期：2026-10-11　当前网页版本：0.14.0-dev.6 / 公网内部预览
+日期：2026-10-11　当前网页/Android/Windows版本：0.14.0-dev.7 / 公网内部预览
 需求：requirements-v0.2.txt（22章、51项有效验收）；编号与章节变更见V02-REQUIREMENTS-CHANGELOG.txt。
 用户本轮确认的导航结构覆盖技术需求全文中的旧页面结构；业务要求和技术边界不变，未重写需求全文。
 
 1. 当前结论
+2026-10-11 dev.7 最新交付：公网内部预览已更新至 0.14.0-dev.7，保留内测门禁和既有数据；Android 与 Windows 已同版打包。真实产品运营台入口为独立管理端 /product-ops.html。前端430、后端226、Windows33、Android8项自动测试通过；另有Android184项策略断言。最终100轮自动用户旅程通过（300个合成账号、2504次真实HTTP、1200项业务断言），不是100名真人。安卓模拟器完成覆盖升级、账号、任务、积分和文件实际保存；Windows完成安装/正常门禁画面及原生模块真实HTTPS认证/撤销联测，完整登录后UI与实体设备专项未全部验收。iOS本轮未更新，未新增链上交易。详见 DEV7-RELEASE-ACCEPTANCE.txt 与 ../yubenzhe-deploy/reports/user-journeys-100.json。
+
+以下为历史dev.6部署与链上样例记录：
 2026-10-11，公网网页已切换至 0.14.0-dev.6 内部预览：https://66.42.56.29/，healthz 的 stage 为 internal-preview。前端 419/419、后端 219/219、合约 38/38，共 676 项测试通过（含真实钱包签名的本地 EVM 联测）；服务器 Ollama qwen3:0.6b 实测返回连接正常。公网未登录时静态页面与 PDF 显示门禁，产品 API 返回 401；登录门禁后可读取网页、build-info、只读链配置与 PDF，旧 /api/ai/* 入口返回 404。
 公网内部预览需要先通过共享外层门禁，再使用独立产品账号。模拟邮箱仅允许 .test 保留域（如 tester@example.test），验证码只在已通过门禁的页面显示，不发送真实邮件；共享门禁与测试邮件不等于真实多租户邮箱认证，同一测试邮箱不应存放需对其他受邀者保密的数据。旧真实邮箱不能用模拟码接管；旧 ID＋密码和恢复码流程保留。
-本轮交付仅为网页内部预览。Android、iOS、Windows 旧原生包仍为 0.13.0，未重打包，且不支持新增外层门禁；不能据网页验收声称原生已更新。
+历史dev.6只交付网页、未打原生包；当前Android/Windows已更新dev.7，iOS本轮未更新。
 BSC 测试网（chainId 97）已完成真实钱包验收：2 笔部署及 approve、fund、原生 tBNB 转账、claim、refund 共 7 笔交易全部成功，均至少 3 次确认并完成主链区块一致性核验。10003 YBZt 供资后，A 领取 5001.5 YBZt，B 未领的 5001.5 YBZt 到期退回发起者；remaining、allowance、contractToken 均为 0，金额守恒。服务器链配置已启用；样例活动已结束，仅供审核，不能继续领取。合约地址与交易详见内部预览运行手册；验收报告：../yubenzhe-deploy/reports/internal-chain-acceptance.json。区块浏览器源码验证尚未提交，可复现的 standard JSON 已提供。
 发布范围：公网网页与后端内部模式；测试不是商店审核、完整真机或正式经营验收。访问与回滚说明见 INTERNAL-PREVIEW-RUNBOOK.txt。
 

@@ -1,13 +1,17 @@
 YBZ 愚笨者 公网内部预览运行与回滚手册
-日期：2026-10-11　当前网页服务：0.14.0-dev.6
+日期：2026-10-11　当前网页服务：0.14.0-dev.7
 适用目标：新加坡服务器 66.42.56.29（yubenzhe-sg-01）上的 /opt/yubenzhe
 需求与边界：requirements-v0.2.txt、V02-IMPLEMENTATION.txt；本地回环模式另见 M0-RUNBOOK.txt。
 
 一、已完成的发布状态
 
+dev.7最新状态：网页与真实运营后台已升级，Android和Windows安装包位于受门禁保护的install.html入口。三库保留，未新增迁移，Caddy/Ollama未替换；本轮成套停写备份、镜像与边界核对见dev.7发布验收报告。原生接口仅允许固定HTTPS产品路径；外门禁只在原生内存，产品Bearer独立，不能为兼容客户端放开公网。
+
+以下dev.6是历史切换记录和此前链上样例：
+
 访问入口：https://66.42.56.29/
-当前 healthz：version=0.14.0-dev.6，stage=internal-preview。
-当前发布目录：/opt/yubenzhe/releases/0.14.0-dev.6。
+当前 healthz：version=0.14.0-dev.7，stage=internal-preview。
+当前发布目录：/opt/yubenzhe/releases/0.14.0-dev.7。
 最终切换前备份：/opt/yubenzhe/backups/pre-internal-cutover-20261011T004550Z。
 ops/current 与 ops/image 已指向本轮核对的发布目录和镜像；此前暂停的定时任务已恢复。
 这只说明任务已恢复，不保证以后每次备份都会成功，仍须检查最新运行结果和恢复演练。
@@ -18,7 +22,7 @@ ops/current 与 ops/image 已指向本轮核对的发布目录和镜像；此前
 服务器既有 Ollama qwen3:0.6b 已实测返回连接正常，不等于通用多 AI 工作流或云电脑已接通。
 dev.5 的 404/404 和 brand-ui-verification.json 等历史报告保持原样，不能改名作为本轮证据。
 
-本轮交付是网页内部预览。Android、iOS、Windows 旧原生包仍为 0.13.0，未重新打包；它们没有本轮外层门禁会话，不能直接用于此次内测。后续原生交付需单独设计门禁接入、构建并完成真机验收。
+历史dev.6未更新原生包。当前dev.7已完成Android/Windows门禁桥、打包与部分实际设备验收；iOS本轮未更新。完整设备覆盖边界见DEV7-RELEASE-ACCEPTANCE.txt。
 BSC 测试网（chainId 97）已完成真实钱包样例验收：2 笔部署及 approve、fund、原生 tBNB 转账、claim、refund 共 7 笔交易均成功，至少 3 次确认，并逐笔核验 canonical block（主链区块一致性）。服务器 chain-preview/config.json 已 enabled=true。供资 10003 YBZt，A 领取 5001.5 YBZt，B 未领取的 5001.5 YBZt 到期退回发起者；remaining、allowance、contractToken 均为 0，金额守恒。活动已经结束，是可审核的成功样例，不能继续领取。
 验收报告：../yubenzhe-deploy/reports/internal-chain-acceptance.json。部署、交易回执与实际 Gas 是独立证据，本地 EVM 测试不替代链上核对。区块浏览器源码验证尚未提交，可复现 standard JSON 已提供；本轮验收也不替代独立安全审计。
 
@@ -127,3 +131,5 @@ stage-frontend.mjs 会重建 yubenzhe-deploy/public/frontend，不能假定此�
 Git 暂存前单独检查文件清单，确保内部材料、访问凭据、钱包、数据库及备份没有进入公开提交。不要把产物被暂存脚本重建解释为可以删除仓库外唯一副本；旧线上 release 的副本也须在新版本核验后按既有保留规则处理。
 
 公网内部预览已经部署不代表代码已自动推送 Git，也不代表已完成 App Store/Google Play 或原生交付。任何后续收费、主网、商业服务商接入仍须按实际授权与验收边界推进。
+
+本轮dev.7运行核验：镜像 sha256:754236219f12f802ea935a0a2e19eba3e4b9dbe5d081f869f1371586ccc74387；发布 /opt/yubenzhe/releases/0.14.0-dev.7；停写成套备份 /opt/yubenzhe/backups/pre-dev7-cutover-20261011T013045Z/snapshot-20261011T013045375Z-92db66a1。social/ai/admin三库完整性正常、外键0、既有记录不变；未新增迁移。Caddy/Ollama保持原容器，内测门禁保护网页/内部PDF/全部下载；真实运营API仍只在管理端认证后可用。健康与备份定时器已恢复，两个任务实际执行成功（退出0），非秘密scripts目录读取权限已修正。首次验证脚本命名冲突曾自动恢复dev.6，未覆盖数据库；修复检查器后重新取一致快照并完成dev.7切换。详见 yubenzhe-deploy/reports/dev7-server-release.json。

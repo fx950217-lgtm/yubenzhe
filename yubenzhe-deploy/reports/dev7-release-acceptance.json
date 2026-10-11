@@ -1,0 +1,85 @@
+{
+  "version": "0.14.0-dev.7",
+  "scope": "Internal review delivery; no store release or real funds operation",
+  "tests": {
+    "frontend": {
+      "pass": 430,
+      "fail": 0
+    },
+    "backend": {
+      "pass": 226,
+      "fail": 0
+    },
+    "windows": {
+      "pass": 33,
+      "fail": 0
+    },
+    "android": {
+      "pass": 8,
+      "fail": 0,
+      "policyAssertions": 184
+    }
+  },
+  "userJourneys": {
+    "rounds": 100,
+    "passed": 100,
+    "failed": 0,
+    "syntheticAccounts": 300,
+    "httpRequests": 2504,
+    "businessAssertions": 1200,
+    "source": "user-journeys-100.json",
+    "realHumanTesters": 0
+  },
+  "browser": {
+    "actual": true,
+    "flows": [
+      "synthetic email login",
+      "task plan and budget confirmation",
+      "completion and 30 used/70 released accounting",
+      "artifact preview",
+      "profile save",
+      "local favorites preserved on refresh"
+    ],
+    "actualViewportWidth": 1234,
+    "downloadRequested": true,
+    "downloadWrittenToDiskIndependentlyVerified": false
+  },
+  "android": {
+    "signed": true,
+    "sameSignerAsPrevious": true,
+    "actualEmulatorUpgrade": true,
+    "actualPhysicalDevice": false,
+    "actualTaskAndFileSave": true,
+    "oldWalletAccessed": false,
+    "sha256": "cf0f28198ac0bf4c1bbe11543a6c93f8283470e7f998511ca56cfefc4cbfebe7"
+  },
+  "windows": {
+    "codeSigned": false,
+    "actualInstallerExitCode": 0,
+    "installedAsarMatchesSource": true,
+    "actualGateUI": true,
+    "actualPostLoginFullUi": false,
+    "files": {
+      "yubenzhe-0.14.0-dev.7-windows-x64-setup.exe": {
+        "bytes": 112382457,
+        "sha256": "9024bf1c5323a5c0c7294409b3b4ce2752a0f68742c38232ff96d717c5151abf"
+      },
+      "yubenzhe-0.14.0-dev.7-windows-x64.zip": {
+        "bytes": 153976317,
+        "sha256": "64830181bbe3611a5a9ee57744d65d092055f38a10ea2b1f8acfc45d05638339"
+      }
+    },
+    "realHTTPSIntegrationPassed": true
+  },
+  "knownLimits": [
+    "Real email delivery, cloud desktops, paid services and creator commissions remain unconnected.",
+    "Wallet remains BSC testnet. No new on-chain transfers or existing-wallet recovery were exercised this round.",
+    "iOS was not updated. Native physical-device, camera, photo, push and full lifecycle acceptance is still incomplete."
+  ],
+  "server": {
+    "deployed": true,
+    "version": "0.14.0-dev.7",
+    "image": "sha256:754236219f12f802ea935a0a2e19eba3e4b9dbe5d081f869f1371586ccc74387",
+    "report": "dev7-server-release.json"
+  }
+}

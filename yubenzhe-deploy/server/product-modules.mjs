@@ -5,6 +5,7 @@ import {createPointsService} from './points-service.mjs';
 import {createCommunityService} from './community-service.mjs';
 import {createWorkbenchService} from './workbench-service.mjs';
 import {fail} from './social-validation.mjs';
+import {createProductAdmin} from './product-admin.mjs';
 export function createProductModules({database,origin,simulation=false,internalPreview=false,now=Date.now,mailAdapter,otpSecret}={}){
  const url=new URL(origin);
  validateInternalPreview({internalPreview,role:'frontend',origin,simulation});
@@ -32,7 +33,7 @@ export function createProductModules({database,origin,simulation=false,internalP
    social.authenticate(request.token);fail(410,'PLATFORM_ASSETS_REMOVED','平台托管余额与内部红包已移除。链上收付由你自己的钱包签名；积分仅用于平台服务。');
   }
   if(path.startsWith('points/'))return points.handle(request);
-  if(path==='chain-gifts/capabilities'){social.authenticate(request.token);return {custody:false,available:false,network:'BSC testnet',contractDeployed:false,gasSponsorship:false,pointsRedemption:false,reason:'链上分发合约仍在本地研发与验证，尚未部署或接入钱包。'};}
+  if(path==='chain-gifts/capabilities'){social.authenticate(request.token);return {custody:false,available:false,featureScope:'social-distribution-and-point-campaigns',network:'BSC testnet',gasSponsorship:false,pointsRedemption:false,reason:'聊天分发与积分活动入口尚未开放；不会扣积分或签署链上交易。钱包内测合约状态由钱包页面独立查询。'};}
   if(path.startsWith('chain-gifts/')||path.startsWith('point-campaigns/')){social.authenticate(request.token);fail(503,'DISTRIBUTION_UNAVAILABLE','活动尚未开放；不会扣积分或签署链上交易。');}
   if(path.startsWith('community/'))return community.handle(request);
   if(path.startsWith('workbench/'))return workbench.handle(request);
@@ -40,5 +41,5 @@ export function createProductModules({database,origin,simulation=false,internalP
  }
  let tickInFlight;
  function tick(){if(tickInFlight)return tickInFlight;tickInFlight=Promise.resolve().then(async()=>{if(testServices)workbench.tick();await social.accountAccess.flushNotifications();}).finally(()=>{tickInFlight=null;});return tickInFlight;}
- return {social,points,community,workbench,mail,handle,tick};
+ return {social,points,community,workbench,operations:createProductAdmin({database,community,now}),mail,handle,tick};
 }

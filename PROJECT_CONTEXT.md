@@ -6,7 +6,7 @@
 
 中文名：愚笨者；全球英文主名：YBZ。品牌主张：技能交给 AI，判断留给自己。英文：Let AI do the doing. You do the deciding. 三要素固定为：思维——知道要什么、为什么；决策——定方向、做取舍、担结果；创造性——把不相干的东西连起来。
 
-当前需求基线是 [V0.2](docs/requirements-v0.2.txt)，含 22 章、51 项有效验收；变更依据见 [需求映射](docs/V02-REQUIREMENTS-CHANGELOG.txt)。当前界面版本为 **0.14.0-dev.6 / 公网网页内部预览**，真实交付与验证见 [实施记录](docs/V02-IMPLEMENTATION.txt)。
+当前需求基线是 [V0.2](docs/requirements-v0.2.txt)，含 22 章、51 项有效验收；变更依据见 [需求映射](docs/V02-REQUIREMENTS-CHANGELOG.txt)。当前界面版本为 **0.14.0-dev.7 / 公网内部预览与 Android、Windows 体验版**，真实交付与验证见 [实施记录](docs/V02-IMPLEMENTATION.txt)。
 
 ## 当前能力与边界
 
@@ -24,15 +24,19 @@
 
 ## 验证与运行
 
+2026-10-11 dev.7 最新交付：公网内部预览已更新至 0.14.0-dev.7，保留内测门禁和既有数据；Android 与 Windows 已同版打包。真实产品运营台入口为独立管理端 /product-ops.html。前端430、后端226、Windows33、Android8项自动测试通过；另有Android184项策略断言。最终100轮自动用户旅程通过（300个合成账号、2504次真实HTTP、1200项业务断言），不是100名真人。安卓模拟器完成覆盖升级、账号、任务、积分和文件实际保存；Windows完成安装/正常门禁画面及原生模块真实HTTPS认证/撤销联测，完整登录后UI与实体设备专项未全部验收。iOS本轮未更新，未新增链上交易。详见 docs/DEV7-RELEASE-ACCEPTANCE.txt 与 yubenzhe-deploy/reports/user-journeys-100.json。
+
+以下 dev.6 为上一轮历史，不替代 dev.7 验收：
+
 2026-10-11，公网网页已切换至 0.14.0-dev.6 内部预览：https://66.42.56.29/，healthz 的 stage 为 internal-preview。前端 419/419、后端 219/219、合约 38/38，共 676 项测试通过（含真实钱包签名的本地 EVM 联测）；服务器 Ollama qwen3:0.6b 实测返回连接正常。公网未登录时静态页面与 PDF 显示门禁，产品 API 返回 401；登录门禁后可读取网页、build-info、只读链配置与 PDF，旧 /api/ai/* 入口返回 404。
 
 内部预览需要先通过共享外层门禁，再使用独立产品账号。模拟邮箱仅允许 .test 保留域（如 tester@example.test），验证码只在已通过门禁的页面显示，不发送真实邮件；共享门禁与测试邮件不等于真实多租户邮箱认证，同一测试邮箱不应存放需对其他受邀者保密的数据。旧真实邮箱不能用模拟码接管；旧 ID＋密码和恢复码流程保留。
 
-本轮交付仅为网页内部预览。Android、iOS、Windows 旧原生包仍为 0.13.0，未重打包，且不支持新增外层门禁；不能据网页验收声称原生已更新。
+历史 dev.6 仅交付网页，三端旧包当时为0.13.0。当前Android/Windows已dev.7且支持内部门禁，iOS本轮未更新。
 
 BSC 测试网（chainId 97）已完成真实钱包验收：2 笔部署及 approve、fund、原生 tBNB 转账、claim、refund 共 7 笔交易全部成功，均至少 3 次确认并完成主链区块一致性核验。10003 YBZt 供资后，A 领取 5001.5 YBZt，B 未领的 5001.5 YBZt 到期退回发起者；remaining、allowance、contractToken 均为 0，金额守恒。服务器链配置已启用；样例活动已结束，仅供审核，不能继续领取。合约地址与交易详见内部预览运行手册；验收报告：yubenzhe-deploy/reports/internal-chain-acceptance.json。区块浏览器源码验证尚未提交，可复现的 standard JSON 已提供。主网、真实收费、Gas 代付和积分兑资产仍关闭。
 
-公网运维、验证与回滚见 [内部预览运行手册](docs/INTERNAL-PREVIEW-RUNBOOK.txt)。升级先完成隔离副本演练，再停止 frontend/admin 两个写入者并成套备份；upgrade-verify 核对保留旧记录不变，social、ai、admin 三库完整性正常。发布目录为 `/opt/yubenzhe/releases/0.14.0-dev.6`；回滚点为 `/opt/yubenzhe/backups/pre-internal-cutover-20261011T004550Z`，ops/current 与 ops/image 已切换，自动任务已恢复。
+公网运维、验证与回滚见 [内部预览运行手册](docs/INTERNAL-PREVIEW-RUNBOOK.txt)。升级先完成隔离副本演练，再停止 frontend/admin 两个写入者并成套备份；upgrade-verify 核对保留旧记录不变，social、ai、admin 三库完整性正常。历史 dev.6 发布目录为 `/opt/yubenzhe/releases/0.14.0-dev.6`；当时回滚点为 `/opt/yubenzhe/backups/pre-internal-cutover-20261011T004550Z`，ops/current 与 ops/image 已切换，自动任务已恢复。
 
 历史 dev.5 验证状态：前端全量 404/404、消费者网页及独立管理端构建通过；已核对桌面与 390px 手机五页、三皮肤、云机/收藏/通讯录/近期任务路径和工作台默认落地，本地 healthz 与 build-info 均为 0.14.0-dev.5。 该轮验证记录为 [品牌 UI 验证报告](yubenzhe-deploy/reports/brand-ui-verification.json)。不能用历史检查替代本轮全量测试、构建与浏览器验收。
 
@@ -50,4 +54,6 @@ BSC 测试网（chainId 97）已完成真实钱包验收：2 笔部署及 approv
 
 frontend/admin 都可能写社交及 AI 数据库。升级、跨库恢复和回滚前核对两个写入者、挂载与版本，停写成套备份并隔离恢复；不改迁移校验和、不初始化空库替代原数据。SQLite 在线备份逐库一致，不等于同一业务时刻的跨库快照。详细要求见 [部署说明](yubenzhe-deploy/README.txt)。
 
-代码源：[公开 GitHub 仓库的当前开发分支](https://github.com/fx950217-lgtm/yubenzhe/tree/codex/m0-local-test)，分支为 `codex/m0-local-test`。主线大规模变更和历史审计批量删除被自动审核拒绝，`main` 与历史元数据保持不变。上一轮清理约 1985 MiB 旧安装包/缓存，本机保留备份；用户数据、凭据与钱包不作为缓存清理。本轮已核对新加坡服务器 66.42.56.29（yubenzhe-sg-01），项目路径 /opt/yubenzhe，完成 dev.6 内部预览切换。Git 只同步已提交推送的源码，凭据、数据与备份单独保管。
+代码源：[公开 GitHub 仓库的当前开发分支](https://github.com/fx950217-lgtm/yubenzhe/tree/codex/m0-local-test)，分支为 `codex/m0-local-test`。主线大规模变更和历史审计批量删除被自动审核拒绝，`main` 与历史元数据保持不变。上一轮清理约 1985 MiB 旧安装包/缓存，本机保留备份；用户数据、凭据与钱包不作为缓存清理。本轮已核对新加坡服务器 66.42.56.29（yubenzhe-sg-01），项目路径 /opt/yubenzhe，当前已完成 dev.7 内部预览升级。Git 只同步已提交推送的源码，凭据、数据与备份单独保管。
+
+本轮dev.7运行核验：镜像 sha256:754236219f12f802ea935a0a2e19eba3e4b9dbe5d081f869f1371586ccc74387；发布 /opt/yubenzhe/releases/0.14.0-dev.7；停写成套备份 /opt/yubenzhe/backups/pre-dev7-cutover-20261011T013045Z/snapshot-20261011T013045375Z-92db66a1。social/ai/admin三库完整性正常、外键0、既有记录不变；未新增迁移。Caddy/Ollama保持原容器，内测门禁保护网页/内部PDF/全部下载；真实运营API仍只在管理端认证后可用。健康与备份定时器已恢复，两个任务实际执行成功（退出0），非秘密scripts目录读取权限已修正。首次验证脚本命名冲突曾自动恢复dev.6，未覆盖数据库；修复检查器后重新取一致快照并完成dev.7切换。详见 yubenzhe-deploy/reports/dev7-server-release.json。

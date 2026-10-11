@@ -13,11 +13,16 @@
     "allowMixedContent": false,
     "webContentsDebuggingEnabled": false,
     "captureInput": false,
-    "minWebViewVersion": 105
+    "minWebViewVersion": 105,
+    "useLegacyBridge": false
   },
   "plugins": {
-    "CapacitorHttp": { "enabled": false },
-    "CapacitorCookies": { "enabled": false },
+    "CapacitorHttp": {
+      "enabled": false
+    },
+    "CapacitorCookies": {
+      "enabled": false
+    },
     "SystemBars": {
       "insetsHandling": "css",
       "style": "LIGHT",

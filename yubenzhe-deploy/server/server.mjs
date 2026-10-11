@@ -77,6 +77,19 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       }
       if (url.pathname === '/logout' || url.pathname === '/signout-with-chatgpt') { response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); response.end(gatePage(role,'',true)); return; }
       if (url.pathname.startsWith('/api/')) {
+        if(role==='admin'&&url.pathname.startsWith('/api/admin/product/')){
+          await authorizeAdmin(database,user);
+          if(!socialService?.operations)throw new AdminError(503,'PRODUCT_ADMIN_UNAVAILABLE','真实产品运营暂不可用。');
+          let input={};
+          if(request.method==='POST'){
+            checkOrigin(request);
+            if(request.headers['content-type']?.split(';')[0].trim().toLowerCase()!=='application/json')throw new AdminError(415,'JSON_REQUIRED','操作仅接受 JSON。');
+            try{input=JSON.parse(await body(request,8192));}catch(error){if(error instanceof AdminError)throw error;throw new AdminError(400,'INVALID_JSON','请求内容无效。');}
+            if(!input||typeof input!=='object'||Array.isArray(input))throw new AdminError(400,'INVALID_FIELDS','操作字段无效。');
+          }
+          const result=await socialService.operations.handle({method:request.method,path:url.pathname.slice('/api/admin/product/'.length),query:Object.fromEntries(url.searchParams),input,actor:user.userId});
+          if(result.binary){response.writeHead(200,{'Content-Type':result.mime,'Content-Length':result.binary.length});response.end(result.binary);}else json(response,result);return;
+        }
         if(role==='admin'&&url.pathname.startsWith('/api/admin/community/')){
           await authorizeAdmin(database,user);
           if(!socialService?.community)throw new AdminError(503,'COMMUNITY_UNAVAILABLE','社区管理尚未接通。');

@@ -7,6 +7,8 @@ const source = path.resolve(project, '../tongban/dist');
 const destination = path.join(project, 'www');
 const staging = path.join(project, '.www-staging');
 const consumer = JSON.parse(await readFile(path.resolve(project, '../tongban/package.json'), 'utf8'));
+const nativePackage = JSON.parse(await readFile(path.join(project, 'package.json'), 'utf8'));
+if (nativePackage.version !== consumer.version) throw new Error('安卓版本与网页版本不一致，拒绝复制旧快照。');
 const buildInfo = JSON.parse(await readFile(path.join(source, 'build-info.json'), 'utf8'));
 if (buildInfo.version !== consumer.version || !buildInfo.builtAt) throw new Error('请先构建当前版本的网页，再同步原生资源。');
 async function removeGenerated(directory) {

@@ -1,3 +1,4 @@
+import { saveArtifactFile } from './native-runtime.js';
 import './workbench.css';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>{try{const n=BigInt(v||0);return (n/1000000n)+'.'+((n%1000000n)/10000n).toString().padStart(2,'0');}catch{return '—';}};
@@ -174,7 +175,7 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
    if(name==='preview'){const turn=viewEpoch,value=await get('files/'+b.dataset.id+'/details');if(isCurrent()&&turn===viewEpoch)preview=value;return;}
    if(name==='download'){
     const f=preview?.file?.id===b.dataset.id?preview.file:[...files,...tasks.flatMap(t=>t.outputs||[]),...(selected?.outputs||[])].find(f=>f.id===b.dataset.id);if(!f)return;
-    const blob=await client.authenticatedRequest('workbench/files/'+f.id,{raw:true});if(!isCurrent())return;const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('已请求下载，请查看下载文件。');return;
+    const blob=await client.authenticatedRequest('workbench/files/'+f.id,{raw:true});if(!isCurrent())return;const result=await saveArtifactFile({filename:f.name,blob});if(isCurrent())toast(result.saved?(result.method==='browser-download'?'已请求下载，请查看下载文件。':'交付文件已保存。'):'已取消保存。');return;
    }
    if(!selected)return;
    if(!isPoints(selected))throw Error('历史试用任务不可继续扣费，请按目标新建积分任务。');

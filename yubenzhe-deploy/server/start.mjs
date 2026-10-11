@@ -30,11 +30,11 @@ const pushConfig=process.env.PUSH_CONFIG_FILE ? JSON.parse(readFileSync(process.
 if(pushConfig)webpush.setVapidDetails(pushConfig.subject,pushConfig.publicKey,pushConfig.privateKey);
 const notifications=role==='frontend'&&socialService ? createSocialNotifications({database:socialDatabase,socialService,config:pushConfig,sendNotification:webpush.sendNotification.bind(webpush)}) : null;
 const socialAI=role==='frontend'&&socialService ? createSocialAI({socialService,aiService,onCleanupError:()=>console.error('AI account cleanup pending; retry scheduled.')}) : null;
-const socialRouter=socialService ? {moderation:socialService.moderation,community:modules.community,health:()=>socialDatabase.raw.prepare('SELECT count(*) FROM social_migrations').get(),handle:request=>request.path.startsWith('notifications/')?notifications.handle(request):request.path.startsWith('ai/')?socialAI.handle(request):modules.handle(request)} : null;
+const socialRouter=socialService ? {moderation:socialService.moderation,community:modules.community,operations:modules.operations,health:()=>socialDatabase.raw.prepare('SELECT count(*) FROM social_migrations').get(),handle:request=>request.path.startsWith('notifications/')?notifications.handle(request):request.path.startsWith('ai/')?socialAI.handle(request):modules.handle(request)} : null;
 const pushTimer=notifications?setInterval(()=>notifications.tick().catch(()=>console.error('Notification worker failed; pending jobs retained.')),3000):null;
 pushTimer?.unref();
 const moduleTimer=role==='frontend'&&modules?setInterval(()=>modules.tick().catch(()=>console.error('Local module worker retry pending.')),1000):null;
 moduleTimer?.unref();
 const server=createAcceptanceServer({aiService,socialService:socialRouter,role,origin:process.env.PUBLIC_ORIGIN,publicFrontend,internalPreview,chainPreviewConfigFile:process.env.CHAIN_PREVIEW_CONFIG_FILE,authConfig,database,staticRoot:resolve(process.env.STATIC_ROOT || `./public/${role}`)});
-server.listen(port,host,()=>console.log(`${role} ${internalPreview ? 'internal-preview' : role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'} 0.14.0-dev.6 listening on ${host}:${port}`));
+server.listen(port,host,()=>console.log(`${role} ${internalPreview ? 'internal-preview' : role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'} 0.14.0-dev.7 listening on ${host}:${port}`));
 for(const signal of ['SIGTERM','SIGINT']) process.once(signal,()=>{server.close(async()=>{clearInterval(pushTimer);clearInterval(moduleTimer);await notifications?.close();await socialAI?.close();await aiService.close();aiDatabase.close();socialDatabase?.close();database?.close();process.exit(0)});setTimeout(()=>process.exit(1),12000).unref()});

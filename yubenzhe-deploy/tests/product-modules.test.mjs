@@ -36,7 +36,7 @@ test('retired custody interfaces are gone and registration creates no asset acco
  assert.equal(f.modules.assets,undefined);assert.equal(f.one("SELECT 1 FROM sqlite_master WHERE name='platform_accounts'"),undefined);assert.equal(f.one("SELECT 1 FROM sqlite_master WHERE name='platform_account_created'"),undefined);
  const state=await f.call(a,'GET','points/account');assert.equal(state.available,'1000');assert.equal(state.unit,'POINT');assert.equal(state.nonTransferable,true);
  for(const path of ['points/reward','points/transfer','points/withdrawal','points/gas','points/asset-exchange'])await assert.rejects(f.post(a,path,{amount:'1',recipient:a.id}),code('POINTS_NONTRANSFERABLE'));
- assert.equal((await f.call(a,'GET','chain-gifts/capabilities')).available,false);await assert.rejects(f.post(a,'point-campaigns/redeem',{amount:'1'}),code('DISTRIBUTION_UNAVAILABLE'));
+ const capability=await f.call(a,'GET','chain-gifts/capabilities');assert.equal(capability.available,false);assert.equal(capability.featureScope,'social-distribution-and-point-campaigns');assert.equal(Object.hasOwn(capability,'contractDeployed'),false);assert.equal(capability.pointsRedemption,false);assert.match(capability.reason,/聊天分发与积分活动入口尚未开放/);assert.doesNotMatch(capability.reason,/尚未部署|尚未接入钱包/);for(const path of ['chain-gifts/create','point-campaigns/create','point-campaigns/redeem'])await assert.rejects(f.post(a,path,{amount:'1'}),code('DISTRIBUTION_UNAVAILABLE'));assert.equal((await f.call(a,'GET','points/account')).available,'1000');
 });
 
 test('unfinished work blocks deletion atomically; completion permits cleanup while immutable identity, usage and invoices remain',async t=>{

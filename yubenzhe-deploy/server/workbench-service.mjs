@@ -70,6 +70,12 @@ export function createWorkbenchService({database,socialService,enabled=false,now
    const stale=all("SELECT * FROM workbench_tasks WHERE status='awaiting-confirmation' AND quote_expires_at<=?",now());
    for(const task of stale){if(BigInt(task.reserved_micro)>0n||BigInt(task.reserved_points)>0n||BigInt(task.cost_micro)>0n)settle(task,'cancelled');else run("UPDATE workbench_tasks SET status='cancelled',billing_state='settled',version=version+1,updated_at=? WHERE id=?",now(),task.id);event(task,'quote-expired');}
    run("UPDATE workbench_approvals SET status='expired' WHERE status='pending' AND expires_at<=?",now());
+   // A restricted account cannot keep consuming service or strand a paused reservation.
+   const restricted=all("SELECT t.* FROM workbench_tasks t JOIN account_restrictions r ON r.account_id=t.owner_id WHERE r.state<>'active' AND t.status NOT IN ('succeeded','failed','cancelled')");
+   for(const task of restricted){
+    if(BigInt(task.reserved_micro)>0n||BigInt(task.reserved_points)>0n||BigInt(task.cost_micro)>0n)settle(task,'cancelled','ACCOUNT_RESTRICTED');
+    else{run("UPDATE workbench_tasks SET status='cancelled',billing_state='settled',error_code='ACCOUNT_RESTRICTED',version=version+1,updated_at=? WHERE id=?",now(),task.id);event(task,'cancelled',{reason:'ACCOUNT_RESTRICTED'});}
+   }
    const owners=all("SELECT DISTINCT owner_id FROM workbench_tasks WHERE status IN ('queued','running')"+(pointsService?" AND billing_unit='POINT'":" AND billing_unit='LEGACY_TRIAL'"));
    for(const {owner_id:owner} of owners){
     let task=one("SELECT * FROM workbench_tasks WHERE owner_id=? AND status='running' AND billing_unit=?",owner,pointsService?'POINT':'LEGACY_TRIAL');
