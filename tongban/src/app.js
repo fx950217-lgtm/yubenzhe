@@ -27,6 +27,8 @@ import './social-minimal.css';
 import './mine-minimal.css';
 import { mountWorkbenchHub } from './workbench-hub.js';
 import { mountGroupWorkflows } from './group-workflows.js';
+import { mountAIChannelChat } from './ai-channel-chat.js';
+import { createAIChannelFiles } from './ai-channel-files.js';
 import { mountPoints } from './points.js';
 import './chain-wallet.css';
 import { createActivityTracker } from './community-client.js';
@@ -71,11 +73,12 @@ function layout(){
   if(['messages','contacts','mine','workbench','points'].includes(currentView)&&!socialClient.getProfile())socialCleanup=mountAccountGate(page,{client:socialClient,onReady:accountReady,onWallet:()=>navigate('wallet'),onRetry:initializeAccount,error:accountError,loading:accountLoading});
   else if(currentView==='wallet')renderWallet(page);
   else if(currentView==='points')socialCleanup=mountPoints(page,{client:socialClient,onNavigate:navigate});
+  else if(currentView==='workbench'&&routeOptions.route==='ai-channel')socialCleanup=mountAIChannelChat(page,{client:socialClient,fileTransfer:createAIChannelFiles({client:socialClient,ownerKey:socialClient.getProfile().userId}),deviceId:routeOptions.deviceId,onBack:()=>navigate('workbench',{hub:{mode:'work',screen:'devices'}})});
   else if(currentView==='workbench'&&routeOptions.route==='cooperation')socialCleanup=mountGroupWorkflows(page,{client:socialClient,wallet,toast,conversationId:routeOptions.conversationId,initialWorkflowId:routeOptions.workflowId,onBack:()=>navigate('workbench'),onGroup:conversationId=>navigate('messages',{conversationId}),onWallet:()=>navigate('wallet'),onUnlock:()=>unlockModal(()=>toast('钱包已解锁，请再次查看付款详情')),onWorkflowChange:({conversationId,workflowId})=>{if(currentView==='workbench'&&routeOptions.route==='cooperation'){routeOptions={route:'cooperation',conversationId,workflowId};history.replaceState({view:currentView,options:routeOptions},'',hashForView(currentView,routeOptions));}}});
   else if(currentView==='workbench'&&WORKBENCH_FEATURES.includes(routeOptions.route))socialCleanup=mountDiscoveryPage(page,'workbench');
   else if(currentView==='workbench'){
     let initializing=true;
-    socialCleanup=mountWorkbenchHub(page,{client:socialClient,toast,onCollaborate:()=>navigate('workbench',{route:'cooperation'}),onShare:file=>navigate('discover',{route:'moments',shareArtifact:file}),onPoints:()=>navigate('points'),onAccount:()=>navigate('mine'),onLegacy:()=>navigate('workbench',{route:'ai'}),onOpenFeature:route=>navigate('workbench',{route}),initialMode:routeOptions.hub?.mode,initialScreen:routeOptions.hub?.screen,initialSelected:routeOptions.hub?.selected,onScreenChange:hub=>{
+    socialCleanup=mountWorkbenchHub(page,{client:socialClient,toast,onDeviceChat:deviceId=>navigate('workbench',{route:'ai-channel',deviceId}),onCollaborate:()=>navigate('workbench',{route:'cooperation'}),onShare:file=>navigate('discover',{route:'moments',shareArtifact:file}),onPoints:()=>navigate('points'),onAccount:()=>navigate('mine'),onLegacy:()=>navigate('workbench',{route:'ai'}),onOpenFeature:route=>navigate('workbench',{route}),initialMode:routeOptions.hub?.mode,initialScreen:routeOptions.hub?.screen,initialSelected:routeOptions.hub?.selected,onScreenChange:hub=>{
       const previous=hashForView(currentView,routeOptions);routeOptions={hub};const next=hashForView(currentView,routeOptions);
       if(initializing||previous===next)history.replaceState({view:currentView,options:routeOptions},'',next);
       else{history.pushState({view:currentView,options:routeOptions},'',next);window.scrollTo({top:0,behavior:'instant'});}

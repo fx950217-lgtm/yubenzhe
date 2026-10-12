@@ -48,3 +48,11 @@ test('group tasks and group chats survive refresh without granting arbitrary nes
  const options={route:'cooperation',conversationId:group,workflowId:task};assert.deepEqual(navigationFromHash(hashForView('workbench',options)),{view:'workbench',options});
  assert.equal(normalizeNavigation('workbench',{route:'cooperation',conversationId:'../admin',workflowId:'<script>'}).options.workflowId,null);
 });
+test('computer Codex chat has a refreshable device route and preserves the existing device home',()=>{
+ const deviceId='11111111-1111-4111-8111-111111111111',options={route:'ai-channel',deviceId};
+ assert.equal(hashForView('workbench',options),'#workbench/devices/'+deviceId+'/chat');
+ assert.deepEqual(navigationFromHash(hashForView('workbench',options)),{view:'workbench',options});
+ assert.equal(navigationFromHash('#workbench/devices').options.hub.screen,'devices');
+ assert.notEqual(navigationFromHash('#workbench/devices/../chat').options.route,'ai-channel');
+ assert.notEqual(navigationFromHash('#workbench/devices/'+deviceId+'/chat/unexpected').options.route,'ai-channel');
+});

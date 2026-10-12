@@ -13,7 +13,7 @@ export function starterGoal(id){return WORKFLOW_STARTERS.find(item=>item.id===id
 const activityLabels={'awaiting-confirmation':'等待你确认',queued:'排队中',running:'正在处理',paused:'已暂停','awaiting-user':'等待你的操作','budget-paused':'需要确认预算',succeeded:'已完成',failed:'处理失败',cancelled:'已取消'};
 const activityTime=value=>{const time=new Date(value);return Number.isNaN(time.getTime())?'时间待同步':time.toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});};
 const pointNumber=value=>BigInt(value).toLocaleString('en-US');
-export function mountWorkbenchHub(root,{client,toast=()=>{},onAccount=()=>{},onLegacy=()=>{},onShare=()=>{},onPoints=()=>{},onCollaborate=()=>{},onOpenFeature=()=>{},onScreenChange=()=>{},initialMode='work',initialScreen='home',initialSelected=null,bridge=()=>globalThis.YubenzheDesktop?.localAI,mountTasks=mountWorkbench,mountChat=mountCloudChat,mountDevices=mountPersonalDevices}={}){
+export function mountWorkbenchHub(root,{client,toast=()=>{},onAccount=()=>{},onLegacy=()=>{},onShare=()=>{},onPoints=()=>{},onCollaborate=()=>{},onDeviceChat=()=>{},onOpenFeature=()=>{},onScreenChange=()=>{},initialMode='work',initialScreen='home',initialSelected=null,bridge=()=>globalThis.YubenzheDesktop?.localAI,mountTasks=mountWorkbench,mountChat=mountCloudChat,mountDevices=mountPersonalDevices}={}){
  let active=true,mode='work',screen='home',cleanupChild=null,selected=null,error='',checking=false,chatBusy=false,chatId=null,localStatus=null,model='',prompt='',answer='',answerModel='',epoch=0,taskReturn='home';
  mode=initialMode==='chat'?'chat':'work';
  const validScreens=mode==='chat'?['home','chat-cloud','chat-local']:['home','workflows','detail','devices','connections','creator','tasks'];
@@ -49,7 +49,7 @@ export function mountWorkbenchHub(root,{client,toast=()=>{},onAccount=()=>{},onL
  function render(){
   if(!current())return;
   if(mode==='chat'&&screen==='chat-cloud'){if(cleanupChild)return;shell(btn('home','‹ 返回聊天')+'<div data-cloud-chat></div>');cleanupChild=mountChat(root.querySelector('[data-cloud-chat]'),{client,onAccount});return;}
-  if(mode==='work'&&screen==='devices'){if(cleanupChild)return;shell(btn('home','‹ 返回工作')+'<div data-personal-devices></div>');cleanupChild=mountDevices(root.querySelector('[data-personal-devices]'),{client,onAccount});return;}
+  if(mode==='work'&&screen==='devices'){if(cleanupChild)return;shell(btn('home','‹ 返回工作')+'<div data-personal-devices></div>');cleanupChild=mountDevices(root.querySelector('[data-personal-devices]'),{client,onAccount,onChat:onDeviceChat});return;}
   if(mode==='chat'){renderChat();return;}
   if(screen==='tasks')return;
   if(screen==='detail'){renderDetail();return;}

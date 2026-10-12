@@ -16,12 +16,14 @@ export function normalizedHubState(value={}) {
 export function normalizeNavigation(view,options={}) {
  const safe=options&&typeof options==='object'?{...options}:{};
  if(view==='discover'&&WORKBENCH_FEATURES.includes(safe.route))return {view:'workbench',options:{route:safe.route}};
+ if(view==='workbench'&&safe.route==='ai-channel'&&routeId(safe.deviceId))return {view,options:{route:'ai-channel',deviceId:routeId(safe.deviceId)}};
  if(view==='workbench'&&safe.route==='cooperation')return {view,options:{route:'cooperation',conversationId:routeId(safe.conversationId),workflowId:routeId(safe.workflowId)}};
  if(view==='workbench'&&!WORKBENCH_FEATURES.includes(safe.route))return {view,options:{hub:normalizedHubState(safe.hub)}};
  if(view==='discover')return {view,options:{...safe,route:discoveryRoutes.has(safe.route)?safe.route:'hub',origin:safe.origin==='mine'?'mine':'discover'}};
  return {view:isAppView(view)?view:'workbench',options:safe};
 }
 export function hashForView(view,options={}) {
+ if(view==='workbench'&&options.route==='ai-channel'&&routeId(options.deviceId))return '#workbench/devices/'+options.deviceId+'/chat';
  if(view==='messages'&&routeId(options.conversationId))return '#messages/'+options.conversationId;
  if(view==='workbench'&&options.route==='cooperation')return '#workbench/cooperation'+(routeId(options.conversationId)?'/'+options.conversationId:'')+(routeId(options.workflowId)?'/'+options.workflowId:'');
  if(view==='wallet')return '#wallet';
@@ -45,6 +47,7 @@ export function navigationFromHash(hash) {
  if(['mine/points','workbench/points'].includes(value))return {view:'points',options:{}};
  if(['mine/favorites','mine/drafts'].includes(value))return {view:'discover',options:{route:value.split('/')[1],origin:'mine'}};
  const parts=value.split('/');
+ if(parts.length===4&&parts[0]==='workbench'&&parts[1]==='devices'&&parts[3]==='chat')return normalizeNavigation('workbench',{route:'ai-channel',deviceId:parts[2]});
  if(parts[0]==='messages'&&routeId(parts[1]))return {view:'messages',options:{conversationId:parts[1]}};
  if(parts[0]==='workbench'&&parts[1]==='cooperation')return normalizeNavigation('workbench',{route:'cooperation',conversationId:parts[2],workflowId:parts[3]});
  if(parts[0]==='discover')return normalizeNavigation('discover',{route:parts[1]||'hub'});
