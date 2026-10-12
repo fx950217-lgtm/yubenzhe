@@ -32,3 +32,31 @@
 .workspace .live-social .live-ai-reply strong,.workspace .live-social .live-ai-reply small { display: block; color: var(--t2); font-weight: 400; font-size: var(--fs-s); line-height: calc(1em + 8px); }
 .workspace .live-social .live-ai-reply p { margin: var(--sp-1) 0; color: var(--t1); font-size: var(--fs-b); line-height: calc(1em + 8px); white-space: pre-wrap; overflow-wrap: anywhere; }
 .workspace .live-social .live-message.is-ai>.live-avatar { background: var(--brand-1); color: var(--brand-text); }
+.workspace .mobile-wallet { max-width: 800px; margin: 0 auto; padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4); }
+.workspace .mobile-wallet .mobile-wallet-card { padding: var(--sp-4); border-radius: var(--r-l); border: 0; background: linear-gradient(140deg,var(--brand-hi),var(--brand)); color: var(--on-brand); }
+.mobile-wallet-card-top,.mobile-wallet-amount { display: flex; align-items: center; gap: var(--sp-2); }
+.mobile-wallet-card-top { min-height: 44px; }
+.workspace .mobile-wallet .mobile-wallet-card button { color: var(--on-brand); }
+.mobile-wallet .wallet-backup { background: transparent; border: 1px solid currentColor; border-radius: var(--r-s); padding: 0 var(--sp-2); font-size: var(--fs-s); line-height: calc(1em + 8px); }
+.mobile-wallet .wallet-card-menu { margin-left: auto; }
+.mobile-wallet .wallet-card-menu,.mobile-wallet .eye,.mobile-wallet .wallet-network-link,.mobile-wallet .asset-address-copy { border: 0; background: transparent; display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0; }
+.workspace .mobile-wallet .mobile-wallet-amount strong { font-size: var(--fs-num); line-height: calc(1em + 8px); font-weight: 600; font-family: var(--font-number); }
+.workspace .mobile-wallet .mobile-wallet-card p { margin: 0; font-size: var(--fs-s); line-height: calc(1em + 8px); color: inherit; }
+.mobile-wallet svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.mobile-wallet-actions { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--sp-2); }
+.mobile-wallet-actions button { border: 0; background: var(--bg-container); color: var(--brand-text); border-radius: var(--r-m); display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--sp-3) 0; font-size: var(--fs-s); line-height: calc(1em + 8px); }
+.mobile-wallet-actions button span { color: var(--t1); }
+.mobile-wallet-tabs { display: flex; gap: var(--sp-3); }
+.workspace .mobile-wallet-tabs .asset-segment { background: transparent; border: 0; border-radius: 0; color: var(--t2); padding: 0 var(--sp-1); font-size: var(--fs-b); line-height: calc(1em + 8px); }
+.workspace .mobile-wallet-tabs .asset-segment.active { color: var(--t1); border-bottom: 2px solid var(--brand); font-weight: 600; }
+.mobile-token-list,.wallet-unavailable { border-radius: var(--r-l); padding: var(--sp-4); background: var(--bg-container); }
+.mobile-token-row { display: flex; align-items: center; gap: var(--sp-3); }
+.mobile-token-row strong,.mobile-token-row small { display: block; font-weight: 400; }
+.mobile-token-row small { color: var(--t2); font-size: var(--fs-s); line-height: calc(1em + 8px); }
+.mobile-token-icon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: var(--warning-1); color: var(--warning-text); border-radius: var(--r-full); }
+.mobile-token-value { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+.wallet-record-link { display: flex; width: 100%; align-items: center; justify-content: space-between; color: var(--t2); background: transparent; border: 0; border-top: 1px solid var(--border); margin-top: var(--sp-3); padding: var(--sp-2) 0; }
+.wallet-more-list { display: grid; gap: var(--sp-2); }
+.wallet-setup-actions { display: flex; gap: var(--sp-2); }
+.workspace .mobile-wallet .wallet-setup-actions .secondary { background: transparent; border: 1px solid currentColor; }
+.workspace .mobile-wallet .wallet-custody-notice { margin: var(--sp-2) 0; text-align: center; color: var(--t2); font-size: var(--fs-s); line-height: calc(1em + 8px); }

@@ -1,3 +1,4 @@
+import {walletHomeHTML} from '../src/wallet-home.js';
 import {PUBLIC_DEPLOYMENT} from '../src/deployment-config.js';
 import {getChain} from '../src/chain-registry.js';
 import test from 'node:test';
@@ -16,7 +17,7 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{reso
 function walletHarness({exists=true,initialBalance='12.5',hidden=false,section='assets',records=[],getBalance=async()=> '24.75'}={}){
  const page={innerHTML:''},toasts=[];let reads=0,disposals=0,recordRefreshes=0;
  const walletState={exists,address:exists?'0x1111111111111111111111111111111111111111':null,unlocked:false};
- const context=vm.createContext({PUBLIC_DEPLOYMENT,walletFeeText,chainSection:section,currentView:'wallet',balance:initialBalance,balanceError:'',hideBalance:hidden,loadingBalance:false,state:()=>walletState,document:{querySelector:selector=>selector==='#page'?page:null},wallet:{NETWORK:getChain(97),getRecords:()=>records,getBalance:()=>{reads++;return getBalance()},refreshRecords:async()=>{recordRefreshes++;return []}},walletProblem:()=>{},icon:name=>'<svg data-icon="'+name+'"></svg>',toast:message=>toasts.push(message)});
+ const context=vm.createContext({PUBLIC_DEPLOYMENT,walletFeeText,walletHomeHTML,chainSection:section,currentView:'wallet',balance:initialBalance,balanceError:'',hideBalance:hidden,loadingBalance:false,state:()=>walletState,document:{querySelector:selector=>selector==='#page'?page:null},wallet:{NETWORK:getChain(97),getRecords:()=>records,getBalance:()=>{reads++;return getBalance()},refreshRecords:async()=>{recordRefreshes++;return []}},walletProblem:()=>{},icon:name=>'<svg data-icon="'+name+'"></svg>',toast:message=>toasts.push(message)});
  new vm.Script(escapeSource+'\n'+shortSource+'\n'+walletSource).runInContext(context);
  return{context,page,toasts,get reads(){return reads},get recordRefreshes(){return recordRefreshes},get disposals(){return disposals},render:()=>context.renderWallet(page),refresh:(show=false)=>context.refreshBalance(show)};
 }
@@ -24,9 +25,9 @@ function walletHarness({exists=true,initialBalance='12.5',hidden=false,section='
 test('wallet home preserves real chain amounts and has one primary action',()=>{
  const h=walletHarness();h.render();assert.match(h.page.innerHTML,/<strong class="asset-total-number" id="balance-number">12\.5<\/strong>/);assert.match(h.page.innerHTML,/测试资产无实际价值/);assert.doesNotMatch(h.page.innerHTML,/balance-card|总资产估值|USDT|\$12/);
  assert.match(h.page.innerHTML,/密钥保存在你自己的设备上，平台不托管、不接触你的资金。/);
- assert.equal((h.page.innerHTML.match(/class="primary"/g)||[]).length,1);
- for(const name of ["send","receive","asset-scan"])assert.ok(h.page.innerHTML.includes('data-action="'+name+'"'));
- assert.match(h.page.innerHTML,/设计示例 · 非交易记录/);
+ assert.ok((h.page.innerHTML.match(/class="primary"/g)||[]).length<=1);
+ for(const name of ["send","receive","exchange","wallet-more"])assert.ok(h.page.innerHTML.includes('data-action="'+name+'"'));
+ assert.doesNotMatch(h.page.innerHTML,/手续费 \$0\.01|设计示例/);assert.match(h.page.innerHTML,/行情与涨跌幅未接入/);
  assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-assets"/);assert.doesNotMatch(h.page.innerHTML,/id="recent-records"/);assert.match(h.page.innerHTML,/钱包资产/);
 });
 
@@ -40,16 +41,16 @@ test('missing and unreadable chain balance are placeholders, real zero stays zer
 test('bills use real local records and refreshing chain balances preserves the selected bills section',async()=>{
  const wait=deferred(),records=[{hash:'0x123',to:'0x1111111111111111111111111111111111111111',amount:'1.125',status:'confirmed'}];
  const h=walletHarness({section:'bills',records,getBalance:()=>wait.promise});h.render();
- assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-bills"/);assert.match(h.page.innerHTML,/id="recent-records"/);assert.match(h.page.innerHTML,/1\.125 tBNB/);assert.doesNotMatch(h.page.innerHTML,/id="token-balance"/);
- const pending=h.refresh(true);assert.equal(h.reads,1);assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/data-action="chain-bills"/);wait.resolve('24.75');await pending;
- assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-bills"/);assert.match(h.page.innerHTML,/id="balance-number">24\.75/);assert.deepEqual(h.toasts,['链上资产与交易状态已更新']);assert.equal(h.recordRefreshes,1);
+ assert.match(h.page.innerHTML,/data-wallet-section="bills"/);assert.match(h.page.innerHTML,/id="recent-records"/);assert.match(h.page.innerHTML,/1\.125 tBNB/);assert.doesNotMatch(h.page.innerHTML,/id="token-balance"/);
+ const pending=h.refresh(true);assert.equal(h.reads,1);assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/data-wallet-section="bills"/);wait.resolve('24.75');await pending;
+ assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/data-wallet-section="bills"/);assert.match(h.page.innerHTML,/id="balance-number">24\.75/);assert.deepEqual(h.toasts,['链上资产与交易状态已更新']);assert.equal(h.recordRefreshes,1);
 });
 
 test('switching section during an in-flight refresh keeps the latest selection after success or failure',async()=>{
  for(const failure of [false,true]){
   const wait=deferred(),h=walletHarness({getBalance:()=>wait.promise});h.render();const pending=h.refresh();h.context.chainSection='bills';h.render();
   if(failure)wait.reject(Error('RPC unavailable'));else wait.resolve('7.25');await pending;
-  assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-bills"/);assert.match(h.page.innerHTML,/id="recent-records"/);
+  assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/data-wallet-section="bills"/);assert.match(h.page.innerHTML,/id="recent-records"/);
   if(failure)assert.match(h.page.innerHTML,/id="balance-number">—/);
  }
 });
@@ -66,4 +67,11 @@ test('distribution entry mounts the real preview and an unconfigured deployment 
  assert.equal(dialogs[0].title,'链上等额内测');assert.match(dialogs[0].html,/data-distribution-root/);assert.match(root.innerHTML,/尚未部署/);assert.match(root.innerHTML,/不会签名或增加链上资产/);assert.doesNotMatch(root.innerHTML,/<form|<input|data-distribution-action|data-gift-composer/);assert.equal(configurationReads,1);
  await refreshButton.onclick();assert.equal(configurationReads,2);assert.doesNotMatch(root.innerHTML,/data-distribution-action/);cleanup();assert.equal(localCancellations,1);
  assert.doesNotMatch(source,/mountPlatformAssets|mountGiftComposer|assets\/|gifts\/|autoBindCreatedWallet/);
+});
+
+test('wallet reference has exactly four actions and four truthful asset categories',()=>{
+ const h=walletHarness();h.render();
+ const nav=h.page.innerHTML.match(/<nav class="mobile-wallet-actions"[\s\S]*?<\/nav>/)[0];
+ assert.deepEqual([...nav.matchAll(/data-action="([^"]+)"/g)].map(x=>x[1]),['send','receive','exchange','wallet-more']);
+ for(const section of ['defi','nft','authorizations']){h.context.chainSection=section;h.render();assert.match(h.page.innerHTML,/尚未接入/);assert.doesNotMatch(h.page.innerHTML,/id="token-balance"/);}
 });
