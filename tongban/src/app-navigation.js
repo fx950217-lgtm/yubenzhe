@@ -33,7 +33,7 @@ export function hashForView(view,options={}) {
  if(view==='discover') {
   if(WORKBENCH_FEATURES.includes(options.route))return '#workbench/'+options.route;
   const route=discoveryRoutes.has(options.route)?options.route:'hub';
-  if(options.origin==='mine'&&['favorites','drafts'].includes(route))return '#mine/'+route;
+  if(options.origin==='mine'&&['favorites','drafts','moments'].includes(route))return '#mine/'+route;
   return route==='hub'?'#discover':'#discover/'+route;
  }
  if(view==='workbench') {
@@ -46,7 +46,7 @@ export function hashForView(view,options={}) {
 export function navigationFromHash(hash) {
  const value=String(hash||'').replace(/^#/,'');
  if(value==='mine/assets')return {view:'wallet',options:{}};
- if(['mine/favorites','mine/drafts'].includes(value))return {view:'discover',options:{route:value.split('/')[1],origin:'mine'}};
+ if(['mine/favorites','mine/drafts','mine/moments'].includes(value))return {view:'discover',options:{route:value.split('/')[1],origin:'mine'}};
  const parts=value.split('/');
  if((parts.length===4||parts.length===6&&parts[4]==='ai'&&providerId(parts[5]))&&parts[0]==='workbench'&&parts[1]==='devices'&&parts[3]==='chat')return normalizeNavigation('workbench',{route:'ai-channel',deviceId:parts[2],provider:parts[5]});
  if(parts.length===3&&parts[0]==='messages'&&parts[2]==='device-ai'&&routeId(parts[1]))return normalizeNavigation('messages',{route:'device-ai',conversationId:parts[1]});

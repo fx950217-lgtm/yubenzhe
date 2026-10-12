@@ -95,7 +95,7 @@ function layout(){
 }
 function mountDiscoveryPage(page,origin){
   const initialArtifact=routeOptions.shareArtifact;delete routeOptions.shareArtifact;
-  return mountDiscover(page,{socialClient,initialArtifact,onAccount:()=>navigate('messages'),toast,onNavigate:navigate,onProfile:openDiscoverProfile,getWalletAddress:()=>state().address||'',initialRoute:routeOptions.route||'hub',initialOwnMoments:!!routeOptions.own,backLabel:origin==='workbench'?'返回 AI 工作台':origin==='mine'?'返回我的':'返回发现',onExit:origin==='discover'?undefined:()=>navigate(origin),onRouteChange:(route,meta={})=>{
+  return mountDiscover(page,{socialClient,initialArtifact,onAction:mineAction,onAccount:()=>navigate('messages'),toast,onNavigate:navigate,onProfile:openDiscoverProfile,getWalletAddress:()=>state().address||'',initialRoute:routeOptions.route||'hub',initialOwnMoments:!!routeOptions.own,backLabel:origin==='workbench'?'返回 AI 工作台':origin==='mine'?'返回我的':'返回发现',onExit:origin==='discover'?undefined:()=>navigate(origin),onRouteChange:(route,meta={})=>{
     if(!meta.localDraft&&origin==='discover'&&WORKBENCH_FEATURES.includes(route)){queueMicrotask(()=>navigate('workbench',{route}));return;}
     routeOptions={...routeOptions,route:meta.canonicalRoute||route};history.replaceState({view:currentView,options:routeOptions},'',hashForView(currentView,routeOptions));
   }});
@@ -127,7 +127,7 @@ function openScan(mode='all'){
     }});
   },()=>{active=false;dispose()});
 }
-function mineAction(action){const actions={'account-settings':accountSettings,feedback:feedbackModal,install:()=>location.assign('./install.html'),'bill-center':openBillCenter,'profile-updated':updateRailProfile,lock:()=>{wallet.lock();toast('钱包已锁定')},unlock:()=>unlockModal(()=>{socialCleanup?.refresh?.();toast('钱包已解锁')}),create:()=>beginWalletSetup(),export:exportVault,privacy:privacyModal,notice:noticeModal};actions[action]?.()}
+function mineAction(action){const actions={'my-qr':myFriendQr,'wallet-dapps':walletDapps,scan:()=>openScan(),'account-settings':accountSettings,feedback:feedbackModal,install:()=>location.assign('./install.html'),'bill-center':openBillCenter,'profile-updated':updateRailProfile,lock:()=>{wallet.lock();toast('钱包已锁定')},unlock:()=>unlockModal(()=>{socialCleanup?.refresh?.();toast('钱包已解锁')}),create:()=>beginWalletSetup(),export:exportVault,privacy:privacyModal,notice:noticeModal};actions[action]?.()}
 function displayedBalance(){if(!state().exists)return '—';if(hideBalance)return '••••••';if(balance===null)return '—';return Number(balance).toLocaleString('en-US',{maximumFractionDigits:6})}
 function renderWallet(page){
   if(!page)return;
@@ -208,7 +208,7 @@ function accountSettings(){
   modalCleanup=mountAccountSecurity(el.querySelector('[data-account-security]'),{client:socialClient,onDeleted:()=>{wallet.lock();closeModal();navigate('messages');toast('账号已注销，本机钱包保留并已锁定。')},onRefresh:()=>{updateRailProfile()}});
   el.querySelector('#account-notifications').onclick=()=>showModal('消息通知','<div id="notification-settings"></div>',body=>{modalCleanup=mountNotificationSettings(body.querySelector('#notification-settings'),{client:socialClient})});
   el.querySelector('#account-copy-id').onclick=async()=>{try{await navigator.clipboard.writeText(profile.userId);toast('用户 ID 已复制')}catch{toast('复制权限不可用，请长按 ID 复制')}};
-  el.querySelector('#account-qr').onclick=()=>showModal('我的好友码','<canvas id="my-friend-qr" class="receive-qr" aria-label="我的好友二维码"></canvas><div class="address">ID '+esc(profile.userId)+'</div><p class="modal-copy">对方使用“扫一扫”，或输入这个 ID 添加你为好友。修改 ID 后请使用新的好友码。</p>',qr=>QRCode.toCanvas(qr.querySelector('canvas'),'tongban://friend/'+profile.userId,{width:220,margin:2,color:{dark:'#8053BA',light:'#ffffff'}},error=>{if(error)toast('二维码生成失败，请使用 ID 添加好友')}));
+  el.querySelector('#account-qr').onclick=myFriendQr;
   el.querySelector('form').onsubmit=event=>{event.preventDefault();const form=event.target;busyForm(form,async()=>{if(form.elements.newPassword.value!==form.elements.repeat.value)throw new Error('两次输入的新密码不一致。');if(!/^\d{6}$/.test(form.elements.newPassword.value))throw new Error('新密码需要 6 位数字。');await socialClient.changePassword(form.elements.currentPassword.value,form.elements.newPassword.value);form.reset();if(form.isConnected&&dialog.open)closeModal();toast('账号密码已更新，其他设备需重新登录。')})};
   el.querySelector('#account-logout').onclick=()=>showModal('退出账号','<p class="modal-copy">退出后，可用 ID 和密码重新登录。服务器聊天记录和本机钱包都会保留；钱包会自动锁定。</p><p class="form-error" role="alert"></p><button class="primary" id="confirm-account-logout">确认退出</button>',confirm=>{confirm.querySelector('button#confirm-account-logout').onclick=async event=>{event.target.disabled=true;try{await socialClient.logout();wallet.lock();closeModal();navigate('messages')}catch(error){formError(error);event.target.disabled=false}}});
  });
@@ -261,3 +261,5 @@ function walletMore(){
  const actions={'records':['转账记录',()=>{closeModal();walletSection('bills');}],'dapps':['DApp 浏览器',walletDapps],'scan':['扫一扫',()=>openScan()],'watch':['观察地址',watchWallets],'compatibility':['兼容说明',walletCompatibility],'distribution':['链上等额内测',openDistributionInfo],'manage':['本机钱包管理',openWalletManagement],'lock':[state().unlocked?'锁定钱包':'解锁钱包',()=>{if(state().unlocked){wallet.lock();closeModal();layout();}else unlockModal(()=>{closeModal();layout();});}]};
  showModal('钱包工具','<div class="wallet-more-list">'+Object.entries(actions).map(([id,[label]])=>'<button type="button" class="secondary" data-wallet-tool="'+id+'">'+label+'</button>').join('')+'</div>',el=>{for(const button of el.querySelectorAll('[data-wallet-tool]'))button.onclick=()=>actions[button.dataset.walletTool]?.[1]();});
 }
+
+function myFriendQr(){const profile=socialClient.getProfile();if(!profile){navigate('messages');return;}showModal('我的好友码','<canvas id="my-friend-qr" class="receive-qr" aria-label="我的好友二维码"></canvas><div class="address">ID '+esc(profile.userId)+'</div><p class="modal-copy">对方使用“扫一扫”，或输入这个 ID 添加你为好友。修改 ID 后请使用新的好友码。</p>',qr=>QRCode.toCanvas(qr.querySelector('canvas'),'tongban://friend/'+profile.userId,{width:220,margin:2,color:{dark:'#8053BA',light:'#ffffff'}},error=>{if(error)toast('二维码生成失败，请使用 ID 添加好友')}));}

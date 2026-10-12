@@ -211,10 +211,12 @@ test('draft navigation and filters use actual entries and notify route changes',
   assert.match(app.container.innerHTML,/value="WORK_MARKER"/,'explicit saved selection is remembered per type');
 });
 
-test('discovery is exactly three entry rows and keeps business routes off its homepage',t=>{
+test('discovery is exactly two approved groups of three social and two tool entries',t=>{
   const app=mountHarness(t),markup=app.container.innerHTML;
-  assert.deepEqual([...markup.matchAll(/data-disc="([^"]+)"/g)].map(match=>match[1]),['moments','people','favorites']);
-  for(const label of ['朋友圈','认识新朋友','收藏'])assert.ok(markup.includes(label));
+  assert.deepEqual([...markup.matchAll(/data-disc="([^"]+)"/g)].map(match=>match[1]),['moments','people','favorites','wallet-dapps','scan']);
+  assert.deepEqual([...markup.matchAll(/<section class="disc-home-entries" aria-label="([^"]+)"/g)].map(match=>match[1]),['社交与收藏','发现工具']);
+  for(const label of ['朋友圈','认识新朋友','收藏','DApp 浏览器','扫一扫'])assert.ok(markup.includes(label));
+  assert.doesNotMatch(markup,/disc-brand-hero/);
   assert.doesNotMatch(markup,/赏金论坛|服务商|活跃榜|趣味币发行|AI 工作台|本机草稿|disc-resume-section|compose|disc-friend-stack/);
   app.click('favorites');assert.deepEqual(app.seen,['hub','favorites']);
   assert.match(app.container.innerHTML,/新增收藏/);assert.match(app.container.innerHTML,/历史草稿/);
@@ -229,6 +231,16 @@ test('saved drafts stay available behind favorites without expanding the discove
   app.cleanup.back();assert.match(app.container.innerHTML,/我的草稿/);
   app.cleanup.back();assert.match(app.container.innerHTML,/新增收藏/);
   app.cleanup.back();assert.deepEqual(app.seen.slice(-3),['drafts','favorites','hub']);
+});
+
+test('discovery tools are user-triggered app actions and do not replace or mutate saved content',t=>{
+  const actions=[],app=mountHarness(t,{options:{onAction:action=>actions.push(action)}}),saved=app.store.getItem('tongban.discover.v1');
+  assert.deepEqual(actions,[]);app.click('wallet-dapps');app.click('scan');
+  assert.deepEqual(actions,['wallet-dapps','scan']);assert.deepEqual(app.seen,['hub']);assert.equal(app.store.getItem('tongban.discover.v1'),saved);
+});
+test('discovery tool failures are explicit and leave the page usable',async t=>{
+  const messages=[],missing=mountHarness(t,{options:{toast:message=>messages.push(message)}});missing.click('scan');assert.match(messages.at(-1),/暂不可用/);
+  const failed=mountHarness(t,{options:{toast:message=>messages.push(message),onAction:async()=>{throw new Error('fixture');}}});failed.click('wallet-dapps');await new Promise(resolve=>setImmediate(resolve));assert.match(messages.at(-1),/操作暂未完成/);assert.match(failed.container.innerHTML,/DApp 浏览器/);
 });
 
 test('embedded community routes return to workbench and favorite drafts return through their own list',t=>{

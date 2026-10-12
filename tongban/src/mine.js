@@ -14,6 +14,8 @@ const paths = {
   account: 'M4 4h16v16H4Z M8 17a4 4 0 0 1 8 0 M12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z',
   cloud: 'M7 17H6a4 4 0 1 1 .8-7.9A5.5 5.5 0 0 1 17.5 8a4.5 4.5 0 0 1 .5 9h-1 M8 15h8v6H8Z M10 18h4',
   about: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18 M12 11v6 M12 7h.01',
+  computer: 'M3 4h18v13H3Z M8 21h8 M12 17v4', moment: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M15.5 12a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0',
+  qr: 'M3 3h7v7H3Z M14 3h7v7h-7Z M3 14h7v7H3Z M14 14h3v3h-3Z M20 14v3 M14 20h3 M20 20h1',
   sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M12 2v2 M12 20v2 M2 12h2 M20 12h2 M5 5l1.5 1.5 M17.5 17.5l1.5 1.5 M5 19l1.5-1.5 M17.5 6.5l1.5-1.5',
   moon: 'M20 14A8.5 8.5 0 0 1 10 4a8.5 8.5 0 1 0 10 10Z',
   leaf: 'M20 4C8 2 3 7 5 15c4 8 15 3 15-11Z M5 20 16 9',
@@ -25,6 +27,25 @@ const row = (action, name, description, symbol, suffix = '') => `<button type="b
 /** Local profile and product navigation only. Wallet authorization stays in app.js. */
 export function mountMine(container, { toast = () => {}, onNavigate = () => {}, onAction = () => {}, getWalletStatus = () => ({}), isNative = false, profileService = null, processPhoto = prepareProfilePhoto, themeService = globalThis.window?.YBZTheme } = {}) {
   let active = true, view = 'home', parentView = 'home', profile = null, profileError = false, selectedAvatar = PROFILE_AVATARS[0], selectedPhoto = '', homeScroll = 0, generation = 0, photoTask = 0, photoBusy = false, saving = false;
+  let deviceSummary = '在线状态未读取', deviceRequest = 0, deviceLoading = false;
+  function renderDeviceStatus(){if(!active||view!=='home')return;const node=container.querySelector('[data-mine-device-status]');if(node)node.textContent=deviceSummary;else render();}
+  const ownerKey = () => { try { const current=profileService?.getProfile();return current?.accountId || current?.userId || null; } catch { return null; } };
+  async function refreshDevices() {
+    if (!active || view !== 'home' || deviceLoading) return;
+    const owner=ownerKey();
+    if (!owner || !profileService?.authenticatedRequest) { deviceSummary='在线状态未知';renderDeviceStatus();return; }
+    const request=++deviceRequest;deviceLoading=true;deviceSummary='正在读取在线状态…';renderDeviceStatus();
+    try {
+      const result=await profileService.authenticatedRequest('devices');
+      if (!active || request!==deviceRequest || ownerKey()!==owner) return;
+      if (!Array.isArray(result?.devices)) throw new Error('Invalid device metadata');
+      const devices=[...new Map(result.devices.filter(item=>item&&typeof item.id==='string'&&!item.revoked).map(item=>[item.id,item])).values()];
+      if (devices.length!==result.devices.filter(item=>!item?.revoked).length) throw new Error('Invalid device metadata');
+      const online=devices.filter(item=>item.online===true).length,unknown=devices.filter(item=>typeof item.online!=='boolean').length;
+      deviceSummary=devices.length ? `${online} 台在线${unknown?' · '+unknown+' 台状态未知':''}` : '尚未添加设备';
+    } catch { if(active&&request===deviceRequest&&ownerKey()===owner)deviceSummary='在线状态暂不可用'; }
+    finally { if(request===deviceRequest){deviceLoading=false;if(active&&view==='home'){if(ownerKey()!==owner)deviceSummary='在线状态未知';renderDeviceStatus();}} }
+  }
   const remote = () => profile?.identityScope === 'server';
   const avatarContent = (avatar, photo) => photo ? `<img src="${esc(photo)}" alt="个人头像" width="512" height="512">` : esc(avatar);
   const identity = () => profile ? `<span class="mine-user-id">ID ${esc(profile.userId)}</span><span class="mine-level">Lv. ${esc(profile.level)}</span>${profile.official ? '<span class="mine-official">官方认证</span>' : ''}` : '';
@@ -43,9 +64,12 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     return `<header class="mine-subhead"><button type="button" class="mine-back" data-mine-action="back" aria-label="${parentView === 'settings' ? '返回设置' : parentView === 'account' ? '返回账号' : '返回个人中心'}">${icon('back')}</button><div><h2 tabindex="-1">${title}</h2>${description ? `<p>${description}</p>` : ''}</div></header>`;
   }
   function home() {
-    return `<h1 class="mine-page-title">我的</h1><section class="mine-home-profile" aria-label="个人资料"><span class="mine-avatar" aria-hidden="true">${avatarContent('愚', profile?.avatarImage)}</span><div class="mine-home-profile-copy"><h2>${profile ? esc(profile.nickname) : '个人资料暂不可用'}</h2>${profile ? '' : '<p>原始资料已保留</p>'}<div class="mine-profile-meta">${identity()}</div>${!remote() && profile ? '<span>本机资料 · ID 尚未云端登记</span>' : ''}</div></section>${profileError ? `<div class="mine-inline-error" role="alert">${profileService ? '账号资料暂不可读，请检查网络后重新连接。' : '本机资料无法读取，请检查存储权限。'}${button('retry-profile', '重新读取资料')}</div>` : ''}
-      <section class="mine-list mine-home-links" aria-label="个人入口">${row('account', '账号', '', 'account')}${row('settings', '设置', '', 'settings')}${row('cloud', '云机', '', 'cloud')}${row('about', '关于', '', 'about')}</section>
-      <p class="mine-footnote mine-home-footnote"><span lang="en">YBZ</span> · 愚笨者 · <span class="mine-number">0.14.0-dev.12</span></p>`;
+    return `<h1 class="mine-page-title">我的</h1><section class="mine-home-profile" aria-label="个人资料"><button type="button" class="mine-profile-edit" data-mine-action="edit" aria-label="编辑个人资料"><span class="mine-avatar" aria-hidden="true">${avatarContent('愚', profile?.avatarImage)}</span><span class="mine-home-profile-copy"><strong>${profile ? esc(profile.nickname) : '个人资料暂不可用'}</strong>${profile ? '' : '<span>原始资料已保留</span>'}<span class="mine-profile-meta">${identity()}</span>${!remote() && profile ? '<small>本机资料 · ID 尚未云端登记</small>' : ''}</span></button><button type="button" class="mine-profile-qr" data-mine-action="my-qr" aria-label="我的好友二维码" ${remote()?'':'disabled'}>${icon('qr')}</button></section>${profileError ? `<div class="mine-inline-error" role="alert">${profileService ? '账号资料暂不可读，请检查网络后重新连接。' : '本机资料无法读取，请检查存储权限。'}${button('retry-profile', '重新读取资料')}</div>` : ''}
+      <section class="mine-list mine-home-links mine-device-links" aria-label="我的设备">${row('devices', '我的电脑与 AI', '<span data-mine-device-status role="status">'+esc(deviceSummary)+'</span>', 'computer')}</section>
+      <section class="mine-list mine-home-links" aria-label="收藏与朋友圈">${row('favorites', '收藏', '', 'favorite')}${row('moments', '朋友圈', '', 'moment')}</section>
+      <section class="mine-list mine-home-links" aria-label="账号与偏好">${row('account', '账号与资料', '', 'account')}${row('security', '安全中心', '', 'shield')}${row('appearance', '外观与主题', '', 'sun')}</section>
+      <section class="mine-list mine-home-links" aria-label="支持与关于">${row('help', '帮助与反馈', '', 'help')}${row('about', '关于愚笨者', '', 'about')}</section>
+      <section class="mine-list mine-home-links mine-settings-links" aria-label="设置">${row('settings', '设置', '', 'settings')}</section>`;
   }
   function account() {
     return heading('账号', '') + '<section class="mine-list mine-home-links" aria-label="账号选项">' +
@@ -83,7 +107,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   }
   function help() {
     return `${heading('帮助与反馈', '先找到原因，再继续下一步')}<div class="mine-help-banner"><span>${icon('help')}</span><div><h3>需要一点帮助？</h3><p>常见问题的处理方法，都放在这里。</p></div></div><section class="mine-faqs" aria-label="常见问题">
-      <details><summary>AI 工作台现在能做什么？</summary><p>填写目标后先看计划，再确认执行。当前可用本地规则整理文本、表格、JSON，生成清单或大纲草稿并下载成果；没有通用 AI 模型或远程桌面。平台免费使用；确认前可核对方案，完成后可查看成果和处理记录。</p><button type="button" class="mine-text-button" data-mine-action="ai">打开 AI 工作台</button></details><details><summary>手机、电脑和网页的数据会同步吗？</summary><p>${remote() ? '账号资料保存在服务器，登录同一账号后可获取。' : '本机资料尚未与云端账号关联。'}钱包密钥与本机草稿不会自动上传。云端 AI 申请和任务保存在服务器，与提交申请的账号关联。安装 App 后需要创建新的测试钱包，或使用你自己的测试钱包助记词恢复。${remote() ? '好友、群聊、聊天文字和图片随账号同步；新发布的朋友圈由服务器保存，旧本机内容和草稿不会自动发布。' : '未登录时的体验内容只保存在本机。'}导出的加密备份请单独保管。请勿导入存有真实资产的钱包。</p></details>
+      <details><summary>AI 工作台现在能做什么？</summary><p>连接你自己的电脑后，可向已就绪的 AI 派任务、查看进度与成果；屏幕远控和文件传输按设备报告的能力开放。未安装、未登录或离线的工具会明确标注。也可用本地规则整理文本、表格、JSON。平台免费使用，执行前由你确认方向和授权。</p><button type="button" class="mine-text-button" data-mine-action="ai">打开 AI 工作台</button></details><details><summary>手机、电脑和网页的数据会同步吗？</summary><p>${remote() ? '账号资料保存在服务器，登录同一账号后可获取。' : '本机资料尚未与云端账号关联。'}钱包密钥与本机草稿不会自动上传。设备 AI 对话与文件正文不会写入服务器数据库，任务状态与授权记录可随账号查看；临时回复过期后不能从服务器恢复。安装 App 后需要创建新的测试钱包，或使用你自己的测试钱包助记词恢复。${remote() ? '好友、群聊、聊天文字和图片随账号同步；新发布的朋友圈由服务器保存，旧本机内容和草稿不会自动发布。' : '未登录时的体验内容只保存在本机。'}导出的加密备份请单独保管。请勿导入存有真实资产的钱包。</p></details>
       <details><summary>本机资料和钱包有什么区别？</summary><p>${remote() ? '用户名、ID、头像和签名保存到账号，可在其他设备登录后获取。' : '用户名、ID、头像和签名只保存在当前设备，ID 尚未云端登记。'}钱包管理链上资产，使用独立的本机密码；修改资料不会修改钱包地址。</p></details>
       <details><summary>能使用哪些网络和资产？</summary><p>当前链上功能仅支持 BSC 测试网原生 tBNB。测试币没有实际价值。BSC 主网、其他网络和真实 USDT 收发均未开放，请勿转入真实资金。</p><button type="button" class="mine-text-button" data-mine-action="wallet">查看资产页面 ${icon('arrow')}</button></details>
       <details><summary>转账已提交，为什么还没到账？</summary><p>已提交不等于已确认。在账单中心查看最新状态；广播结果不明确时，先核对交易哈希与链上状态，避免重复转账。当前本机记录不代表完整链上收支。</p><button type="button" class="mine-text-button" data-mine-action="bill-center">去账单中心 ${icon('arrow')}</button></details>
@@ -95,7 +119,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   function render(focus = false) {
     if (!active) return;
     const screens = { home, account, settings, edit, appearance, security, orders, help, about };
-    container.innerHTML = `<div class="mine-page mine-brand-page" data-mine-view="${view}">${screens[view]()}</div>`;
+    container.innerHTML = `<div class="mine-page mine-brand-page" data-mine-view="${view}">${screens[view]()}${view==='about'?'<p class="mine-footnote">版本 <span class="mine-number">0.14.0-dev.12</span></p>':''}</div>`;
     if (focus) container.querySelector('h2')?.focus({ preventScroll: true });
   }
   function scrollTo(top) { globalThis.window?.scrollTo({ top, behavior: 'instant' }); }
@@ -104,10 +128,12 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     generation++; photoTask++; photoBusy = false; saving = false;
     if (['home', 'settings', 'account', 'about'].includes(next)) parentView = 'home';
     else if (view === 'settings' || view === 'account') parentView = view;
+    else if (view === 'home') parentView = 'home';
     view = next;
     if (next === 'home') readProfile();
     if (next === 'edit') { selectedAvatar = profile?.avatar || PROFILE_AVATARS[0]; selectedPhoto = profile?.avatarImage || ''; }
     render(true); scrollTo(next === 'home' ? homeScroll : 0);
+    if(next==='home')void refreshDevices();
   }
   function action(name) {
     try {
@@ -132,8 +158,10 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
     }
     if (name === 'retry-profile') { open('home'); return; }
     if (name === 'ai') { onNavigate('workbench'); return; }
-    if (name === 'cloud') { onNavigate('workbench', { hub: { mode: 'work', screen: 'devices' } }); return; }
+    if (name === 'cloud' || name === 'devices') { onNavigate('workbench', { hub: { mode: 'work', screen: 'devices' } }); return; }
     if (name === 'favorites') { onNavigate('discover', { route: 'favorites', origin: 'mine' }); return; }
+    if (name === 'moments') { onNavigate('discover', { route: 'moments', origin: 'mine' }); return; }
+    if (name === 'my-qr' && remote()) { action('my-qr');return; }
     if (name === 'drafts') { onNavigate('discover', { route: 'drafts' }); return; }
     if (name === 'wallet') { onNavigate('wallet'); return; }
     if (name === 'points') { onNavigate('points'); return; }
@@ -216,23 +244,27 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   }
   const refreshTheme = () => { if(active && view === 'appearance')render(); };
   const refreshStatus = () => { if (active && view === 'security') render(); };
-  readProfile(); render();
+  const refreshDeviceVisibility=()=>{if(!globalThis.document?.hidden)void refreshDevices();};
+  readProfile(); render();void refreshDevices();
+  const deviceTimer=setInterval(refreshDeviceVisibility,20000);deviceTimer.unref?.();
   container.addEventListener('click', onClick);
   container.addEventListener('submit', onSubmit);
   container.addEventListener('change', onChange);
   container.addEventListener('input', onInput);
   globalThis.window?.addEventListener('tongban:wallet-locked', refreshStatus);
   globalThis.window?.addEventListener('ybz:theme-changed', refreshTheme);
+  globalThis.document?.addEventListener?.('visibilitychange',refreshDeviceVisibility);
   const cleanup = () => {
-    active = false; generation++; photoTask++;
+    active = false; generation++; photoTask++;deviceRequest++;clearInterval(deviceTimer);
     container.removeEventListener('click', onClick);
     container.removeEventListener('submit', onSubmit);
     container.removeEventListener('change', onChange);
     container.removeEventListener('input', onInput);
     globalThis.window?.removeEventListener('tongban:wallet-locked', refreshStatus);
     globalThis.window?.removeEventListener('ybz:theme-changed', refreshTheme);
+    globalThis.document?.removeEventListener?.('visibilitychange',refreshDeviceVisibility);
   };
   cleanup.back = () => { if (saving) { toast('资料正在保存，请稍候。'); return true; } if(view==='home')return false;open(parentView);return true; };
-  cleanup.refresh = () => { if (view !== 'edit') { readProfile(); render(); } };
+  cleanup.refresh = () => { if (view !== 'edit') { readProfile(); render();void refreshDevices(); } };
   return cleanup;
 }

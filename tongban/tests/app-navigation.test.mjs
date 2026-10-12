@@ -24,7 +24,7 @@ test('business entry links and legacy discovery links resolve to the same workbe
  }
 });
 test('favorites bookmarks retain their Mine or Discover parent after refresh',()=>{
- for(const origin of ['mine','discover'])for(const route of ['favorites','drafts']){
+ for(const origin of ['mine','discover'])for(const route of ['favorites','drafts','moments']){
   const target=normalizeNavigation('discover',{route,origin});
   assert.deepEqual(navigationFromHash(hashForView(target.view,target.options)),target);
   assert.equal(activeNavView(target.view,'mine',target.options),origin);

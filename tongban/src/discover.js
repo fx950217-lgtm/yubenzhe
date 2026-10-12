@@ -34,6 +34,8 @@ const paths = {
   plus:'M12 5v14M5 12h14', check:'m5 12 4 4L19 6',
   file:'M5 3h9l5 5v13H5ZM14 3v6h5M9 13h6M9 17h4',
   briefcase:'M3 7h18v14H3ZM8 7V3h8v4M3 12h18M10 12v3h4v-3',
+  dapp:'M3 3h7v7H3Z M14 3h7v7h-7Z M3 14h7v7H3Z M14 14h7v7h-7Z',
+  scan:'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5 M3 12h18',
 };
 const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.spark}"/></svg>`;
 const names = { provider:'服务预约意向', ai:'AI 工作草稿', bounty:'悬赏任务草稿', token:'发币草稿', business:'商务需求' };
@@ -202,7 +204,7 @@ async function readMomentImages(files) {
 }
 
 export function mountDiscover(container, options = {}) {
-  const { toast = () => {}, onNavigate = () => {}, onProfile = () => {},
+  const { toast = () => {}, onNavigate = () => {}, onProfile = () => {}, onAction = null,
     initialRoute = 'hub',backLabel = '返回发现',onExit,initialOwnMoments = false,onRouteChange = () => {},getWalletAddress=()=>'' } = options;
   let view = normalizedRoute(initialRoute),ownMoments = initialOwnMoments === true,data,storageError = '',profileError = '',
     dialog = null,dead = false,editingLocalDraft=false,sort = 'desc',savedType = '',draftFilter = 'all',editingDraftId = null,
@@ -290,9 +292,12 @@ export function mountDiscover(container, options = {}) {
     setup?.(dialog);
   }
   function renderHub() {
-    return '<header class="disc-brand-heading"><h1>发现</h1></header><section class="disc-brand-hero" aria-label="发现内容与灵感"><span lang="en">YBZ</span><h2>把不相干的东西连起来</h2><p>从交流与收藏中，找到新的思路。</p></section><h2 class="disc-home-group-title">内容与功能</h2><section class="disc-home-entries" aria-label="发现">'+[
-      ['moments','moment','朋友圈'],['people','chat','认识新朋友'],['favorites','heart','收藏'],
-    ].map(([route,ico,label])=>'<button type="button" class="disc-home-entry" data-disc="'+route+'"><span class="disc-home-entry-icon">'+icon(ico)+'</span><span>'+label+'</span>'+icon('arrow')+'</button>').join('')+'</section>';
+    const entry=([route,ico,label,tone])=>'<button type="button" class="disc-home-entry" data-disc="'+route+'"><span class="disc-home-entry-icon" data-tone="'+tone+'">'+icon(ico)+'</span><span>'+label+'</span>'+icon('arrow')+'</button>';
+    return '<div class="disc-u5-home"><header class="disc-brand-heading"><h1>发现</h1></header><section class="disc-home-entries" aria-label="社交与收藏">'+[
+      ['moments','moment','朋友圈','brand'],['people','chat','认识新朋友','info'],['favorites','heart','收藏','warning'],
+    ].map(entry).join('')+'</section><section class="disc-home-entries" aria-label="发现工具">'+[
+      ['wallet-dapps','dapp','DApp 浏览器','success'],['scan','scan','扫一扫','error'],
+    ].map(entry).join('')+'</section></div>';
   }
   function goBack() {
     if(view==='drafts'){go('favorites');return true;}
@@ -353,6 +358,10 @@ export function mountDiscover(container, options = {}) {
     const action=target.dataset.disc;
     if(savedType){savedType='';container.querySelector('.disc-saved')?.remove()}
     try {
+      if(action==='wallet-dapps'||action==='scan'){
+        if(typeof onAction!=='function'){toast('此入口暂不可用，请从主页面重新打开。');return;}
+        Promise.resolve(onAction(action)).catch(()=>{if(!dead)toast('操作暂未完成，请重试。');});return;
+      }
       if(action==='back'||(action==='hub'&&typeof onExit==='function')){goBack();return;}
       if(action==='open-workbench'){onNavigate('workbench');return;}
       if(favorites.handleAction(action,target))return;

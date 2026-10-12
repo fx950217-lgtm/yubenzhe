@@ -128,3 +128,33 @@
 @media(max-width:700px){.mine-page.mine-brand-page .mine-home-profile{padding:22px 20px;gap:14px}.mine-page.mine-brand-page .mine-avatar,.mine-page.mine-brand-page .mine-home-profile>.mine-avatar{width:58px;height:58px;font-size:var(--fs-xl)}.mine-brand-page .mine-home-profile-copy h2{font-size:var(--fs-l)}.mine-page.mine-brand-page .mine-panel{padding:20px 18px}.mine-brand-page .mine-avatar-options{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.mine-brand-page .mine-avatar-option{height:48px}.mine-page.mine-brand-page .mine-security-card,.mine-page.mine-brand-page .mine-help-banner{padding:20px 18px}.mine-brand-page .mine-section-title>span{max-width:45%}}
 @media(max-width:350px){.mine-page.mine-brand-page .mine-home-profile{padding:20px 16px;gap:12px}.mine-page.mine-brand-page .mine-avatar,.mine-page.mine-brand-page .mine-home-profile>.mine-avatar{width:52px;height:52px}.mine-brand-page .mine-home-profile-copy h2{font-size:var(--fs-m)}.mine-brand-page .mine-id-tools{flex-wrap:wrap}.mine-brand-page .mine-id-tools small{flex-basis:100%}.mine-brand-page .mine-section-title>span{display:none}.mine-brand-page .mine-avatar-preview{gap:12px}.mine-brand-page .mine-photo-actions{gap:5px}}
 @media(prefers-reduced-motion:reduce){.mine-brand-page *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* U5: grouped personal home; specificity intentionally exceeds legacy skins. */
+.workspace .mine-page[data-mine-view="home"]{max-width:760px;margin:auto;color:var(--t1);background:var(--bg-page);font-family:var(--font)}
+.workspace .mine-page[data-mine-view="home"] .mine-page-title{margin:0 0 var(--sp-4);font-size:var(--fs-l);line-height:calc(1em + 8px);font-weight:600;color:var(--t1)}
+.workspace .mine-page[data-mine-view="home"] .mine-home-profile{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-4) 0 var(--sp-6);margin:0;background:transparent;border:0;box-shadow:none;border-radius:0;color:var(--t1)}
+.workspace .mine-page[data-mine-view="home"] .mine-profile-edit{display:flex;align-items:center;gap:var(--sp-4);flex:1;min-width:0;padding:0;text-align:left;min-height:64px;color:var(--t1);background:transparent;border:0}
+.workspace .mine-page[data-mine-view="home"] .mine-avatar{width:64px;height:64px;flex:0 0 64px;border:0;border-radius:var(--r-l);background:var(--brand);color:var(--on-brand);font-size:var(--fs-xl);line-height:calc(1em + 8px);font-weight:600}
+.workspace .mine-page[data-mine-view="home"] .mine-avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.workspace .mine-page[data-mine-view="home"] .mine-home-profile-copy{display:flex;flex-direction:column;gap:var(--sp-1);min-width:0;overflow-wrap:anywhere}
+.workspace .mine-page[data-mine-view="home"] .mine-home-profile-copy>strong{font-size:var(--fs-l);line-height:calc(1em + 8px);font-weight:600;color:var(--t1)}
+.workspace .mine-page[data-mine-view="home"] .mine-home-profile-copy small,.workspace .mine-page[data-mine-view="home"] .mine-user-id{font-size:var(--fs-s);line-height:calc(1em + 8px);font-weight:400;color:var(--t2)}
+.workspace .mine-page[data-mine-view="home"] .mine-profile-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin:0}
+.workspace .mine-page[data-mine-view="home"] .mine-user-id{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums}
+.workspace .mine-page[data-mine-view="home"] .mine-level,.workspace .mine-page[data-mine-view="home"] .mine-official{background:var(--brand-1);color:var(--brand-text);border:0;border-radius:var(--r-s);font-size:var(--fs-xs);line-height:calc(1em + 8px);font-weight:400;padding:0 var(--sp-1)}
+.workspace .mine-page[data-mine-view="home"] .mine-profile-qr{display:grid;place-items:center;flex:0 0 44px;min-height:44px;width:44px;padding:var(--sp-2);color:var(--t2);background:transparent;border:0;border-radius:var(--r-s)}
+.workspace .mine-page[data-mine-view="home"] .mine-profile-qr:disabled{cursor:default}
+.workspace .mine-page[data-mine-view="home"] .mine-home-links{display:block;margin:0 0 var(--sp-3);padding:0 var(--sp-4);border:0;border-radius:var(--r-m);overflow:hidden;background:var(--bg-container)}
+.workspace .mine-page[data-mine-view="home"] .mine-row{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:60px;margin:0;padding:var(--sp-3) 0;border:0;border-bottom:1px solid var(--border);border-radius:0;background:transparent;box-shadow:none;text-align:left;color:var(--t1)}
+.workspace .mine-page[data-mine-view="home"] .mine-row:last-child{border-bottom:0}
+.workspace .mine-page[data-mine-view="home"] .mine-row:after{display:none}
+.workspace .mine-page[data-mine-view="home"] .mine-row-icon{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border:0;border-radius:var(--r-m);background:var(--brand);color:var(--on-brand)}
+.workspace .mine-page[data-mine-view="home"] [data-mine-action="favorites"] .mine-row-icon,.workspace .mine-page[data-mine-view="home"] [data-mine-action="appearance"] .mine-row-icon{background:var(--warning)}
+.workspace .mine-page[data-mine-view="home"] [data-mine-action="account"] .mine-row-icon{background:var(--info)}
+.workspace .mine-page[data-mine-view="home"] [data-mine-action="security"] .mine-row-icon{background:var(--success)}
+.workspace .mine-page[data-mine-view="home"] [data-mine-action="help"] .mine-row-icon,.workspace .mine-page[data-mine-view="home"] [data-mine-action="about"] .mine-row-icon,.workspace .mine-page[data-mine-view="home"] [data-mine-action="settings"] .mine-row-icon{background:var(--bg-3);color:var(--t2)}
+.workspace .mine-page[data-mine-view="home"] .mine-row-icon svg,.workspace .mine-page[data-mine-view="home"] .mine-profile-qr svg{width:24px;height:24px;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.workspace .mine-page[data-mine-view="home"] .mine-row-copy{flex:1;min-width:0;overflow-wrap:anywhere}
+.workspace .mine-page[data-mine-view="home"] .mine-row-copy strong{display:block;font-size:var(--fs-m);line-height:calc(1em + 8px);font-weight:400;color:var(--t1)}
+.workspace .mine-page[data-mine-view="home"] .mine-row-copy small{display:block;margin-top:var(--sp-1);font-size:var(--fs-s);line-height:calc(1em + 8px);font-weight:400;color:var(--t2)}
+.workspace .mine-page[data-mine-view="home"] .mine-row>svg{width:16px;height:16px;flex:0 0 16px;color:var(--t3)}
+.workspace .mine-page[data-mine-view="home"] .mine-settings-links{margin-top:var(--sp-6)}

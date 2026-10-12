@@ -82,13 +82,12 @@ test('installation lives in web settings and nested settings back returns throug
   assert.equal(native.cleanup.back(),false);native.cleanup();
 });
 
-test('personal center keeps identity without duplicate wallet, favorites or business entrances', () => {
+test('personal center keeps identity and the approved direct destinations without reading wallet or drafts', () => {
   const app = harness();
   assert.match(app.container.innerHTML, /本机资料/);
-  assert.ok(app.container.innerHTML.includes(`class="mine-number">${packageVersion}</span>`), 'personal center displays the current package version');
-  assert.match(app.container.innerHTML, /lang="en">YBZ/);
   assert.match(app.container.innerHTML, /data-mine-action="account"/);
-  assert.doesNotMatch(app.container.innerHTML, /data-mine-action="(?:wallet|favorites|drafts|moments|ai|points|bill-center|appearance|account-settings|security|install)"/);
+  for(const entry of ['favorites','moments','appearance','security','devices'])assert.ok(app.container.innerHTML.includes('data-mine-action="'+entry+'"'));
+  assert.doesNotMatch(app.container.innerHTML, /data-mine-action="(?:wallet|drafts|ai|points|bill-center|account-settings|install)"/);
   assert.doesNotMatch(app.container.innerHTML, /3 份|草稿|钱包已创建|尚未创建钱包/);
   app.click('favorites');assert.deepEqual(app.calls,[['navigate','discover',{route:'favorites',origin:'mine'}]]);
   assert.deepEqual(app.reads,{wallet:0,drafts:0});app.cleanup();
@@ -210,15 +209,16 @@ test('subpages start at the top, home restores its position, and profile save re
   app.cleanup();
 });
 
-test('home has four simple destinations and opens cloud devices without reading wallet status', () => {
+test('home follows the five approved entry groups and opens owned devices without reading wallet status', () => {
   const wallet = { exists: true, address: '0x1111111111111111111111111111111111111111', unlocked: false };
   Object.defineProperty(wallet, 'balance', { get() { throw new Error('home must not read balances'); } });
   const app = harness({ wallet }), html = app.container.innerHTML;
   const entries=[...html.matchAll(/class="mine-row" data-mine-action="([^"]+)"/g)].map(match=>match[1]);
-  assert.deepEqual(entries,['account','settings','cloud','about']);
+  assert.deepEqual(entries,['devices','favorites','moments','account','security','appearance','help','about','settings']);
+  assert.deepEqual([...html.matchAll(/<section class="mine-list[^>]+aria-label="([^"]+)"/g)].map(match=>match[1]),['我的设备','收藏与朋友圈','账号与偏好','支持与关于','设置']);
   assert.doesNotMatch(html, /链上直接收款与转账|钱包已创建|尚未创建钱包|3 份|data-mine-action="orders"|服务订单|0\.00|tBNB|USDT|0x1111111111111111111111111111111111111111/);
   assert.deepEqual(app.reads,{wallet:0,drafts:0});
-  app.click('cloud'); assert.deepEqual(app.calls, [['navigate', 'workbench', { hub: { mode: 'work', screen: 'devices' } }]]); app.cleanup();
+  app.click('devices'); assert.deepEqual(app.calls, [['navigate', 'workbench', { hub: { mode: 'work', screen: 'devices' } }]]); app.cleanup();
 });
 
 test('wallet state is only read in security and unknown or damaged status never claims an empty wallet', () => {
@@ -277,9 +277,47 @@ test('cloud conflicts stay editable and ordinary saves omit passwords; late resp
 });
 
 function themeFixture(initial='light',persistent=true){let current=initial;const selected=[];return{selected,service:{getTheme:()=>current,setTheme:id=>{current=id;selected.push(id)},isPersistent:()=>persistent}};}
+const deviceSettle=()=>new Promise(resolve=>setImmediate(resolve));
+const personalProfile=userId=>({identityScope:'server',userId,nickname:'本人',avatar:'愚',level:1,official:false,bio:'',revision:1});
+test('personal device counter uses real owner metadata and excludes revoked devices',async()=>{
+  const calls=[];
+  const app=harness({profileService:{getProfile:()=>personalProfile('owner_a'),authenticatedRequest:async path=>{calls.push(path);return {devices:[{id:'a',online:true},{id:'b',online:false},{id:'c'},{id:'d',online:true,revoked:true}]};}}});
+  assert.match(app.container.innerHTML,/正在读取在线状态/);await deviceSettle();
+  assert.match(app.container.innerHTML,/1 台在线 · 1 台状态未知/);
+  assert.deepEqual(calls,['devices']);assert.deepEqual(app.reads,{wallet:0,drafts:0});app.cleanup();
+});
+test('personal device empty, malformed, failed and missing status never become invented online devices',async()=>{
+  for(const [result,label] of [[{devices:[]},'尚未添加设备'],[{devices:[{id:'only'}]},'0 台在线 · 1 台状态未知'],[{devices:[null]},'在线状态暂不可用'],[{devices:[{id:'a'},{id:'a'}]},'在线状态暂不可用'],[new Error('offline'),'在线状态暂不可用']]){
+    const app=harness({profileService:{getProfile:()=>personalProfile('owner_a'),authenticatedRequest:async()=>{if(result instanceof Error)throw result;return result;}}});
+    await deviceSettle();assert.ok(app.container.innerHTML.includes(label),label);assert.doesNotMatch(app.container.innerHTML,/2 台在线/);app.cleanup();
+  }
+});
+test('late device metadata cannot reveal an earlier account status or resurrect an unmounted view',async()=>{
+  let owner='owner_a',resolve;
+  const app=harness({profileService:{getProfile:()=>personalProfile(owner),authenticatedRequest:()=>new Promise(done=>{resolve=done;})}});
+  owner='owner_b';app.cleanup.refresh();resolve({devices:[{id:'secret_old_device',online:true}]});await deviceSettle();
+  assert.match(app.container.innerHTML,/在线状态未知/);assert.doesNotMatch(app.container.innerHTML,/1 台在线/);app.cleanup();
+  let finish;const removed=harness({profileService:{getProfile:()=>personalProfile('owner_a'),authenticatedRequest:()=>new Promise(done=>{finish=done;})}});
+  removed.cleanup();const before=removed.container.innerHTML;finish({devices:[{id:'a',online:true}]});await deviceSettle();assert.equal(removed.container.innerHTML,before);
+});
+test('home QR is only an explicit authenticated action and collection routes preserve mine origin',async()=>{
+  const app=harness({profileService:{getProfile:()=>personalProfile('owner_a'),authenticatedRequest:async()=>({devices:[]})}});
+  assert.deepEqual(app.calls,[]);app.click('my-qr');app.click('favorites');app.click('moments');
+  assert.deepEqual(app.calls,[['action','my-qr'],['navigate','discover',{route:'favorites',origin:'mine'}],['navigate','discover',{route:'moments',origin:'mine'}]]);
+  app.cleanup();const local=harness();local.click('my-qr');assert.deepEqual(local.calls,[]);assert.match(local.container.innerHTML,/aria-label="我的好友二维码" disabled/);local.cleanup();
+});
+test('direct home settings entries return home after an earlier account subview',()=>{
+  const app=harness();app.click('account');app.click('edit');app.click('back');app.click('back');app.click('security');
+  assert.match(app.container.innerHTML,/aria-label="返回个人中心"/);app.click('back');assert.match(app.container.innerHTML,/data-mine-view="home"/);
+  app.click('appearance');app.click('back');assert.match(app.container.innerHTML,/data-mine-view="home"/);app.cleanup();
+});
+test('device counter refresh never closes a profile editor',async()=>{
+  let resolve;const app=harness({profileService:{getProfile:()=>personalProfile('owner_a'),authenticatedRequest:()=>new Promise(done=>{resolve=done;})}});
+  app.click('edit');const editor=app.container.innerHTML;resolve({devices:[{id:'a',online:true}]});await deviceSettle();assert.equal(app.container.innerHTML,editor);app.cleanup();
+});
 test('appearance entry displays exactly the three allowed skins and reads the current selection',()=>{
   const theme=themeFixture('dark'),app=harness({themeService:theme.service});
-  assert.doesNotMatch(app.container.innerHTML,/data-mine-action="appearance"/);app.click('settings');
+  assert.match(app.container.innerHTML,/data-mine-action="appearance"/);app.click('settings');
   assert.match(app.container.innerHTML,/data-mine-action="appearance"/);app.click('appearance');
   assert.match(app.container.innerHTML,/data-mine-view="appearance"/);
   const options=[...app.container.innerHTML.matchAll(/data-mine-theme="([^"]+)" aria-pressed="([^"]+)"/g)].map(m=>[m[1],m[2]]);
@@ -347,6 +385,7 @@ test('brand avatar is a fallback and never replaces a saved personal photo',()=>
 
 test('about has the approved brand language and personal views omit prohibited product wording',()=>{
   const app=harness();app.click('about');
+  assert.ok(app.container.innerHTML.includes(`class="mine-number">${packageVersion}</span>`),'version is available in About rather than adding a home entry');
   for(const text of ['YBZ','愚笨者','技能交给 AI，判断留给自己。','Let AI do the doing. You do the deciding.','思维','知道要什么、为什么','决策','定方向、做取舍、担结果','创造性','把不相干的东西连起来']) {
     assert.ok(app.container.innerHTML.includes(text),text);
   }
