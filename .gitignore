@@ -45,6 +45,22 @@
 **/*-pairing.json
 **/device-pair*.json
 
+# Existing machine-specific handover notes/scripts contain private credentials.
+# Keep local originals; do not stage or publish these operations materials.
+/docs/check_install.py
+/docs/make_win_launcher.py
+/docs/upload_script2.py
+/docs/win_remote.py
+/docs/WINDOWS-AI-TOOLS-INSTALLED-20261012.md
+/docs/WINDOWS-CLOUD-PC-SG-20261012.md
+/docs/vultr_billing_audit.py
+/docs/RDP-DESKTOP-SG-20261012.md
+/docs/AI-TOOLS-SG-SERVER-DELIVERED-20261011.md
+/docs/MASTER-PLAN-V1-20261011.md
+/docs/FEATURE-STATUS-AUDIT-20261011.md
+/yubenzhe-deploy/device-bridge/*.json
+/yubenzhe-deploy/device-bridge/*.json.stop
+
 # Dependencies, caches and generated application output.
 **/node_modules/
 **/.git/

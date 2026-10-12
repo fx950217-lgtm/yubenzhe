@@ -1,5 +1,6 @@
 'use strict';
 
+const deployment = require('./deployment.cjs');
 const APP_VERSION = require('../package.json').version;
 const LOCAL_ORIGIN = 'yubenzhe://app';
 const LOCAL_FILES = Object.freeze({
@@ -14,9 +15,9 @@ const LOCAL_FILES = Object.freeze({
   '/apple-touch-icon.png': ['apple-touch-icon.png', 'image/png'],
   '/manifest.webmanifest': ['manifest.webmanifest', 'application/manifest+json'],
 });
-const RPC_HOSTS = new Set(['bsc-testnet-dataseed.bnbchain.org', 'bsc-testnet.bnbchain.org']);
-const EXTERNAL_HOSTS = new Set(['testnet.bscscan.com', 'docs.bnbchain.org', 'docs.ethers.org', 'docs.ollama.com']);
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://66.42.56.29/api/social/avatars/; media-src 'self' blob:; connect-src 'self' https://bsc-testnet-dataseed.bnbchain.org https://bsc-testnet.bnbchain.org https://66.42.56.29/api/social/; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'";
+const RPC_HOSTS = new Set(deployment.rpcUrls.map(v=>new URL(v).hostname));
+const EXTERNAL_HOSTS = new Set(['docs.ethers.org','docs.ollama.com',...[deployment.explorerUrl,deployment.faucetUrl].map(v=>new URL(v).hostname)]);
+const CSP = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${deployment.previewOrigin}/api/social/avatars/; media-src 'self' blob:; connect-src 'self' ${deployment.rpcUrls.map(v=>new URL(v).origin).join(' ')} ${deployment.previewOrigin}/api/social/; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'`;
 
 function parsed(value) { try { return new URL(value); } catch { return null; } }
 function isLocalUrl(value) {
@@ -31,17 +32,21 @@ function localAsset(value) {
 }
 function isExternalUrl(value) {
   const url = parsed(value);
-  return !!url && url.protocol === 'https:' && (EXTERNAL_HOSTS.has(url.hostname) || url.hostname === 'ollama.com' && /^\/download(?:\/|$)/.test(url.pathname)) && !url.port && !url.username && !url.password;
+  return !!url && url.protocol === 'https:' && (EXTERNAL_HOSTS.has(url.hostname) || (value === deployment.ollamaDownloadUrl || value.startsWith(deployment.ollamaDownloadUrl+'/'))) && !url.port && !url.username && !url.password;
+}
+function remotePath(value) {
+ if(typeof value !== 'string') return null;
+ for(const origin of [deployment.previewOrigin,deployment.previewOrigin+':443']) if(value.startsWith(origin+'/')) return value.slice(origin.length);
+ return null;
 }
 function isSocialApiUrl(value) {
-  const url = parsed(value);
-  // Inspect both the original path and parsed authority. URL normalization alone
-  // would silently accept dot-segment and backslash aliases.
-  return typeof value === 'string' && /^https:\/\/66\.42\.56\.29(?::443)?\/api\/social\/[A-Za-z0-9_/-]*(?:\?[^\s#]*)?$/.test(value) &&
+  const url = parsed(value), path = remotePath(value);
+  return path !== null && /^\/api\/social\/[A-Za-z0-9_/-]*(?:\?[^\s#]*)?$/.test(path) &&
     !!url && !url.port && !url.username && !url.password && !url.hash && !url.pathname.includes('//') && !url.pathname.startsWith('/api/social/avatars/');
 }
 function isSocialAvatarUrl(value) {
-  return typeof value === 'string' && /^https:\/\/66\.42\.56\.29(?::443)?\/api\/social\/avatars\/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/.test(value);
+  const path=remotePath(value);
+  return path !== null && /^\/api\/social\/avatars\/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/.test(path);
 }
 function isAllowedRequest(value, resourceType) {
   if (localAsset(value)) return true;

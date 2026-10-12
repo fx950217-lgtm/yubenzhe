@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('YubenzheDesktop', Object.freeze({
   platform: 'windows',
-  version: '0.14.0-dev.7',
+  version: '0.14.0-dev.8',
   internalPreview: Object.freeze({
     status: () => ipcRenderer.invoke('yubenzhe:internal-status'),
     login: value => ipcRenderer.invoke('yubenzhe:internal-login', {username:value?.username,password:value?.password}),

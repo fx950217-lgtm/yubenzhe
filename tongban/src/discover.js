@@ -307,7 +307,7 @@ export function mountDiscover(container, options = {}) {
   function renderServices() { return renderHub(); }
   function renderMoments() { return moments.render({ownOnly:ownMoments}); }
   function renderProvider(){return `${header('认证服务商')}${saved('provider')}${workbench.render('provider')}`}
-  function renderAI(){return `${header('AI 工作台')}${saved('ai')}${workbench.render('ai')}`}
+  function renderAI(){return `${header('模型与工具')}${saved('ai')}${workbench.render('ai')}`}
   function renderBounty(){return `${header('赏金任务')}${saved('bounty')}${workbench.render('bounty')}`}
   function renderToken(){return `${header('一键发币')}${saved('token')}${tokenStudio.render('token')}`}
   function renderBusiness(){return `${header('商业项目需求','整理复杂业务与代币需求')}${saved('business')}${tokenStudio.render('business')}`}
@@ -400,6 +400,7 @@ export function mountDiscover(container, options = {}) {
   container.addEventListener('submit',handleSubmit);
   render();
   notifyRouteChange();
+  if(options.initialArtifact)void moments.composeArtifact(options.initialArtifact);
   const cleanup = () => { dead=true;newPeople.cleanup();community.cleanup();moments.cleanup?.();workbench.cleanup?.();tokenStudio.cleanup?.();closeDialog();container.removeEventListener('input',handleInput);container.removeEventListener('change',handleInput);container.removeEventListener('click',handleClick);container.removeEventListener('submit',handleSubmit);container.classList.remove('disc-root'); };
   cleanup.back = () => { if(dialog){closeDialog();return true} return goBack(); };
   return cleanup;

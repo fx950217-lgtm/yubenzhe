@@ -41,3 +41,10 @@ test('untrusted subroutes cannot create arbitrary feature screens',()=>{
  assert.equal(hashForView('workbench',{hub:{mode:'work',screen:'detail',selected:'<script>'}}),'#workbench/workflows');
  assert.equal(hashForView('workbench',{hub:{mode:'chat',screen:'creator'}}),'#workbench/chat');
 });
+test('group tasks and group chats survive refresh without granting arbitrary nested routes',()=>{
+ const group='11111111-1111-1111-1111-111111111111',task='22222222-2222-2222-2222-222222222222';
+ assert.deepEqual(navigationFromHash('#messages/'+group),{view:'messages',options:{conversationId:group}});
+ assert.equal(hashForView('messages',{conversationId:group}),'#messages/'+group);
+ const options={route:'cooperation',conversationId:group,workflowId:task};assert.deepEqual(navigationFromHash(hashForView('workbench',options)),{view:'workbench',options});
+ assert.equal(normalizeNavigation('workbench',{route:'cooperation',conversationId:'../admin',workflowId:'<script>'}).options.workflowId,null);
+});

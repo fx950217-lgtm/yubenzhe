@@ -1,0 +1,36 @@
+{
+  "region": "us-west-2",
+  "regions": [
+    "us-west-2",
+    "us-east-1",
+    "ap-northeast-1",
+    "ap-southeast-1",
+    "eu-west-1"
+  ],
+  "aiBaseUrl": "https://api.deepseek.com/v1",
+  "aiAllowedHosts": [
+    "api.deepseek.com"
+  ],
+  "ollamaBaseUrl": "http://ollama:11434",
+  "ollamaAllowedHosts": [
+    "ollama",
+    "localhost",
+    "127.0.0.1",
+    "[::1]"
+  ],
+  "desktopClients": {
+    "windows": "https://clients.amazonworkspaces.com/",
+    "macos": "https://clients.amazonworkspaces.com/",
+    "ios": "https://webclient.amazonworkspaces.com/",
+    "android": "https://webclient.amazonworkspaces.com/",
+    "web": "https://webclient.amazonworkspaces.com/"
+  },
+  "desktopClientHosts": [
+    "clients.amazonworkspaces.com",
+    "webclient.amazonworkspaces.com"
+  ],
+  "rpcUrls": [
+    "https://bsc-testnet-dataseed.bnbchain.org",
+    "https://bsc-testnet.bnbchain.org"
+  ]
+}

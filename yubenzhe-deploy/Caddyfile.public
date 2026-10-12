@@ -1,9 +1,9 @@
-https://66.42.56.29 {
+{$YBZ_PREVIEW_ORIGIN} {
     tls {
         issuer acme {
-            dir https://acme-v02.api.letsencrypt.org/directory
+            dir {$ACME_DIRECTORY:https://acme-v02.api.letsencrypt.org/directory}
             profile shortlived
         }
     }
-    reverse_proxy 127.0.0.1:18808
+    reverse_proxy 127.0.0.1:{$FRONT_PORT:18808}
 }

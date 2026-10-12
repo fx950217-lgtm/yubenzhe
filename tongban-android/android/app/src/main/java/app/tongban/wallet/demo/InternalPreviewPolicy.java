@@ -8,7 +8,7 @@ import java.util.Map;
 
 /** The native session transport is a fixed product API, never a general URL proxy. */
 public final class InternalPreviewPolicy {
-    public static final String REMOTE = "https://66.42.56.29";
+    public static final String REMOTE = DeploymentConfig.PREVIEW_ORIGIN;
     public static final String LOCAL = "https://localhost";
     public static final int MAX_BODY_BYTES = 1024 * 1024;
     public static final int MAX_RESPONSE_BYTES = 16 * 1024 * 1024;

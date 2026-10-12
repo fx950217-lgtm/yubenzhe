@@ -91,7 +91,8 @@ final class LocalAssetServer {
     }
 
     private func send(_ connection: NWConnection, status: String, body: Data, type: String) {
-        let policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://66.42.56.29/api/social/avatars/; media-src 'self' blob:; connect-src 'self' https://bsc-testnet-dataseed.bnbchain.org https://bsc-testnet.bnbchain.org https://66.42.56.29/api/social/; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+        // Packaged policy is generated from build environment; fail closed if missing.
+        let policy = ((try? String(contentsOf: root.appendingPathComponent("app-policy.txt"), encoding: .utf8)) ?? "default-src 'none'").replacingOccurrences(of: "form-action 'self'", with: "form-action 'none'").replacingOccurrences(of: "\r", with: "").replacingOccurrences(of: "\n", with: "") + "; frame-src 'none'; frame-ancestors 'none'"
         let header = "HTTP/1.1 \(status)\r\nContent-Type: \(type)\r\nContent-Length: \(body.count)\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nContent-Security-Policy: \(policy)\r\nPermissions-Policy: camera=(self), microphone=(), geolocation=()\r\nReferrer-Policy: no-referrer\r\n\r\n"
         var response = Data(header.utf8)
         response.append(body)

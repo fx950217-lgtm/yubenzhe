@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process';
 import { copyFile, mkdir, readFile, rm, lstat, rename, realpath } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -35,3 +36,5 @@ await copyFile(path.join(project, 'native-assets/webview-unavailable.html'), pat
 await removeGenerated(destination);
 await rename(staging, destination);
 console.log('已复制网页快照；请继续 cap sync android 将资源写入原生工程。');
+
+execFileSync(process.execPath,[fileURLToPath(new URL('../../scripts/configure-native-endpoints.mjs',import.meta.url)),'android'],{stdio:'inherit',windowsHide:true});

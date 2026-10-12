@@ -1,4 +1,5 @@
-export const PREVIEW_ORIGIN='https://66.42.56.29';
+import {PUBLIC_DEPLOYMENT} from './deployment-config.js';
+export const PREVIEW_ORIGIN=PUBLIC_DEPLOYMENT.previewOrigin;
 export function nativePreviewBridge(env=globalThis){
  if(env.YubenzheDesktop?.platform==='windows')return env.YubenzheDesktop.internalPreview||null;
  if(env.Capacitor?.getPlatform?.()==='android')return env.Capacitor.Plugins?.InternalPreview||null;

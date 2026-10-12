@@ -6,8 +6,8 @@ import java.util.HashSet;
 import java.util.Arrays;
 
 public final class NavigationPolicy {
-    private static final Set<String> EXTERNAL_HOSTS = new HashSet<>(Arrays.asList("testnet.bscscan.com", "docs.bnbchain.org", "docs.ethers.org", "docs.ollama.com"));
-    private static final Set<String> RPC_HOSTS = new HashSet<>(Arrays.asList("bsc-testnet-dataseed.bnbchain.org", "bsc-testnet.bnbchain.org"));
+    private static final Set<String> EXTERNAL_HOSTS = new HashSet<>(Arrays.asList(DeploymentConfig.EXTERNAL_HOSTS));
+    private static final Set<String> RPC_URLS = new HashSet<>(Arrays.asList(DeploymentConfig.RPC_URLS));
     private NavigationPolicy() {}
 
     private static URI secureUri(String raw) {
@@ -24,22 +24,22 @@ public final class NavigationPolicy {
     public static boolean mayOpenExternal(String raw, boolean userGesture) {
         URI uri = secureUri(raw);
         if (!userGesture || uri == null) return false;
-        return EXTERNAL_HOSTS.contains(uri.getHost()) || ("ollama.com".equals(uri.getHost()) && "/download".equals(uri.getPath()) && uri.getQuery() == null);
+        return EXTERNAL_HOSTS.contains(uri.getHost()) || (DeploymentConfig.DOWNLOAD_URL.equals(raw) && uri.getQuery() == null);
     }
     public static boolean isTestnetRpc(String raw) {
         URI uri = secureUri(raw);
-        return uri != null && RPC_HOSTS.contains(uri.getHost()) && (uri.getPath().isEmpty() || "/".equals(uri.getPath())) && uri.getQuery() == null;
+        return uri != null && RPC_URLS.contains(raw.replaceAll("/$", "")) && uri.getQuery() == null;
     }
     public static boolean isSocialApi(String raw) {
         URI uri = secureUri(raw);
-        if (uri == null || !"66.42.56.29".equals(uri.getHost()) || uri.getFragment() != null) return false;
+        if (uri == null || !DeploymentConfig.PREVIEW_HOST.equals(uri.getHost()) || uri.getFragment() != null) return false;
         // Match raw paths, so encoded separators or dot segments never widen the API boundary.
         String path = uri.getRawPath();
         return path != null && path.matches("/api/social/[A-Za-z0-9_/-]*") && !path.contains("//") && !path.startsWith("/api/social/avatars/");
     }
     public static boolean isSocialAvatar(String raw) {
         URI uri = secureUri(raw);
-        return uri != null && "66.42.56.29".equals(uri.getHost()) && uri.getRawQuery() == null && uri.getFragment() == null &&
+        return uri != null && DeploymentConfig.PREVIEW_HOST.equals(uri.getHost()) && uri.getRawQuery() == null && uri.getFragment() == null &&
             uri.getRawPath().matches("/api/social/avatars/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}");
     }
     public static boolean isPrivateBridgePath(String raw) {

@@ -1,5 +1,5 @@
 'use strict';
-const ORIGIN = 'https://66.42.56.29';
+const {previewOrigin:ORIGIN} = require('./deployment.cjs');
 const MAX_BODY = 1024 * 1024, MAX_RESPONSE = 16 * 1024 * 1024;
 const OUTER_COOKIE = 'ybz_front_session';
 function pathAllowed(path, method) {

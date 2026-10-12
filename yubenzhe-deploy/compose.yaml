@@ -22,7 +22,19 @@ services:
       AI_PROVIDER: ${AI_PROVIDER:-disabled}
       AI_MODEL: ${AI_MODEL:-}
       AI_API_KEY: ${AI_API_KEY:-}
+      DEPLOY_REGION: ${DEPLOY_REGION:-us-west-2}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}
+      AI_ALLOWED_HOSTS: ${AI_ALLOWED_HOSTS:-api.deepseek.com}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_ALLOWED_HOSTS: ${OLLAMA_ALLOWED_HOSTS:-ollama,localhost,127.0.0.1,[::1]}
+      BSC_TESTNET_RPC_URLS: ${BSC_TESTNET_RPC_URLS:-}
+      DESKTOP_PROVIDER: ${DESKTOP_PROVIDER:-disabled}
+      DESKTOP_REGION: ${DESKTOP_REGION:-us-west-2}
+      DESKTOP_CREDENTIALS_FILE: ${DESKTOP_CREDENTIALS_FILE:-}
+      DESKTOP_CRED_KEY: ${DESKTOP_CRED_KEY:-}
+      DESKTOP_CLIENT_URLS_JSON: ${DESKTOP_CLIENT_URLS_JSON:-}
     volumes:
+      - ./secrets/desktop:/run/ybz-desktop:ro
       - ./social-state:/social
       - ./ai-state:/workspace
       - ./secrets/frontend.json:/run/ybz-secrets/frontend.json:ro
@@ -56,9 +68,21 @@ services:
       AI_PROVIDER: ${AI_PROVIDER:-disabled}
       AI_MODEL: ${AI_MODEL:-}
       AI_API_KEY: ${AI_API_KEY:-}
+      DEPLOY_REGION: ${DEPLOY_REGION:-us-west-2}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}
+      AI_ALLOWED_HOSTS: ${AI_ALLOWED_HOSTS:-api.deepseek.com}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_ALLOWED_HOSTS: ${OLLAMA_ALLOWED_HOSTS:-ollama,localhost,127.0.0.1,[::1]}
+      BSC_TESTNET_RPC_URLS: ${BSC_TESTNET_RPC_URLS:-}
+      DESKTOP_PROVIDER: ${DESKTOP_PROVIDER:-disabled}
+      DESKTOP_REGION: ${DESKTOP_REGION:-us-west-2}
+      DESKTOP_CREDENTIALS_FILE: ${DESKTOP_CREDENTIALS_FILE:-}
+      DESKTOP_CRED_KEY: ${DESKTOP_CRED_KEY:-}
+      DESKTOP_CLIENT_URLS_JSON: ${DESKTOP_CLIENT_URLS_JSON:-}
       DATABASE_PATH: /data/acceptance.sqlite
       SOCIAL_DATABASE_PATH: /social/social.sqlite
     volumes:
+      - ./secrets/desktop:/run/ybz-desktop:ro
       - ./ai-state:/workspace
       - ./secrets/admin.json:/run/ybz-secrets/admin.json:ro
       - ./state:/data
@@ -91,6 +115,7 @@ services:
       OLLAMA_CONTEXT_LENGTH: "4096"
       OLLAMA_KEEP_ALIVE: 2m
     volumes:
+      - ./secrets/desktop:/run/ybz-desktop:ro
       - ./ollama-state:/root/.ollama
     logging:
       driver: json-file

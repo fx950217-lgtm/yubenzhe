@@ -2,7 +2,7 @@
 """Copy only checked local frontend assets; never include downloads or admin."""
 import argparse, hashlib, json, pathlib, shutil
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSETS = ('index.html', 'app.js', 'app.css', 'icon.png', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png', 'privacy.html', 'terms.html')
+ASSETS = ('index.html', 'app.js', 'app.css', 'icon.png', 'icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png', 'privacy.html', 'terms.html', 'app-policy.txt')
 p = argparse.ArgumentParser()
 p.add_argument('--source', type=pathlib.Path, default=ROOT.parent / 'tongban' / 'dist')
 a = p.parse_args()

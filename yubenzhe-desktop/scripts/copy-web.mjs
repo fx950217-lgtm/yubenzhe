@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process';
 import { mkdir, readFile, writeFile, copyFile, rm, lstat, realpath, rename } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -37,3 +38,5 @@ await removeGenerated(target);
 await rename(staging, target);
 await writeFile(path.join(root, 'web-assets-verification.json'), JSON.stringify({ source: '../tongban/dist', version: consumer.version, builtAt: buildInfo.builtAt, wrapperVersion: JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).version, files: hashes }, null, 2) + '\n');
 console.log(`Copied ${files.length} consumer assets; download/admin assets excluded.`);
+
+execFileSync(process.execPath,[fileURLToPath(new URL('../../scripts/configure-native-endpoints.mjs',import.meta.url)),'windows'],{stdio:'inherit',windowsHide:true});

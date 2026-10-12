@@ -1,3 +1,4 @@
+import {publicDeploymentFromEnvironment} from './src/deployment-config.js';
 import { build } from 'esbuild';
 import { mkdir, copyFile, writeFile, readFile, rm, rename, realpath, lstat } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
@@ -13,9 +14,13 @@ async function removeGenerated(path){
 }
 await removeGenerated(stage);await mkdir(stage,{recursive:true});
 try{
- await build({absWorkingDir:root,entryPoints:['src/app.js'],bundle:true,minify:true,outdir:stage,entryNames:'app',target:['es2022','safari15.4'],format:'esm',legalComments:'eof'});
+ const publicConfig=publicDeploymentFromEnvironment(process.env);
+ await build({define:{__YBZ_PUBLIC_CONFIG__:JSON.stringify(publicConfig)},absWorkingDir:root,entryPoints:['src/app.js'],bundle:true,minify:true,outdir:stage,entryNames:'app',target:['es2022','safari15.4'],format:'esm',legalComments:'eof'});
  for(const name of ['sw.js','privacy.html','terms.html','icon.png','icon.svg','apple-touch-icon.png','manifest.webmanifest','install.html'])await copyFile(resolve(root,'src',name),resolve(stage,name));
- const index=(await readFile(resolve(root,'src/index.html'),'utf8')).replace('./app.js','./app.js?v='+version).replace('./app.css','./app.css?v='+version);
+ const csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: "+publicConfig.previewOrigin+"/api/social/avatars/; media-src 'self' blob:; connect-src 'self' "+publicConfig.previewOrigin+"/api/social/ "+publicConfig.rpcUrls.map(v=>new URL(v).origin).join(' ')+"; object-src 'none'; base-uri 'none'; form-action 'self'";
+ await writeFile(resolve(stage,'public-deployment.json'),JSON.stringify(publicConfig,null,2)+'\n');
+ await writeFile(resolve(stage,'app-policy.txt'),csp);
+ const index=(await readFile(resolve(root,'src/index.html'),'utf8')).replace(/(<meta http-equiv="Content-Security-Policy" content=")[^"]*/,(_m,prefix)=>prefix+csp).replace('./app.js','./app.js?v='+version).replace('./app.css','./app.css?v='+version);
  await writeFile(resolve(stage,'index.html'),index);
  await writeFile(resolve(stage,'build-info.json'),JSON.stringify({version,builtAt:new Date().toISOString(),requirements:'V0.2',channel:'local-development'},null,2)+'\n');
  await writeFile(resolve(stage,'_headers'),'/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Permissions-Policy: camera=(self), microphone=(), geolocation=()\n  Cache-Control: no-store\n');

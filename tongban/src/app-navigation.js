@@ -2,6 +2,7 @@ export const MAIN_NAV = Object.freeze([
   ['workbench','spark','工作台'],['messages','message','消息'],['wallet','wallet','钱包'],['discover','discover','发现'],['mine','user','我的'],
 ]);
 export const WORKBENCH_FEATURES = Object.freeze(['bounty','provider','rank','token','ai','business','token-projects']);
+const routeId=value=>typeof value==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(value)?value:null;
 const discoveryRoutes = new Set(['hub','moments','people','favorites','drafts',...WORKBENCH_FEATURES]);
 const hubScreens = new Set(['home','workflows','detail','devices','connections','creator','tasks','chat-cloud','chat-local']);
 export const isAppView = view => MAIN_NAV.some(item=>item[0]===view)||view==='contacts'||view==='bills'||view==='points';
@@ -15,11 +16,14 @@ export function normalizedHubState(value={}) {
 export function normalizeNavigation(view,options={}) {
  const safe=options&&typeof options==='object'?{...options}:{};
  if(view==='discover'&&WORKBENCH_FEATURES.includes(safe.route))return {view:'workbench',options:{route:safe.route}};
+ if(view==='workbench'&&safe.route==='cooperation')return {view,options:{route:'cooperation',conversationId:routeId(safe.conversationId),workflowId:routeId(safe.workflowId)}};
  if(view==='workbench'&&!WORKBENCH_FEATURES.includes(safe.route))return {view,options:{hub:normalizedHubState(safe.hub)}};
  if(view==='discover')return {view,options:{...safe,route:discoveryRoutes.has(safe.route)?safe.route:'hub',origin:safe.origin==='mine'?'mine':'discover'}};
  return {view:isAppView(view)?view:'workbench',options:safe};
 }
 export function hashForView(view,options={}) {
+ if(view==='messages'&&routeId(options.conversationId))return '#messages/'+options.conversationId;
+ if(view==='workbench'&&options.route==='cooperation')return '#workbench/cooperation'+(routeId(options.conversationId)?'/'+options.conversationId:'')+(routeId(options.workflowId)?'/'+options.workflowId:'');
  if(view==='wallet')return '#wallet';
  if(view==='points')return '#workbench/points';
  if(view==='discover') {
@@ -41,6 +45,8 @@ export function navigationFromHash(hash) {
  if(['mine/points','workbench/points'].includes(value))return {view:'points',options:{}};
  if(['mine/favorites','mine/drafts'].includes(value))return {view:'discover',options:{route:value.split('/')[1],origin:'mine'}};
  const parts=value.split('/');
+ if(parts[0]==='messages'&&routeId(parts[1]))return {view:'messages',options:{conversationId:parts[1]}};
+ if(parts[0]==='workbench'&&parts[1]==='cooperation')return normalizeNavigation('workbench',{route:'cooperation',conversationId:parts[2],workflowId:parts[3]});
  if(parts[0]==='discover')return normalizeNavigation('discover',{route:parts[1]||'hub'});
  if(parts[0]==='workbench') {
   if(WORKBENCH_FEATURES.includes(parts[1]))return {view:'workbench',options:{route:parts[1]}};

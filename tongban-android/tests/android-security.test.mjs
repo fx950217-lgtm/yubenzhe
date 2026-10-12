@@ -10,9 +10,9 @@ const project = fileURLToPath(new URL('../', import.meta.url));
 const read = name => readFileSync(path.join(project, name), 'utf8');
 test('fixed stable native versions, local bundled origin, debugging and cleartext off', () => {
   const pkg = JSON.parse(read('package.json'));
-  assert.equal(pkg.version, '0.14.0-dev.7');
-  assert.match(read('android/app/build.gradle'), /versionCode 16/);
-  assert.match(read('android/app/build.gradle'), /versionName "0\.14\.0-dev\.7"/);
+  assert.equal(pkg.version, '0.14.0-dev.8');
+  assert.match(read('android/app/build.gradle'), /versionCode 17/);
+  assert.match(read('android/app/build.gradle'), /versionName "0\.14\.0-dev\.8"/);
   assert.equal(pkg.dependencies['@capacitor/core'], '8.5.3');
   assert.equal(pkg.dependencies['@capacitor/android'], '8.5.3');
   assert.equal(pkg.devDependencies['@capacitor/cli'], '8.5.3');
@@ -56,7 +56,7 @@ test('native document and navigation policy executes in JVM', () => {
   const output = mkdtempSync(path.join(tmpdir(), 'tongban-native-test-'));
   const source = path.join(project, 'android/app/src/main/java/app/tongban/wallet/demo');
   try {
-    execFileSync(path.join(javaHome, 'bin/javac'), ['-d', output, path.join(source, 'DocumentPolicy.java'), path.join(source, 'NavigationPolicy.java'), path.join(project, 'tests/NativePoliciesTest.java')]);
+    execFileSync(path.join(javaHome, 'bin/javac'), ['-d', output, path.join(source, 'DeploymentConfig.java'), path.join(source, 'DocumentPolicy.java'), path.join(source, 'NavigationPolicy.java'), path.join(project, 'tests/NativePoliciesTest.java')]);
     const result = execFileSync(path.join(javaHome, 'bin/java'), ['-cp', output, 'app.tongban.wallet.demo.NativePoliciesTest'], { encoding: 'utf8' });
     assert.match(result, /native policy assertions passed/);
     console.log(result.trim());
@@ -76,7 +76,7 @@ test('internal preview transport policy and memory-only session execute in JVM',
  const output=mkdtempSync(path.join(tmpdir(),'ybz-preview-native-test-'));
  const source=path.join(project,'android/app/src/main/java/app/tongban/wallet/demo');
  try{
-  execFileSync(path.join(javaHome,'bin/javac'),['-d',output,path.join(source,'InternalPreviewPolicy.java'),path.join(source,'InternalPreviewSession.java'),path.join(source,'InternalPreviewHttps.java'),path.join(project,'tests/InternalPreviewSessionTest.java')]);
+  execFileSync(path.join(javaHome,'bin/javac'),['-d',output,path.join(source,'DeploymentConfig.java'),path.join(source,'InternalPreviewPolicy.java'),path.join(source,'InternalPreviewSession.java'),path.join(source,'InternalPreviewHttps.java'),path.join(project,'tests/InternalPreviewSessionTest.java')]);
   const result=execFileSync(path.join(javaHome,'bin/java'),['-cp',output,'app.tongban.wallet.demo.InternalPreviewSessionTest'],{encoding:'utf8'});
   assert.match(result,/internal preview policy\/session assertions passed/);console.log(result.trim());
  }finally{rmSync(output,{recursive:true,force:true});}
