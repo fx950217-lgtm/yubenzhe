@@ -1,16 +1,36 @@
-C 安装包交付 — 0.14.0-dev.15
+C 安装包交付与 D 实际安装补验 — 0.14.0-dev.15
+更新：2026-10-13。r3已完成停写成套备份与隔离恢复切换；两端最终包公网完整读回、大小及SHA-256全部匹配。
 
-Android applicationId：app.yubenzhe.mobile，versionCode 19，保留Java namespace。Windows appId：app.yubenzhe.desktop。
-两端使用公开服务 https://66.42.56.29，跳过旧共享外层门禁，产品账号仍需个人密码。
+Android applicationId：app.yubenzhe.mobile，versionCode 19，保留 Java namespace。
+Windows appId：app.yubenzhe.desktop。两端使用 public 服务 https://66.42.56.29，产品账号仍需个人密码。
 
-验证：
-原生与地址配置合计103/103通过（含Windows92、Android9；Android另有240项JVM断言）。
-Android APK使用原签名，签名SHA256见RELEASE-READY-PACKAGES-20261013.json；在Android14模拟器安装启动，旧app.tongban.wallet.localqa保留。
-同签名instrumentation 1/1通过：实际正式APK显示个人密码注册页、Web Locks可用；release非debuggable、FLAG_SECURE、主帧桥保护均保留。不是实体手机验收。
-Windows安装到独立Programs/YBZRelease15，安装后关键资源字节与验证包一致；在新建review-id用户目录启动向导并正常退出，未覆盖历史已配对review目录。完整公网派任务在D继续。
-ASAR内原生代码、网页文件、连接器完整白名单及Electron安全fuse验证通过；Windows未做代码签名，未提交商店。
-实际渲染24项/31截图通过：手机390px和电脑1280px，三皮肤与system实时切换、引导、骨架、地址簿、两钱包切换、群AI头像单聊、Tab红点。网络与链RPC是明示的本地合成数据，不等于公网端到端。
+最新验证：
+原生/配置全量108/108通过（D-native-clock-final.log）；后端672/672，前端817/817。桌面97项、校时定向48项与全量有重叠，不重复累加。
+Android最终正式APK SHA-256：9eae30b7b7d8309f0add808b189e00326d06cb71c69ce96e83c678c2866ebfd3，4,264,008 bytes。
+原签名者SHA-256：3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d。
+在Android14模拟器emulator-5556安装、启动，旧app.tongban.wallet.localqa保留；不是实体手机验收。
+同签名instrumentation诊断1/1：实际正式APK显示个人密码页、Web Locks可用；release非debuggable、FLAG_SECURE和主帧桥保留。后续只升级测试APK操作正常表单，不清产品数据、不重装产品APK或削弱保护。
+Android真实ID/密码登录、正常配对表单、单次发送任务254e6e56-6a3b-4601-9799-70a4cb8c68d9和回看回复通过；下载入口可见不等于已下载解密核验。该已有设备账号没有出现四步引导，不能宣称Android四步过程实跑。
 
-最终SHA-256与大小：见RELEASE-READY-PACKAGES-20261013.json。候选包校验值不再用于交付。
-使用方式：见RELEASE-READY-USER-GUIDE-20261013.txt；公开下载页已接入最终文件名与SHA，待成套备份后线上更新。
-Android新包名不继承旧包钱包，沿用签名不改变此事实。必须保留旧应用，先备份和核对恢复，再自行决定迁移清理；不要求先卸载。
+Windows最终安装器SHA-256：66f7f8e685a6fe59c1984f6bdb5b22d70d64edd36efa9d7f80b0c94fc30c77f0，112,627,163 bytes。
+Windows zip SHA-256：acade8b4a428a7f674dcf0bd7df0a951d4765f1d35976901879a04d29b197cc8，154,241,059 bytes。
+最终包已安装Programs/YBZRelease15；关键安装字节与构建一致，ASAR/native/连接器白名单及Electron安全fuse通过。实际bridge版本dev.15、公开origin、Web Locks正常，sandbox/内容保护保留。
+从已停止PID20488保留隔离profile和配对，重装后同profile恢复PID27992，未新出码或重新配对。真实deviceId 92da49a8-b9fc-4669-91ef-20dde3423fe8自然心跳在线，Codex0.153.4已登录可执行；屏幕远控仍unknown，未伪造支持。
+定位到本机比服务器快约161秒会触发provider scan拒绝：旧失败包未抓取原始HTTP响应，受控重现及修复后真实心跳支持此判断。修复方式：客户端用固定同源HTTPS Date和单调时间校准；后端未来60秒/过期/回放校验不变。向导仅真实poll成功后显示已连接，安全错误码可见。
+实际Codex执行Android任务状态succeeded，独立outbox/ybz-acceptance.txt为100 bytes，内容/唯一标记/SHA核验通过：fa6c16b9c52d645fd079790797194c7e17a695b2101f82c6445bc6b1c42d2cc7。未代登录、自动批准或重复未知任务。
+Windows正常UI新注册、随机ID、四步引导和跳过后不再出现15/15、8图；实际社交完整往返11/11、4图通过：群AI头像→实际Codex已连接/就绪→返回同一群。首次9项报告另保留未读1证据，旧超时由hidden窗口轮询暂停造成，恢复可见窗口后无需改产品源码；r3重启后的AI临时回复历史提示符合RAM机制，不宣称全文持久化。
+
+另有真实renderer24项/31图：390px/1280px、三皮肤/system、骨架、地址簿、两钱包切换、群AI头像、Tab红点；该批网络与链RPC是合成数据，不能代替公网证据。
+Windows未代码签名、两端未提交商店；不能宣称无系统提示或商店已发布。
+权威文件名、大小和哈希见RELEASE-READY-PACKAGES-20261013.json；旧候选Windows哈希作废。r3切换后install.html 200、版本/三链接/展示SHA核对通过；正常TLS、无cookie/token、禁止重定向，完整流式读取271,132,230 bytes，三文件大小及SHA全匹配，未另存大包副本。证据../../output/release-D-download-verification.json。
+最终服务/安装包代码a7f169c；f722991仅修改验收测试源码，不需要为测试源码变动重打产品APK。r3前后台同镜像healthy，备份/健康定时任务success，原会话/同一真实配对online/成功task状态跨切换保留，未重登、重发。
+公网协议和限流共13项通过；第41次请求命中auth-ip 40/15分钟429，注册10次/小时单独配额未公网穷尽，仅有本地回归。五自动账号不是五名真人，模拟器不是物理安卓，成果下载/解密和真实钱包RPC仍按总报告边界保留。
+使用方式见RELEASE-READY-USER-GUIDE-20261013.txt。Android新包名不继承旧包钱包，同签名不改变隔离：保留旧应用，先备份并核对新应用恢复地址，再自行决定旧版清理。不要求先卸载，不覆盖历史review配置。
+
+主要证据位于仓库外../../output/ybz-release-ready-20261013/：
+D-native-clock-final.log、D-windows-clock-install.log、D-installed-ui-resumed-preflight.json、D-real-device-after-clock.jsonl；
+C-android-release-diagnostic.log、D-android-pair.log、D-android-send-final.log、D-android-result-final.log；
+D-android-real-task-254e6e56-6a3b-4601-9799-70a4cb8c68d9-1791847132128.json；
+D-windows-first-use-latest.json、D-windows-social-ui-13d205ef-4f07-4651-aa82-8224294dae02/report.json；
+D-final-cutover-r3.log、D-session-after-r3.json、D-public-rate-limit-final.log；另见../../output/release-D-ops-r3-final.jsonl和../../output/release-D-download-verification.json。
+31项总报告与未覆盖范围见RELEASE-READY-FINAL-20261013.txt；安装包公网下载已核验，AI成果下载入口可见仍不能写成成果已下载解密。

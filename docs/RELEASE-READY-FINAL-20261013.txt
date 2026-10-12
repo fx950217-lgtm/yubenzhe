@@ -1,0 +1,245 @@
+YBZ 愚笨者正式可用版发布准备：31 项总验证报告
+日期：2026-10-13
+版本：0.14.0-dev.15
+报告状态：r3 已上线，公开个人密码版本与两端真实安装验收已完成本轮可执行范围；保留逐项证据边界，不宣称31项字面全部通过。
+
+一、当前结论与适用范围
+
+已完成公开独立账号改造、B 四项功能、Android/Windows 安装包及本机验证。
+已确认 r2 dev.15 停写备份切换、三库及旧6账号保全，并完成公网五账号协议及限流共13项、双账号社交25项、Windows首次使用15/15与8图。真实Android正常UI单次派任务→已安装Windows Codex执行→文件核验→Android回复回看通过。r3已完成双写入者停写备份/隔离恢复切换，原会话、真实配对与成功任务状态保留；未重登或重发。
+本报告不宣称31项原文字面全通过、五名真人验收、实体安卓手机兼容、应用商店发布或可承载真实资金。第11/12项按用户新选择替代；跨包名数据、钱包RPC合成、成果下载未验等界限逐条保留。
+执行依据：CODEX-TASK-RELEASE-READY-20261013.md；CODEX-TASK-TEST-CHANNEL-20261013.md 已作废，未另建临时测试产品替代正式环境。
+本轮服务器范围仅 https://66.42.56.29；没有授权其他主机、收费资源、主网或真实 Gas 代付。
+
+用户选择及任务书冲突处理：
+1. 用户明确选择“公开注册＋个人密码”，覆盖任务书测试邮箱/响应验证码方案。新注册设置 12–128 字符个人密码，服务端随机分配 10 位用户 ID；旧 6 位 PIN 可登录。账户密码与本机钱包密码相互独立。
+2. 因此第 9、10、13、16 项采用个人密码/随机 ID 的等价验收；第 11、12 项不再按 .test 邮箱放行或返回 simulationCode。公开邮箱 OTP 关闭，不能依靠公开验证码接管已知邮箱的旧账号。
+3. 仍有有效个人会话、符合后端资格的已验证旧邮箱账号，可主动初始化新个人密码；有强凭据须核验，初始化后撤销旧会话并签发新会话。没有会话且没有恢复方式的旧账号不能自动恢复，原数据保留。
+4. 第 21 项“同签名覆盖升级不丢数据”与第 25 项更改 applicationId 不能同时推出。新 Android 包 app.yubenzhe.mobile 与旧包不同，签名相同也不能继承旧包私有钱包数据。已保留旧应用，指导先备份、在新应用恢复并核对地址，再由用户决定处理旧版。
+5. 第 25 项“先卸载旧版”会损失尚未备份的本机钱包，已以“保留旧版、先备份和核对恢复”替代。Windows 同样不删除旧用户数据目录。不把数据迁移说明写成自动迁移已通过。
+
+二、批次提交与当前证据
+
+A：8f752d4（发布隔离和恢复准备）、61c011e（公开个人账号）、a48e534（A 线上切换与备份证据）。
+B：ba42b41（四步引导、系统主题、四类骨架、本机地址簿）。
+C：d5b8bff（正式包名、签名 Android、Windows 安装包及验收修正）。
+D 修复：7bf5670（可信代理后的机器码限流隔离）、acb8559（已安装版本与公开配对配置）、a7f169c（客户端时钟校准和真实连接状态）、f722991（仅原生测试等待/提交阶段）。最终服务/安装包源码为 a7f169c，后者仅改验收测试源码，不要求为测试源码重打产品包。
+
+最新回归：
+node --test yubenzhe-deploy/tests/*.test.mjs：672/672 通过。
+node --test tongban/tests/*.test.mjs：817/817 通过。
+node ../../output/release-native-build.cjs tests：108/108 通过；使用本机已配置的 JDK 21/原生构建环境。
+设备与设计定向：node --test tongban/tests/ui-design-system.test.mjs tongban/tests/device-code-ui.test.mjs tongban/tests/personal-devices-chat.test.mjs：20/20 通过。与全量存在重叠，不额外累加为独立覆盖数。
+本机实际渲染：node ../../output/run-release-render-BD.cjs：24/24 检查通过、31 张截图，390px 手机与 1280px 桌面，无横向溢出、无控制台错误；打开过原设计稿 design/ybz-mobile-ui.html。加载实际生产 dist，没有重建演示站。
+实际渲染使用隔离 Electron 配置、合成本机社交 API 和合成 BSC 测试网 RPC；没有使用公网账户、真实配对、AI 执行或链上付款。这套证据不能替代 D 公网实测。
+Android：正式 APK 在 Android 14 模拟器 emulator-5556 安装、启动；instrumentation 1/1 通过，看到个人密码注册页且 Web Locks 可用；release 非 debuggable、FLAG_SECURE、主帧桥限制保留。
+Windows：最终安装包已安装到独立目录，以独立 review-id 配置启动验证；未覆盖历史用户配置。ASAR 资源/原生代码和 Electron 安全配置核验通过。最终校时修复包已在原隔离profile恢复同一真实设备在线，并执行实际Android派发任务。
+
+三、31 项逐项对照
+
+01 /healthz 版本
+状态：r3 公网通过。
+D-final-cutover-r3.log及最终运营检查实际healthz为dev.15；r3镜像/源码另有核验，不只依赖版本字符串。
+
+02 无 cookie 的 capabilities 不再返回 INTERNAL_PREVIEW_REQUIRED
+状态：r3 公网通过。
+公开 capabilities 的 passwordRegistration=true、emailMode=disabled、simulation=false；产品数据仍需要各自账号。
+
+03 公网首页不再出现共享门禁
+状态：r3 HTTP与已安装Windows/Android实际公开页面通过。
+网页入口已采用 public；原生跳过旧外层共享门禁不等于绕过产品登录。个人注册/登录仍必须完成。
+
+04 /internal/ 公网不可访问
+状态：r3通过。
+公开请求404、镜像排除内部资料，编码绕过有回归；旧共享身份AI入口关闭。
+
+05 三库 integrity_check 与 foreign_key_check
+状态：r3切换后通过。
+social/ai/admin三库integrity_check均ok、foreign_key_check均0；r3前12个账号身份全部保留（原6个及本轮6个注册账号），未用空库替换。
+
+06 升级前成套备份与恢复 manifest
+状态：A、r2和r3停写成套备份及隔离恢复通过。
+A 同时停止 frontend/admin 两个写入服务并暂停项目定时任务，用 SQLite backup API 获取三库及关联数据，恢复到隔离目录后验证迁移、完整性及旧数据。
+A manifest：/opt/yubenzhe/backups/release-A-retry-20261013/snapshot-20261012T222721229Z-fa803713/manifest.json。
+A 隔离升级证据：/opt/yubenzhe/rehearsals/dev14-cutover-retry/upgrade-verification.json。
+r2 备份根为 /opt/yubenzhe/backups/release-ready-dev15-20261013，backup-result.json 指向实际snapshot/manifest.json；隔离恢复目录 /opt/yubenzhe/rehearsals/dev15-release-ready。D-final-cutover.log 明确停写两服务、暂停定时器、成套备份与隔离升级通过。退役积分记录保留SHA归档。r3确切manifest：/opt/yubenzhe/backups/release-ready-dev15-r3-20261013/snapshot-20261012T232025612Z-eca0b4c7/manifest.json。三份备份文件size/SHA匹配；隔离恢复 /opt/yubenzhe/rehearsals/dev15-release-ready-r3/restore-verification.json 每表计数一致，同目录 upgrade-verification.json 三库保全通过。sourceSnapshot=snapshot 为Docker只读/snapshot挂载名，并非遗漏真实快照；停写证据独立见D-final-cutover-r3.log。
+
+07 frontend/admin 为同一新版本镜像
+状态：r3通过。
+frontend/admin实际同为yubenzhe-public:0.14.0-dev.15-release-ready-r3且healthy，源码a7f169c；定时备份/健康任务Result=success。本机编排日志记录UTC23:22:52–23:24:16；服务器自身时钟比本机慢约161秒，时间字段按各自产地记录，不能误排先后。
+
+08 Caddy HTTPS 证书有效
+状态：r3公网正常TLS校验通过。
+两端采用正式HTTPS，不关闭证书验证；设备校时使用同源HTTPS Date，未调整服务器时间或放宽后端防护。
+
+09 首个新账号注册 created:true
+状态：公网通过，按个人密码替代旧邮箱流程。
+五账号报告 newCreatedTrue=5，随机ID及独立会话；Windows另有正常UI新注册和随机10位ID展示，后者不冒称直接观察了native bridge的created字段。
+
+10 第二账号注册且 userId 不同
+状态：公网通过。
+五个不同随机ID与独立会话，双账号社交复验身份及各自设备归属，不共享reviewer。
+
+11 非 .test 邮箱注册限制
+状态：原验收项已被用户选择覆盖；公开邮箱 OTP 关闭已通过公网验证。
+不再提供 .test 邮箱特权注册；各种邮箱都不能通过公开模拟验证码登录。正式注册使用个人密码。
+
+12 响应包含 simulationCode
+状态：原验收项已被用户选择覆盖；当前要求恰为公开不返回验证码。
+邮箱模式 disabled、simulation=false；没有把模拟认证开放到公网。r2 capabilities 及测试域/真实域OTP禁用均已核验。
+
+13 五个独立账号并发注册
+状态：公网五个自动化账号并发通过。
+采用五组独立个人密码及服务端随机 ID，不再用五个测试邮箱。自动化五账号只是五个独立协议参与者，不能称五名真人体验。
+
+14 五账号设备互相隔离
+状态：公网协议通过，真实设备双账号补验通过。
+五组合成设备交叉直接读取、token边界通过；真实device 92da49a8-b9fc-4669-91ef-20dde3423fe8被另一账号直接读取返回404。群备注对成员可见，私有设备单聊路由仅本人可见。
+
+15 同 IP 高频注册 429
+状态：公网认证IP限流通过；注册10次/小时单独配额仅本地回归。
+D-public-rate-limit-final.log与报告rateLimit记录41次请求，第41次429，对应auth-ip 40/15分钟；没有穷尽注册10/小时来假报该桶也已公网验证。此次受控探测会影响本机出口注册/登录约至2026-10-13北京时间07:40，不影响已有登录和其他IP；没有重启服务绕过限流。报告总检查13项。
+
+16 已有账号登录 created:false，不重复建号
+状态：公网通过。
+五个ID＋密码并发登录均created:false，没有重复建号；旧6位PIN兼容另有回归。
+
+17 Android APK 安装、启动、连接服务器
+状态：正式APK在Android14模拟器通过；实体手机未验。
+正常ID/密码登录、真实机器码配对、单次任务发送、回复回看均有实际UI证据。
+最终正式 APK 已安装启动，正式应用中的个人密码页面/Web Locks 运行时核验通过；旧 app.tongban.wallet.localqa 保留。不能把模拟器写成实体安卓手机。
+
+18 Windows 安装、启动、连接服务器
+状态：最终校时修复包安装、连接及实际执行通过。
+真实安装字节与构建一致，原profile/配对跨重装保留，当前PID27992；bridge dev.15、Web Locks及正式origin正常，同一真实device online=true、Codex0.153.4已登录可执行。
+
+19 两端版本一致
+状态：通过。
+两端正式产物同为 0.14.0-dev.15；Android versionCode=19。任务书 dev.13 是最低基线，已使用更新的 dev.15。
+
+20 两端 SHA-256
+状态：本地最终产物与r3公网三包完整流式读回通过。
+最终 APK、Windows 安装包和 zip 的大小/校验值见第四节及 RELEASE-READY-PACKAGES-20261013.json。此前候选包的校验值作废，不用于交付。
+
+21 Android 原签名及升级数据保护
+状态：原签名核对通过；“新包名覆盖旧包并自动继承数据”不成立，已报告并按数据保全处理。
+签名 SHA-256：3d4b557eadf19fe999eea3ae2e14b74c04c8f118678937931143284f8577d55d。
+保留旧应用，不先卸载，不删除旧私有钱包；同签名不能消除新 applicationId 带来的数据隔离。
+
+22 首次四步新手引导，可跳过、只出现一次
+状态：代码/renderer与真实Windows新账号通过；Android四步过程本轮未实跑。
+Windows四步标题、绝对公开下载链接、空机器码和明确配对按钮、跳过后跨页不再出现15/15通过、8图。Android配对账号已有设备，日志onboardingShown=false、usedFirstLoginGuide=false，正常配对走普通入口，不能冒称Android四步已验。
+
+23 跟随系统深色并实时切换
+状态：实际 Electron 渲染通过；两端系统设置专项未全部完成。
+nativeTheme 实际深/浅变化触发 matchMedia；system 偏好保留，手选护眼退出跟随。持久化失败、跨标签和监听清理有回归，不把 renderer 验证扩称全部设备型号兼容。
+
+24 消息/设备/任务/钱包四类骨架
+状态：代码及实际 renderer 四页通过；真实公网慢网不是本轮这份证据。
+本机受控延迟触发实际页面加载态，随后展示数据；刷新失败保留缓存并显示错误，旧待决策缓存不能继续授权。
+
+25 正式包名与旧版处理说明
+状态：包名/说明通过；任务书“先卸载旧版”已替换为安全迁移顺序。
+Android：app.yubenzhe.mobile；Windows：app.yubenzhe.desktop。
+旧 Android：app.tongban.wallet.demo / app.tongban.wallet.localqa；旧 Windows：app.yubenzhe.desktop.preview。
+RELEASE-READY-USER-GUIDE-20261013.txt 已写明保留旧应用、先备份并核对恢复；没有宣称自动迁移钱包。
+
+26 电脑出机器码→手机输入→配对成功
+状态：已安装Windows真实向导→Android正常UI公网配对通过。
+电脑仅生成一次机器码，手机登录本人账号正常认领，真实deviceId为92da49a8-b9fc-4669-91ef-20dde3423fe8；原配对跨重装保留，最终连接器自然恢复heartbeat，未伪造该设备心跳。
+
+27 手机派任务→真实电脑执行→收到结果
+状态：真实单次闭环通过；成果下载/解密仍未验证。
+Android正常textarea/表单单次提交task 254e6e56-6a3b-4601-9799-70a4cb8c68d9，非API代发。真实已安装Windows Codex执行succeeded，独立任务outbox/ybz-acceptance.txt为100 bytes，内容、唯一标记与SHA核验通过。
+文件SHA-256：fa6c16b9c52d645fd079790797194c7e17a695b2101f82c6445bc6b1c42d2cc7。Android另行回看expectedReplyVisible=true、artifactDownloadVisible=true；这只证明回复和下载入口可见，不是下载完成。
+此前两次测试在submit调用前失败，旧journal保留；后续新唯一标记未重复未知请求、未自动批准或代登录，不涉及云机和付款。
+
+28 双账号群聊添加 AI 备注→点击头像进入单聊
+状态：公网后端25项及真实Windows完整往返11/11、4图通过。
+真实2个人类成员与独立AI备注→本人点击Codex头像→已连接/就绪的私有会话→返回同一群通过。另一成员看备注但无私有路由，AI/设备不变好友或人类成员。
+初次9项/4图报告保留真实未读1证据；返回超时源于主窗口hidden时按设计暂停普通轮询，恢复窗口后无需修改产品源码即可通过。新报告D-windows-social-ui-13d205ef-4f07-4651-aa82-8224294dae02/report.json；未重登、发AI任务或批准。r3重启后旧临时AI回复缺失提示符合RAM中转设计，不宣称回复全文持久化。
+
+29 创建第二个钱包→切换→资产随地址变化
+状态：真实钱包模块＋合成测试网 RPC renderer 通过；不代表链上付款。
+实际执行导入钱包 1、生成钱包 2、备份词确认、加密本机保存、切换回钱包 1；公开地址不同，资产显示 1→2→1，切换后必须重新解锁。
+1/2 数字来自本机 RPC 夹具；只调用 eth_chainId/eth_getBalance，未签名、未发送交易，未导入真实资产密钥。Android 实体机钱包恢复未验。
+
+30 底部 Tab 未读提示
+状态：真实公网社交与已安装Windows通过；Android专项未验。
+真实群消息unread=1，Windows截图/DOM记录Tab“1条未读消息”与群未读1。发现红点另有合成renderer证据，不能混称两端所有红点均实跑。
+
+31 至少五参与者并发、服务资源正常
+状态：五个自动化账号/合成连接器协议与60秒资源采样通过，范围有限。
+五账号协议12项加公网认证限流1项，共13项通过；五任务合成执行结果回各自主人，不是五台真实Codex同跑。181请求观察max345ms/p95 288ms；真实Codex单任务另见27。
+10次独立资源采样：frontend最高观测CPU2.41%、内存31.72%；admin CPU14.74%、内存9.13%；宿主最低可用内存3,211,214,848 bytes，磁盘空闲约61.29GB。两服务healthy、无OOM/重启。只代表60秒窗口，可漏采样间峰值，不构成容量保证；公开认证429已另行核验，注册10/小时仅本地回归。
+
+四、最终安装包与启动方式
+
+权威清单：docs/RELEASE-READY-PACKAGES-20261013.json。
+
+Android：YBZ-0.14.0-dev.15-android.apk
+大小：4,264,008 bytes
+SHA-256：9eae30b7b7d8309f0add808b189e00326d06cb71c69ce96e83c678c2866ebfd3
+
+Windows x64 安装包：yubenzhe-0.14.0-dev.15-windows-x64-setup.exe
+大小：112,627,163 bytes
+SHA-256：66f7f8e685a6fe59c1984f6bdb5b22d70d64edd36efa9d7f80b0c94fc30c77f0
+
+Windows x64 zip：yubenzhe-0.14.0-dev.15-windows-x64.zip
+大小：154,241,059 bytes
+SHA-256：acade8b4a428a7f674dcf0bd7df0a951d4765f1d35976901879a04d29b197cc8
+
+网页：https://66.42.56.29/
+下载入口：https://66.42.56.29/install.html
+r3切换后已通过正常TLS无cookie/token、禁止重定向的完整流式下载验证，三包合计271,132,230 bytes全部大小/SHA匹配。install.html返回200，版本、三条链接、展示SHA均匹配；未另存大包副本。证据仓库外../../output/release-D-download-verification.json，采集UTC23:25:03.827–23:25:16.413。
+安装后用个人密码注册并保存随机 ID；已有账号使用 ID＋密码；钱包单独在设备上创建/恢复。
+Windows 未做代码签名、未提交商店；Android 本轮亦未提交应用商店。系统提示来源/发布者时核对来源和 SHA，不关闭安全防护。
+构建复现入口：node ../../output/release-build-public.cjs；此脚本准备 public 网页与两端快照，不等于部署或构包。正式构建必须带 public 访问模式和 https://66.42.56.29 地址，不能误用旧 internal-preview 默认值。
+
+五、能力边界、剩余事项与配置
+
+本轮仍未覆盖：五名真人/五台实体设备长时间使用、实体安卓手机和旧iOS、Android首次四步实跑、手机成果加密下载/解密、注册10次/小时单独公网穷尽、真实链上付款或钱包RPC资产验收。r3切换/健康、公开认证429、Windows群往返已完成，不再列作待补。
+已独立核对相对3644a3a的28个迁移、2个保护模块、contracts目录21个文件，共51文件字节未变，证据D-protected-final.json；r3前后原会话、原配对online及成功任务状态均只读核验通过，证据D-session-before-r3.json和D-session-after-r3.json；未重登、未重发。AI临时正文/密文生命周期按RAM机制处理，不把任务状态持久化写成全文持久化。
+本机约快服务器161秒，客户端现取固定同源HTTPS Date与单调时间映射真实扫描；缓存心跳不续期，后端未来60秒/过期/回放规则不变。UI仅真实poll成功后显示已连接，诊断仅白名单码。本机screenOnline=false且screen能力unknown，未假报远控成功。
+真实模型执行取决于用户本人在所选电脑登录 AI 软件、额度可用、连接器报告支持；Codex/其他提供商未登录时明确不可执行，不代登录。
+PUBLIC_PASSWORD_REGISTRATION 已用于公开账号路径；M0_SIMULATION=false；EMAIL_PROVIDER=disabled 不阻塞个人密码注册。真实邮件服务仍未配置，本轮没有开放邮件 OTP。
+未配置或未验证的推送、硬件冷钱包直连、主网、多链转账、跨链、Gas 代付、云资源采购和商店签名/发布不属于本次已交付闭环。只读地址观察不等于冷钱包硬件签名兼容。
+所有设备能力以实际连接器报告为准，不根据“本地/云端/服务器”标签推定支持或不支持远控。
+账户登录不会同步本机钱包密钥；本机地址簿仅存公开地址/备注，不保存私钥，选地址只填收款栏，不改变金额、不自动预览或签名。
+未支持 Web Locks 的运行时地址簿只读并提示手工填写地址；已测 Electron 和 Android 模拟器可用，旧 iOS 未在本轮更新或验收。
+
+六、证据索引与回滚
+
+仓库文档：
+docs/RELEASE-READY-STATUS-20261013.txt：A 历史切换、备份与旧账号兼容。
+docs/RELEASE-READY-B-20261013.txt：B 实现与专项。
+docs/RELEASE-READY-C-20261013.txt：C 安装、数据保护及原生检查。
+docs/RELEASE-READY-PACKAGES-20261013.json：最终安装包校验值。
+docs/RELEASE-READY-USER-GUIDE-20261013.txt：使用与旧版迁移。
+
+仓库外 output/ybz-release-ready-20261013/：
+D-backend-clock-full.log：672后端；D-bridge-clock-regression.log：48定向（有重叠）。
+B-frontend-final.json/.log：817 前端回归。
+D-native-clock-final.json/.log：108原生/配置回归。
+C-android-install.json、C-android-release-diagnostic.log：正式 APK 模拟器安装及实际运行时。
+D-windows-clock-install.json/.log：最终Windows校时修复包安装；D-installed-ui-resumed-preflight.json和D-real-device-after-clock.jsonl：原配对恢复、真实版本及在线状态。
+B-D-real-render-1791845312900/report.json 及同目录 PNG：24 项/31 截图，含合成范围声明。
+最新 renderer app.js SHA-256：a284c91652f82f878bfbd68e9d9886bee79e675811852e6183631c072a6cce1c。
+最新 renderer app.css SHA-256：9153c85d9f5f7a6464d2e0f6ad9aceb75f3df0efb3bddc729cd98e9e9e0aa65a。
+D-final-cutover.log与D-final-cutover-r3.log：r2/r3停写/恢复/切换/三库；D-public-five.log、D-public-rate-limit-final.log及仓库外../../output/release-public-e2e-report.json：五账号协议和认证限流共13项；D-resources-sample.log：10次资源采样。
+D-public-social-e2e.json：25项真实双账号社交；D-windows-first-use-latest.json：15/15与8图；D-windows-social-ui-65a755fc-14c9-4e45-bcf0-38f5a27dc024/report.json保留首次真实未读1；D-windows-social-ui-13d205ef-4f07-4651-aa82-8224294dae02/report.json为完整往返11/11与4图。
+D-android-pair.log、D-android-send-final.log、D-android-result-final.log：实际UI配对/单次提交/回看。D-android-real-task-254e6e56-6a3b-4601-9799-70a4cb8c68d9-1791847132128.json：独立只读文件/API核验，encryptedDownloadVerified=false。
+仓库外../../output/release-D-ops-r3-final.jsonl：r3源码/镜像label、备份manifest及恢复演练、原12个账号身份和创建时间保留、三库integrity/FK通过。镜像ID sha256:d6a3edf2c1cdaaea81260ef7d7851342c894afa3d0ba007385919904e43cb427，source a7f169cc4ed8d022fba48077dd0e070536c5489a。
+同报告仅对当前三库独立只读WAL快照的TEXT/BLOB做11个已知测试标记检查，共11,835格，0命中。它不证明历史空闲页、日志、备份或整个文件系统无内容，普通社交内容与AI中转正文边界也不同；单次运营stats不代替60秒资源采样。
+仓库外../../output/release-D-download-verification.json为r3最终完整读回结果；旧r2结果保留在release-D-download-verification-r2.json。D-session-before-r3.json和D-session-after-r3.json证明原会话/配对与成功状态保留，未重登/重发。
+账号密码、会话 token、签名材料、数据库与本机钱包配置均不写入本报告或 Git。
+
+回滚要求：
+线上失败先维持维护/拒绝访问，不能将旧镜像直接开放公网。
+先停止 frontend/admin 两个写入服务并暂停项目定时任务，再对切换以来的当前数据另做成套备份。
+只使用已验证、与目标旧镜像相匹配的三库/文件/状态整套快照，恢复到独立目录；核验完整性、外键、旧数据和退役归档后切换数据挂载、ops/current 与 ops/image。
+先单写者验证再恢复第二写入服务和定时任务。不能让旧镜像读取已升级数据库，不能只回滚代码而忽略新写入，不能建空库、删表或更改历史迁移校验和。
+下载页面、安装包和SHA清单也必须一起回到匹配版本；r3替换下来的Windows两包及旧SHA清单保留在 /opt/yubenzhe/releases/0.14.0-dev.15-release-ready-r3/previous-downloads，不对外公开。不可回退页面却继续提供哈希不匹配的包。
+源码可按本轮批次提交选择 revert；数据回滚需以上成套流程，不能仅凭 git revert。保留旧安装应用、旧用户配置、钱包离线备份及签名，不删除用户未提交文档。
+
+最终口径：按用户新认证选择完成本轮可执行发布验收，并对31条逐项披露范围；手机成果下载入口可见仍不能记为下载完成，自动账号/模拟器/合成钱包RPC不替代真人、实体机或真实资产。后续扩展验收继续保留未知状态不自动重试的规则。
