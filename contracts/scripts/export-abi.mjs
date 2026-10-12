@@ -11,6 +11,7 @@ export async function exportAbi() {
     const artifact=contracts['src/'+name+'.sol'][name];
     await fs.writeFile(path.join(root,'exports',name+'.json'),JSON.stringify({
       schemaVersion:1,contractName:name,chainId:97,mode:name==='SingleDistribution'?'commit-reveal-experimental':name==='EqualDistribution'?'equal':'test-token',
+      ...(name==='SingleDistribution'?{}:{allowedChainIds:[97]}),
       deploymentStatus:'not-deployed',compiler:{version:'0.8.20',optimizer:{enabled:true,runs:200},evmVersion:'paris'},
       creationCodeHash:keccak256('0x'+artifact.evm.bytecode.object),abi:artifact.abi,
     },null,2)+'\n');

@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import ganache from 'ganache';
-import {BrowserProvider,Contract,Wallet,id} from 'ethers';
+import {AbiCoder,BrowserProvider,Contract,ContractFactory,Wallet,id} from 'ethers';
 import {assertTestnet,normalizePlan,compiledArtifacts,offlinePreparation,readTestKey,checkPlan,deployPlan,verifyJournal,verifyRecord,publicConfiguration} from '../scripts/testnet.mjs';
 const artifacts=await compiledArtifacts();
 async function fixture(t){
@@ -19,9 +19,10 @@ async function fixture(t){
 }
 test('testnet plan validation refuses mainnet, random mode, private data and invalid recipients',async t=>{
  const f=await fixture(t);
- for(const changes of [{chainId:56},{mode:'commit-reveal'},{privateKey:'must-not-be-accepted'},{recipients:[f.wallet.address]},{recipients:[f.recipients[0],f.recipients[0]]},{amount:'0'},{amount:100},{confirmations:1},{maxFeePerTxWei:'1000000000000000001'},{expiresAt:f.plan.claimStart+59}])assert.throws(()=>normalizePlan({...f.plan,...changes}));
+ for(const changes of [{chainId:56},{allowedChainIds:[97,56]},{mode:'commit-reveal'},{privateKey:'must-not-be-accepted'},{recipients:[f.wallet.address]},{recipients:[f.recipients[0],f.recipients[0]]},{amount:'0'},{amount:100},{confirmations:1},{maxFeePerTxWei:'1000000000000000001'},{expiresAt:f.plan.claimStart+59}])assert.throws(()=>normalizePlan({...f.plan,...changes}));
  const prepared=offlinePreparation(f.plan,artifacts);assert.equal(prepared.status,'prepared-not-deployed');assert.equal(prepared.chainId,97);assert.equal('address' in prepared,false);assert.equal('privateKey' in prepared,false);
  assert.ok(prepared.contracts.EqualDistribution.abi.some(x=>x.name==='recipientIndex'));
+ assert.deepEqual(prepared.allowedChainIds,[97]);
  assert.match(prepared.sourceVerification.compilerVersion,/0\.8\.20/);assert.ok(prepared.sourceVerification.standardInput.sources['src/EqualDistribution.sol']);
 });
 test('RPC chain guard fails closed before signing or creating a deployment journal',async t=>{
@@ -46,11 +47,33 @@ test('complete local-EVM deployment produces verified public config without appr
  const token=new Contract(config.tokenAddress,artifacts.InternalTestToken.abi,f.provider),distribution=new Contract(config.distributionAddress,artifacts.EqualDistribution.abi,f.provider);
  assert.equal(await distribution.funded(),false);assert.equal(await token.allowance(f.wallet.address,config.distributionAddress),0n);assert.equal(await distribution.sender(),f.wallet.address);
  assert.equal(await distribution.recipientIndex(f.recipients[1]),2n);
+ for(const contract of [token,distribution]){assert.equal(await contract.allowedChain(97),true);assert.equal(await contract.allowedChain(56),false);}
+ for(const record of journal.transactions){
+  const artifact=artifacts[record.contractName],factory=new ContractFactory(artifact.abi,artifact.evm.bytecode.object);
+  const input='0x'+record.data.slice(2+artifact.evm.bytecode.object.length);
+  const args=AbiCoder.defaultAbiCoder().decode(factory.interface.deploy.inputs,input);
+  assert.deepEqual([...args[args.length-1]],[97n],'both deployment transactions bind the fixed testnet-only constructor policy');
+ }
  const saved=await fs.readFile(path.join(outDir,'deployment.json'),'utf8');assert.ok(!saved.includes(f.wallet.privateKey));
  const verification=JSON.parse(await fs.readFile(path.join(outDir,'verification-input.json'),'utf8'));assert.equal(verification.standardInput.settings.evmVersion,'paris');
  await assert.rejects(deployPlan({...f,artifacts,outDir}),e=>e.code==='OUTPUT_EXISTS');
  const verified=await verifyJournal({provider:f.provider,journalFile:path.join(outDir,'deployment.json'),artifacts});assert.equal(verified.status,'confirmed');assert.equal(publicConfiguration(verified).enabled,true);
  const forged={...journal.transactions[1],data:journal.transactions[1].data.slice(0,-2)+'00'};await assert.rejects(verifyRecord(f.provider,forged,f.plan,artifacts),e=>e.code==='DEPLOYMENT_MISMATCH');
+ const expandedArgs=[{token:config.tokenAddress,campaignId:f.plan.campaignId,amount:f.plan.amount,claimStart:f.plan.claimStart,expiresAt:f.plan.expiresAt},f.plan.recipients,[97,56]];
+ const expandedData=(await new ContractFactory(artifacts.EqualDistribution.abi,artifacts.EqualDistribution.evm.bytecode.object).getDeployTransaction(...expandedArgs)).data;
+ await assert.rejects(verifyRecord(f.provider,{...journal.transactions[1],data:expandedData},f.plan,artifacts),e=>e.code==='DEPLOYMENT_MISMATCH');
+});
+test('legacy creation-code hashes fail closed before receipt access and never rewrite their journal',async t=>{
+ const f=await fixture(t),filename=path.join(f.temp,'legacy-deployment.json');
+ const oldHashes={InternalTestToken:'0xad426cfc0de3efc8a3e5a51b1050454149025a8a31412bb969415976e5a196a2',EqualDistribution:'0x13bcccd7a6a6dfef339e487c5bf1a88d2c3fb31abc21b8816346c0c616dfd1ca'};
+ const readOnlyProvider={send:async()=> '0x61',getTransactionReceipt:()=>assert.fail('old builds need their original artifacts, not a new receipt interpretation'),broadcastTransaction:()=>assert.fail('never retry an old deployment')};
+ for(const [contractName,creationCodeHash] of Object.entries(oldHashes)){
+  const record={contractName,creationCodeHash,status:'broadcast-result-unknown',transactionHash:id('legacy '+contractName)};
+  await assert.rejects(verifyRecord(readOnlyProvider,record,f.plan,artifacts),e=>e.code==='BUILD_MISMATCH');
+  const original=JSON.stringify({schemaVersion:1,chainId:97,plan:f.plan,status:'in-progress',transactions:[record]});await fs.writeFile(filename,original);
+  await assert.rejects(verifyJournal({provider:readOnlyProvider,journalFile:filename,artifacts}),e=>e.code==='BUILD_MISMATCH');
+  assert.equal(await fs.readFile(filename,'utf8'),original,'historical journal is left byte-for-byte intact');
+ }
 });
 test('token-only deployment stays disabled for activity writes and chain receipt can recover an unknown broadcast',async t=>{
  const f=await fixture(t),plan=normalizePlan({schemaVersion:1,chainId:97,mode:'token-only',sender:f.wallet.address,maxFeePerTxWei:f.plan.maxFeePerTxWei});

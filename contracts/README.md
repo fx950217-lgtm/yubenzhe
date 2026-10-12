@@ -1,6 +1,6 @@
 # 链上一次分发：BSC 测试网内部审核
 
-本目录独立于网页和服务端，提供固定地址等额分发、专用无价值测试代币及可复现的部署工具。新增脚本只接受 BSC 测试网 chainId 97；2026-10-11 已在 BSC 测试网真实部署测试代币与等额分发合约；部署及交易事实见 TEST-RESULTS.txt 和 ../yubenzhe-deploy/reports/internal-chain-acceptance.json。当前合约未经独立审计，不用于主网或真实资金。
+本目录独立于网页和服务端，提供固定地址等额分发、专用无价值测试代币及可复现的部署工具。脚本只接受 BSC 测试网 chainId 97。2026-10-11 的旧版部署及交易事实见 TEST-RESULTS.txt 和 ../yubenzhe-deploy/reports/internal-chain-acceptance.json；2026-10-12 构造参数白名单改版仅在进程内 EVM 验证，没有部署或改变任何已有链上合约。当前合约未经独立审计，不用于主网或真实资金。
 
 默认内审模式为 `EqualDistribution`。`SingleDistribution` 随机原型保留用于本地研究，选择性中止边界尚未解决，部署脚本与消费者写操作不开启随机模式。
 
@@ -25,7 +25,7 @@ npm test
 
 ## 默认等额协议与前端接口
 
-`EqualDistribution` 构造函数仅接受 chainId 97，为 `constructor(Config c, address[] recipients)`，Config 字段按顺序为 `token, campaignId, amount(uint128), claimStart(uint64), expiresAt(uint64)`。地址名单固定 1..200 个，不允许零地址、重复地址、发送者自身或活动合约自身。分发额使用代币最小单位整数；每人获得 `amount / count`，尾差每个最小单位依次给名单靠前的固定名额，领取顺序不会改变金额。没有随机或罚金。
+`EqualDistribution` 构造函数为 `constructor(Config c, address[] recipients, uint256[] allowedChainIds)`，Config 字段按顺序为 `token, campaignId, amount(uint128), claimStart(uint64), expiresAt(uint64)`。链白名单必须有 1..32 个非零、互不重复的链编号，且包含部署时 `block.chainid`，否则创建回滚；`allowedChain(chainId)` 只读，部署后没有修改白名单的入口。项目部署脚本固定传入 `[97]`，不接受 plan 覆盖此名单。地址名单固定 1..200 个，不允许零地址、重复地址、发送者自身或活动合约自身。分发额使用代币最小单位整数；每人获得 `amount / count`，尾差每个最小单位依次给名单靠前的固定名额，领取顺序不会改变金额。没有随机或罚金。
 
 - sender 本机签名创建活动；向活动地址 `approve(totalAmount)` 后本人调用 `fund()`，必须在 claimStart 至少 60 秒前完整供资。
 - `[claimStart, expiresAt)` 由固定接收地址本人调用 `claim(index)`；不接收可改写收款方参数。重复、旁观者、复制交易或越过窗口的领取不能改变名额。
@@ -37,7 +37,9 @@ npm test
 
 固定名单地址及全部资金操作在链上公开；不要在链上写入邮箱、产品用户 ID、聊天关系或私密文件。这里没有证明某地址对应唯一自然人，产品还需独立完成账户与地址控制权核对。
 
-`InternalTestToken` 只允许部署在 chainId 97，固定名称 `YBZ Internal Test Token`、符号 `YBZt`、精度 18，创建时向部署者发行 1,000,000 枚；没有后续 mint、owner、暂停、税费或升级接口。它没有经济价值，不冒充稳定币，也不承诺兑换。
+`InternalTestToken` 构造函数为 `constructor(uint256[] allowedChainIds)`，使用相同的 1..32 项部署链白名单校验，项目脚本固定传 `[97]`。固定名称 `YBZ Internal Test Token`、符号 `YBZt`、精度 18，创建时向部署者发行 1,000,000 枚；没有后续 mint、owner、暂停、税费、改名单或升级接口。它没有经济价值，不冒充稳定币，也不承诺兑换。
+
+本次两份合约的构造 ABI、创建码哈希与运行码哈希均改变；现有合约、地址、资金与历史记录不会升级或迁移。新脚本会拒绝旧构建的 deployment journal（`BUILD_MISMATCH`），使用旧测试币也会因精确代码哈希不符而被拒绝。核验旧部署应使用其原始源码提交和已保存的 `verification-input.json`，不能修改旧 journal、放宽哈希检查或在结果未知时重新部署。白名单参数是未来逐链审核的代码能力，不是主网部署授权，也不表示已接入 ERC-4337；普通交易和分发仍由用户自付 Gas。`SingleDistribution.sol` 的代码与链签名域保持原样。
 
 ## 测试网部署：先准备，再核对，最后显式签名
 

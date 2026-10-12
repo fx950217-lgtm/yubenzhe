@@ -12,10 +12,10 @@ test('real consumer wallet vault signs approve/fund/claim/refund against a real 
  const provider=new BrowserProvider(rpc,undefined,{cacheTimeout:-1});provider.pollingInterval=10;
  const accounts=Object.values(rpc.getInitialAccounts()),sender=await provider.getSigner(0),recipients=accounts.slice(1,3).map(a=>new Wallet(a.secretKey).address);
  const tokenArtifact=artifacts['src/InternalTestToken.sol'].InternalTestToken,equalArtifact=artifacts['src/EqualDistribution.sol'].EqualDistribution;
- const token=await new ContractFactory(tokenArtifact.abi,tokenArtifact.evm.bytecode.object,sender).deploy();await token.waitForDeployment();
+ const token=await new ContractFactory(tokenArtifact.abi,tokenArtifact.evm.bytecode.object,sender).deploy([97]);await token.waitForDeployment();
  const now=Number((await rpc.request({method:'eth_getBlockByNumber',params:['latest',false]})).timestamp),campaignId=id('SYNTHETIC LOCAL FRONTEND INTEGRATION');
  const config={token:await token.getAddress(),campaignId,amount:10003n,claimStart:now+600,expiresAt:now+1200};
- const equal=await new ContractFactory(equalArtifact.abi,equalArtifact.evm.bytecode.object,sender).deploy(config,recipients);await equal.waitForDeployment();
+ const equal=await new ContractFactory(equalArtifact.abi,equalArtifact.evm.bytecode.object,sender).deploy(config,recipients,[97]);await equal.waitForDeployment();
  const publicConfig={enabled:true,mode:'equal',chainId:97,distributionAddress:await equal.getAddress(),tokenAddress:await token.getAddress(),campaignId,runtimeHash:keccak256(await provider.getCode(await equal.getAddress())),tokenRuntimeHash:keccak256(await provider.getCode(await token.getAddress()))};
  const oldFetch=globalThis.fetch,oldStorage=globalThis.localStorage,memory=new Map(),methods=[];
  globalThis.localStorage={getItem:key=>memory.get(key)??null,setItem:(key,value)=>memory.set(key,String(value)),removeItem:key=>memory.delete(key)};

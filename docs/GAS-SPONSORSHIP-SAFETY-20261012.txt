@@ -1,0 +1,23 @@
+YBZ P3：Gas 代付框架的交付边界
+日期：2026-10-12
+
+本轮默认关闭；没有连接任何 Paymaster/Bundler/RPC，没有申请服务商政策、签署 UserOperation 或广播交易，没有真实链上支出。钱包继续使用原来的 EOA 地址，逐笔显示预估网络费并由用户签署，不自动迁移地址/资产，不代管密钥。
+
+代码设计面向 ERC-4337 EntryPoint v0.7。固定地址不代表每条链已经部署或安全：接入时必须逐链核验运行字节码、版本、账户实现及工厂。主网仍未授权。
+
+本地框架仅提供显式注入测试替身的验证路径；本地成功记录不代表服务商已接受、交易已上链或用户已付费。赞助成本是平台支出，不是用户资产，不恢复积分/充值/订阅/转让/返利。
+
+EqualDistribution 和 InternalTestToken 改为部署时传入不可变更的链白名单；现有 testnet CLI 继续只允许97，并显式传[97]。构造参数和构建哈希因此变化，不能用本次构建冒充旧部署的源码核验。旧部署须保留旧提交、原 verification-input 和原 journal；不能放宽 BUILD_MISMATCH 校验或自动重新部署。SingleDistribution 原始字节不变。
+
+服务商参数的官方核对来源（仅阅读文档，未调用服务）：
+https://docs.nodereal.io/docs/megafuel-erc4337-operations-and-limits
+https://docs.nodereal.io/docs/megafuel-erc4337-rpc-reference
+https://docs.nodereal.io/docs/megafuel-erc4337-lifecycle
+https://docs.nodereal.io/docs/megafuel-erc4337-wallet-integration
+https://docs.nodereal.io/docs/megafuel-erc4337-reference-client
+https://eips.ethereum.org/EIPS/eip-4337
+官方说明的1 gwei、总Gas 2,000,000、最终授权600秒和UserOp存活10分钟属于服务商当前上限；handleOps最多8笔是Bundler内部批处理上限，不是钱包可提交任意8项调用的授权。本轮框架进一步拒绝executeBatch；后续开放须逐项解码和审计。
+
+上线缺口：真实服务商适配器与政策授权、独立核验的EntryPoint/账户/工厂代码哈希、用户确认的赞助支出上限、钱包端逐笔UserOperation签名、可靠回执查询与确认规则、独立安全审计及测试网真实验收。当前没有可由一个环境变量开启的生产付款通道。
+
+合规说明：零平台收费和自托管属于产品约束，不等于自动符合各地区法律或商店所有规则。组织开发者身份、申报及法律审查仍需分别完成；本报告不把方案文档中的概括性合规结论作为已经取得许可的证据。

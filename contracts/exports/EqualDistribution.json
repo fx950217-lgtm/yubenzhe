@@ -3,6 +3,9 @@
   "contractName": "EqualDistribution",
   "chainId": 97,
   "mode": "equal",
+  "allowedChainIds": [
+    97
+  ],
   "deploymentStatus": "not-deployed",
   "compiler": {
     "version": "0.8.20",
@@ -12,7 +15,7 @@
     },
     "evmVersion": "paris"
   },
-  "creationCodeHash": "0x13bcccd7a6a6dfef339e487c5bf1a88d2c3fb31abc21b8816346c0c616dfd1ca",
+  "creationCodeHash": "0x9b6689c700c71c3655f76e751008c27426a397f646dcbd05b3458860c3bf6267",
   "abi": [
     {
       "inputs": [
@@ -52,6 +55,11 @@
           "internalType": "address[]",
           "name": "recipients",
           "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "allowedChainIds",
+          "type": "uint256[]"
         }
       ],
       "stateMutability": "nonpayable",
@@ -190,6 +198,19 @@
     },
     {
       "inputs": [],
+      "name": "MAX_ALLOWED_CHAINS",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "MAX_RECIPIENTS",
       "outputs": [
         {
@@ -209,6 +230,25 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "allowedChain",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",

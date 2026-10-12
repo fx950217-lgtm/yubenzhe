@@ -6,6 +6,8 @@ import {Contract,ContractFactory,JsonRpcProvider,Wallet,getAddress,getCreateAddr
 import {compile,root} from './compile.mjs';
 
 export const CHAIN_ID=97;
+// Parameterized contracts do not authorize additional deployments. This CLI stays testnet-only.
+export const ALLOWED_CHAIN_IDS=Object.freeze([CHAIN_ID]);
 export class PreviewError extends Error {constructor(code,message){super(message);this.code=code;}}
 const fail=(code,message)=>{throw new PreviewError(code,message);};
 const integer=(value,label,min,max)=>{if(!Number.isSafeInteger(value)||value<min||value>max)fail('INVALID_PLAN',label+' is outside the supported range');return value;};
@@ -29,7 +31,7 @@ export function normalizePlan(raw){
 export async function loadPlan(filename){let value;try{value=JSON.parse(await fs.readFile(filename,'utf8'));}catch{fail('PLAN_READ_FAILED','Cannot read a valid JSON deployment plan');}return normalizePlan(value);}
 export async function compiledArtifacts(){const result=await compile();const artifacts=Object.fromEntries(['EqualDistribution','InternalTestToken'].map(name=>[name,result.contracts['src/'+name+'.sol'][name]]));Object.defineProperty(artifacts,'verification',{value:{compilerVersion:'v0.8.20+commit.a1b79de6',standardInput:result.standardInput}});return artifacts;}
 const artifactHash=a=>keccak256('0x'+a.evm.bytecode.object);
-export function offlinePreparation(plan,artifacts){return {schemaVersion:1,status:'prepared-not-deployed',chainId:97,mode:plan.mode,plan,contracts:Object.fromEntries(Object.entries(artifacts).map(([name,a])=>[name,{creationCodeHash:artifactHash(a),abi:a.abi}])),sourceVerification:artifacts.verification,notice:'No network request, key read, funding, approval or transaction broadcast. Test tokens have no economic value.'};}
+export function offlinePreparation(plan,artifacts){return {schemaVersion:1,status:'prepared-not-deployed',chainId:97,allowedChainIds:[...ALLOWED_CHAIN_IDS],mode:plan.mode,plan,contracts:Object.fromEntries(Object.entries(artifacts).map(([name,a])=>[name,{creationCodeHash:artifactHash(a),abi:a.abi}])),sourceVerification:artifacts.verification,notice:'No network request, key read, funding, approval or transaction broadcast. Test tokens have no economic value.'};}
 export async function assertTestnet(provider){let value;try{value=await provider.send('eth_chainId',[]);}catch{fail('RPC_UNAVAILABLE','Could not verify the RPC chain');}if(BigInt(value)!==97n)fail('TESTNET_ONLY','RPC is not BSC testnet chainId 97');return 97;}
 export function rpcProvider(value){let url;try{url=new URL(value);}catch{fail('INVALID_RPC','RPC URL is required');}if(url.username||url.password||url.protocol!=='https:')fail('INVALID_RPC','Use an explicit HTTPS RPC URL without URL credentials');return new JsonRpcProvider(value,undefined,{cacheTimeout:-1,batchMaxCount:1});}
 export async function readTestKey(filename,expectedAddress){
@@ -45,7 +47,7 @@ const configFor=(plan,token)=>({token,campaignId:plan.campaignId,amount:plan.amo
 export async function verifyTestToken(provider,tokenAddress,artifact){
  const code=await provider.getCode(tokenAddress);if(code==='0x'||keccak256(code)!==keccak256('0x'+artifact.evm.deployedBytecode.object))fail('UNSUPPORTED_TOKEN','Token bytecode is not the compiled fixed-supply internal test token');
  const token=new Contract(tokenAddress,artifact.abi,provider);
- if(await token.totalSupply()!==1000000n*10n**18n||await token.decimals()!==18n||await token.symbol()!=='YBZt')fail('UNSUPPORTED_TOKEN','Internal test token identity does not match');
+ if(await token.totalSupply()!==1000000n*10n**18n||await token.decimals()!==18n||await token.symbol()!=='YBZt'||await token.allowedChain(CHAIN_ID)!==true)fail('UNSUPPORTED_TOKEN','Internal test token identity or deployment chain policy does not match');
  return {address:getAddress(tokenAddress),runtimeHash:keccak256(code),symbol:'YBZt',decimals:18,noEconomicValue:true};
 }
 export async function checkPlan(provider,plan,artifacts){
@@ -64,7 +66,7 @@ export async function verifyRecord(provider,record,plan,artifacts){
  await assertTestnet(provider);
  if(!['InternalTestToken','EqualDistribution'].includes(record.contractName))fail('INVALID_JOURNAL','Unknown deployment contract');
  const artifact=artifacts[record.contractName];if(record.creationCodeHash!==artifactHash(artifact))fail('BUILD_MISMATCH','Local compiled bytecode changed since the reviewed deployment');
- const expectedArgs=record.contractName==='EqualDistribution'?[configFor(plan,record.tokenAddress),plan.recipients]:[];
+ const expectedArgs=record.contractName==='EqualDistribution'?[configFor(plan,record.tokenAddress),plan.recipients,ALLOWED_CHAIN_IDS]:[ALLOWED_CHAIN_IDS];
  const expectedData=(await new ContractFactory(artifact.abi,artifact.evm.bytecode.object).getDeployTransaction(...expectedArgs)).data;
  if(record.data!==expectedData)fail('DEPLOYMENT_MISMATCH','Journal does not contain the exact compiled creation bytecode and reviewed constructor arguments');
  const receipt=await provider.getTransactionReceipt(record.transactionHash);if(!receipt)return {...record,status:'pending-or-unknown'};
@@ -80,7 +82,7 @@ export async function verifyRecord(provider,record,plan,artifacts){
   if(plan.tokenAddress&&getAddress(record.tokenAddress)!==plan.tokenAddress)fail('DEPLOYMENT_MISMATCH','Activity token differs from the reviewed plan');
   await verifyTestToken(provider,record.tokenAddress,artifacts.InternalTestToken);
   const contract=new Contract(deployed,artifact.abi,provider),expected=configFor(plan,record.tokenAddress);
-  if(await contract.sender()!==plan.sender||await contract.token()!==getAddress(expected.token)||await contract.campaignId()!==plan.campaignId||await contract.totalAmount()!==BigInt(plan.amount)||await contract.claimStart()!==BigInt(plan.claimStart)||await contract.expiresAt()!==BigInt(plan.expiresAt)||await contract.recipientCount()!==BigInt(plan.recipients.length))fail('DEPLOYMENT_MISMATCH','Immutable activity configuration does not match');
+  if(await contract.sender()!==plan.sender||await contract.token()!==getAddress(expected.token)||await contract.campaignId()!==plan.campaignId||await contract.totalAmount()!==BigInt(plan.amount)||await contract.claimStart()!==BigInt(plan.claimStart)||await contract.expiresAt()!==BigInt(plan.expiresAt)||await contract.recipientCount()!==BigInt(plan.recipients.length)||await contract.allowedChain(CHAIN_ID)!==true)fail('DEPLOYMENT_MISMATCH','Immutable activity configuration or deployment chain policy does not match');
   for(let i=0;i<plan.recipients.length;i++){const participant=await contract.participants(i);if(participant.account!==plan.recipients[i]||await contract.recipientIndex(plan.recipients[i])!==BigInt(i+1))fail('DEPLOYMENT_MISMATCH','Fixed recipient list does not match');}
  }
  return {...record,status:'confirmed',address:deployed,runtimeHash:keccak256(code),blockNumber:receipt.blockNumber,blockHash:receipt.blockHash,confirmations,gasUsed:receipt.gasUsed.toString(),feeWei:(receipt.gasUsed*receipt.gasPrice).toString()};
@@ -105,10 +107,10 @@ export async function deployPlan({provider,plan,artifacts,wallet,outDir}){
   if(record.status!=='confirmed')fail('VERIFY_EXISTING_TRANSACTION','Deployment still needs receipt verification; use the existing journal');return record;
  }
  let token=plan.tokenAddress?await verifyTestToken(provider,plan.tokenAddress,artifacts.InternalTestToken):null;
- if(!token){const record=await send('InternalTestToken');token={address:record.address,runtimeHash:record.runtimeHash};}
+ if(!token){const record=await send('InternalTestToken',[ALLOWED_CHAIN_IDS]);token={address:record.address,runtimeHash:record.runtimeHash};}
  if(plan.mode==='equal'){
   await checkPlan(provider,{...plan,tokenAddress:token.address},artifacts);
-  await send('EqualDistribution',[configFor(plan,token.address),plan.recipients],{tokenAddress:token.address});
+  await send('EqualDistribution',[configFor(plan,token.address),plan.recipients,ALLOWED_CHAIN_IDS],{tokenAddress:token.address});
  }
  journal.status='confirmed';journal.token=token;await saveJson(journalFile,journal);await saveJson(path.join(outDir,'chain-preview.json'),publicConfiguration(journal));return journal;
 }

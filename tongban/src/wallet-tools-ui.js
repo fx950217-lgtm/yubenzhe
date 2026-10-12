@@ -13,7 +13,7 @@ export function mountNetworkPicker(root,{wallet,onChanged=()=>{}}){
 
 export function walletToolsHTML(){
  const availability=getWalletConnectAvailability();
- return `<p class="modal-copy">只打开下列官方工具的系统浏览器页面。请自行核对网址，不要把助记词或私钥输入网页。</p><div class="wallet-dapp-links">${DAPP_LINKS.map(item=>`<article><h3>${esc(item.name)}</h3><p>${esc(item.description)}</p><p class="thin-note">${esc(item.warning)}</p><a class="secondary" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">打开官方页面 ↗</a></article>`).join('')}</div><div class="notice"><strong>钱包连接</strong><p>${esc(availability.reason)}</p><p>当前没有已连接的 DApp。外链可打开，不代表本站钱包已授权；硬件钱包直连尚未接入。</p></div>`;
+ return `<p class="modal-copy">只打开下列官方工具的系统浏览器页面。请自行核对网址，不要把助记词或私钥输入网页。</p><div class="wallet-dapp-links">${DAPP_LINKS.map(item=>`<article><h3>${esc(item.name)}</h3><p>${esc(item.description)}</p><p class="thin-note">${esc(item.warning)}</p><a class="secondary" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">打开官方页面 ↗</a></article>`).join('')}</div><div class="notice"><strong>钱包连接</strong><p>${esc(availability.reason)}</p><p>当前没有已连接的 DApp。外链可打开，不代表本站钱包已授权；硬件钱包直连尚未接入。</p></div><div class="notice"><strong>网络手续费</strong><p>Gas 代付暂未开放。当前转账的网络手续费由你承担，每笔签署前会显示预估费用。</p><p>钱包地址和资产不会自动迁移，也不会自动替你付款。</p></div>`;
 }
 
 // All signable parameters are rendered as text, including empty calldata.

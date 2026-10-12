@@ -17,7 +17,7 @@ async function fixture(t,{count=3,amount=100003n,chainId=97,skipCampaign=false}=
  const token=await new ContractFactory(tokenArtifact.abi,tokenArtifact.evm.bytecode.object,sender).deploy();await token.waitForDeployment();
  const now=Number((await rpc.request({method:'eth_getBlockByNumber',params:['latest',false]})).timestamp);
  const config={token:await token.getAddress(),campaignId:id('LOCAL EQUAL TEST'),amount,claimStart:now+120,expiresAt:now+360};
- const deploy=async(overrides={},addresses=recipients)=>{const c=await new ContractFactory(artifact.abi,artifact.evm.bytecode.object,sender).deploy({...config,...overrides},addresses);await c.waitForDeployment();return c;};
+ const deploy=async(overrides={},addresses=recipients,allowedChainIds=[97])=>{const c=await new ContractFactory(artifact.abi,artifact.evm.bytecode.object,sender).deploy({...config,...overrides},addresses,allowedChainIds);await c.waitForDeployment();return c;};
  const campaign=skipCampaign?null:await deploy(),tx=async p=>(await p).wait();
  const at=async ts=>{await rpc.request({method:'evm_setTime',params:[ts*1000]});await rpc.request({method:'evm_mine',params:[]});};
  const fund=async()=>{await tx(token.mint(await sender.getAddress(),amount));await tx(token.approve(await campaign.getAddress(),amount));await tx(campaign.fund());};
@@ -68,9 +68,32 @@ test('200 recipients fit an explicit test block gas budget and all allocations s
  const allocations=await Promise.all(f.recipients.map(async(_,i)=>(await f.campaign.participants(i)).allocation));assert.equal(allocations.reduce((a,b)=>a+b,0n),f.amount);assert.equal(await f.campaign.recipientIndex(f.recipients[199]),200n);
  t.diagnostic('200-recipient local deployment gas: '+receipt.gasUsed.toString());await f.fund();await f.at(f.config.expiresAt);await f.tx(f.campaign.refundExpired());await f.conserved();
 });
-test('internal test token has fixed supply and refuses non-97 chains',async t=>{
- const f=await fixture(t);const token=await new ContractFactory(testTokenArtifact.abi,testTokenArtifact.evm.bytecode.object,f.sender).deploy();await token.waitForDeployment();
+test('internal test token has fixed supply and the reviewed [97] policy refuses another local chain',async t=>{
+ const f=await fixture(t);const token=await new ContractFactory(testTokenArtifact.abi,testTokenArtifact.evm.bytecode.object,f.sender).deploy([97]);await token.waitForDeployment();
  assert.equal(await token.totalSupply(),1000000n*10n**18n);assert.equal(await token.balanceOf(await f.sender.getAddress()),await token.totalSupply());assert.equal(await token.symbol(),'YBZt');
  assert.equal(testTokenArtifact.abi.some(x=>['mint','owner','pause','upgradeTo'].includes(x.name)),false);
- const mainnet=await fixture(t,{chainId:56,skipCampaign:true});await assert.rejects(new ContractFactory(testTokenArtifact.abi,testTokenArtifact.evm.bytecode.object,mainnet.sender).deploy());await assert.rejects(mainnet.deploy());
+ assert.equal(await token.allowedChain(97),true);assert.equal(await token.allowedChain(56),false);
+ assert.equal(await f.campaign.allowedChain(97),true);assert.equal(await f.campaign.allowedChain(56),false);
+ const otherLocalChain=await fixture(t,{chainId:56,skipCampaign:true});await assert.rejects(new ContractFactory(testTokenArtifact.abi,testTokenArtifact.evm.bytecode.object,otherLocalChain.sender).deploy([97]));await assert.rejects(otherLocalChain.deploy());
+});
+test('both constructors reject missing, empty, zero, duplicate, oversized or wrong-chain policies',async t=>{
+ const f=await fixture(t),tokenFactory=new ContractFactory(testTokenArtifact.abi,testTokenArtifact.evm.bytecode.object,f.sender);
+ for(const allowedChainIds of [[],[0,97],[97,97],[56],[...Array.from({length:32},(_,i)=>i+1),97]]){
+  await assert.rejects(tokenFactory.deploy(allowedChainIds));
+  await assert.rejects(f.deploy({},f.recipients,allowedChainIds));
+ }
+ await assert.rejects(tokenFactory.deploy());
+ await assert.rejects(new ContractFactory(artifact.abi,artifact.evm.bytecode.object,f.sender).deploy(f.config,f.recipients));
+ const writes=testTokenArtifact.abi.filter(x=>x.type==='function'&&!['view','pure'].includes(x.stateMutability)).map(x=>x.name).sort();
+ assert.deepEqual(writes,['approve','transfer','transferFrom'],'no chain policy setter or administrative token methods');
+});
+test('explicit constructor policy supports an additional in-memory chain without changing sender authorization',async t=>{
+ const f=await fixture(t,{chainId:1337,skipCampaign:true}),allowedChainIds=[97,1337];
+ const token=await new ContractFactory(testTokenArtifact.abi,testTokenArtifact.evm.bytecode.object,f.sender).deploy(allowedChainIds);await token.waitForDeployment();
+ const campaign=await f.deploy({token:await token.getAddress()},f.recipients,allowedChainIds);
+ for(const contract of [token,campaign]){assert.equal(await contract.allowedChain(97),true);assert.equal(await contract.allowedChain(1337),true);assert.equal(await contract.allowedChain(56),false);}
+ await f.tx(token.approve(await campaign.getAddress(),f.amount));await f.tx(campaign.fund());await f.at(f.config.claimStart);
+ await assert.rejects(campaign.connect(f.stranger).claim.staticCall(0));
+ await f.tx(campaign.connect(f.members[0]).claim(0));assert.equal(await token.balanceOf(f.recipients[0]),33335n);
+ assert.equal(await campaign.totalPaid()+await campaign.remaining(),f.amount);
 });

@@ -11,6 +11,7 @@ contract EqualDistribution is ReentrancyGuard {
     using SafeERC20 for IERC20;
     uint256 public constant MIN_WINDOW = 60;
     uint256 public constant MAX_RECIPIENTS = 200;
+    uint256 public constant MAX_ALLOWED_CHAINS = 32;
     struct Config {
         IERC20 token;
         bytes32 campaignId;
@@ -41,6 +42,8 @@ contract EqualDistribution is ReentrancyGuard {
     mapping(uint256 => Participant) public participants;
     // 1-based index; zero means this address has no fixed slot.
     mapping(address => uint256) public recipientIndex;
+    // Set once by the constructor. No owner or function can change the deployment policy.
+    mapping(uint256 => bool) public allowedChain;
     error InvalidConfig();
     error WrongPhase();
     error Unauthorized();
@@ -50,9 +53,16 @@ contract EqualDistribution is ReentrancyGuard {
     event Claimed(uint256 indexed index, address indexed recipient, uint256 paid);
     event Refunded(address indexed sender, uint256 amount);
 
-    constructor(Config memory c, address[] memory recipients) {
+    constructor(Config memory c, address[] memory recipients, uint256[] memory allowedChainIds) {
+        if (allowedChainIds.length == 0 || allowedChainIds.length > MAX_ALLOWED_CHAINS) revert InvalidConfig();
+        for (uint256 i; i < allowedChainIds.length; ++i) {
+            uint256 chainId = allowedChainIds[i];
+            if (chainId == 0 || allowedChain[chainId]) revert InvalidConfig();
+            allowedChain[chainId] = true;
+        }
+        if (!allowedChain[block.chainid]) revert InvalidConfig();
         uint256 count = recipients.length;
-        if (block.chainid != 97 || address(c.token).code.length == 0 || c.campaignId == bytes32(0)
+        if (address(c.token).code.length == 0 || c.campaignId == bytes32(0)
             || count == 0 || count > MAX_RECIPIENTS || c.amount < count
             || c.claimStart < block.timestamp + MIN_WINDOW
             || c.expiresAt < uint256(c.claimStart) + MIN_WINDOW) revert InvalidConfig();

@@ -35,7 +35,17 @@ P2 — 多链钱包与DApp边界：代码、本地EVM与本地页面验证通过
 命令：npm test（tongban）；node --test yubenzhe-desktop/tests/*.test.cjs；node --test tongban-android/tests/android-security.test.mjs；python -m unittest discover（yubenzhe-ios/tests）；node --test yubenzhe-ios/tests/*.test.mjs；node --test test/wallet-integration.test.mjs（contracts）；node tongban/build.mjs。
 localhost:18934实际浏览器已核对钱包、五条网络启用/禁用、系统外链与WalletConnect未接通提示。没有创建真实资金钱包、没有公网签名、没有原生包/手机新安装验收。23份历史迁移/受保护合约哈希不变。
 缺失：WALLETCONNECT_PROJECT_ID、WalletConnect SDK、真实provider验证；硬件钱包直连、完整TP代币/NFT/行情/跨链功能均未实现。EIP1559仅隔离fixture验证，主网未验收。商店组织资质/申报、法律审查与独立安全审计仍属外部交付，不以“零收费”宣称自动合规。细项见WALLET-NETWORK-SAFETY-20261012.txt。
-P3 — 默认关闭的ERC-4337框架：待执行。
+P2 commit：c963b90（Isolate wallet networks and harden transaction and DApp previews）。
+
+P3 — 默认关闭的ERC-4337框架：代码与本地测试通过。
+改EqualDistribution/InternalTestToken构造ABI前已说明影响；白名单拒空/重复/零/超32项/不含当前链。部署CLI始终[97]，旧journal构建不符拒绝且原字节不改。SingleDistribution.sol及其ABI导出无变化。
+新增sponsorship-policy/paymaster-service/sponsorship-accounting，默认关闭且只有显式local-fake测试接口；无真实HTTP适配、签名、广播或环境变量一键启用。v0.7完整打包摘要，EntryPoint/账户/工厂/目标代码证据，解包execute后核对内层目标/方法/完整参数摘要；批量调用和原生资产夹带拒绝。
+独立SQLite平台成本journal使用专用application_id、排他创建、WAL/FULL与事务；不连接social数据库，不消耗024编号。owner/sender首次资格、请求编号/nonce幂等、频率及单笔/用户/会话/日/月限额、70%/90%告警、一键暂停。unknown跨日/月及重启继续预留；换编号不改走自付，也不重试授权。终态需完整绑定的模拟回执，核验期成本入账；暂停仍允许只读核验。另一owner不能读取记录详情。
+独立审查实际发现并修复：跨期结算漏计、未知冲突误导自付、最终授权等待期间暂停失效、并发回执覆盖终态。新增回归验证这些行为。
+合约40/40；实际消费者钱包本地EVM联测1/1（4笔本地签名）；代付专项43/43（37基础+6独立，计入后端全量）；后端446/446（P0后403+43）；前端相关3/3和构建通过。追加双SQLite连接在终态核验/markUnknown之间竞争的回归，原子检查保证已确认或失败的终态原样返回。ABI导出、diff检查、check-project --allow-changes与23份历史哈希检查通过。Ganache使用JS回退，不影响通过结果。
+命令：npm test（contracts）；node --test test/wallet-integration.test.mjs（contracts）；npm run export-abi（contracts）；node --test yubenzhe-deploy/tests/*.test.mjs；node --test tongban/tests/wallet-tools-ui.test.mjs；node tongban/build.mjs。
+本地实际浏览器已看到Gas未开放、自付预估及不自动迁移/付款说明。没有调用真实Paymaster/Bundler或发起链上支出。原用户库未变；成本journal均为临时fixture。详细边界和官方资料见GAS-SPONSORSHIP-SAFETY-20261012.txt。
+缺失配置/接入：GAS_SPONSORSHIP_SPEND_AUTHORIZATION、GAS_SPONSORSHIP_BUDGET、ERC4337_SMART_ACCOUNT_ADAPTER、ERC4337_ENTRYPOINT_RUNTIME_VERIFICATION、PAYMASTER_PROVIDER_POLICY、BUNDLER_PROVIDER、USER_OPERATION_WALLET_SIGNATURE、TESTNET_SPONSORSHIP_ACCEPTANCE。此为接入清单，不是设置后立即可付款的现成开关。
 P4 — AI注册表与024迁移：待执行。
 P5 — D1登录提醒：待执行。
 P6 — 动态AI入口：待执行。
