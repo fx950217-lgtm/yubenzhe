@@ -5,9 +5,10 @@ const os=require('node:os');
 const crypto=require('node:crypto');
 const {pathToFileURL}=require('node:url');
 const {stopUtility}=require('./device-process-stop.cjs');
+const {SETUP_CATALOG,setupToolUrl}=require('./setup-catalog.cjs');
 const CODE=/^YBZ-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/;
 function trustedOrigin(value){let url;try{url=new URL(value);}catch{throw Error('请填写可信服务的 HTTPS 地址。');}if(url.protocol!=='https:'||url.origin!==value||url.username||url.password)throw Error('只允许完整 HTTPS 源地址，不带路径、账号或密码。');return url.origin;}
-function publicState(state){return {origin:state.origin||'',name:state.name||os.hostname().slice(0,60),source:state.source||'local',code:state.code||null,expiresAt:state.expiresAt||null,paired:Boolean(state.deviceId&&state.token),deviceId:state.deviceId||null,running:state.running===true,autoStart:state.autoStart===true,capabilities:state.capabilities||null,message:state.message||'',workspace:state.workspace||''};}
+function publicState(state){return {origin:state.origin||'',name:state.name||os.hostname().slice(0,60),source:state.source||'local',code:state.code||null,expiresAt:state.expiresAt||null,paired:Boolean(state.deviceId&&state.token),deviceId:state.deviceId||null,running:state.running===true,autoStart:state.autoStart===true,capabilities:state.capabilities||null,message:state.message||'',workspace:state.workspace||'',setupCatalog:SETUP_CATALOG};}
 function safeEnvironment(env=process.env){const out={...env};for(const key of Object.keys(out))if(/^(NODE_OPTIONS|ELECTRON_RUN_AS_NODE|NODE_TLS_REJECT_UNAUTHORIZED)$/i.test(key))delete out[key];return out;}
 async function boundedJson(response){if(!response.ok){await response.body?.cancel();throw Error(response.status===429?'操作过于频繁，请稍后再试。':response.status===401||response.status===403?'当前服务拒绝设备连接，请核对中转服务配置。':'服务暂不可用，请核对地址与网络。');}const reader=response.body?.getReader();if(!reader)throw Error('服务响应无效。');let chunks=[],size=0;try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>32768){await reader.cancel();throw Error('服务响应过大。');}chunks.push(value);}}finally{reader.releaseLock();}return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
 function createDeviceManager({electron,showApp,connectorDirectory,probeImpl=null,fetchImpl=globalThis.fetch}={}){
@@ -75,6 +76,7 @@ function createDeviceManager({electron,showApp,connectorDirectory,probeImpl=null
  async function initialize(){await fs.mkdir(data,{recursive:true});try{const bytes=await fs.readFile(saved);if(!safeStorage.isEncryptionAvailable())throw Error();state={...JSON.parse(safeStorage.decryptString(bytes)),workspace,running:false};}catch(error){if(error.code!=='ENOENT'){unreadable=true;state.message='旧设备状态无法解密，已停止连接；原文件保持不动，请检查 Windows 账号或使用本机重置连接。';}}
   ipcMain.handle('ybz-device:action',async(event,input)=>{if(!trusted(event))throw Error('请在本机设备设置窗口操作。');try{switch(input?.action){
    case 'status':return publicState(state);
+   case 'openTool':{const url=setupToolUrl(input.itemId);try{await electron.shell.openExternal(url);}catch{throw Error('未能打开系统浏览器，请稍后再试。');}update('已请求系统浏览器打开官方页面，请由你本人完成安装与登录。');return publicState(state);}
    case 'probe':return await serialize(probe);
    case 'generate':return await generate(input);
    case 'start':return await start();

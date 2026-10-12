@@ -65,7 +65,7 @@ test('legacy cloud route mounts the same device list and setup checklist keeps f
  const cleanup=mountWorkbenchHub(root,{client,initialScreen:'connections',mountDevices:()=>{mounts++;return ()=>{};}});t.after(cleanup);assert.equal(mounts,1);
  await handlers.get('click')({target:{closest:()=>({dataset:{hub:'workflows'}})}});
  assert.deepEqual([...root.innerHTML.matchAll(/data-setup-category="([^"]+)"/g)].map(x=>x[1]),['ai','email','browser','social','ybz']);
- for(const name of ['Gmail','Outlook','Proton Mail','Zoho Mail','Chrome','Firefox','Edge','Telegram','WhatsApp','Discord','YBZ 电脑版安装工具','YBZ 手机端'])assert.ok(root.innerHTML.includes(name),name);
- for(const text of ['登录必须由你本人完成','仅提供官方入口','请确认来源是官方网站','手机号要求：视地区与风控而定','注册难度：依官方验证流程','尚未上传公网'])assert.ok(root.innerHTML.includes(text),text);
+ for(const name of ['Gmail','Outlook','Proton Mail','Zoho Mail','Chrome','Firefox','Edge','Telegram','WhatsApp','Discord','YBZ 电脑版安装工具','YBZ 手机端','Node.js'])assert.ok(root.innerHTML.includes(name),name);
+ for(const text of ['登录必须由你本人完成','仅提供官方入口','请确认来源是官方网站','手机号要求：通常可选','个人邮箱注册需要手机接收验证码','注册难度：按官方验证流程','无需额外安装 Node.js','尚未上传公网'])assert.ok(root.innerHTML.includes(text),text);
  assert.doesNotMatch(root.innerHTML,/一键自动安装|\$\d|\d+\s*美元|name="(?:key|password)"/);
 });

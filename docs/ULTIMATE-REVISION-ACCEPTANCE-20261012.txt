@@ -18,9 +18,14 @@ P0 — 平台零收费与积分退役（代码及本地验证通过）
 命令：node --test tongban/tests/*.test.mjs；node --test yubenzhe-deploy/tests/*.test.mjs；node --test yubenzhe-desktop/tests/*.test.cjs；node tongban/build.mjs；node scripts/check-project.mjs --allow-changes。
 现有真实用户库仍保留原四张历史积分表，未在本轮运行迁移。新建/升级隔离fixture已确认四表删除、归档校验与故障回滚、其他行/BLOB/表定义保全。
 旧budget-paused需用户重新批准；旧群approving复用已有任务而不重建；历史plan/events/幂等响应只在读取时去掉旧计价字段，不改历史行。重启旧预览前必须按升级手册先备份，不能只刷新旧进程冒充新版服务。
-P0提交见git历史（Remove platform points and preserve task approvals）。
+P0 commit：84ae32d（Remove platform points and preserve task approvals）。
 
-P1 — 桌面向导五类官方软件清单：待执行。
+P1 — 桌面向导五类官方软件清单：代码与本地验证通过。
+修改9文件，desktop全量58/58（原51+7），frontend相关47/47，node tongban/build.mjs通过。官方软件链接只能由主进程按itemId查表；外来窗口、子框架、失焦、未知ID与任意URL被拒。没有自动安装或代登录。
+真实Electron仅加载deviceManager隔离向导，完整DOM已核对五类清单；网络调用和能力探测用禁止联网/测试替身，未触发任何服务器。截图因UnknownVizError不可用，未计作视觉截图通过。尚未打包新版安装器。
+邮箱说明核验官方页面：support.google.com/accounts/answer/27441、support.google.com/accounts/answer/114129、support.microsoft.com/en-US/accounts-billing/manage/how-to-create-a-new-microsoft-account、proton.me/support/human-verification、www.zoho.com/mail/help/login-to-zoho.html。手机号/额外验证取决于服务商当前注册流程，不能承诺免验证。
+Node.js标注独立脚本/开发可选，电脑版已有运行环境。AI清单显示待检测，P4再联动真实注册表。
+证据：仓库外output/ybz-ultimate-20261012/p1-{desktop-tests,frontend-tests,frontend-build}.log及p1-wizard/{dom.txt,result.json}。
 P2 — 多链钱包与DApp边界：待执行。
 P3 — 默认关闭的ERC-4337框架：待执行。
 P4 — AI注册表与024迁移：待执行。
