@@ -38,11 +38,19 @@ test('late or invalid picture responses never create usable URLs after account c
 });
 
 function featureHarness(t,{request=async()=>({posts:[post()],nextBefore:null}),loggedIn=true,storage:providedStorage}={}){
- let current=loggedIn?profile:null,markup='',closed=0,saved=0,lastDialog=null,dialogCount=0;const calls=[],storage=providedStorage||store();
- const service={getProfile:()=>current,authenticatedRequest:async(path,options)=>{calls.push({path,options});return request(path,options);},submitReport:async()=>({ok:true})};
+  let current=loggedIn?profile:null,markup='',closed=0,saved=0,lastDialog=null,dialogCount=0;const calls=[],seen=[],storage=providedStorage||store();
+  const service={getProfile:()=>current,markMomentsSeen:(id,owner)=>seen.push({id,owner,markup}),authenticatedRequest:async(path,options)=>{calls.push({path,options});return request(path,options);},submitReport:async()=>({ok:true})};
  let feature;const ctx={service,storage,getLegacyDrafts:()=>[{id:'legacy',text:'LOCAL_ONLY_TEXT',images:[],authorId:'me'}],toast(){},render(){markup=feature.render();},onSaved(){saved++;},closeDialog(){closed++;},showDialog(title,html,setup){dialogCount++;const errors={textContent:''},publish={disabled:false,textContent:'发布'},listeners=new Map(),fields={text:{value:''},audience:{value:'friends'}};const form={elements:fields,querySelector:selector=>selector==='.lm-editor-error'?errors:publish,querySelectorAll:()=>[fields.text,fields.audience],addEventListener:(name,handler)=>listeners.set(name,handler)};const element={querySelector:()=>form,addEventListener(){}};lastDialog={title,html,form,errors,publish,listeners};setup?.(element);}};
- feature=createLiveMomentsFeature(ctx);t.after(()=>feature.cleanup());return {feature,storage,calls,get markup(){return markup||feature.render();},get dialog(){return lastDialog;},get dialogCount(){return dialogCount;},get closed(){return closed;},get saved(){return saved;},setAccount:value=>current=value};
+  feature=createLiveMomentsFeature(ctx);t.after(()=>feature.cleanup());return {feature,storage,calls,seen,get markup(){return markup||feature.render();},get dialog(){return lastDialog;},get dialogCount(){return dialogCount;},get closed(){return closed;},get saved(){return saved;},setAccount:value=>current=value};
 }
+
+test('discovery badge acknowledges only the successfully rendered friends first page',async t=>{
+ const h=featureHarness(t,{request:async()=>({posts:[post({id:'11',own:false,author:{...profile,userId:'other'}}),post({id:'12',own:true})],nextBefore:'10'})});h.feature.routeChanged('moments');await tick();assert.equal(h.seen.length,1);assert.equal(h.seen[0].id,'11');assert.match(h.seen[0].markup,/SERVER_CONTENT/);h.feature.handleAction('lm-older',{dataset:{}});await tick();assert.equal(h.seen.length,1);h.feature.handleAction('lm-scope',{dataset:{scope:'mine'}});await tick();assert.equal(h.seen.length,1);
+});
+test('failed, late or closed moment reads do not clear discovery reminders',async t=>{
+ const failed=featureHarness(t,{request:async()=>{throw Error('offline');}});failed.feature.routeChanged('moments');await tick();assert.equal(failed.seen.length,0);
+ let resolve;const late=featureHarness(t,{request:()=>new Promise(r=>resolve=r)});late.feature.routeChanged('moments');late.feature.routeChanged('hub');resolve({posts:[post({id:'11',own:false,author:{...profile,userId:'other'}})],nextBefore:null});await tick();assert.equal(late.seen.length,0);
+});
 
 test('loading real feed does not merge legacy local posts or write them to the service',async t=>{
  const h=featureHarness(t);h.feature.routeChanged('moments');await tick();assert.match(h.markup,/SERVER_CONTENT/);assert.doesNotMatch(h.markup,/LOCAL_ONLY_TEXT/);assert.equal(h.calls.filter(c=>c.options?.method==='POST').length,0);assert.match(h.markup,/本机旧内容/);

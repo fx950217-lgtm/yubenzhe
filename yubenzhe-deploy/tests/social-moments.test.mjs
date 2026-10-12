@@ -32,6 +32,18 @@ function harness(t){
  return {db,one,all,run,service,a,b,c,d,friend,call,publish,tick:ms=>time+=ms};
 }
 
+test('navigation moment waterline excludes own, private and unrelated posts',t=>{
+ const h=harness(t);assert.equal(h.service.latestVisibleId(h.a),'0');h.friend(h.a,h.b);
+ const visible=h.publish(h.b).post;h.publish(h.b,{audience:'self'});h.publish(h.c);h.publish(h.a);
+ assert.equal(h.service.latestVisibleId(h.a),visible.id);assert.equal(h.service.latestVisibleId(h.c),'0');
+});
+test('navigation moment waterline revokes blocked, unfriended and suspended content in both directions',t=>{
+ const h=harness(t);h.friend(h.a,h.b);const p=h.publish(h.b).post;assert.equal(h.service.latestVisibleId(h.a),p.id);
+ for(const [from,to]of [[h.a,h.b],[h.b,h.a]]){h.run('INSERT INTO social_blocks VALUES(?,?,?)',from.id,to.id,1);assert.equal(h.service.latestVisibleId(h.a),'0');h.run('DELETE FROM social_blocks');}
+ h.run("INSERT INTO account_restrictions VALUES(?,'suspended','test',?)",h.b.id,1);assert.equal(h.service.latestVisibleId(h.a),'0');h.run('DELETE FROM account_restrictions');assert.equal(h.service.latestVisibleId(h.a),p.id);
+ h.run('DELETE FROM friendships');assert.equal(h.service.latestVisibleId(h.a),'0');h.friend(h.a,h.b);h.call(h.b,'POST','moments/'+p.id+'/delete');assert.equal(h.service.latestVisibleId(h.a),'0');
+});
+
 test('moments use real account identity, current friendships and private audience',t=>{
  const h=harness(t);h.friend(h.a,h.b);const shared=h.publish(h.a).post,privatePost=h.publish(h.a,{audience:'self'}).post;
  assert.deepEqual(h.call(h.a,'GET','moments').posts.map(p=>p.id),[privatePost.id,shared.id]);
@@ -138,8 +150,10 @@ test('real social service mounts moments behind product authentication and appli
  const a=await call('','POST','register',{password:'483716',requestId:randomUUID()}),b=await call('','POST','register',{password:'628194',requestId:randomUUID()});
  const request=await call(a.token,'POST','friends/request',{userId:b.profile.userId});await call(b.token,'POST','friends/respond',{requestId:request.requestId,accept:true});
  const made=await call(a.token,'POST','moments',{clientId:randomUUID(),text:'真实服务集成测试',audience:'friends',images:[{src:IMAGE,name:'fixture.png'}]});
- assert.equal((await call(b.token,'GET','moments')).posts[0].id,made.post.id);
+  assert.equal((await call(b.token,'GET','moments')).posts[0].id,made.post.id);
+  assert.equal((await call(b.token,'GET','state')).moments.latestVisibleId,made.post.id);
  await assert.rejects(call('','GET','moments/media/'+made.post.images[0].id),code('ACCOUNT_REQUIRED'));
- await call(a.token,'POST','friends/remove',{userId:b.profile.userId});
+  await call(a.token,'POST','friends/remove',{userId:b.profile.userId});
+  assert.equal((await call(b.token,'GET','state')).moments.latestVisibleId,'0');
  await assert.rejects(call(b.token,'GET','moments/media/'+made.post.images[0].id),code('MOMENT_NOT_FOUND'));
 });

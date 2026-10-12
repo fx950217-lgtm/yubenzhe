@@ -1,5 +1,7 @@
 # 愚笨者 · YBZ
 
+2026-10-13 细节打磨进行中（仍基于 dev.13）：A 已提交 aea2238，多钱包本机 AES-256-GCM、旧库兼容及钱包入口整理已验证；B1 未读红点与 B5 长按/右键菜单已实现。当前前端731、后端605通过；A消费者钱包本地EVM1通过，另有历史群EVM积分旧fixture失败，不能称全闭环重验完成。启动 node tongban/build.mjs 后 node scripts/start-detail-review.mjs，localhost:18938，独立 ../ybz-detail-review-20261013。B2/B3/B4 等待用户明确 R5 普通聊天存储范围与连续迁移编号；D/C 未做，不跳过顺序。任务正文54而汇总56，报告保留两候选未确认。详见 docs/DETAIL-POLISH-ACCEPTANCE-20261013.txt。未连接任何服务器、未部署/push/原生打包，旧18936与数据保留；本轮没有 SQL 迁移。以下均为历史状态。
+
 2026-10-12 **0.14.0-dev.13 本地审核版**：已按 [UI 与功能任务书](docs/CODEX-TASK-UI-AND-FEATURES-20261012.md) 完成 U0→U5、F1→F4、T1→T2，逐批提交。消息首页、三皮肤、讨论组 AI 备注、私聊与人工决策续作、关键通知均有实际代码与验证。默认消息；五 Tab 为消息→发现→中央工作台→钱包→我的。
 
 启动：`node tongban/build.mjs`，再执行 `node scripts/start-ui-review.mjs`；审核 [localhost:18936](http://localhost:18936/?v=0.14.0-dev.13#messages)。使用独立 `../ybz-ui-review-20261012` 数据；旧18934预览已停，旧库未升级。最终前端678、后端603、桌面79、合约40、本地钱包EVM1项通过。完整变更、逐批结果、缺失配置、未完成项及回滚见 [总验证报告](docs/UI-FEATURES-ACCEPTANCE-20261012.txt) 和 [逐文件清单](docs/UI-FEATURES-FILE-CHANGES-20261012.txt)。

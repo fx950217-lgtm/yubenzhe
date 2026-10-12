@@ -16,6 +16,15 @@ function harness(handler,{native=true,store=storage()}={}){
 }
 function blobURLs(t){let count=0;const created=[],revoked=[];t.mock.method(URL,'createObjectURL',()=>{const url='blob:synthetic/'+(++count);created.push(url);return url;});t.mock.method(URL,'revokeObjectURL',url=>revoked.push(url));return {created,revoked};}
 
+test('notification observers reuse successful state reads without new requests and receive detached snapshots',async()=>{
+ const calls=[],seen=[];const client=createSocialClient({baseURL:BASE,native:false,storage:storage(),fetcher:async url=>{calls.push(url);return response({...snapshot(),moments:{latestVisibleId:'7'},conversations:[{id:ID,type:'group',unread:2}]});},onState:state=>{seen.push(state);state.conversations[0].unread=999;}});
+ const result=await client.getState();assert.equal(result.conversations[0].unread,2);assert.equal(seen.length,1);assert.equal(calls.length,1);client.dispose();
+});
+test('stale state never notifies badges and displayed moments only notify for the current account',async()=>{
+ const pending=deferred(),events=[],watermarks=[];const client=createSocialClient({baseURL:BASE,native:false,storage:storage(),fetcher:async url=>url.endsWith('/login')?response({profile:B}):pending.promise,onState:v=>events.push(v),onMomentsSeen:(id,owner)=>watermarks.push({id,owner})});
+ const old=assert.rejects(client.getState(),{code:'SESSION_CHANGED'});await client.login(B.userId,'735194');pending.resolve(response(snapshot()));await old;assert.equal(events.length,0);client.markMomentsSeen('4',A.userId);client.markMomentsSeen('5',B.userId);assert.deepEqual(watermarks,[{id:'5',owner:B.userId}]);client.dispose();client.markMomentsSeen('6',B.userId);assert.equal(watermarks.length,1);
+});
+
  test('ETag 304 reuses an isolated cache and successful writes invalidate it',async()=>{
   let read=0;const h=harness((path,options)=>{if(options.method==='POST')return response({ok:true});read++;return read===2?response({}, {status:304}):response(snapshot(),{etag:'"state-'+read+'"'});});
   const first=await h.client.getState();first.profile.nickname='caller mutation';first.friends.push({userId:'bad'});

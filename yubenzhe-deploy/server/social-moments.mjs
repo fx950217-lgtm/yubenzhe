@@ -109,5 +109,8 @@ export function createSocialMoments(ctx){
   if(method==='POST'&&action==='comments'&&route[3]&&route[4]==='delete'){fields(input,[]);return transaction(()=>{const post=one('SELECT * FROM moments WHERE id=?',id),comment=one('SELECT * FROM moment_comments WHERE id=? AND post_id=?',numeric(route[3]),id);if(comment&&comment.author_id!==a.id)fail(403,'COMMENT_OWNER_REQUIRED','只能删除自己的评论。');if(comment)removeComment(comment.id);return visible(post,a)?{post:postView(post,a)}:{ok:true};});}
   fail(404,'MOMENT_NOT_FOUND','动态操作不存在。');
  }
- return {handle,reportEvidence,moderate};
+  // Same friendship, audience, block and suspension boundaries as the feed.
+  // Return only an opaque waterline, not text/images or the number of hidden posts.
+  function latestVisibleId(a){return String(one(`SELECT coalesce(max(p.id),0) id FROM moments p WHERE p.author_id<>? AND p.audience='friends' AND EXISTS(SELECT 1 FROM friendships f WHERE (f.a=? AND f.b=p.author_id) OR (f.b=? AND f.a=p.author_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=? AND b.blocked_id=p.author_id) OR (b.blocked_id=? AND b.blocker_id=p.author_id)) AND NOT EXISTS(SELECT 1 FROM account_restrictions r WHERE r.account_id=p.author_id AND r.state='suspended')`,a.id,a.id,a.id,a.id,a.id).id);}
+  return {handle,reportEvidence,moderate,latestVisibleId};
 }

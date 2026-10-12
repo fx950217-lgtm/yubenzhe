@@ -65,7 +65,13 @@ export function createLiveMomentsFeature(ctx){
  async function requireAccount(){if(me())return true;await ctx.onAccount?.();return Boolean(me());}
  async function load(older=false){
   if(dead||loading||!active||!me())return;loading=true;const epoch=++generation,account=me().userId;error='';if(!older){posts=[];api.clear();}refreshRender();
-  try{const data=await api.list('?scope='+scope+(older&&more?'&before='+encodeURIComponent(more):''));if(dead||epoch!==generation||me()?.userId!==account)return;const hydrated=await api.hydrate(data.posts);if(dead||epoch!==generation||me()?.userId!==account)return;posts=older?[...posts,...hydrated]:hydrated;more=data.nextBefore;loaded=true;}
+   try{const data=await api.list('?scope='+scope+(older&&more?'&before='+encodeURIComponent(more):''));if(dead||epoch!==generation||me()?.userId!==account)return;const hydrated=await api.hydrate(data.posts);if(dead||epoch!==generation||me()?.userId!==account)return;posts=older?[...posts,...hydrated]:hydrated;more=data.nextBefore;loaded=true;
+    refreshRender();
+    if(!older&&scope==='all'&&active&&globalThis.document?.visibilityState!=='hidden'){
+     const ids=hydrated.filter(p=>p.own===false&&p.author?.userId!==account&&/^[1-9]\d{0,14}$/.test(p.id)&&Number.isSafeInteger(Number(p.id))).map(p=>Number(p.id));
+     if(ids.length)service.markMomentsSeen?.(String(Math.max(...ids)),account);
+    }
+   }
   catch(e){if(!dead&&epoch===generation){error=errorText(e);if(!older){posts=[];api.clear();}loaded=true;}}
   finally{if(!dead&&epoch===generation){loading=false;refreshRender();}}
  }

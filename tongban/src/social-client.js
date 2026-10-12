@@ -4,7 +4,7 @@ import { isNativeApp } from './native-runtime.js';
 const TOKEN_KEY='yubenzhe.account.session.v1',PROFILE_KEY='tongban.profile.v1';
 const copy=value=>value===null?null:JSON.parse(JSON.stringify(value));
 const clientError=(message,code)=>Object.assign(new Error(message),{code});
-export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.previewOrigin:location.origin,native=isNativeApp(),fetcher=globalThis.fetch.bind(globalThis),storage,onChange=()=>{}}={}){
+export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.previewOrigin:location.origin,native=isNativeApp(),fetcher=globalThis.fetch.bind(globalThis),storage,onChange=()=>{},onState=()=>{},onMomentsSeen=()=>{}}={}){
  let accessRecoveryToken='';
  let current=null,token='',generation=0,cacheVersion=0,readSequence=0,storageWarning='',disposed=false;
  const cache=new Map(),media=new Map(),groupRequests=new Map(),pendingMedia=new Map(),reads=new Map(),controllers=new Set();
@@ -122,7 +122,8 @@ export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.prev
   async logout(){const revision=generation;try{await post('logout');}catch(error){if(error.code==='ACCOUNT_REQUIRED')return;throw error;}assertCurrent(revision);forget();},
   async changePassword(currentPassword,newPassword){const revision=generation;return acceptSession(await post('password',{currentPassword,newPassword}),revision);},
   async saveProfile(input){const initial=current,revision=generation;const result=await post('profile',input);assertCurrent(revision);if(current!==initial)throw new Error('账号资料已更新，请重新打开后修改。');return remember(result.profile);},
-  async getState(){const revision=generation,result=await request('state');assertCurrent(revision);if(!current||current.userId!==result.profile.userId||current.revision!==result.profile.revision)remember(result.profile);return result;},
+  async getState(){const revision=generation,result=await request('state');assertCurrent(revision);if(!current||current.userId!==result.profile.userId||current.revision!==result.profile.revision)remember(result.profile);assertCurrent(revision);onState(copy(result));return result;},
+  markMomentsSeen(latestId,expectedOwner){if(!disposed&&current?.userId===expectedOwner)onMomentsSeen(latestId,expectedOwner);},
   lookup:userId=>request('lookup?userId='+encodeURIComponent(userId)),
   requestFriend:userId=>post('friends/request',{userId}),
   respondFriend:(requestId,accept)=>post('friends/respond',{requestId,accept}),

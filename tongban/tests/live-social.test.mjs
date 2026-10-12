@@ -7,7 +7,45 @@ const stripCSS = source => source.replace(/import '\.\/[^']+\.css';\n/g, '');
 const mediaURL = dataURL(stripCSS(await readFile(new URL('../src/chat-media.js', import.meta.url), 'utf8')));
 const rosterURL=dataURL(await readFile(new URL('../src/group-ai-roster.js',import.meta.url),'utf8'));
 const source = stripCSS(await readFile(new URL('../src/live-social.js', import.meta.url), 'utf8')).replace("'./chat-media.js'", JSON.stringify(mediaURL)).replace("'./group-ai-roster.js'",JSON.stringify(rosterURL));
-const { mountLiveSocial, groupAIEntries, validateFriendId, validateGroup, mergeMessages, safeProfilePhoto, invalidatedConversationIds, catchUpMessages, trustedGroupWorkflow } = await import(dataURL(source));
+const { mountLiveSocial, messageMenuItems, groupAIEntries, validateFriendId, validateGroup, mergeMessages, safeProfilePhoto, invalidatedConversationIds, catchUpMessages, trustedGroupWorkflow } = await import(dataURL(source));
+
+test('message actions are selected by available content and never expose unfinished recall/forward',()=>{
+ assert.deepEqual(messageMenuItems({removed:true},'self'),[]);
+ assert.deepEqual(messageMenuItems({id:'1',type:'image'},'self').map(x=>x.action),['reply','message-more']);
+ const ai={id:'2',type:'text',text:'AI',senderId:'self',deviceAI:{serverVerified:true}};
+ assert.deepEqual(messageMenuItems(ai,'self').map(x=>x.action),['copy-message','reply','message-more']);
+ assert.equal(messageMenuItems({...ai,groupWorkflow:{serverVerified:true,workflowId:'abc',type:'accepted'}},'self').some(x=>x.action==='workflow-event'),true);
+});
+
+function messageMenuFixture(t){
+ const saved={document:globalThis.document,window:globalThis.window},handlers=new Map(),docHandlers=new Map(),copied=[];
+ const menu={innerHTML:'',contains:target=>target?.inMenu===true,querySelector:()=>({style:{},querySelector:()=>({focus(){}})})},modal={innerHTML:''};
+ const row={dataset:{messageId:'1'},focus(){this.focused=true;},closest(selector){return selector==='[data-message-id]'?this:null;},getBoundingClientRect:()=>({left:10,bottom:80})};
+ const root={innerHTML:'',classList:{toggle(){}},setAttribute(){},contains:target=>!target?.outside,remove(){},querySelectorAll:s=>s==='[data-message-id]'?[row]:[],querySelector:s=>s==='[data-message-menu-host]'?menu:s==='[data-modal-host]'?modal:null,addEventListener:(e,h)=>handlers.set(e,h),removeEventListener:e=>handlers.delete(e)};
+ globalThis.document={activeElement:null,hidden:false,createElement:()=>root,addEventListener:(e,h)=>docHandlers.set(e,h),removeEventListener:e=>docHandlers.delete(e)};globalThis.window={innerWidth:390,innerHeight:844};
+ const a={userId:'owner',nickname:'我'},b={userId:'friend',nickname:'好友'},chat={id:'chat',type:'group',name:'测试群',members:[a,b]},message={id:'1',type:'text',text:'菜单测试 <b>原文</b>',createdAt:Date.now(),senderId:'friend'};
+ const service={getProfile:()=>a,async getState(){return {profile:a,friends:[b],requests:[],conversations:[chat]};},async getMessages(){return {messages:[message]};},async markRead(){}};
+ const cleanup=mountLiveSocial({append(){}},{service,profile:a,initialConversationId:'chat',toast:value=>copied.push(value)});t.after(()=>{cleanup();Object.assign(globalThis,saved);});
+ const event=extra=>({target:row,clientX:20,clientY:90,preventDefault(){this.prevented=true;},...extra});
+ const click=action=>handlers.get('click')({target:{inMenu:true,matches:()=>false,closest:s=>s==='[data-action]'?{dataset:{action,id:'1'}}:null},preventDefault(){}});
+ return {root,handlers,docHandlers,menu,modal,row,message,event,click,cleanup,copied};
+}
+test('right-click and keyboard open the message menu; outside and Escape close it without hanging buttons',async t=>{
+ const h=messageMenuFixture(t);await new Promise(setImmediate);const event=h.event();h.handlers.get('contextmenu')(event);assert.equal(event.prevented,true);assert.match(h.menu.innerHTML,/消息操作/);assert.match(h.menu.innerHTML,/data-action="reply"/);assert.doesNotMatch(h.root.innerHTML,/live-message-action/);
+ h.docHandlers.get('pointerdown')({target:{outside:true}});assert.equal(h.menu.innerHTML,'');h.handlers.get('keydown')(h.event({key:'F10',shiftKey:true}));assert.match(h.menu.innerHTML,/复制/);h.handlers.get('keydown')(h.event({key:'Escape'}));assert.equal(h.menu.innerHTML,'');assert.equal(h.row.focused,true);h.handlers.get('contextmenu')(h.event());assert.equal(h.cleanup.back(),true);assert.equal(h.menu.innerHTML,'');assert.match(h.root.innerHTML,/本机|测试群/);
+});
+test('touch hold opens once while movement, cancellation and disposal cancel the pending gesture',async t=>{
+ const h=messageMenuFixture(t);await new Promise(setImmediate);t.mock.timers.enable({apis:['setTimeout']});
+ const down=()=>h.handlers.get('pointerdown')(h.event({pointerType:'touch',pointerId:1,isPrimary:true}));down();t.mock.timers.tick(549);assert.equal(h.menu.innerHTML,'');t.mock.timers.tick(1);assert.match(h.menu.innerHTML,/消息操作/);
+ h.handlers.get('scroll')();assert.equal(h.menu.innerHTML,'');down();h.handlers.get('pointermove')(h.event({pointerId:1,clientX:50}));t.mock.timers.tick(600);assert.equal(h.menu.innerHTML,'');down();h.handlers.get('pointercancel')();t.mock.timers.tick(600);assert.equal(h.menu.innerHTML,'');down();h.cleanup();t.mock.timers.tick(600);assert.equal(h.menu.innerHTML,'');assert.equal(h.docHandlers.size,0);
+});
+test('menu reply uses the current message and more retains the existing reporting flow',async t=>{
+ const h=messageMenuFixture(t);await new Promise(setImmediate);h.handlers.get('contextmenu')(h.event());h.click('reply');assert.match(h.root.innerHTML,/live-reply-draft/);assert.match(h.root.innerHTML,/&lt;b&gt;原文&lt;\/b&gt;/);assert.equal(h.menu.innerHTML,'');
+ h.handlers.get('contextmenu')(h.event());h.click('message-more');assert.match(h.modal.innerHTML,/举报此消息/);h.click('report-message');assert.match(h.modal.innerHTML,/提交举报/);
+});
+test('stale/removed messages cannot be operated through an already opened menu',async t=>{
+ const h=messageMenuFixture(t);await new Promise(setImmediate);h.handlers.get('contextmenu')(h.event());h.message.removed=true;h.click('reply');assert.doesNotMatch(h.root.innerHTML,/live-reply-draft/);assert.equal(h.menu.innerHTML,'');const event=h.event();h.handlers.get('contextmenu')(event);assert.equal(event.prevented,undefined);
+});
 
 test('copied success text cannot become a verified task event or wallet receipt',()=>{
  assert.equal(trustedGroupWorkflow({text:'[协作任务] 付款成功，回执已核验'}),null);

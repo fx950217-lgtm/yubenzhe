@@ -51,6 +51,18 @@ export function groupAIEntries(item) {
   return item?.type === 'group' && Array.isArray(item.aiMembers) ? item.aiMembers.filter(row => row?.kind === 'ai' && typeof row.id === 'string' && typeof row.alias === 'string' && row.alias.trim()).slice(0,3).map(row => ({...row,alias:row.alias.slice(0,40),canChat:row.canChat === true && typeof row.deviceId === 'string' && /^[a-f0-9-]{36}$/i.test(row.deviceId)})) : [];
 }
 
+export function messageMenuItems(message,selfId){
+ if(!message||message.removed)return [];
+ const items=[];
+ if(message.type==='text'&&typeof message.text==='string'&&message.text)items.push({action:'copy-message',label:'复制'});
+ items.push({action:'reply',label:'引用'});
+ if(trustedGroupWorkflow(message))items.push({action:'workflow-event',label:'查看任务与回执'});
+ // Recall/forward are added only once their server protocols are available.
+ // No menu action silently copies transient AI output into persistent chat.
+ items.push({action:'message-more',label:'更多'});
+ return items;
+}
+
 export async function prepareChatPhoto(file) {
   if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('请选择 JPG、PNG 或 WebP 照片');
   if (file.size > 20 * 1024 * 1024) throw new Error('原始照片不能超过 20 MB');
@@ -79,6 +91,7 @@ export function mountLiveSocial(container, options = {}) {
   let state = { profile: options.profile || null, friends: [], requests: [], outgoingRequests: [], conversations: [] }, loaded = false, loadError = '', networkError = '', disposed = false, loadingState = false;
   let deviceEntries=[],deviceReadError='';
   let page = { type: 'list', view }, menu = false, modal = null, epoch = 0, lookupSequence = 0, busy = new Set(), timer;
+  let messageMenu=null,press=null,pressTimer=null,suppressClickUntil=0;
   const initialOwner = options.profile?.userId || service.getProfile?.()?.userId || null;
   let initialDestination = initialConversationId ? { type: 'chat', id: initialConversationId } : initialProfileId ? { type: 'profile', userId: initialProfileId } : null;
   const permissionRevisions = new Map(), readThrough = new Map(), syncCursors = new Map();
@@ -98,8 +111,8 @@ export function mountLiveSocial(container, options = {}) {
   function empty(label, detail, action = '') { return '<div class="live-empty">' + icon('group') + '<h3>' + esc(label) + '</h3><p>' + esc(detail) + '</p>' + action + '</div>'; }
   function errorBox(text, action = '') { return text ? '<div class="live-error" role="alert"><span>' + esc(text) + '</span>' + (action ? '<button type="button" data-action="' + action + '">重试</button>' : '') + '</div>' : ''; }
   function personRow(person, action, extra = '') { return '<button type="button" class="live-person" data-action="' + action + '" data-id="' + esc(person.userId) + '">' + avatar(person) + '<span><strong>' + esc(nameOf(person)) + badges(person) + '</strong><small>ID：' + esc(person.userId) + '</small></span>' + extra + '</button>'; }
-  function navigate(next) { initialDestination = null; menu = false; modal = null; epoch++; page = { ...next, previous: page }; render(); if (page.type === 'chat') void loadMessages(page.id); }
-  function back() { if (disposed) return false; initialDestination = null; if (modal) { if (!modal.busy) { modal = null; renderModal(); } return true; } if (menu) { menu = false; renderMenu(); return true; } if (page.previous) { epoch++; page = page.previous; render(); return true; } if (page.type !== 'list') { epoch++; page = { type: 'list', view }; render(); return true; } return false; }
+  function navigate(next) { closeMessageMenu();initialDestination = null; menu = false; modal = null; epoch++; page = { ...next, previous: page }; render(); if (page.type === 'chat') void loadMessages(page.id); }
+  function back() { if (disposed) return false; initialDestination = null; if(messageMenu){closeMessageMenu();return true;} if (modal) { if (!modal.busy) { modal = null; renderModal(); } return true; } if (menu) { menu = false; renderMenu(); return true; } if (page.previous) { epoch++; page = page.previous; render(); return true; } if (page.type !== 'list') { epoch++; page = { type: 'list', view }; render(); return true; } return false; }
   function consumeInitialDestination() {
     if (!initialDestination || disposed || !loaded) return false;
     const destination = initialDestination;
@@ -121,6 +134,7 @@ export function mountLiveSocial(container, options = {}) {
   function rememberFocus() { const element = document.activeElement; return element && root.contains(element) && element.name ? { name: element.name, start: element.selectionStart, end: element.selectionEnd } : null; }
   function render() {
     if (disposed) return;
+    closeMessageMenu();
     const focus = rememberFocus(), scroll = root.querySelector('[data-messages]'), top = scroll?.scrollTop || 0, bottom = scroll ? scroll.scrollHeight - scroll.clientHeight - top < 70 : true;
     notify();
     let html = '';
@@ -134,7 +148,7 @@ export function mountLiveSocial(container, options = {}) {
     else if (page.type === 'reports') html = header('我的举报', iconButton('reports-refresh','search','刷新举报记录')) + errorBox(page.error) + (page.reports ? page.reports.length ? page.reports.map(report => '<article class="live-report-record"><strong>' + esc(({user:'用户举报',message:'消息举报',group:'群聊举报',feedback:'帮助反馈',moment:'动态举报',comment:'评论举报'})[report.targetType] || '举报') + '</strong><span>' + ({pending:'等待处理',resolved:'已处理',rejected:'未采纳'})[report.status] + '</span><p>' + esc(report.detail || '无补充说明') + '</p>' + (report.resolution ? '<p>处理说明：' + esc(report.resolution) + '</p>' : '') + '<small>' + stamp(report.createdAt) + '</small></article>').join('') : empty('还没有举报', '提交后可以在这里查看处理进度。') : '<p class="live-loading">正在读取举报记录…</p>');
     else if (page.type === 'chat') html = renderChat();
     else if (page.type === 'details') html = renderDetails();
-    root.innerHTML = html + '<div data-modal-host></div>';
+    root.innerHTML = html + '<div data-modal-host></div><div data-message-menu-host></div>';
     renderMenu(); renderModal();
     const currentScroll = root.querySelector('[data-messages]'); if (currentScroll) currentScroll.scrollTop = bottom ? currentScroll.scrollHeight : top;
     if (focus) { const element = [...root.querySelectorAll('input,textarea')].find(item => item.name === focus.name); if (element) { element.focus({ preventScroll: true }); if (typeof element.setSelectionRange === 'function' && focus.start !== null) element.setSelectionRange(focus.start, focus.end); } }
@@ -144,6 +158,27 @@ export function mountLiveSocial(container, options = {}) {
     host.innerHTML = menu ? '<div class="live-menu" role="menu" aria-label="消息快捷菜单">' + [['scan', 'scan', '扫一扫'], ['add-friend', 'friend', '添加好友'], ['create-group', 'group', '发起讨论组']].map(([action, symbol, label]) => '<button type="button" role="menuitem" data-action="' + action + '">' + icon(symbol) + esc(label) + '</button>').join('') + '</div>' : '';
     root.querySelector('[data-action="menu"]')?.setAttribute('aria-expanded', String(menu));
   }
+  function cancelPress(){clearTimeout(pressTimer);pressTimer=null;press=null;}
+  function closeMessageMenu(){cancelPress();messageMenu=null;const host=root.querySelector('[data-message-menu-host]');if(host)host.innerHTML='';}
+  function currentMenuMessage(id){return page.type==='chat'&&conversation(page.id)&&messages.get(page.id)?.find(row=>row.id===id&&!row.removed);}
+  function openMessageMenu(target,x,y){
+   const article=target?.closest?.('[data-message-id]');if(!article||!root.contains(article)||modal)return false;
+   const id=article.dataset.messageId,message=currentMenuMessage(id),items=messageMenuItems(message,selfId()).filter(item=>item.action!=='workflow-event'||options.onGroupTask);if(!items.length)return false;
+   const host=root.querySelector('[data-message-menu-host]');if(!host)return false;
+   cancelPress();menu=false;renderMenu();messageMenu={id,conversationId:page.id};
+   host.innerHTML='<div class="live-message-menu" role="menu" aria-label="消息操作">'+items.map(item=>'<button type="button" role="menuitem" data-action="'+item.action+'" data-id="'+esc(id)+'">'+item.label+'</button>').join('')+'</div>';
+   const panel=host.querySelector?.('.live-message-menu');if(panel){const width=globalThis.window?.innerWidth||390,height=globalThis.window?.innerHeight||844;panel.style.left=Math.max(8,Math.min(Number(x)||8,width-220))+'px';panel.style.top=Math.max(8,Math.min(Number(y)||8,height-items.length*44-24))+'px';panel.querySelector('button')?.focus({preventScroll:true});}return true;
+  }
+  function onMessageContext(event){if(openMessageMenu(event.target,event.clientX,event.clientY))event.preventDefault();}
+  function onMessagePointerDown(event){
+   if(event.pointerType!=='touch'&&event.pointerType!=='pen')return;
+   if(press||event.isPrimary===false){cancelPress();return;}
+   const article=event.target?.closest?.('[data-message-id]');if(!article||!root.contains(article)||!currentMenuMessage(article.dataset.messageId)||modal)return;
+   press={target:event.target,x:event.clientX,y:event.clientY,id:event.pointerId};
+   pressTimer=setTimeout(()=>{const held=press;if(held&&openMessageMenu(held.target,held.x,held.y))suppressClickUntil=Date.now()+800;},550);
+  }
+  function onMessagePointerMove(event){if(press&&(event.pointerId!==press.id||Math.hypot(event.clientX-press.x,event.clientY-press.y)>10))cancelPress();}
+  async function copyMessage(id){const message=currentMenuMessage(id);if(!message||message.type!=='text'||!message.text)return;try{if(!globalThis.navigator?.clipboard?.writeText)throw Error('此环境不能直接复制，请选择文字手动复制。');await navigator.clipboard.writeText(message.text);if(!disposed)toast('已复制');}catch(error){if(!disposed)toast(error.message||'复制未完成，请选择文字手动复制。');}}
   function renderList() {
     const contacts = page.view === 'contacts', query = String(page.query || '').trim().toLowerCase();
     const head = header(contacts ? '通讯录' : '消息', (contacts ? '' : '<button type="button" class="live-contacts-shortcut" data-action="contacts">' + icon('group') + '<span>通讯录</span></button>') + '<div class="live-quick">' + iconButton('menu', 'plus', '打开快捷菜单', 'aria-haspopup="menu" aria-expanded="' + menu + '"') + '<div data-menu></div></div>');
@@ -185,7 +220,7 @@ export function mountLiveSocial(container, options = {}) {
     if (message.type === 'sticker') { const sticker = getSticker(message.sticker); content = sticker ? '<div class="live-sticker"><span>' + sticker.emoji + '</span><small>' + esc(sticker.label) + '</small></div>' : '<p class="live-bubble">表情暂不支持</p>'; }
     if(taskEvent&&item.type==='group')content='<section class="live-workflow-event"><strong>YBZ 任务系统记录</strong><p>'+esc(message.text)+'</p><small>当前状态：'+esc(({planning:'拟定方案',"proposal-ready":'等待批准',blocked:'配置阻塞',executing:'执行中',"awaiting-acceptance":'等待验收',accepted:'已验收',"awaiting-signature":'等待本人签署',"payment-pending":'等待核验',paid:'回执已核验',"payment-unknown":'付款状态未知',"payment-mismatch":'付款不匹配',"payment-failed":'付款失败',cancelled:'任务已取消'})[taskEvent.currentStatus]||'请查看任务')+'</small>'+(options.onGroupTask?'<button type="button" class="live-text" data-action="workflow-event" data-id="'+esc(message.id)+'">查看任务与回执</button>':'')+'</section>';
     if(!message.removed&&message.deviceAI?.serverVerified===true)content='<section class="live-ai-reply"><strong>'+esc(message.deviceAI.alias||message.deviceAI.provider)+' · AI</strong><p>'+esc(message.text)+'</p><small>'+esc((mine?'我':person?nameOf(person):'成员')+'授权分享 · 临时中转')+'</small></section>';
-    return '<article class="live-message' + (mine && !message.deviceAI ? ' is-mine' : '') + (message.deviceAI?.serverVerified===true?' is-ai':'') + '" data-message-id="' + esc(message.id) + '">' + avatar(person || { nickname: '已离群用户' }) + '<div>' + (item.type === 'group' && !mine ? '<small class="live-sender">' + esc(person ? nameOf(person) : '已离群用户') + '</small>' : '') + (message.reply?'<blockquote class="live-reply-quote">'+esc(message.reply.unavailable?'引用消息不可见或已移除':message.reply.senderId+'：'+message.reply.text)+'</blockquote>':'') + content + '<div class="live-message-meta"><time>' + stamp(message.createdAt) + '</time>' + (!message.removed ? '<button type="button" class="live-message-action" data-action="reply" data-id="'+esc(message.id)+'" aria-label="引用回复此消息">回复</button>' : '') + (!mine && !message.removed ? '<button type="button" class="live-message-action" data-action="report-message" data-id="' + esc(message.id) + '" aria-label="举报此消息">···</button>' : '') + '</div></div></article>';
+    return '<article class="live-message' + (mine && !message.deviceAI ? ' is-mine' : '') + (message.deviceAI?.serverVerified===true?' is-ai':'') + '" data-message-id="' + esc(message.id) + '"'+(!message.removed?' tabindex="0" aria-label="消息，长按或右键打开操作"':'')+'>' + avatar(person || { nickname: '已离群用户' }) + '<div>' + (item.type === 'group' && !mine ? '<small class="live-sender">' + esc(person ? nameOf(person) : '已离群用户') + '</small>' : '') + (message.reply?'<blockquote class="live-reply-quote">'+esc(message.reply.unavailable?'引用消息不可见或已移除':message.reply.senderId+'：'+message.reply.text)+'</blockquote>':'') + content + '<div class="live-message-meta"><time>' + stamp(message.createdAt) + '</time></div></div></article>';
   }
   function groupMemberStrip(item) {
     if(item.type !== 'group')return '';
@@ -203,7 +238,7 @@ export function mountLiveSocial(container, options = {}) {
     const group = item.type === 'group';
     return header('聊天详情') + (group?'<button class="live-setting" data-action="edit-ai-roster">AI 名单与备注<span>›</span></button>':'')+(group&&options.onGroupAI?'<button class="live-setting" data-action="group-ai">设备 AI 讨论<span>›</span></button>':'')+(group&&options.onGroupTask?'<button class="live-setting" data-action="group-task">协作任务与回执<span>›</span></button>':'') + '<section class="live-profile-card">' + avatar(peer(item), group) + '<h2>' + esc(title(item)) + '</h2><p>' + (group ? item.members.length + ' 位成员' : 'ID：' + esc(peer(item)?.userId)) + '</p></section>' + (group ? '<div class="live-section-title">群成员</div><div class="live-members">' + item.members.map(person => '<button data-action="profile" data-id="' + esc(person.userId) + '">' + avatar(person) + '<strong>' + esc(nameOf(person)) + '</strong><small>' + (person.userId === item.ownerId ? '群主' : person.role === 'admin' ? '管理员' : person.userId === selfId() ? '我' : '成员') + '</small></button>').join('') + '</div><button class="live-setting" data-action="invite-members">邀请好友进群<span>›</span></button>' + (isManager(item) ? '<button class="live-setting" data-action="edit-group">群名与公告<span>编辑 ›</span></button><button class="live-setting" data-action="manage-members">管理群成员<span>›</span></button><button class="live-setting" data-action="join-requests">入群审批<span>'+ (item.joinRequests?.length||0)+' ›</span></button>' : '')+(isOwner(item)?'<button class="live-setting" data-action="toggle-approval" role="switch" aria-checked="'+!!item.joinApproval+'">成员邀请需审批<span>'+(item.joinApproval?'已开启':'已关闭')+'</span></button><button class="live-setting" data-action="transfer-owner">转让群主<span>›</span></button>':'') : personRow(peer(item), 'profile')) + '<button class="live-setting" data-action="search-chat">查找聊天内容<span>›</span></button>' + [['pinned', '置顶聊天'], ['muted', '消息免打扰']].map(([key, label]) => '<button class="live-setting" data-action="toggle" data-key="' + key + '" role="switch" aria-checked="' + !!item[key] + '">' + label + '<span class="live-switch' + (item[key] ? ' is-on' : '') + '"></span></button>').join('') + (group ? '<button class="live-setting" data-action="report-group" data-id="' + esc(item.id) + '">举报群聊<span>›</span></button>' : safetyButtons(peer(item))) + '<p class="live-note">普通聊天消息由服务器保存；设备 AI 回复仅临时中转。新加入或重新入群只能查看本次入群后的消息。普通聊天尚未提供端到端加密。钱包转账与分发以测试网配置及真实回执为准，不提供托管资产。</p><button class="live-danger live-full" data-action="' + (group ? 'leave-group' : 'remove-friend') + '">' + (group ? '退出群聊' : '删除好友') + '</button>';
   }
-  function openModal(type, values = {}) { menu = false; modal = { type, ...values }; renderMenu(); renderModal(); }
+  function openModal(type, values = {}) { closeMessageMenu();menu = false; modal = { type, ...values }; renderMenu(); renderModal(); }
   const rosterCurrent=target=>!disposed&&modal===target&&selfId()===target.ownerId&&(!service.getProfile||service.getProfile()?.userId===target.ownerId);
   async function loadRosterEditor(target){
     if(!rosterCurrent(target)||target.busy||target.aiLoading)return;
@@ -237,7 +272,10 @@ export function mountLiveSocial(container, options = {}) {
     const host = root.querySelector('[data-modal-host]'); if (!host) return; if (!modal) { host.innerHTML = ''; return; }
     const item = conversation(modal.conversationId), selected = modal.selected || [], disabled = modal.busy ? 'disabled' : '';
     let label = '', content = '';
-    if (modal.type === 'report') {
+    if(modal.type==='message-more'){
+      const message=currentMenuMessage(modal.messageId);label='消息详情';
+      content=message?'<p class="live-note">发送于 '+esc(stamp(message.createdAt))+'</p>'+(message.deviceAI?.serverVerified===true?'<p class="live-note">由设备主人授权分享的 AI 回复，仅临时中转。</p>':'')+(message.senderId!==selfId()?'<button class="live-setting" data-action="report-message" data-id="'+esc(message.id)+'">举报此消息</button>':'<p class="live-note">这是你发送的消息。</p>'):'<p class="live-note">此消息已不可用，请关闭后重新同步。</p>';
+    } else if (modal.type === 'report') {
       label = '提交举报'; content = '<form data-form="report"><p class="live-note">举报将保存到服务器供运营审核，请如实描述。提交后可在通讯录的“我的举报”查看进度。</p><label class="live-field">举报原因<select name="reportReason">' + [['spam','垃圾广告'],['harassment','骚扰辱骂'],['fraud','诈骗'],['illegal','违法内容'],['other','其他']].map(([value,label]) => '<option value="' + value + '"' + (modal.reason === value ? ' selected' : '') + '>' + label + '</option>').join('') + '</select></label><label class="live-field">补充说明<textarea name="reportDetail" maxlength="1000" rows="4" placeholder="描述具体情况（选填）">' + esc(modal.detail || '') + '</textarea></label>' + errorBox(modal.error) + '<button class="live-primary live-full" type="submit" ' + disabled + '>' + (modal.busy ? '正在提交…' : '提交举报') + '</button></form>';
     } else if (['group', 'invite'].includes(modal.type)) {
       label = modal.type === 'group' ? '发起讨论组' : '邀请好友进群';
@@ -368,11 +406,15 @@ export function mountLiveSocial(container, options = {}) {
     finally { if (!disposed && modal === target) { target.reading = false; renderModal(); } }
   }
   function onClick(event) {
+    if(Date.now()<suppressClickUntil&&event.target.closest?.('[data-message-id]')){event.preventDefault();return;}
     if (event.target.matches('[data-dismiss]')) { if (!modal?.busy) { modal = null; renderModal(); } return; }
     const target = event.target.closest('[data-action]'); if (!target || !root.contains(target)) return;
     const { action, id, key } = target.dataset;
+    if(messageMenu){const selected=messageMenu;if(selected.conversationId!==page.id||!messageMenuItems(currentMenuMessage(selected.id),selfId()).some(item=>item.action===action)||id!==selected.id){closeMessageMenu();return;}closeMessageMenu();}
     if (action !== 'menu' && menu) { menu = false; renderMenu(); }
-    if (action === 'menu') { menu = !menu; renderMenu(); root.querySelector('[role="menuitem"]')?.focus(); }
+    if(action==='copy-message')void copyMessage(id);
+    else if(action==='message-more'&&currentMenuMessage(id))openModal('message-more',{messageId:id});
+    else if (action === 'menu') { menu = !menu; renderMenu(); root.querySelector('[role="menuitem"]')?.focus(); }
     else if (action === 'back') back();
     else if (action === 'contacts') onNavigate('contacts');
     else if (action === 'messages') onNavigate('messages');
@@ -488,6 +530,8 @@ export function mountLiveSocial(container, options = {}) {
     }
   }
   function onKeydown(event) {
+    if(event.key==='ContextMenu'||event.key==='F10'&&event.shiftKey){const rect=event.target?.getBoundingClientRect?.();if(openMessageMenu(event.target,rect?.left,rect?.bottom))event.preventDefault();return;}
+    if(messageMenu){if(event.key==='Escape'){event.preventDefault();const id=messageMenu.id;closeMessageMenu();[...root.querySelectorAll('[data-message-id]')].find(el=>el.dataset.messageId===id)?.focus();return;}if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)){event.preventDefault();const items=[...root.querySelectorAll('.live-message-menu [role="menuitem"]')],index=items.indexOf(document.activeElement);items[event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowUp'?-1:1)+items.length)%items.length]?.focus();return;}if(event.key==='Tab')closeMessageMenu();}
     if (event.key === 'Escape' && (modal || menu)) { event.preventDefault(); if (!modal?.busy) back(); return; }
     if (menu && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) { event.preventDefault(); const items = [...root.querySelectorAll('[role="menuitem"]')]; const current = items.indexOf(document.activeElement), next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length; items[next]?.focus(); }
     if (modal && event.key === 'Tab') { const items = [...root.querySelectorAll('.live-dialog button:not([disabled]),.live-dialog input:not([disabled]),.live-dialog textarea:not([disabled])')]; const first = items[0], last = items.at(-1); if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); } }
@@ -499,21 +543,22 @@ export function mountLiveSocial(container, options = {}) {
     const id = event.target.closest('[data-message-id]')?.dataset.messageId, message = messages.get(page.id)?.find(item => item.id === id);
     if (message) { message.image = null; message.mediaError = '照片缓存已失效或读取失败，请重新加载。'; render(); }
   }
-  function onOutside(event) { if (menu && !root.querySelector('.live-quick')?.contains(event.target)) { menu = false; renderMenu(); } }
+  function onOutside(event) {if(messageMenu&&!root.querySelector('[data-message-menu-host]')?.contains?.(event.target))closeMessageMenu(); if (menu && !root.querySelector('.live-quick')?.contains(event.target)) { menu = false; renderMenu(); } }
   function onCompositionStart() { composing = true; }
   function onCompositionEnd() { composing = false; }
   async function poll() { if (disposed || document.hidden || pollRunning) return; pollRunning = true; try { await refresh(); if (!disposed && page.type === 'chat') void loadMessages(page.id); } finally { pollRunning = false; } }
-  function onVisibility() { if (!document.hidden) void poll(); }
-  const listeners = { click: onClick, input: onInput, change: onChange, submit: onSubmit, keydown: onKeydown, compositionstart: onCompositionStart, compositionend: onCompositionEnd };
+  function onVisibility() {closeMessageMenu(); if (!document.hidden) void poll(); }
+  const listeners = { click: onClick, input: onInput, change: onChange, submit: onSubmit, keydown: onKeydown, compositionstart: onCompositionStart, compositionend: onCompositionEnd,contextmenu:onMessageContext,pointerdown:onMessagePointerDown,pointermove:onMessagePointerMove,pointerup:cancelPress,pointercancel:cancelPress };
   for (const [event, handler] of Object.entries(listeners)) root.addEventListener(event, handler);
   root.addEventListener('error', onImageError, true);
+  root.addEventListener('scroll',closeMessageMenu,true);window.addEventListener?.('resize',closeMessageMenu);
   document.addEventListener('pointerdown', onOutside); document.addEventListener('visibilitychange', onVisibility);
   window.visualViewport?.addEventListener('resize', fitViewport); window.visualViewport?.addEventListener('scroll', fitViewport);
   render();
   void refresh();
   timer = setInterval(() => { void poll(); }, 3000);
-  const cleanup = () => { if (disposed) return; disposed = true; epoch++; lookupSequence++; clearInterval(timer); for (const [event, handler] of Object.entries(listeners)) root.removeEventListener(event, handler); root.removeEventListener('error', onImageError, true); document.removeEventListener('pointerdown', onOutside); document.removeEventListener('visibilitychange', onVisibility); window.visualViewport?.removeEventListener('resize', fitViewport); window.visualViewport?.removeEventListener('scroll', fitViewport); root.remove(); onScreenChange({ screen: 'closed', conversationId: null }); };
-  cleanup.canGoBack = () => !disposed && !!(modal || menu || page.previous || page.type !== 'list'); cleanup.back = back;
+  const cleanup = () => { if (disposed) return;closeMessageMenu(); disposed = true; epoch++; lookupSequence++; clearInterval(timer); for (const [event, handler] of Object.entries(listeners)) root.removeEventListener(event, handler);root.removeEventListener('scroll',closeMessageMenu,true);window.removeEventListener?.('resize',closeMessageMenu); root.removeEventListener('error', onImageError, true); document.removeEventListener('pointerdown', onOutside); document.removeEventListener('visibilitychange', onVisibility); window.visualViewport?.removeEventListener('resize', fitViewport); window.visualViewport?.removeEventListener('scroll', fitViewport); root.remove(); onScreenChange({ screen: 'closed', conversationId: null }); };
+  cleanup.canGoBack = () => !disposed && !!(messageMenu || modal || menu || page.previous || page.type !== 'list'); cleanup.back = back;
   cleanup.openProfile = id => { if (!disposed) { navigate({ type: 'profile', userId: id }); void lookup(id); } };
   return cleanup;
 }
