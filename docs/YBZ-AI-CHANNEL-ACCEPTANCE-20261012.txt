@@ -1,0 +1,372 @@
+YBZ 本机 AI 任务通道验收记录
+日期：2026-10-12
+范围：在原 yubenzhe 项目增加“用户端 → 设备上的 Codex → 结果回用户端”通道。
+报告状态：代码、本地真实文字链路和人工文件传输夹具已有证据；真实 AI 文件生成仍受工具限制，云机未注册配对及运行。
+
+仓库：C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/work/yubenzhe
+证据目录：C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/output/ybz-ai-channel-20261012
+依据：docs/CODEX-TASK-YBZ-AI-CHANNEL-20261012.md 第七节。
+本报告只引用可公开的测试及验收证据，不复制配对凭据、私钥、active-review-private.json 或账号密码。
+
+【一、commit 结果】
+
+本轮开发前，已按功能保存既有源码改动。集成基线为 e8a6003b678e5c2638cb209ca4d5a8c4759b9e63。
+分组提交的中间节点仅用于追溯，不表示每个节点均是可独立启动或发布的版本。
+
+checkpoint-git-log.txt 原始输出：
+e8a6003 Integrate-existing-feature-modules-and-shared-routing
+0ca8008 Preserve-development-records-and-version-metadata
+f73d8d6 Preserve-deployment-and-native-configuration
+c44371c Preserve-workbench-direction-and-presentation
+4976028 Preserve-group-approval-artifacts-and-testnet-payment-loop
+ca3be04 Preserve-social-artifact-sharing
+4f88471 Preserve-cloud-AI-chat-and-provider-boundaries
+b93b099 Preserve-cloud-desktop-provider-and-device-foundation
+88e4cc5 Preserve-device-bridge-and-personal-device-control
+14645c0 Protect-device-connector-runtime-secrets
+
+checkpoint-git-status.txt 原始内容为空：上述集成检查点当时工作区干净。
+本轮代码已按服务端、连接器、前端提交，并追加修复过期只读响应的独立提交。以下为最终代码提交后的原始记录；本报告及入口文档随后独立提交。未 push、未合并 main、未发布生产。
+
+git log --oneline -10：
+547c01d Fix-stale-chat-reads-without-replaying-actions
+e1ac048 Connect-device-AI-chat-and-browser-encrypted-file-UI
+b4f9ea9 Add-sandboxed-Codex-connector-and-file-boundaries
+5d6c040 Add-authenticated-device-AI-relay-and-encrypted-files
+e8a6003 Integrate-existing-feature-modules-and-shared-routing
+0ca8008 Preserve-development-records-and-version-metadata
+f73d8d6 Preserve-deployment-and-native-configuration
+c44371c Preserve-workbench-direction-and-presentation
+4976028 Preserve-group-approval-artifacts-and-testnet-payment-loop
+ca3be04 Preserve-social-artifact-sharing
+
+本轮文档提交前 git status --short：
+M AGENTS.md
+ M PROJECT_CONTEXT.md
+ M README.md
+?? docs/CODEX-TASK-INSTALLER-AND-RENTAL-CARD-20261012.md
+?? docs/INSTALLER-AND-RENTAL-BRIEF-20261012.md
+?? docs/YBZ-AI-CHANNEL-ACCEPTANCE-20261012.txt
+?? docs/YBZ-AI-CHANNEL-DOWNLOAD-CHECK-20261012.txt
+
+两份在开发中外部新增的安装器／租赁文档未改动或暂存，因此最终工作区不会全空。本轮文档提交后的原始记录另存 final-git-log.txt 与 final-git-status.txt（位于上述证据目录）。
+
+【二、codex exec 调用方式】
+
+最初真实探测命令来自 codex-probe-command.json：
+"C:/Users/Administrator/.codex/.sandbox-bin/codex.exe" exec --json --skip-git-repo-check -s workspace-write -C "C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/work/yubenzhe" "只回答两个字：收到"
+
+codex-probe.stdout.jsonl 全部五行原始输出：
+{"type":"thread.started","thread_id":"01a12de3-0e21-7150-b2f9-83b652b1b108"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Code Mode is unavailable because failed to spawn code-mode host C:\\Users\\Administrator\\.codex\\.sandbox-bin\\codex-code-mode-host.exe: host executable was not found. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`."}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"收到"}}
+{"type":"turn.completed","usage":{"input_tokens":20167,"cached_input_tokens":13056,"cache_write_input_tokens":0,"output_tokens":5,"reasoning_output_tokens":0}}
+
+codex-probe-result.json：{"code":0,"signal":null}
+结论：真实事件结构已确认；该次工具环境有错误，退出码 0 和文字“收到”不能证明工具执行成功。
+
+连接器最终参数固定由 device-bridge/codex-runner.mjs 生成：
+codex.exe -a on-request exec --json --ignore-user-config --ephemeral --sandbox workspace-write -c windows.sandbox="elevated" --disable plugins --disable apps --disable hooks --disable browser_use --disable computer_use --disable remote_plugin --disable skill_mcp_dependency_install --skip-git-repo-check --cd <启动参数指定的工作目录> -
+提示词通过 stdin 传入，不拼接 shell 命令；没有 --ignore-rules、--approve-for-me 或危险沙箱绕过参数。
+可执行文件及目录不接受手机请求覆盖。只向用户返回 agent_message 文本及通用状态，不返回命令、原始工具错误或 stderr。
+其中 windows.sandbox="elevated" 仅在 Windows 添加，选择原生 Windows 沙箱实现，并不等于关闭 sandbox 或以管理员权限运行任务。实际权限仍受本机策略约束。
+已核对的官方依据：
+- Windows 沙箱：https://learn.chatgpt.com/docs/windows/windows-sandbox
+- 非交互模式、JSONL、workspace-write、ephemeral：https://learn.chatgpt.com/docs/non-interactive-mode
+官方说明权限由当前 permission profile、托管规则与 Windows 文件权限共同决定；本报告不把 workspace-write 宣称为整个系统的读取隔离，也不因工具受限而降低权限。
+
+独立 CLI 文件烟测：codex-worker-result.json 原始结果为
+{"code":0,"signal":null,"file":"YBZ AI CHANNEL REAL EXECUTION"}
+原始 worker JSONL 同时记录首次 file_change 失败和后续 node_repl 工具写入成功。
+这只证明该次 CLI 烟测确实创建文件；其命令配置不同于最终连接器，不代替最终通道的文件往返验收。
+
+【三、新增／改动的文件清单】
+
+以下是本通道实际源码范围，路径均相对本报告开头的仓库：
+
+后端与迁移：
+- yubenzhe-deploy/migrations/021-ai-channel.sql：增量创建设备状态、任务、事件摘要与取消幂等记录表，不保存提示词或输出正文。
+- yubenzhe-deploy/server/ai-channel.mjs：账号鉴权、设备队列、租约、事件、取消、重启恢复及临时文字缓冲。
+- yubenzhe-deploy/server/ai-channel-files.mjs：只在内存中保存密文分片、配额、24 小时失效及任务绑定。
+- yubenzhe-deploy/server/personal-devices.mjs：复用设备凭据哈希；账号禁用／注销检查；撤销回调。
+- yubenzhe-deploy/server/product-modules.mjs：接入通道及密文服务、账号清理和周期维护。
+- yubenzhe-deploy/server/server.mjs：新增 owner 与 device-agent HTTP 入口，沿用身份及来源边界。
+- yubenzhe-deploy/server/social-database.mjs：注册 021 迁移，既有迁移未改写。
+- yubenzhe-deploy/server/start.mjs：前端服务重启后中断旧执行，不重新派发未知结果任务。
+
+电脑连接器：
+- yubenzhe-deploy/device-bridge/ai-channel.mjs：主动 HTTPS 轮询、去重日志、短租约、停止与事件回传。
+- yubenzhe-deploy/device-bridge/codex-runner.mjs：真实 CLI 参数、JSONL 解析、超时与进程树终止、工具配置检查。
+- yubenzhe-deploy/device-bridge/ai-channel-files.mjs：终端密钥、附件解密、成果加密、路径及文件链接防护。
+- yubenzhe-deploy/device-bridge/AI-CHANNEL-START.md：本人登录、启动参数、停止方式、文件及权限边界说明。
+
+现有前端：
+- tongban/src/ai-channel-chat.js：设备聊天界面、任务状态、请求幂等、停止与成果入口。
+- tongban/src/ai-channel-chat.css：通道界面及移动端布局。
+- tongban/src/ai-channel-files.js：浏览器 WebCrypto 加解密及本机文件密钥保存。
+- tongban/src/personal-devices.js：设备卡片“和它聊天”入口。
+- tongban/src/workbench-hub.js：在原工作台中承接设备 AI 入口。
+- tongban/src/app-navigation.js：原应用导航中的设备 AI 路由。
+- tongban/src/app.js：界面加载、退出清理及路由连接。
+
+测试：
+- yubenzhe-deploy/tests/ai-channel.test.mjs：任务权限、租约、重放、缓冲与撤销。
+- yubenzhe-deploy/tests/ai-channel-http.test.mjs：真实 HTTP 路由与实际 JSONL 解析器事件协议联测。
+- yubenzhe-deploy/tests/ai-channel-connector.test.mjs：进程参数、终止、配置、离线与去重。
+- yubenzhe-deploy/tests/ai-channel-files.test.mjs：真实加密往返、分片权限、配额及路径边界。
+- yubenzhe-deploy/tests/social-service.test.mjs：迁移累计数量更新为 19。
+- yubenzhe-deploy/tests/group-workflow-migration.test.mjs：保留旧数据的增量升级测试数量更新。
+- tongban/tests/ai-channel-chat.test.mjs：设备聊天交互及错误状态。
+- tongban/tests/ai-channel-files.test.mjs：浏览器加密与账号切换边界。
+- tongban/tests/personal-devices-chat.test.mjs：设备聊天入口及原远控入口保留。
+- tongban/tests/app-navigation.test.mjs：AI 设备路由回归。
+
+文档：
+- docs/YBZ-AI-CHANNEL-ACCEPTANCE-20261012.txt：本验收记录。
+- docs/YBZ-AI-CHANNEL-DOWNLOAD-CHECK-20261012.txt：浏览器下载取消的实际证据与请求提示，原生保存限制。
+- docs/YBZ-AI-CHANNEL-DOWNLOAD-CHECK-20261012.txt：浏览器下载取消的实际证据与请求提示，原生保存限制。
+- AGENTS.md：增加本轮设备 AI 通道范围、安全边界及原三闭环继续有效的说明。
+- README.md：更新设备 AI 入口、真实文字验收状态、连接器启动文档与未完成边界。
+- PROJECT_CONTEXT.md：记录集成基线 e8a6003、本机文字及窄屏浏览器证据、云机本人登录延后。
+- .gitignore：增加 **/.ybz-ai-channel/、**/ai-channel-state.json、**/ai-channel-state.json.tmp、**/ai-channel.lock，排除明文附件目录及运行元数据。
+
+【四、服务器端新增端点】
+
+用户身份接口：
+POST /api/ai-channel/send
+  {deviceId,prompt,requestId,attachments?:[fileId],replyPublicKey?:SPKI}
+GET /api/ai-channel/devices/:deviceId
+GET /api/ai-channel/tasks/:taskId?after=seq
+POST /api/ai-channel/tasks/:taskId/cancel
+  {requestId}
+POST /api/ai-channel/files/init
+POST /api/ai-channel/files/:fileId/chunks/:index
+POST /api/ai-channel/files/:fileId/finish
+GET /api/ai-channel/files/:fileId
+GET /api/ai-channel/files/:fileId/chunks/:index
+
+浏览器使用 /api/social/ai-channel/... 同义入口，以兼容原账号 cookie 的 Path=/api/social。
+没有扩大 cookie Path。canonical /api/ai-channel/... 支持原产品 Bearer 身份。
+
+设备凭据接口：
+POST /api/device-bridge/ai/poll
+POST /api/device-bridge/ai/files/init
+POST /api/device-bridge/ai/files/:fileId/chunks/:index
+POST /api/device-bridge/ai/files/:fileId/chunks/:index/read
+POST /api/device-bridge/ai/files/:fileId/finish
+
+每个设备文件请求都重新检查设备凭据、taskId、leaseId 和当前期限。设备凭据不能访问用户或管理后台接口。
+poll 接收：connectorId、可选 taskId/leaseId、递增 seq 事件及 Codex 状态。
+poll 返回：serverNow、短租约 expiresAt、首次下发 task、ack、可选 cancelTaskId。
+ack 只表示实际接收的最大事件序号；cancelTaskId 表示服务器权威终态，不意味着未接收事件已确认。
+服务器每设备最多执行 1 项、等待 5 项；短租约 15 秒；任务硬截止 10 分钟；重复 requestId 不重复运行。
+
+真实本地 HTTP 结果摘录，来源 real-text-evidence.json（非示例响应）：
+task.id=d7e32d80-70d6-41dd-a3cf-19e9c8803abf
+task.status=succeeded
+task.errorCode=null
+latestSeq=4
+truncated=false
+{"seq":1,"kind":"progress","text":"电脑上的 Codex 正在处理。","code":"AI_RUNNING"}
+{"seq":2,"kind":"progress","text":"电脑上的 Codex 正在处理。","code":"AI_RUNNING"}
+{"seq":3,"kind":"message","itemId":"item_0","text":"收到"}
+{"seq":4,"kind":"completed","text":"Codex 已结束本次任务，请检查结果。","code":"AI_COMPLETED"}
+
+curl-evidence.txt 已记录实际 curl 命令与响应。以下保留任务读取及匿名拒绝的原始结果；凭据由仓库外私有配置提供，本报告不读取该配置内容。
+curl.exe --config <private-cookie-config> http://localhost:18926/api/social/ai-channel/tasks/cd3c7567-d8a2-49df-985f-99200bdece62?after=0
+{"task":{"id":"cd3c7567-d8a2-49df-985f-99200bdece62","deviceId":"fda88d00-0e86-4e96-bdc7-ff993ebdaab1","status":"succeeded","prompt":"这是 YBZ 浏览器真实验收。只回复：聊天通道已连通","outputAvailable":true,"errorCode":null,"createdAt":1791772304015,"startedAt":1791772304040,"finishedAt":1791772309863,"expiresAt":1791772904040,"latestSeq":4,"sourceLabel":"本机 Codex · 真实通道验收 · Codex","files":{"attachments":[],"outputFiles":[]}},"events":[{"seq":1,"kind":"progress","text":"电脑上的 Codex 正在处理。","code":"AI_RUNNING"},{"seq":2,"kind":"progress","text":"电脑上的 Codex 正在处理。","code":"AI_RUNNING"},{"seq":3,"kind":"message","itemId":"item_0","text":"聊天通道已连通"},{"seq":4,"kind":"completed","text":"Codex 已结束本次任务，请检查结果。","code":"AI_COMPLETED"}],"latestSeq":4,"truncated":false}
+
+curl.exe -sS -w "\nHTTP %{http_code}\n" http://localhost:18926/api/ai-channel/tasks/cd3c7567-d8a2-49df-985f-99200bdece62
+{"error":"请登录你的愚笨者账号。","code":"ACCOUNT_REQUIRED"}
+HTTP 401
+完整设备状态读取响应也保存在 curl-evidence.txt；其中公开文件加密公钥不是私钥。
+任何命令示例只引用外部私密凭据文件／环境变量，不把 Bearer token、cookie 或密码写入本报告。
+
+【五、手机端界面】
+
+入口：原“我的设备”卡片 → “和它聊天”；原“查看并控制电脑”保留。
+聊天显示设备名、在线状态、Codex 登录／额度提示、任务状态、消息、附件与停止入口。
+目录由电脑启动参数设置，手机不能更改。账号切换、退出页面会停止前端同步并清理页面临时文字。
+
+已保存 browser-mobile-dom.txt 与 browser-mobile.png。
+浏览器实际发送：“这是 YBZ 浏览器真实验收。只回复：聊天通道已连通”。
+已读取的 DOM 证据包括：
+- heading "本机 Codex · 真实通道验收"
+- status: Codex 已就绪
+- paragraph: 这是 YBZ 浏览器真实验收。只回复：聊天通道已连通
+- paragraph: 执行完成
+- paragraph: 聊天通道已连通
+
+主任务记录视口 390×844、scrollWidth 375，无横向溢出。
+这是桌面浏览器窄屏验收，不是物理 iPhone／Android 真机验收。最终页面截图为 browser-mobile-final.png，DOM 为 browser-mobile-final-dom.txt；另保存 desktop DOM。下载反馈只称“已请求下载”，不称已写入磁盘。最终页面截图为 browser-mobile-final.png，DOM 为 browser-mobile-final-dom.txt；另保存 desktop DOM。下载反馈只称“已请求下载”，不称已写入磁盘。
+浏览器 taskId=cd3c7567-d8a2-49df-985f-99200bdece62；browser-real-task.json 与 curl 结果相互对应，status=succeeded、latestSeq=4。
+browser-mobile.png 和 browser-mobile-dom.txt 是当时快照，不替代物理手机验证；早期快照的授权文案不能当作已实现全面系统读取隔离的证据。
+
+【六、端到端实测】
+
+1. 首次真实文字通道失败，保留证据，不覆盖或自动重跑：
+   real-text-failed-protocol.json
+   taskId=28c7b637-fb1e-4432-be73-a796b96665e1
+   status=failed，errorCode=AI_EXECUTION_INTERRUPTED，latestSeq=0。
+   原因：连接器发送 progress/AI_RUNNING、completed/AI_COMPLETED，服务器校验未接收这两个状态码，回传遭拒后租约失效。
+   修复：按事件种类接受上述两个确切状态码，并加入实际 runner/JSONL parser → 真实 HTTP 服务的联测。
+   同时修复连接器收到权威终态时停止进程、清理未确认事件；服务器不伪造 ack。
+
+2. 修复后使用新请求的真实本地文字通道成功：
+   real-text-evidence.json
+   模式：REAL HTTP + REAL CODEX CLI; LOOPBACK REVIEW。
+   本地验收 origin：http://localhost:18926。
+   开始：2026-10-12T02:30:24.276Z；结束：2026-10-12T02:30:46.880Z。
+   taskId=d7e32d80-70d6-41dd-a3cf-19e9c8803abf。
+   用户发送：“只回答两个字：收到”。Codex 真实回复：“收到”。
+   服务端保存的终态为 succeeded，完整四个事件见第四节。
+   该 loopback 验收地址不是生产 HTTPS 部署；正式连接器代码仍拒绝 HTTP 或关闭 TLS 校验的配置。
+
+3. 浏览器实际发消息并收到真实 Codex 回复：第五节已有 DOM 证据；物理手机尚未验证。
+
+4. 真实 AI 文件任务尚未完成：
+   自动测试已做真实 RSA-OAEP-256 + AES-256-GCM 加解密及多分片双向往返，不能把合成进程测试称为真实 Codex 文件任务。
+   前两次上传的 phone-input.txt 均为 37 字节并真实送达电脑；但 Codex 文件操作未完成：
+   - aa4df873-79ff-41c2-a173-8874d440cbad：real-files-readonly-blocked.json，回复指出只读策略与读取拒绝，outputFiles=[]。
+   - 72eb2d8f-929f-4a67-b790-14911287d355：real-files-helper-blocked.json，回复为 CreateProcessWithLogonW failed: 2，outputFiles=[]。
+   已为 Windows 明确选择 elevated 沙箱，并补充与官方包逐字节核验一致的缺失 command helper；未改全局配置或登录材料。
+   command-helper-repair.json 记录：C:\Users\Administrator\.codex\.sandbox-bin\codex-command-runner.exe；SHA-256=8d88f3e1749704937e735fe2b0311e939bd2873010243030a6f0c023d3d7296d；globalConfigChanged=false；authChanged=false。
+   修复缺失文件后重新使用新 taskId=f567421d-15f9-46b1-a65d-979199cd270b，证据为 real-files-evidence.json：附件 phone-input.txt 37 字节、ready；真实回复“工具执行受限，未能确认创建 result.txt，无法交付。”；outputFiles=[]。
+   该任务记录 status=succeeded 只说明 CLI 回合正常结束；这次用户要求的文件成果验收失败，不能说 AI 已交付文件。没有降低审批或沙箱限制绕过。
+
+5. 独立人工文件传输验收（TRANSPORT ONLY，非 AI 生成）：
+   manual-file-transport-evidence.json 明确标注 MANUAL FILE TRANSPORT FIXTURE; REAL CODEX TEXT ONLY; NOT AI-GENERATED FILE。
+   taskId=4228e3f4-501a-49cb-91c0-8181872ed3a5。
+   用户端上传 manual-transport-test.txt，109 字节；inbox 文件 9aa48aca-c45f-4588-85a7-19acc56cf9a2 已 ready。
+   人工把夹具放入该任务 outbox；真实连接器加密并回传，outbox 文件 8e0913f2-4174-41ef-9abf-2cc20bde66c4 已 ready，109 字节。
+   Codex 只回复“传输测试已结束”，没有负责生成夹具。
+   预期明文 SHA-256=64fa1cd2d249b7969d42f4714cbe1133b4fb4d0769970acec194a50597d83078。
+   browser-download-evidence.json 的实际浏览器 CDP 观察：文件 metadata 和 chunk 请求均 HTTP 200；Page.downloadWillBegin 对应 manual-transport-test.txt、109 字节；随后 Page.downloadProgress 为 canceled、receivedBytes=0。
+   已验证浏览器解密并发起下载；内置浏览器取消保存，没有证明下载文件最终落盘，也没有本机落盘后的摘要比较。本项下载落盘验收未通过。
+
+6. 本轮没有改变三个产品闭环的定位：
+   AI＋社交：保留原群任务、方案、批准、成果与群回执；新增个人设备 AI 通道，不替换社交。
+   AI＋区块链钱包：保留原用户授权、验收、测试网付款与回执核验；本通道不持有钱包主钥匙。
+   社交＋区块链：保留原群内测试网回执路径；没有新增自动付款或主网资金操作。
+   本轮全量回归通过不等于重新完成三闭环全部外部真实链上验收；仍以原群闭环记录及实际链上证据为准。
+
+【七、测试结果】
+
+后端实际命令（yubenzhe-deploy 目录）：npm test
+package.json 对应：node --test tests/*.test.mjs
+backend-tests.txt 原始汇总：
+ℹ tests 398
+ℹ suites 0
+ℹ pass 398
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4714.2181
+
+桥及通道专项 bridge-tests.txt 原始汇总：
+ℹ tests 90
+ℹ suites 0
+ℹ pass 90
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1240.7407
+专项日志记录实际结果；所有对应后端测试也包含在 package.json 的 npm test 中。
+专项实际执行命令（仓库根目录，cmd.exe，exit_code=0）：
+node --test yubenzhe-deploy/tests/device-clock.test.mjs yubenzhe-deploy/tests/personal-devices.test.mjs yubenzhe-deploy/tests/personal-devices-http.test.mjs yubenzhe-deploy/tests/desktop-provider.test.mjs yubenzhe-deploy/tests/ai-channel.test.mjs yubenzhe-deploy/tests/ai-channel-http.test.mjs yubenzhe-deploy/tests/ai-channel-connector.test.mjs yubenzhe-deploy/tests/ai-channel-files.test.mjs > C:\Users\Administrator\Documents\Codex\2026-10-09\git-2\output\ybz-ai-channel-20261012\bridge-tests.txt 2>&1
+
+前端：tongban 目录执行 node --test tests\*.test.mjs，496/496 通过；日志为根工作区 output/ai-channel-ui-tests-20261012.txt。
+前端构建：node tongban/build.mjs；output/ai-channel-ui-build-20261012.txt 原始输出：Built Yubenzhe 0.14.0-dev.10。
+本段是对应日志的验收快照；若后续继续改源码，应重新运行有关测试，不沿用旧数字。
+
+新增测试覆盖权限、事件协议、未知结果不重派、重启、取消、短租约、10 分钟截止、每设备并发、缓冲上限、密文上传、跨账号拒绝、过期、错密钥、篡改、路径穿越及软硬链接。
+Windows 实测发现临时目录 ADMINI~1 短路径与完整路径比较误判，已统一使用 native canonical 路径；成果读取使用固定句柄及有界读取。
+测试夹具中人工构造进程／网络是单元与协议测试，不包装成真实 Codex、真实手机或真实云机验证。
+
+最终前端日志原始结尾：
+ℹ suites 0
+ℹ pass 496
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4516.8042
+
+FINAL VERIFICATION FOOTER
+Working directory: C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/work/yubenzhe/tongban
+Command: node --test tests\*.test.mjs
+Captured output: C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/output/ai-channel-ui-tests-20261012.txt
+Process exit code: 0
+Verified UTC: 2026-10-12T02:49:00.846Z
+Tests passed: 496; failed: 0
+
+最终构建实际命令：在 tongban 目录执行 node build.mjs；exit 0，Built Yubenzhe 0.14.0-dev.10。
+列表稳定排序、首次完整读取、并发 POST 导致的 STALE_RESPONSE、读取恢复不清除操作错误均新增回归；不自动重发操作。
+
+【八、云端电脑注册与配对】
+
+本任务允许的云端电脑：45.77.247.167。
+cloud-client-preparation.txt 时间为 2026-10-12T02:38:26.313277+00:00。沿用已有 WinRM、NTLM、message_encryption=always，没有调整防火墙或开放入站端口。
+只读核对：Node v24.21.0，C:\Program Files\nodejs\node.exe；已发现原生 Codex .exe。
+源码已复制至 C:\YBZ-AI-Channel-Review\connector；独立 workspace 与 runtime 目录已准备。
+逐文件 SHA-256 已与本机源码比对一致，原始证据记录为：
+ai-channel.mjs       23d24e26f38157610221f7c50275a894fb188ede55057b0687302e32123f80cc  16108 bytes
+codex-runner.mjs     b84c3f3afb7a17bf8214016f94494cab82a043ea5bc900d712014ea0d0d8a596  12789 bytes
+ai-channel-files.mjs fc17fa58ab0aa5a637881cebd4a90bde20c8446d22579770281f45975ad81876  9205 bytes
+protocol.mjs         a6dd913cde353cf45de1bfd169aec3665d9a744268b13b6896b066fc664fc206  254 bytes
+AI-CHANNEL-START.md  ce3779902047ad7ffd3f840da8312d5976a63e96d9c6171aebfc83d207af194d  6273 bytes
+未运行连接器或 Codex，未创建后台进程，未注册首客户账号，未生成配对文件，未配对。
+云机 Codex 登录：用户稍后本人完成；本报告不写成已自动登录，不读取／复制本机 Codex 认证文件到云机。
+实际缺少：获准且云机可达的可信 HTTPS 中转 URL，以及用户本人 Codex 登录和真实 YBZ 账号配对。现有新接口仅在本机 localhost，不能拿旧公网生产服务冒充本轮已部署接口。
+云机端到端任务与文件收发尚未验收。准备源码目录不等于首客户已投入运行。
+
+本地启动方式：
+- 依照现有项目配置启动服务；内部验收使用 ROLE、PORT、BIND_HOST、PUBLIC_ORIGIN、AUTH_CONFIG_FILE、SOCIAL_DATABASE_PATH、AI_DATABASE_PATH、INTERNAL_PREVIEW、EMAIL_OTP_SECRET。密钥值在仓库外维护。
+- 本地开发入口仍为 yubenzhe-deploy 目录的 npm run dev:m0；它不把连接器的 HTTPS 要求改成 HTTP。
+- 正式设备通道需可信 HTTPS 中转及本人配对。使用 Node.js 24，在 yubenzhe-deploy/device-bridge 中运行：
+  node ai-channel.mjs --codex "C:\Tools\Codex\codex.exe" --workspace "C:\YBZ\Work" --state "C:\YBZ\Private\device-state.json" --runtime-dir "C:\YBZ\Private\ai-channel" --label "我的电脑"
+  以上为启动模板，路径须替换为实际绝对路径；不包含登录凭据，也不表示该示例目录已经创建。
+- 本人先安装对应 CLI 及 helper，交互完成 Codex 登录；连接器只检查登录状态，不自动登录、采购或绕过审批。
+- 停止时 Ctrl+C 并等待进程树退出；有残留锁时先核对旧进程，不删除去重记录来重新执行旧任务。
+
+本轮未发布生产、未操作主网资金、未采购收费资源；禁止操作的服务器 45.76.163.5、66.42.56.29、202.182.103.203/202、106.53.203.33 不属于本任务部署目标。
+
+【九、遗留问题与回滚】
+
+未完成项必须保留：
+- 物理手机真实操作与云机本人登录后的全链路验证。
+- 在现有权限规则内解决真实 Codex 文件工具限制；当前 AI 文件任务 outputFiles=0，不满足用户成果交付。
+- 人工夹具的浏览器保存被取消，尚无最终落盘摘要。Windows 原生外壳禁止普通 blob 下载，现有原生桥仅支持 16MB 文本，通用 20MB 文件保存尚未适配；本轮未改原生项目来绕过范围限制。
+- 未 push；另有两份外部新增安装器／租赁文档保持未跟踪，本轮不改动或提交它们。最终 Git 原始记录见第一节及证据目录。
+- 单文件上限 20MB，但服务器同时存在 owner 40MB／global 100MB 密文总配额；认证 tag 也计入配额，不能承诺任意三个 20MB 文件同时中转。
+- 服务器密文仅在 RAM 保留最多 24 小时，服务重启也会清除；电脑上已解密附件／成果由本人整理，不承诺自动删除。
+- workspace-write 限制写入；固定工作目录不等同于禁止读取整个系统的独立操作系统隔离。不要把该设置宣传成全面文件读取隔离。
+- 浏览器文件接收私钥留在发起任务的浏览器；更换浏览器或清理本机密钥后，不能保证仍可解密之前成果。
+- 日志正文过滤是有限模式遮盖，不是完整数据防泄漏系统；不得发送钱包助记词、主私钥或账号凭据作为任务资料。
+
+回滚基线：e8a6003b678e5c2638cb209ca4d5a8c4759b9e63。
+回滚方法：先停止新连接器并等待 Codex 进程退出，保留去重日志、私密配对文件及本地工作成果；备份当前 SQLite 与现有配置。优先从基线创建独立检出部署旧源码，或仅撤回本轮新增入口和 wiring。
+021 为增量迁移。不得删除用户数据库、账号、群聊、付款记录，不对现有数据库执行向下删表；旧源码需要验证数据库版本兼容时，使用备份副本验证。若旧版本拒绝附加迁移记录，继续禁用新入口或作兼容处理，不回写旧备份覆盖新用户数据。
+任何结果未知的历史任务保持失败／中断状态；回滚、重启或恢复连接不能自动重派。需要继续工作时由本人先检查实际成果，再以新 requestId 明确发起。
+
+【十、安全自查】
+
+[已核对] 连接器主动请求中转，没有开放电脑入站端口。
+[已核对] 执行文件、固定目录来自启动参数，手机不能覆盖。
+[已核对] workspace-write、on-request；没有危险沙箱绕过、自动审批或忽略现有规则。
+[已核对] 正式连接器只接受可信 HTTPS，不提供关闭证书验证的开关。
+[已核对] 服务器 SQLite 不保存 prompt／回复正文或文件字节；仅存哈希、长度、状态和最小元数据。
+[已核对] 提示词及最近事件暂存有界 RAM；服务器文件存储为密文 RAM，TTL 24 小时或重启清除。
+[已核对] 设备凭据数据库只存哈希，凭据不赋予产品用户或管理员身份。
+[已核对] 撤销、账号禁用／注销、租约过期后拒绝后续请求；断网本地停止。
+[已核对] requestId、已启动任务摘要与事件序号阻止重复执行；终态不伪造 ack。
+[已核对] 文件名清洗；任务目录、文件链接、文件大小、分片与 owner／device／task 权限有验证。
+[已核对] 本报告不含配对 token、cookie、密码、私钥；原始私密验收材料留在仓库外。
+[已核对] .gitignore 覆盖 device-state.json、配对文件、*.pem、*.key、*.log；本轮已增加 .ybz-ai-channel 明文目录和 ai-channel 状态／锁文件排除。
+[已核对] 本轮改动的常见凭据模式扫描及本机已知凭据比对无命中；11 份含敏感资料的原文件未被 Git 跟踪。扫描范围和限制见 final-secret-scan.json，不代表全面安全审计。
+[提交边界] 本报告不包含凭据；两份无关新文档未暂存。提交结果以第一节及证据目录最终 Git 原始记录为准。
+
+准确结论：设备 AI 通道的代码、398 项后端、496 项前端、90 项桥专项及前端构建通过；真实本地文字往返和桌面浏览器窄屏交互已验证，人工夹具已完成文件上传、加密回传和浏览器解密，但浏览器取消保存。真实 AI 文件生成仍受工具限制；物理手机、云机本人登录后的链路尚未验收，没有发布生产。
