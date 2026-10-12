@@ -9,7 +9,7 @@ const ALLOWED=new Set(['analyze','deduplicate']);
 const uuid=value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
 const amount=value=>{if(typeof value!=='string'||!/^\d{1,12}$/.test(value)||BigInt(value)>1000000n)fail(400,'BUDGET_INVALID','测试预算应为不超过 1 美元的整数微美元。');return BigInt(value);};
 const digest=value=>createHash('sha256').update(value).digest('hex');
-export function createWorkbenchService({database,socialService,enabled=false,now=Date.now,processor=processLocalFiles,pointsService=null}={}){
+export function createWorkbenchService({database,socialService,enabled=false,now=Date.now,processor=processLocalFiles,pointsService=null,desktopCapabilities=null}={}){
  const db=database.raw,one=(sql,...args)=>db.prepare(sql).get(...args),all=(sql,...args)=>db.prepare(sql).all(...args),run=(sql,...args)=>db.prepare(sql).run(...args);
  function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(error){db.exec('ROLLBACK');throw error;}}
  function enabledOrFail(){if(!enabled)fail(503,'WORKBENCH_UNCONFIGURED','文件工作台未配置。当前只有明确启用的本机测试执行器可用。');}
@@ -109,7 +109,7 @@ export function createWorkbenchService({database,socialService,enabled=false,now
   if(!path.startsWith('workbench/'))return undefined;
   const account=socialService.assertAIAccess(token,{write:method==='POST'}),owner=account.id;
   const route=path.slice('workbench/'.length);
-  if(method==='GET'&&route==='capabilities')return {enabled,simulation:true,executor:'local-file-parser',planner:'local-rules',goalPlanning:enabled,models:[],desktop:{available:false,reason:'尚未配置真实云桌面服务商'},operations:[{id:'task-draft',label:'任务草稿'},{id:'checklist',label:'待办清单'},{id:'outline',label:'文章大纲'},{id:'analyze',label:'文件统计与格式整理'},{id:'deduplicate',label:'去重并生成报告'},{id:'format-json',label:'JSON 格式化'}],priceVersion:PRICE_VERSION,...(pointsService?{billingUnit:'POINT',pointsPriceVersion:POINT_PRICE_VERSION,maxBudgetPoints:'1000',payer:'local-points'}:{billingUnit:'LEGACY_TRIAL',payer:'platform-trial',maxBudgetMicro:'1000000'}),fileLimit:262144,retentionDays:30,retentionReminderDays:[7,1],marginBasisPoints:3000,notice:'本地规则式计划与文件工具；未连接语言模型、云桌面或真实支付。'};
+  if(method==='GET'&&route==='capabilities')return {enabled,simulation:true,executor:'local-file-parser',planner:'local-rules',goalPlanning:enabled,models:[],desktop:desktopCapabilities?desktopCapabilities():{available:false,reason:'尚未配置真实云桌面服务商'},operations:[{id:'task-draft',label:'任务草稿'},{id:'checklist',label:'待办清单'},{id:'outline',label:'文章大纲'},{id:'analyze',label:'文件统计与格式整理'},{id:'deduplicate',label:'去重并生成报告'},{id:'format-json',label:'JSON 格式化'}],priceVersion:PRICE_VERSION,...(pointsService?{billingUnit:'POINT',pointsPriceVersion:POINT_PRICE_VERSION,maxBudgetPoints:'1000',payer:'local-points'}:{billingUnit:'LEGACY_TRIAL',payer:'platform-trial',maxBudgetMicro:'1000000'}),fileLimit:262144,retentionDays:30,retentionReminderDays:[7,1],marginBasisPoints:3000,notice:'本地规则式计划与文件工具；未连接语言模型、云桌面或真实支付。'};
   if(method==='GET'&&route==='catalog')return localServiceCatalog(enabled);
   enabledOrFail();
   if(method==='POST'&&route==='plan'){fields(input,['requestId','goal','fileIds','locale',pointsService?'budgetPoints':'budgetMicro']);return command(owner,route,input,()=>newPlan(owner,input));}

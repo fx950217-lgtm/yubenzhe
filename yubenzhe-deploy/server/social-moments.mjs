@@ -22,10 +22,27 @@ export function createSocialMoments(ctx){
  function requirePost(id,a){const post=one('SELECT * FROM moments WHERE id=?',id);if(!visible(post,a))fail(404,'MOMENT_NOT_FOUND','动态已删除或当前不可见。');return post;}
  const peerVisible=(id,a)=>id===a.id||(authorAvailable(id)&&!isBlocked(a.id,id)&&isFriend(a.id,id));
  const commentView=row=>({id:String(row.id),postId:String(row.post_id),author:profile(accountById(row.author_id)),text:row.text,createdAt:row.created_at});
+ // Sharing displays metadata, never distributes file contents: outputs may contain
+ // sensitive data. The author decides separately whether to send the contents.
+ // Existing workbench owner checks remain the only route to preview/download.
+ function artifactView(row){
+  if(!row.share_snapshot)return null;
+  const snapshot=JSON.parse(row.share_snapshot);
+  const {fileId,fileName,size,sha256,mime,taskTitle,operation,createdAt}=snapshot;
+  const available=Boolean(row.workbench_file_id&&one("SELECT 1 FROM workbench_files WHERE id=? AND owner_id=? AND kind='output' AND expires_at>?",row.workbench_file_id,row.author_id,now()));
+  return {fileId,fileName,size,sha256,mime,taskTitle,operation,createdAt,available};
+ }
+ function artifactSnapshot(id,a){
+  if(!id)return null;
+  // Select metadata explicitly; do not read or copy content/preview BLOBs.
+  const f=one("SELECT f.id,f.name,f.size,f.sha256,f.mime,f.created_at,t.title,t.operation FROM workbench_files f LEFT JOIN workbench_tasks t ON t.id=f.task_id AND t.owner_id=f.owner_id WHERE f.id=? AND f.owner_id=? AND f.kind='output' AND f.expires_at>?",id,a.id,now());
+  if(!f)fail(404,'ARTIFACT_NOT_FOUND','成果不存在或当前不可分享。');
+  return JSON.stringify({fileId:f.id,fileName:f.name,size:f.size,sha256:f.sha256,mime:f.mime,taskTitle:f.title??null,operation:f.operation??null,createdAt:f.created_at});
+ }
  function postView(row,a){
   const comments=all('SELECT * FROM moment_comments WHERE post_id=? ORDER BY id',row.id).filter(c=>peerVisible(c.author_id,a));
   const likes=all('SELECT account_id FROM moment_likes WHERE post_id=? ORDER BY created_at,account_id',row.id).filter(l=>peerVisible(l.account_id,a));
-  return {id:String(row.id),author:profile(accountById(row.author_id)),text:row.text,audience:row.audience,createdAt:row.created_at,own:row.author_id===a.id,
+  return {id:String(row.id),author:profile(accountById(row.author_id)),text:row.text,audience:row.audience,createdAt:row.created_at,own:row.author_id===a.id,artifact:artifactView(row),
    images:all('SELECT id,name,mime,width,height,length(bytes) size FROM moment_media WHERE post_id=? ORDER BY rowid',row.id).map(m=>({...m,src:'/api/social/moments/media/'+m.id})),
    comments:comments.map(c=>({...commentView(c),own:c.author_id===a.id})),likes:likes.map(l=>profile(accountById(l.account_id))),liked:likes.some(l=>l.account_id===a.id)};
  }
@@ -34,20 +51,26 @@ export function createSocialMoments(ctx){
  function removeComment(id){run("UPDATE moment_requests SET removed=1 WHERE operation='comment' AND resource_id=?",id);run('DELETE FROM moment_comments WHERE id=?',id);}
  const assertCanPublish=a=>ctx.assertCanPublish?.(a);
  function preparePost(input){
-  fields(input,['clientId','text','audience','images']);const id=clientId(input.clientId),content=text(input.text??'',2000,'动态'),audience=input.audience??'friends';
+  fields(input,['clientId','text','audience','images','workbenchFileId']);const id=clientId(input.clientId),content=text(input.text??'',2000,'动态'),audience=input.audience??'friends';
   if(!['friends','self'].includes(audience))fail(400,'INVALID_AUDIENCE','请选择好友可见或仅自己可见。');
   if(!Array.isArray(input.images)||input.images.length>3)fail(400,'INVALID_IMAGE','每条动态最多添加 3 张图片。');
   const images=input.images.map(image=>{fields(image,['src','name']);return {...imageData(image.src,MAX_IMAGE_BYTES),name:text(image.name??'图片',80,'图片名称',1)};});
   if(images.reduce((sum,i)=>sum+i.bytes.length,0)>MAX_IMAGE_BYTES)fail(400,'INVALID_IMAGE','这条动态的图片总大小不能超过 512 KB。');
-  if(!content&&!images.length)fail(400,'EMPTY_MOMENT','请填写文字或选择图片。');
-  const checksum=digest(JSON.stringify({text:content,audience,images:images.map(i=>({name:i.name,mime:i.mime,hash:digest(i.bytes)}))}));return {id,content,audience,images,checksum};
+  let workbenchFileId=null;
+  if(Object.hasOwn(input,'workbenchFileId')){
+   if(typeof input.workbenchFileId!=='string'||! /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(input.workbenchFileId))fail(400,'INVALID_ARTIFACT','成果标识无效。');
+   workbenchFileId=input.workbenchFileId.toLowerCase();
+  }
+  if(!content&&!images.length&&!workbenchFileId)fail(400,'EMPTY_MOMENT','请填写文字或选择图片。');
+  // Keep legacy ordinary-post digests byte-for-byte compatible for old retries.
+  const checksum=digest(JSON.stringify({text:content,audience,images:images.map(i=>({name:i.name,mime:i.mime,hash:digest(i.bytes)})),...(workbenchFileId?{workbenchFileId}:{})}));return {id,content,audience,images,workbenchFileId,checksum};
  }
  function reportEvidence({account,targetType,targetId}){
   if(!['moment','comment'].includes(targetType))return;
   const id=numeric(String(targetId));let post,comment;
   if(targetType==='comment'){comment=one('SELECT * FROM moment_comments WHERE id=?',id);if(!comment||!peerVisible(comment.author_id,account))fail(404,'MOMENT_NOT_FOUND','评论已删除或当前不可见。');post=requirePost(comment.post_id,account);}
   else post=requirePost(id,account);
-  return {targetId:String(id),evidence:{postId:String(post.id),author:profile(accountById(post.author_id)),text:post.text,audience:post.audience,createdAt:post.created_at,images:all('SELECT id,mime,width,height FROM moment_media WHERE post_id=?',post.id),...(comment?{comment:commentView(comment)}:{})}};
+  return {targetId:String(id),evidence:{postId:String(post.id),author:profile(accountById(post.author_id)),text:post.text,audience:post.audience,createdAt:post.created_at,artifact:artifactView(post),images:all('SELECT id,mime,width,height FROM moment_media WHERE post_id=?',post.id),...(comment?{comment:commentView(comment)}:{})}};
  }
  function moderate({action,targetId}){
   if(!['remove-moment','remove-comment'].includes(action))return;
@@ -64,10 +87,11 @@ export function createSocialMoments(ctx){
   if(method==='POST'&&path==='moments'){
    const p=preparePost(input);return transaction(()=>{
     const old=previousRequest(a,p.id,'post',p.checksum);if(old)return {post:postView(requirePost(old.post_id,a),a)};
-    assertCanPublish(a);limit('moment-post:'+a.id,30,3600000);
+    // Replay before revalidation so retries still return the same expired post.
+    assertCanPublish(a);const snapshot=artifactSnapshot(p.workbenchFileId,a);limit('moment-post:'+a.id,30,3600000);
     if(one('SELECT count(*) n FROM moments WHERE author_id=?',a.id).n>=1000)fail(409,'MOMENT_LIMIT','动态已达 1,000 条上限，请先删除不需要的内容。');
     const used=one('SELECT COALESCE(sum(length(bytes)),0) n FROM moment_media WHERE owner_id=?',a.id).n;if(used+p.images.reduce((sum,i)=>sum+i.bytes.length,0)>50*1024*1024)fail(409,'MOMENT_MEDIA_LIMIT','朋友圈图片已达 50 MB 上限，请先删除不需要的内容。');
-    const id=Number(run('INSERT INTO moments(author_id,text,audience,created_at) VALUES(?,?,?,?)',a.id,p.content,p.audience,now()).lastInsertRowid);
+    const id=Number(run('INSERT INTO moments(author_id,text,audience,created_at,workbench_file_id,share_snapshot) VALUES(?,?,?,?,?,?)',a.id,p.content,p.audience,now(),p.workbenchFileId,snapshot).lastInsertRowid);
     for(const image of p.images)run('INSERT INTO moment_media VALUES(?,?,?,?,?,?,?,?)',randomUUID(),id,a.id,image.name,image.mime,image.bytes,image.width,image.height);
     run("INSERT INTO moment_requests(account_id,client_id,operation,digest,post_id,resource_id) VALUES(?,?,'post',?,?,?)",a.id,p.id,p.checksum,id,id);return {post:postView(one('SELECT * FROM moments WHERE id=?',id),a)};
    });

@@ -12,7 +12,8 @@ function harness(t){
  const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON;');
  db.exec(readFileSync(new URL('../migrations/003-social.sql',import.meta.url),'utf8'));
  db.exec("CREATE TABLE social_blocks(blocker_id TEXT,blocked_id TEXT,created_at INTEGER,PRIMARY KEY(blocker_id,blocked_id)); CREATE TABLE account_restrictions(account_id TEXT PRIMARY KEY,state TEXT,reason TEXT,updated_at INTEGER);");
- db.exec(readFileSync(new URL('../migrations/006-social-moments.sql',import.meta.url),'utf8'));t.after(()=>db.close());
+ db.exec(readFileSync(new URL('../migrations/006-social-moments.sql',import.meta.url),'utf8'));
+ for(const file of ['011-workbench.sql','017-moment-artifacts.sql'])db.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));t.after(()=>db.close());
  const one=(sql,...args)=>db.prepare(sql).get(...args),all=(sql,...args)=>db.prepare(sql).all(...args),run=(sql,...args)=>db.prepare(sql).run(...args);
  const accountById=id=>one('SELECT * FROM accounts WHERE id=?',id);
  const profile=a=>({userId:a.user_id,nickname:a.nickname,avatar:a.avatar,avatarImage:'',level:a.level,official:!!a.official});

@@ -15,6 +15,15 @@ const paths = { search:'m16 16 5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0', plus:'M
 const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.comment}"/></svg>`;
 const button = (action, label, extra = '', cls = '') => `<button type="button" class="${cls}" data-disc="${action}" ${extra}>${label}</button>`;
 
+// Inline metadata inside the existing moment card. No file URL or content action:
+// a visible moment never grants access to the author's private workbench files.
+export function renderMomentArtifact(artifact){
+  if(!artifact)return '';
+  const size=Number.isFinite(artifact.size)&&artifact.size>=0?(artifact.size<1024?artifact.size+' B':(artifact.size/1024).toLocaleString('zh-CN',{maximumFractionDigits:1})+' KB'):'大小未提供';
+  const generated=new Date(artifact.createdAt),created=Number.isFinite(artifact.createdAt)&&!Number.isNaN(generated.getTime())?generated.toLocaleString('zh-CN',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'时间未提供';
+  return '<div class="lm-artifact'+(artifact.available?'':' is-expired')+'" data-moment-artifact><small>来自 AI 工作台</small><strong>'+esc(artifact.fileName)+'</strong>'+(artifact.taskTitle?'<p>'+esc(artifact.taskTitle)+'</p>':'')+'<small>'+esc(size)+' · '+esc(created)+'</small><span class="lm-artifact-status">'+(artifact.available?'成果可查看':'文件已过期')+'</span><p class="lm-artifact-note">'+(artifact.available?'此处展示成果信息，作者可自行另行分享内容。':'保留成果信息，原文件已不可用。')+'</p></div>';
+}
+
 export function canViewMoment(post, people, { includeArchived = false } = {}) {
   if (!post || (!includeArchived && !active(post))) return false;
   if (post.authorId === 'me') return true;
