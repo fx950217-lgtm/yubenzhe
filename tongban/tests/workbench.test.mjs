@@ -55,7 +55,7 @@ test('initial task list and new-task home select their intended destinations',as
  const h=harness(t,{initialScreen:'tasks'});await tick();
  assert.match(h.root.innerHTML,/<h2>我的任务<\/h2>/);assert.match(h.root.innerHTML,/PRIVATE_TASK/);
  assert.doesNotMatch(h.root.innerHTML,/data-plan/);assert.equal(h.calls.some(call=>call.options?.method==='POST'),false);
- await h.click('new');assert.match(h.root.innerHTML,/data-plan/);assert.match(h.root.innerHTML,/你想完成什么/);
+ await h.click('new');assert.match(h.root.innerHTML,/data-plan/);assert.match(h.root.innerHTML,/用文件小工具完成什么/);
 });
 
 test('initial home preserves the proposed goal without creating a task',async t=>{

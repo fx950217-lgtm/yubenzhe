@@ -1,3 +1,4 @@
+import {PUBLIC_DEPLOYMENT} from '../src/deployment-config.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -14,7 +15,7 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{reso
 function walletHarness({exists=true,initialBalance='12.5',hidden=false,section='assets',records=[],getBalance=async()=> '24.75'}={}){
  const page={innerHTML:''},toasts=[];let reads=0,disposals=0,recordRefreshes=0;
  const walletState={exists,address:exists?'0x1111111111111111111111111111111111111111':null,unlocked:false};
- const context=vm.createContext({walletFeeText,chainSection:section,currentView:'wallet',balance:initialBalance,balanceError:'',hideBalance:hidden,loadingBalance:false,state:()=>walletState,document:{querySelector:selector=>selector==='#page'?page:null},wallet:{getRecords:()=>records,getBalance:()=>{reads++;return getBalance()},refreshRecords:async()=>{recordRefreshes++;return []}},walletProblem:()=>{},icon:name=>'<svg data-icon="'+name+'"></svg>',toast:message=>toasts.push(message)});
+ const context=vm.createContext({PUBLIC_DEPLOYMENT,walletFeeText,chainSection:section,currentView:'wallet',balance:initialBalance,balanceError:'',hideBalance:hidden,loadingBalance:false,state:()=>walletState,document:{querySelector:selector=>selector==='#page'?page:null},wallet:{getRecords:()=>records,getBalance:()=>{reads++;return getBalance()},refreshRecords:async()=>{recordRefreshes++;return []}},walletProblem:()=>{},icon:name=>'<svg data-icon="'+name+'"></svg>',toast:message=>toasts.push(message)});
  new vm.Script(escapeSource+'\n'+shortSource+'\n'+walletSource).runInContext(context);
  return{context,page,toasts,get reads(){return reads},get recordRefreshes(){return recordRefreshes},get disposals(){return disposals},render:()=>context.renderWallet(page),refresh:(show=false)=>context.refreshBalance(show)};
 }

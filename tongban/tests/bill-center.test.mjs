@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const dataURL=source=>'data:text/javascript;base64,'+Buffer.from(source).toString('base64');
+const deploymentModule=dataURL(await readFile(new URL('../src/deployment-config.js',import.meta.url),'utf8'));
 const feeModule=dataURL(await readFile(new URL('../src/wallet-fees.js',import.meta.url),'utf8'));
-const src=(await readFile(new URL('../src/bill-center.js',import.meta.url),'utf8')).replace("import './bill-center.css';",'').replace("'./wallet-fees.js'",JSON.stringify(feeModule));
+const src=(await readFile(new URL('../src/bill-center.js',import.meta.url),'utf8')).replace("import './bill-center.css';",'').replace("'./wallet-fees.js'",JSON.stringify(feeModule)).replace("'./deployment-config.js'",JSON.stringify(deploymentModule));
 const {collectBills,mountBillCenter}=await import(dataURL(src));
 test('chain ledger ignores removed platform and demo sources without executing their readers',()=>{
  const hash='0x'+'a'.repeat(64);let oldReads=0;

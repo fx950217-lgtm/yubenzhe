@@ -27,7 +27,7 @@ const examples=[
  {title:'整理会议文字',goal:'整理会议文字，删除重复行并统计内容',hint:'上传 TXT 或 Markdown',file:true}
 ];
 function pointsBudget(value){const raw=String(value).trim();if(!/^[1-9]\d{0,3}$/.test(raw)||BigInt(raw)>1000n)throw Error('请输入 1–1000 的整数积分预算。');return BigInt(raw).toString();}
-export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toast=()=>{},embedded=false,initialGoal='',initialScreen='home',initialTaskId=null}={}){
+export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},onShare=()=>{},toast=()=>{},embedded=false,initialGoal='',initialScreen='home',initialTaskId=null}={}){
  let active=true,timer=null,busy=false,cap=null,tasks=[],files=[],selected=null,error='',uploading=false;
  let screen=initialScreen==='tasks'?'tasks':'home',taskTab='overview',filter='all',search='',catalog=null,reminders=[],planNotice=null,preview=null,cancelPrompt=false,editing=false;
  let requestedTask=typeof initialTaskId==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(initialTaskId)?initialTaskId:null;
@@ -43,8 +43,8 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
  }
  const button=(action,label,extra='',primary=false,previewAction=false)=>'<button type="button" data-action="'+action+'" '+extra+' class="'+(primary&&(!preview||previewAction)?'primary':'')+'" '+(busy?'disabled':'')+'>'+label+'</button>';
  function shell(body){
-  root.innerHTML='<section class="wb">'+(embedded?'':'<header class="wb-head"><div><h1>AI 工作台</h1><p>把想做的事，说给工作台</p></div><span class="wb-trial">本地试用</span></header>')+
-   '<nav class="wb-navigation" aria-label="工作台导航">'+[['home','新任务'],['tasks','我的任务'],['files','成果与文件'],['environment','工作环境']].map(([id,label])=>'<button type="button" data-action="screen" data-screen="'+id+'" class="'+(screen===id?'active':'')+'" '+(busy?'disabled':'')+'>'+label+'</button>').join('')+'</nav>'+
+  root.innerHTML='<section class="wb">'+(embedded?'':'<header class="wb-head"><div><h1>文件小工具</h1><p>不需要 AI，也能整理文件</p></div><span class="wb-trial">本地试用</span></header>')+
+   '<nav class="wb-navigation" aria-label="工作台导航">'+[['home','文件小工具'],['tasks','我的任务'],['files','成果与文件'],['environment','工作环境']].map(([id,label])=>'<button type="button" data-action="screen" data-screen="'+id+'" class="'+(screen===id?'active':'')+'" '+(busy?'disabled':'')+'>'+label+'</button>').join('')+'</nav><p class="wb-plan-notice">这些文件小工具不需要 AI。添加的文件会发送到当前工作台服务处理；本机运行时留在本机，在线使用时会上传服务器。</p>'+
    (error?'<div class="wb-error" role="alert">'+esc(error)+'</div>':'')+body+
    (preview?'<section class="wb-preview" aria-label="文件预览"><div class="wb-row"><h2>'+esc(preview.file.name)+'</h2>'+button('close-preview','关闭')+'</div><p class="wb-muted">纯文本预览'+(preview.preview.truncated?' · 仅显示前一部分':'')+'</p><pre>'+esc(preview.preview.text)+'</pre>'+button('download','下载完整文件','data-id="'+esc(preview.file.id)+'"',true,true)+'</section>':'')+'</section>';
  }
@@ -52,7 +52,7 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
   if(!isCurrent())return;
   if(!client.getProfile()){shell('<div class="wb-empty"><h2>登录后开始</h2><p>任务、文件和成果跟随你的账号。</p>'+button('login','登录账号','',true)+'</div>');return;}
   if(!cap){shell('<div class="wb-empty"><p>正在连接工作台…</p>'+button('refresh','重新连接')+'</div>');return;}
-  if(!cap.enabled){shell('<div class="wb-empty"><h2>工作台尚未启用</h2><p>当前环境未配置执行服务。</p>'+button('legacy','查看文字模型设置')+'</div>');return;}
+  if(!cap.enabled){shell('<div class="wb-empty"><h2>工作台尚未启用</h2><p>当前文件工具尚未接通。</p>'+button('legacy','查看文字模型设置')+'</div>');return;}
   if(selected){renderTask();return;}
   if(screen==='environment'){renderEnvironment();return;}
   if(screen==='files'){renderFiles();return;}
@@ -68,22 +68,22 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
  }
  function renderHome(){
   const selectedFiles=files.filter(f=>draft.fileIds.includes(f.id));
-  shell('<section class="wb-composer"><h2>你想完成什么？</h2><form data-plan><label class="sr-only" for="wb-goal">任务目标</label><textarea id="wb-goal" name="goal" data-draft="goal" rows="4" maxlength="4000" placeholder="例如：把这份订单表去重，给我一份整理后的表格和统计报告。" required>'+esc(draft.goal)+'</textarea>'+
+  shell('<section class="wb-composer"><h2>用文件小工具完成什么？</h2><form data-plan><label class="sr-only" for="wb-goal">任务目标</label><textarea id="wb-goal" name="goal" data-draft="goal" rows="4" maxlength="4000" placeholder="例如：把这份订单表去重，给我一份整理后的表格和统计报告。" required>'+esc(draft.goal)+'</textarea>'+
    '<div class="wb-attachments">'+selectedFiles.map(f=>'<span class="wb-attachment">'+esc(f.name)+button('remove-file','×','data-id="'+esc(f.id)+'" aria-label="移除附件 '+esc(f.name)+'"')+'</span>').join('')+'</div>'+
    '<div class="wb-composer-actions"><label class="wb-upload">'+(uploading?'上传中…':'＋ 添加文件')+'<input data-file type="file" accept=".csv,.txt,.md,.json" multiple '+(busy||uploading?'disabled':'')+'></label><button type="submit" class="'+(preview?'':'primary')+'" '+(busy||uploading?'disabled':'')+'>'+(busy?'正在整理计划…':'生成计划')+'</button></div>'+
    '<p class="wb-muted">先看计划，再确认积分预算。只有确认后才预留积分，未用部分会退回；积分仅用于站内服务。</p></form></section>'+noticeHTML()+
    '<section class="wb-examples"><h2>从一件小事开始</h2><div class="wb-example-grid">'+examples.map((x,i)=>'<button type="button" data-action="example" data-index="'+i+'"><strong>'+esc(x.title)+'</strong><span>'+esc(x.hint)+'</span></button>').join('')+'</div></section>'+
    (files.length?'<details class="wb-library"><summary>使用已上传的文件（'+files.length+'）</summary><p class="wb-muted">CSV、TXT、Markdown、JSON，单文件最多 256 KiB，每次最多 5 个。</p>'+files.map(f=>'<label><input type="checkbox" data-choose-file value="'+esc(f.id)+'" '+(draft.fileIds.includes(f.id)?'checked':'')+'>'+esc(f.name)+' <small>'+Math.ceil(f.size/1024)+' KB</small></label>').join('')+'</details>':'')+
-   '<div class="wb-capability-note"><span class="wb-status-dot"></span><p>当前可做文件整理与清单、大纲草稿。使用本地规则，尚未接入通用 AI 模型和云电脑。</p></div>'+
+   '<div class="wb-capability-note"><span class="wb-status-dot"></span><p>当前可做文件去重、格式整理与清单、大纲草稿，按固定规则处理，不需要 AI。</p></div>'+
    (tasks.length?'<section class="wb-recent"><div class="wb-row"><h2>最近任务</h2>'+button('all-tasks','查看全部')+'</div>'+tasks.slice(0,3).map(taskRow).join('')+'</section>':''));
  }
  function taskRow(t){return '<button type="button" class="wb-task-row" data-action="open" data-id="'+esc(t.id)+'"><span class="wb-task-icon '+(t.status==='succeeded'?'done':'')+'">'+(t.status==='succeeded'?'✓':'◇')+'</span><span class="wb-task-main"><strong>'+esc(t.title)+'</strong><small>'+date(t.createdAt)+' · '+esc(labels[t.status]||t.status)+'</small></span><span class="wb-row-arrow">›</span></button>';}
  function renderTasks(){
   const groups={all:()=>true,active:t=>['running','queued','paused','awaiting-user','budget-paused'].includes(t.status),pending:t=>t.status==='awaiting-confirmation',done:t=>t.status==='succeeded',issue:t=>['failed','cancelled'].includes(t.status)};
   const rows=tasks.filter(groups[filter]).filter(t=>!search||t.title.toLowerCase().includes(search.toLowerCase()));
-  shell('<div class="wb-section-title"><h2>我的任务</h2>'+button('new','＋ 新任务')+'</div><label class="wb-search"><span class="sr-only">搜索任务</span><input data-search placeholder="搜索任务" value="'+esc(search)+'"></label>'+
+  shell('<div class="wb-section-title"><h2>我的任务</h2>'+button('new','＋ 文件小工具')+'</div><label class="wb-search"><span class="sr-only">搜索任务</span><input data-search placeholder="搜索任务" value="'+esc(search)+'"></label>'+
    '<div class="wb-filters">'+[['all','全部'],['active','进行中'],['pending','待确认'],['done','已完成'],['issue','未完成']].map(([key,label])=>button('filter',label,'data-filter="'+key+'" aria-pressed="'+(key===filter)+'"')).join('')+'</div>'+
-   (rows.length?'<div class="wb-list">'+rows.map(taskRow).join('')+'</div>':'<div class="wb-empty"><h3>这里还没有任务</h3><p>输入目标，确认计划后开始。</p>'+button('new','创建任务','',true)+'</div>'));
+   (rows.length?'<div class="wb-list">'+rows.map(taskRow).join('')+'</div>':'<div class="wb-empty"><h3>这里还没有任务</h3><p>输入目标，确认计划后开始。</p>'+button('new','使用文件小工具','',true)+'</div>'));
  }
  function renderEnvironment(){
   const services=catalog?.services||[{id:'local',kind:'executor',label:'本地规则与文件整理',status:'available',reason:'实际处理你选中的文件，生成可下载结果。'},{id:'models',kind:'model',label:'通用 AI 模型',status:'unconfigured',reason:'尚未配置模型供应商。'},{id:'desktop',kind:'desktop',label:'云端电脑',status:'unconfigured',reason:'尚未配置远程设备服务商。'}];
@@ -93,13 +93,13 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
    '<section class="wb-desktop-empty"><span>▣</span><h3>云端电脑尚未连接</h3><p>连接设备服务商后，这里才能观看实时桌面、用手机操作并交回 AI。当前没有远程屏幕。</p></section>'+
    '<details class="wb-library"><summary>已有文字模型工作区</summary><p>保留原来的文字模型配置入口，与云电脑能力分开。</p>'+button('legacy','打开文字模型设置')+'</details>');
  }
- function fileRow(f){return '<div class="wb-file-row"><div><strong>'+esc(f.name)+'</strong><small>'+Math.ceil(f.size/1024)+' KB · 保留至 '+date(f.expiresAt)+'</small></div><div class="wb-actions">'+button('preview','预览','data-id="'+esc(f.id)+'"')+button('download','下载','data-id="'+esc(f.id)+'"')+'</div></div>';}
+ function fileRow(f,output=false){return '<div class="wb-file-row"><div><strong>'+esc(f.name)+'</strong><small>'+Math.ceil(f.size/1024)+' KB · 保留至 '+date(f.expiresAt)+'</small></div><div class="wb-actions">'+button('preview','预览','data-id="'+esc(f.id)+'"')+button('download','下载','data-id="'+esc(f.id)+'"')+(output?button('share','分享','data-id="'+esc(f.id)+'"'):'')+'</div></div>';}
  function renderFiles(){
   const outputs=tasks.flatMap(t=>(t.outputs||[]).map(f=>({...f,taskTitle:t.title})));
   shell('<div class="wb-section-title"><h2>成果与文件</h2>'+button('refresh','刷新')+'</div>'+
    (reminders.length?'<section class="wb-retention"><h3>这些文件即将到期</h3>'+reminders.map(r=>'<p>'+esc(r.name)+' · '+(r.remainingDays<=1?'不足 1 天':Math.ceil(r.remainingDays)+' 天后')+'清理 '+button('preview','查看','data-id="'+esc(r.fileId)+'"')+'</p>').join('')+'</section>':'')+
-   '<p class="wb-muted">文件保留 30 天。到期前 7 天和 1 天会在这里提醒，请及时下载。</p><section class="wb-list"><h3>任务成果</h3>'+(outputs.length?outputs.map(fileRow).join(''):'<p class="wb-empty">任务完成后，真实生成的文件会放在这里。</p>')+'</section>'+
-    '<details class="wb-library"><summary>已上传的原文件（'+files.length+'）</summary>'+files.map(fileRow).join('')+'</details>');
+   '<p class="wb-muted">文件保留 30 天。到期前 7 天和 1 天会在这里提醒，请及时下载。</p><section class="wb-list"><h3>任务成果</h3>'+(outputs.length?outputs.map(f=>fileRow(f,true)).join(''):'<p class="wb-empty">任务完成后，真实生成的文件会放在这里。</p>')+'</section>'+
+    '<details class="wb-library"><summary>已上传的原文件（'+files.length+'）</summary>'+files.map(f=>fileRow(f)).join('')+'</details>');
  }
  function taskUsage(task){
   const entries=(Array.isArray(task.events)?task.events:[]).filter(event=>event?.event==='step-completed');
@@ -115,15 +115,15 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
   if(taskTab==='workspace'){
    body+='<section class="wb-list"><h3>当前工作区</h3><div class="wb-meta"><div><span>状态</span><strong>'+esc(({ready:'已就绪',running:'处理中',suspended:'已休眠',released:'已释放'})[w?.state]||'等待就绪')+'</strong></div><div><span>控制权</span><strong>'+(w?.controller==='user'?'你正在操作':'任务执行器')+'</strong></div></div><p class="wb-muted">离开页面后任务按原状态继续；重新进入时仍是同一任务。</p>'+
     (points&&!final(t.status)&&!awaiting?'<div class="wb-actions">'+button(w?.controller==='user'?'resume':'takeover',w?.controller==='user'?'交回执行器，继续任务':'暂停自动步骤，我来操作')+'</div>':'')+'</section>'+
-    '<section class="wb-desktop-empty"><span>▣</span><h3>还没有可连接的云电脑</h3><p>本轮在本地整理文件，不能远控桌面。连接服务商后才能显示真实桌面。</p>'+button('environment','查看可用能力')+'</section>';
+    '<section class="wb-desktop-empty"><span>▣</span><h3>还没有可连接的云电脑</h3><p>当前任务由工作台服务处理文件，不操作电脑桌面。连接自己的电脑请返回“我的设备”；云电脑仍待接入。</p>'+button('environment','查看可用能力')+'</section>';
   }else if(taskTab==='outputs'){
-   body+='<section class="wb-list"><h3>成果文件</h3>'+((t.outputs||[]).length?t.outputs.map(fileRow).join(''):'<div class="wb-empty"><p>'+(t.status==='failed'?'本次没有可用成果。请检查文件或调整目标后重试。':'任务完成后，成果会出现在这里。')+'</p></div>')+'</section>'+
+   body+='<section class="wb-list"><h3>成果文件</h3>'+((t.outputs||[]).length?t.outputs.map(f=>fileRow(f,true)).join(''):'<div class="wb-empty"><p>'+(t.status==='failed'?'本次没有可用成果。请检查文件或调整目标后重试。':'任务完成后，成果会出现在这里。')+'</p></div>')+'</section>'+
     (points?'<section class="wb-list"><h3>本次积分账单</h3><div class="wb-bill"><span>最高积分预算</span><strong>'+pointsValue(t.budgetPoints)+'</strong><span>当前预留</span><strong>'+pointsValue(t.reservedPoints)+'</strong><span>已使用</span><strong>'+pointsValue(t.spentPoints)+'</strong><span>未使用已退回</span><strong>'+pointsValue(t.releasedPoints)+'</strong><span>剩余预算</span><strong>'+pointsValue(t.remainingPoints)+'</strong></div><p class="wb-muted">积分费率版本：'+priceVersion(t)+'</p><p class="wb-muted">以服务端实际使用记录结算，积分不兑换现金、Gas 或资产。</p></section>':'<section class="wb-list"><h3>历史模拟账单 · 不转换积分</h3><div class="wb-bill"><span>最高模拟预算</span><strong>'+exactMoney(t.budgetMicro)+'</strong><span>已记录模拟成本</span><strong>'+exactMoney(t.costMicro)+'</strong><span>已结算</span><strong>'+exactMoney(t.settledMicro)+'</strong><span>未使用已释放</span><strong>'+exactMoney(t.releasedMicro)+'</strong><span>你实际支付</span><strong>'+exactMoney(t.userChargeMicro)+'</strong></div><p class="wb-muted">历史费率版本：'+priceVersion(t)+'</p><p class="wb-muted">旧试用任务仅供核对历史，不会转换为积分或链上资产。</p></section>')+taskUsage(t);
   }else{
    body+=(t.goal&&t.goal!==t.title?'<section class="wb-plan-notice"><h3>本次目标与补充要求</h3><p class="wb-goal-review">'+esc(t.goal)+'</p></section>':'')+(t.error?'<div class="wb-error">本次处理没有成功。请检查文件格式或调整目标，已记录用量以积分账单为准。</div>':'')+
     '<section class="wb-list"><h3>'+(awaiting?'先确认执行计划':'正在做什么')+'</h3><p>'+esc(plan.summary||t.goal||t.title)+'</p><ol class="wb-steps">'+steps.map((s,i)=>'<li class="'+(i<t.step?'complete':i===t.step&&!final(t.status)?'current':'')+'"><span>'+(i<t.step?'✓':i+1)+'</span><div><strong>'+esc(s.title)+'</strong>'+(s.description?'<p>'+esc(s.description)+'</p>':'')+'</div></li>').join('')+'</ol>'+
     ((plan.artifacts||[]).length?'<p class="wb-muted">预计得到：'+plan.artifacts.map(f=>esc(f.name||f.description)).join('、')+'</p>':'')+
-    '<p class="wb-local-label">执行方式：本地规则与文件处理，非通用 AI 模型</p></section>';
+    '<p class="wb-local-label">执行方式：工作台服务按固定规则处理文件，不需要 AI</p></section>';
    if(awaiting&&points)body+='<form class="wb-confirm" data-confirm><div class="wb-row"><div><span class="wb-muted">预计积分区间</span><h3>'+estimateRange(t)+'</h3></div><span class="wb-trial">POINT · 本地试用</span></div><p class="wb-muted">预计用时：'+estimatedTime(plan.estimatedSeconds)+'。时间为预估，不是完成时限保证。</p><p class="wb-muted">积分费率版本：'+priceVersion(t)+'</p><label>本次最高预算（积分）<input name="budget" data-confirm-budget type="number" min="1" max="1000" step="1" value="'+esc(confirmBudget||taskBudget(t))+'" required></label><p class="wb-muted">计划有效至 '+date(t.quoteExpiresAt)+'。确认后预留积分，达到上限会暂停；追加预算须再次确认。</p><button class="'+(preview?'':'primary')+'" type="submit" '+(busy?'disabled':'')+'>确认积分预算，开始执行</button></form>';
    if(!points)body+='<p class="wb-plan-notice">这是历史本地试用任务，仅保留旧记录，不转换积分。可按这个目标新建积分任务。</p>';
    if(!awaiting&&!final(t.status)&&points)body+='<section class="wb-list" data-task-cost><h3>积分用量与预算</h3><div class="wb-bill"><span>已使用积分</span><strong>'+pointsValue(t.spentPoints)+'</strong><span>最高积分预算</span><strong>'+pointsValue(t.budgetPoints)+'</strong><span>剩余预算</span><strong>'+pointsValue(t.remainingPoints)+'</strong><span>当前预留</span><strong>'+pointsValue(t.reservedPoints)+'</strong></div><p class="wb-muted">依据当前任务锁定的积分费率核算；未提供的数据不作估计。</p></section>';
@@ -132,7 +132,7 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
    if(points&&['paused','budget-paused','awaiting-user'].includes(t.status))body+='<details class="wb-library" '+(t.status==='budget-paused'||pendingApprovals.length?'open':'')+'><summary>调整最高积分预算</summary><form data-budget><label>新的最高预算（积分）<input name="budget" data-budget-draft type="number" min="1" max="1000" step="1" value="'+esc(budgetDraft)+'" required></label><button type="submit">查看调整详情</button></form>'+pendingApprovals.map((a,index)=>'<div class="wb-plan-notice"><p>仅将此任务预算从 '+pointsValue(a.parameters.oldBudgetPoints)+' 调整到 '+pointsValue(a.parameters.newBudgetPoints)+'。</p><p class="wb-muted">确认有效至 '+date(a.expiresAt)+'</p>'+button('approve','确认这个积分预算','data-id="'+esc(a.id)+'"',index===0)+'</div>').join('')+'</details>';
    body+='<section class="wb-result-shortcut"><h3>成果文件</h3><p>'+((t.outputs||[]).length?'已生成 '+t.outputs.length+' 个文件，可预览或下载。':'完成后可在“成果与账单”查看。')+'</p>'+button('task-tab','查看成果与账单','data-tab="outputs"')+'</section>';
   }
-  body+='<div class="wb-actions">'+(points&&!final(t.status)?button('cancel-request','取消任务'):'')+(!points||final(t.status)?button('reuse','按这个目标新建任务'):'')+'</div>'+
+  body+='<div class="wb-actions">'+(points&&!final(t.status)?button('cancel-request','取消任务'):'')+(!points||final(t.status)?button('reuse','按这个目标使用文件小工具'):'')+'</div>'+
    (cancelPrompt?'<section class="wb-plan-notice"><p>确定停止这项任务？已完成的处理会保留在记录中，未使用预算会释放。</p>'+button('cancel','确定取消')+button('cancel-dismiss','继续保留')+'</section>':'')+
    '<details class="wb-library"><summary>执行记录与任务信息</summary><p class="wb-muted">任务 '+esc(t.id)+'</p><p class="wb-muted">工作区 '+esc(t.workspaceId)+'</p>'+(t.events||[]).map(e=>'<p class="wb-muted">'+date(e.createdAt)+' · '+esc(eventLabels[e.event]||'任务状态已更新')+'</p>').join('')+'</details>';
   shell(body);if(busy)root.querySelectorAll('button').forEach(b=>b.disabled=true);
@@ -172,6 +172,10 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},toa
   if(name==='reuse'){draft.goal=selected.goal||selected.title;draft.fileIds=[];planNotice=null;await changeScreen('home');return;}
   await act(async()=>{
    if(name==='open'){const turn=++viewEpoch,value=await get('tasks/'+b.dataset.id);if(isCurrent()&&turn===viewEpoch){selected=value.task;taskTab='overview';confirmBudget=taskBudget(selected);cancelPrompt=false;}return;}
+   if(name==='share'){
+    const f=[...(selected?.outputs||[]),...tasks.flatMap(t=>t.outputs||[])].find(f=>f.id===b.dataset.id);if(!f)return;
+    checkCurrent();await onShare({id:f.id,name:f.name});return;
+   }
    if(name==='preview'){const turn=viewEpoch,value=await get('files/'+b.dataset.id+'/details');if(isCurrent()&&turn===viewEpoch)preview=value;return;}
    if(name==='download'){
     const f=preview?.file?.id===b.dataset.id?preview.file:[...files,...tasks.flatMap(t=>t.outputs||[]),...(selected?.outputs||[])].find(f=>f.id===b.dataset.id);if(!f)return;

@@ -4,7 +4,7 @@ import {build} from 'esbuild';
 import {fileURLToPath} from 'node:url';
 const built=await build({entryPoints:[fileURLToPath(new URL('../src/workbench-hub.js',import.meta.url))],bundle:true,write:false,format:'esm',platform:'node',loader:{'.css':'empty'},logLevel:'silent'});
 const {mountWorkbenchHub}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
-function harness({bridge=()=>null,api={},...options}={}){let profile={userId:'owner'},cleaned=0;const listeners=new Map(),calls=[],features=[],screens=[],child={};const root={innerHTML:'',contains:()=>true,querySelector:()=>child,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};const cleanup=mountWorkbenchHub(root,{client:{getProfile:()=>profile,getPointsAccount:()=>new Promise(()=>{}),authenticatedRequest:path=>{if(path==='workbench/tasks')return new Promise(()=>{});throw Error('Unexpected API request');},...api},bridge,...options,onOpenFeature:route=>features.push(route),onScreenChange:view=>screens.push(view),mountTasks:(target,options)=>{calls.push({target,options});return ()=>cleaned++;}});return {root,calls,features,screens,cleanup,cleaned:()=>cleaned,account:value=>{profile=value;},click(action,values={}){const target={dataset:{hub:action,...values}};return listeners.get('click')({target:{closest:()=>target}});},input(name,value){return listeners.get('input')({target:{name,value,closest:()=>({})}});},submit(form){return listeners.get('submit')({target:form,preventDefault(){}});}};}
+function harness({bridge=()=>null,api={},...options}={}){let profile={userId:'owner'},cleaned=0;const listeners=new Map(),calls=[],features=[],screens=[],cloud=[],child={};const root={innerHTML:'',contains:()=>true,querySelector:()=>child,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};const cleanup=mountWorkbenchHub(root,{client:{getProfile:()=>profile,getPointsAccount:()=>new Promise(()=>{}),authenticatedRequest:path=>{if(path==='workbench/tasks')return new Promise(()=>{});throw Error('Unexpected API request');},...api},bridge,...options,onOpenFeature:route=>features.push(route),onScreenChange:view=>screens.push(view),mountChat:(target,options)=>{cloud.push({target,options});return ()=>cleaned++;},mountDevices:()=>()=>cleaned++,mountTasks:(target,options)=>{calls.push({target,options});return ()=>cleaned++;}});return {root,calls,features,screens,cloud,cleanup,cleaned:()=>cleaned,account:value=>{profile=value;},click(action,values={}){const target={dataset:{hub:action,...values}};return listeners.get('click')({target:{closest:()=>target}});},input(name,value){return listeners.get('input')({target:{name,value,closest:()=>({})}});},submit(form){return listeners.get('submit')({target:form,preventDefault(){}});}};}
 function deferred(){let resolve;return {promise:new Promise(r=>resolve=r),resolve:v=>resolve(v)};}
 test('copying a supported workflow opens only a goal draft; unavailable or forged templates never start a task',async()=>{const h=harness();await h.click('use',{id:'research'});await h.click('use',{id:'__proto__'});assert.equal(h.calls.length,0);await h.click('use',{id:'orders'});assert.equal(h.calls.length,1);assert.match(h.calls[0].options.initialGoal,/订单表/);assert.equal(h.calls[0].options.embedded,true);assert.equal('fileIds' in h.calls[0].options,false);h.cleanup();});
 test('switching away cleans the task component without requesting cancellation or changing a server task',async()=>{const h=harness();await h.click('tasks');await h.click('mode',{mode:'chat'});await h.click('chat-local');assert.equal(h.cleaned(),1);assert.match(h.root.innerHTML,/本机模型/);h.cleanup();assert.equal(h.cleaned(),1);});
@@ -64,23 +64,64 @@ test('template task return preserves its detail while direct tasks return to ent
  const h=harness();await h.click('workflows');await h.click('detail',{id:'orders'});await h.click('use',{id:'orders'});
  assert.equal(h.cleanup.back(),true);assert.equal(h.cleaned(),1);assert.match(h.root.innerHTML,/订单表去重/);assert.match(h.root.innerHTML,/你提供/);
  assert.equal(h.cleanup.back(),true);assert.match(h.root.innerHTML,/会议文字整理/);h.cleanup.back();
- await h.click('tasks');h.cleanup.back();assert.equal(h.cleaned(),2);assert.doesNotMatch(h.root.innerHTML,/订单表去重/);assert.match(h.root.innerHTML,/工作入口/);h.cleanup();
+ await h.click('tasks');h.cleanup.back();assert.equal(h.cleaned(),2);assert.doesNotMatch(h.root.innerHTML,/订单表去重/);assert.match(h.root.innerHTML,/选择你的情况/);h.cleanup();
 });
 
 test('chat entrance defers model status and form until a detail is opened; back discards late checks',async()=>{
  const checked=deferred();let count=0;const h=harness({initialMode:'chat',bridge:()=>({status:()=>{count++;return checked.promise;}})});
  assert.match(h.root.innerHTML,/免费云端模型/);assert.doesNotMatch(h.root.innerHTML,/检查本机模型|data-hub-chat|尚未接入/);assert.equal(count,0);
- await h.click('chat-cloud');assert.match(h.root.innerHTML,/云端模型尚未接入/);assert.equal(h.cleanup.back(),true);
+ await h.click('chat-cloud');assert.equal(h.cloud.length,1);assert.equal(h.cleanup.back(),true);
  await h.click('chat-local');const pending=h.click('check');assert.equal(count,1);assert.equal(h.cleanup.back(),true);const home=h.root.innerHTML;
  checked.resolve({available:true,models:[{name:'late-private-model'}]});await pending;assert.equal(h.root.innerHTML,home);h.cleanup();
 });
 
 test('restoring a valid location preserves mode and detail, while invalid values fall back safely',()=>{
  const detail=harness({initialMode:'work',initialScreen:'detail',initialSelected:'meeting'});assert.match(detail.root.innerHTML,/会议文字整理/);assert.match(detail.root.innerHTML,/你提供/);assert.deepEqual(detail.screens.at(-1),{mode:'work',screen:'detail',selected:'meeting'});detail.cleanup();
- const chat=harness({initialMode:'chat',initialScreen:'chat-cloud'});assert.match(chat.root.innerHTML,/云端模型尚未接入/);assert.equal(chat.screens.at(-1).mode,'chat');chat.cleanup();
- const invalid=harness({initialMode:'other',initialScreen:'<invalid>',initialSelected:'<script>'});assert.match(invalid.root.innerHTML,/工作入口/);assert.deepEqual(invalid.screens.at(-1),{mode:'work',screen:'home',selected:null});invalid.cleanup();
+ const chat=harness({initialMode:'chat',initialScreen:'chat-cloud'});assert.equal(chat.cloud.length,1);assert.equal(chat.screens.at(-1).mode,'chat');chat.cleanup();
+ const invalid=harness({initialMode:'other',initialScreen:'<invalid>',initialSelected:'<script>'});assert.match(invalid.root.innerHTML,/选择你的情况/);assert.deepEqual(invalid.screens.at(-1),{mode:'work',screen:'home',selected:null});invalid.cleanup();
  const missing=harness({initialScreen:'detail',initialSelected:'unavailable'});assert.equal(missing.screens.at(-1).screen,'workflows');missing.cleanup();
  const tasks=harness({initialScreen:'tasks'});assert.equal(tasks.calls.length,1);assert.equal(tasks.calls[0].options.initialGoal,'');tasks.cleanup();
+});
+
+test('brand home centers group decisions and execution with devices as cooperating carriers',async()=>{
+ let opened=0;const h=harness({onCollaborate:()=>opened++});
+ assert.match(h.root.innerHTML,/群里的共同任务/);
+ assert.match(h.root.innerHTML,/执行工具与模型/);
+ assert.match(h.root.innerHTML,/手机、电脑与云机协作/);
+ assert.equal((h.root.innerHTML.match(/class="wh-route"/g)||[]).length,3);
+ assert.match(h.root.innerHTML,/<details class="wh-about">/);
+ assert.match(h.root.innerHTML,/人负责思维、决策、方向、创意和授权/);
+ assert.doesNotMatch(h.root.innerHTML,/我们不提供 AI 本身|把你的电脑变成 AI 工作站/);
+ await h.click('cooperation');assert.equal(opened,1);assert.equal(h.calls.length,0);
+ assert.doesNotMatch(h.root.innerHTML,/即将上线/);
+ h.cleanup();
+});
+
+test('the AI page lists four provider tiers with official https links and never collects keys',async()=>{
+ const h=harness();await h.click('workflows');
+ assert.match(h.root.innerHTML,/不知道选哪个|先装免费的 Ollama/);
+ assert.match(h.root.innerHTML,/Ollama \+ Qwen3/);assert.match(h.root.innerHTML,/DeepSeek/);
+ assert.match(h.root.innerHTML,/Codex CLI/);assert.match(h.root.innerHTML,/ChatGPT Plus/);
+ assert.match(h.root.innerHTML,/https:\/\/ollama\.com\/download/);
+ assert.match(h.root.innerHTML,/https:\/\/platform\.deepseek\.com/);
+ assert.match(h.root.innerHTML,/https:\/\/chatgpt\.com/);
+ assert.match(h.root.innerHTML,/rel="noopener noreferrer nofollow"/);
+ assert.match(h.root.innerHTML,/登录必须由你本人完成/);
+ assert.match(h.root.innerHTML,/我们不代收/);
+ assert.doesNotMatch(h.root.innerHTML,/API Key.*<input|name="key"|name="password"/);
+ assert.doesNotMatch(h.root.innerHTML,/\$\d|\d+ ?美元|美元\/月/);
+ assert.match(h.root.innerHTML,/订单表去重/);
+ h.cleanup();
+});
+
+test('the chat entry moves into secondary content, not the hero',async()=>{
+ const h=harness();
+ assert.match(h.root.innerHTML,/data-hub="chat-entry"/);
+ const hero=h.root.innerHTML.slice(0,h.root.innerHTML.indexOf('</header>'));
+ assert.doesNotMatch(hero,/data-hub="chat-entry"/);
+ await h.click('chat-entry');
+ assert.equal(h.screens.at(-1).mode,'chat');
+ h.cleanup();
 });
 
 const settleSummary=()=>new Promise(resolve=>setImmediate(resolve));
@@ -95,7 +136,7 @@ test('brand home renders exact copy, one primary action and only real account/ta
  assert.match(h.root.innerHTML,/正在读取积分/);assert.doesNotMatch(h.root.innerHTML,/2,480/);
  await settleSummary();
  assert.deepEqual(requests,['points/account','workbench/tasks']);
- assert.match(h.root.innerHTML,/>9,876<\/strong>/);assert.match(h.root.innerHTML,/>20 分<\/strong>/);
+ assert.match(h.root.innerHTML,/>9,876 分<\/strong>/);assert.match(h.root.innerHTML,/>20 分<\/strong>/);
  assert.match(h.root.innerHTML,/&lt;img src=x/);assert.doesNotMatch(h.root.innerHTML,/<img src=x/);
  assert.ok(h.root.innerHTML.indexOf('data-id="task-new"')<h.root.innerHTML.indexOf('data-id="task-old"'));
  await h.click('recent-task',{id:'forged'});assert.equal(h.calls.length,0);
@@ -110,13 +151,13 @@ test('new task and all tasks select different task destinations without silently
 
 test('summary preserves zero and empty results, and malformed or failing sources remain separate unavailable states',async()=>{
  const h=harness({api:{getPointsAccount:async()=>({unit:'POINT',nonTransferable:true,available:'0',reserved:'0'}),authenticatedRequest:async()=>({tasks:[]})}});
- await settleSummary();assert.match(h.root.innerHTML,/>0<\/strong>/);assert.match(h.root.innerHTML,/还没有任务动态/);assert.doesNotMatch(h.root.innerHTML,/暂不可用/);h.cleanup();
+ await settleSummary();assert.match(h.root.innerHTML,/>0 分<\/strong>/);assert.match(h.root.innerHTML,/还没有任务动态/);assert.doesNotMatch(h.root.innerHTML,/暂不可用/);h.cleanup();
  const invalid=harness({api:{getPointsAccount:async()=>({unit:'USD',nonTransferable:true,available:'100',reserved:'0'}),authenticatedRequest:async()=>({tasks:[{id:'task',title:'有效任务',status:'paused',createdAt:'invalid'}]})}});
- await settleSummary();assert.match(invalid.root.innerHTML,/积分暂不可用/);assert.match(invalid.root.innerHTML,/有效任务/);assert.match(invalid.root.innerHTML,/时间待同步/);assert.doesNotMatch(invalid.root.innerHTML,/>100<\/strong>/);invalid.cleanup();
+ await settleSummary();assert.match(invalid.root.innerHTML,/积分暂不可用/);assert.match(invalid.root.innerHTML,/有效任务/);assert.match(invalid.root.innerHTML,/时间待同步/);assert.doesNotMatch(invalid.root.innerHTML,/>100 分<\/strong>/);invalid.cleanup();
  let shouldFail=true;
  const retry=harness({api:{getPointsAccount:async()=>{if(shouldFail)throw Error('private service error');return {unit:'POINT',nonTransferable:true,available:'7',reserved:'0'};},authenticatedRequest:async()=>shouldFail?{tasks:[{title:'invalid row'}]}:{tasks:[]}}});
  await settleSummary();assert.match(retry.root.innerHTML,/积分暂不可用/);assert.match(retry.root.innerHTML,/近期动态暂不可用/);assert.doesNotMatch(retry.root.innerHTML,/private service error/);
- shouldFail=false;await retry.click('refresh-summary');assert.match(retry.root.innerHTML,/>7<\/strong>/);assert.match(retry.root.innerHTML,/还没有任务动态/);retry.cleanup();
+ shouldFail=false;await retry.click('refresh-summary');assert.match(retry.root.innerHTML,/>7 分<\/strong>/);assert.match(retry.root.innerHTML,/还没有任务动态/);retry.cleanup();
 });
 
 test('late summary responses cannot overwrite child pages, leak across accounts or render after cleanup',async()=>{

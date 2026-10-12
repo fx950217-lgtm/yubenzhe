@@ -17,7 +17,7 @@ function task(overrides={}){
 
 // Only the browser boundary is stubbed: event handlers and rendering are the
 // bundled production module. Requests are controllable to reproduce races.
-function harness(t,{request,initialTasks=[]}={}){
+function harness(t,{request,initialTasks=[],onShare=()=>{}}={}){
  let profile={userId:'reader_one'},timer,disposed=false;
  const original={setInterval:globalThis.setInterval,clearInterval:globalThis.clearInterval,FormData:globalThis.FormData};
  globalThis.setInterval=callback=>{timer=callback;return 4321;};globalThis.clearInterval=()=>{timer=null;};
@@ -26,7 +26,7 @@ function harness(t,{request,initialTasks=[]}={}){
  const root={innerHTML:'',contains:()=>true,querySelectorAll:()=>buttons,querySelector:()=>null,addEventListener:(name,handler)=>listeners.set(name,handler),removeEventListener:name=>listeners.delete(name)};
  const fallback=async path=>path==='workbench/capabilities'?{enabled:true}:path==='workbench/tasks'?{tasks:initialTasks}:path==='workbench/files'?{files:[]}:path==='workbench/tasks/'+taskId?{task:task({status:'running',version:3,billingState:'reserved',reservedMicro:'100000'})}:undefined;
  const client={getProfile:()=>profile,authenticatedRequest:async(path,options)=>{calls.push({path,options});const result=request?await request(path,options,fallback):await fallback(path);if(result===undefined)throw Error('Unexpected request: '+path);return result;}};
- const cleanup=mountWorkbench(root,{client});
+ const cleanup=mountWorkbench(root,{client,onShare});
  const dispose=()=>{if(!disposed){disposed=true;cleanup();}};
  t.after(()=>{dispose();Object.assign(globalThis,original);});
  return {
@@ -97,3 +97,13 @@ test('new plans and confirmations use POINT exclusively while historical tasks c
  test('historical trial tasks remain readable but forged confirm cannot charge or run',async t=>{const old=task({billingUnit:'LEGACY_TRIAL'});const h=harness(t,{initialTasks:[old],request:async(path,options,fallback)=>path==='workbench/tasks/'+taskId?{task:old}:fallback(path)});await drain();await h.click('open',{id:taskId});assert.doesNotMatch(h.root.innerHTML,/data-confirm/);assert.match(h.root.innerHTML,/仅保留旧记录/);await h.submit('confirm',{budget:'30'});assert.equal(posts(h).length,0);await h.click('reuse');assert.match(h.root.innerHTML,/data-plan/);assert.equal(posts(h).length,0);});
 
 test('POINT confirmation requires a returned locked pricing version before sending authorization',async t=>{const h=harness(t,{request:async(path,options,fallback)=>path==='workbench/plan'?{plan:plan(),task:task({pointsPriceVersion:undefined})}:fallback(path)});await drain();await h.submit('plan',{goal:'准备活动清单'});await h.submit('confirm',{budget:'30'});assert.match(h.root.innerHTML,/积分费率信息不完整/);assert.equal(posts(h).filter(c=>c.path.endsWith('/confirm')).length,0);});
+
+test('only outputs expose Share in the file library and task detail; duplicate clicks invoke once',async t=>{
+ const output={id:'571b47f7-1307-4d3f-b5e4-cc2807483969',name:'成果.md',size:48,expiresAt:Date.now()+86400000},input={...output,id:'f8ce9820-5aeb-4882-880e-ebf215d40eae',name:'原文件.txt'};
+ const shares=[],pending=deferred(),completed=task({status:'succeeded',outputs:[output]});
+ const h=harness(t,{initialTasks:[completed],onShare:async file=>{shares.push(file);await pending.promise;},request:(path,options,fallback)=>path==='workbench/files'?{files:[input]}:path==='workbench/retention'?{reminders:[]}:path==='workbench/tasks/'+taskId?{task:completed}:fallback(path)});await drain();await h.click('screen',{screen:'files'});
+ assert.equal((h.root.innerHTML.match(/data-action="share"/g)||[]).length,1);assert.match(h.root.innerHTML,/原文件.txt/);
+ const first=h.click('share',{id:output.id});await h.click('share',{id:output.id});assert.deepEqual(shares,[{id:output.id,name:output.name}]);pending.resolve();await first;
+ await h.click('share',{id:input.id});assert.equal(shares.length,1);
+ await h.click('open',{id:taskId});await h.click('task-tab',{tab:'outputs'});assert.equal((h.root.innerHTML.match(/data-action="share"/g)||[]).length,1);
+});
