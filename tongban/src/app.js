@@ -34,6 +34,7 @@ import { createAIChannelFiles } from './ai-channel-files.js';
 import './chain-wallet.css';
 import { createActivityTracker } from './community-client.js';
 /* 三皮肤视觉系统：必须保持在所有 CSS 引入的最后（WorkBuddy 2026-10-10） */
+import './mobile-ui.css';
 import './theme-skins.css';
 import './theme-skins.js';
 
@@ -42,7 +43,7 @@ const icon=(name,cls='')=>`<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short=a=>a?`${a.slice(0,6)}…${a.slice(-4)}`:'尚未创建钱包';
 let chainSection='assets';
-let currentView='workbench',socialCleanup=null,hideBalance=true,balance=null,balanceError='',loadingBalance=false,modalCleanup=null,backupPhrase='',toastTimer,viewRevision=0;
+let currentView='messages',socialCleanup=null,hideBalance=true,balance=null,balanceError='',loadingBalance=false,modalCleanup=null,backupPhrase='',toastTimer,viewRevision=0;
 let routeOptions={},billReturn={view:'mine',options:{}},walletIntent=null,walletSetupContext=null;
 const pageScroll=new Map();
 const app=document.querySelector('#app'),dialog=document.querySelector('#modal');
@@ -57,12 +58,12 @@ if(internalPreviewBridge){
 }
 const socialClient=createSocialClient({onChange:profile=>{const signedOut=accountWasSignedIn&&!profile;accountWasSignedIn=!!profile;updateRailProfile();if(signedOut&&!accountLoading){wallet.lock();queueMicrotask(()=>layout());}}});
 async function initializeAccount(){accountLoading=true;accountError='';try{if(internalPreviewBridge){previewAccessChecking=true;try{previewAccessReady=(await internalPreviewBridge.status()).authenticated===true;}finally{previewAccessChecking=false;}if(!previewAccessReady)return;}await socialClient.initialize()}catch(error){if(internalPreviewBridge&&!previewAccessReady)previewAccessError=error.message;else accountError=error.message}finally{accountLoading=false;layout()}}
-function accountReady(profile,created){accountLoading=false;accountError='';if(created)navigate('workbench');else layout();toast(socialClient.getStorageWarning()||(created?'账号已创建，你的 ID 是 '+profile.userId:'登录成功'));}
+function accountReady(profile,created){accountLoading=false;accountError='';if(created)navigate('messages');else layout();toast(socialClient.getStorageWarning()||(created?'账号已创建，你的 ID 是 '+profile.userId:'登录成功'));}
 
 function state(){try{return wallet.getWalletState()}catch{return {exists:true,address:null,unlocked:false,unavailable:true}}}
 function walletProblem(s=state()){if(!s.corrupt&&!s.unavailable&&(!s.exists||s.address))return false;showModal('钱包暂不可用',`<div class="notice warn">${s.unavailable?'浏览器无法读取本地钱包存储，请检查存储权限后重试。':'本机钱包文件无法读取。请保留原始数据、离线助记词和已有加密备份，使用助记词在可信钱包中恢复。'}</div><p class="modal-copy">当前不能生成收款码或签名交易，原有钱包数据不会被覆盖。</p>`);return true}
 function toast(msg){const el=document.querySelector('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3500)}
-function navHtml(){const selected=activeNavView(currentView,billReturn.view,routeOptions);return navs.map(([id,i,label])=>`<button type="button" class="nav-item ${id===selected?'active':''}" data-nav="${id}" ${id===selected?'aria-current="page"':''}>${icon(i)}<span>${label}</span></button>`).join('')}
+function navHtml(){const selected=activeNavView(currentView,billReturn.view,routeOptions);return navs.map(([id,i,label])=>`<button type="button" class="nav-item ${id==='workbench'?'nav-workbench':''} ${id===selected?'active':''}" data-nav="${id}" ${id===selected?'aria-current="page"':''}>${icon(i)}<span>${label}</span></button>`).join('')}
 function profile(){try{return socialClient.getProfile()||getLocalProfile()}catch{return {nickname:'资料暂不可用',avatar:'🌱'}}}
 function updateRailProfile(){const p=profile();const el=app.querySelector('.rail .self');if(el){el.querySelector('.avatar').innerHTML=p.avatarImage?'<img src="'+esc(p.avatarImage)+'" alt="我的头像">':esc(p.avatar);el.querySelector('strong').textContent=p.nickname}}
 function layout(){

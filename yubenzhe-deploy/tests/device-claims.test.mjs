@@ -81,7 +81,7 @@ test('revocation, owner deletion and account restrictions prevent pending creden
 });
 
 test('paired devices create owner-only message entries, never social friends, group members or shareable conversations',async t=>{
- const f=await fixture(t),p=f.create(),{device}=f.claim(p);f.poll(p);const entries=f.call(f.a.token,'GET','devices/conversations').conversations;assert.equal(entries.length,1);assert.equal(entries[0].id,'device:'+device.id);assert.equal(entries[0].kind,'device');assert.equal(entries[0].route,'#workbench/devices/'+device.id+'/chat');assert.deepEqual(f.call(f.b.token,'GET','devices/conversations').conversations,[]);
+ const f=await fixture(t),p=f.create(),{device}=f.claim(p);f.poll(p);const entries=f.call(f.a.token,'GET','devices/conversations').conversations;assert.equal(entries.length,1);assert.equal(entries[0].id,'device:'+device.id);assert.equal(entries[0].kind,'device');assert.equal(entries[0].aiOnline,false);assert.equal(entries[0].route,'#workbench/devices/'+device.id+'/chat');assert.deepEqual(f.call(f.b.token,'GET','devices/conversations').conversations,[]);
  assert.throws(()=>f.call(f.b.token,'GET','devices/'+device.id+'/state'),is(404));assert.throws(()=>f.call(f.b.token,'GET','ai-channel/devices/'+device.id),is(404));
  assert.equal(f.db.raw.prepare('SELECT count(*) n FROM conversations').get().n,0);f.call(f.a.token,'POST','devices/'+device.id+'/revoke');assert.deepEqual(f.call(f.a.token,'GET','devices/conversations').conversations,[]);
 });

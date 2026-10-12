@@ -1,6 +1,6 @@
 import {providerId} from './device-ai-providers.js';
 export const MAIN_NAV = Object.freeze([
-  ['workbench','spark','工作台'],['messages','message','消息'],['wallet','wallet','钱包'],['discover','discover','发现'],['mine','user','我的'],
+  ['messages','message','消息'],['discover','discover','发现'],['workbench','spark','工作台'],['wallet','wallet','钱包'],['mine','user','我的'],
 ]);
 export const WORKBENCH_FEATURES = Object.freeze(['bounty','provider','rank','token','ai','business','token-projects']);
 const routeId=value=>typeof value==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(value)?value:null;
@@ -22,7 +22,7 @@ export function normalizeNavigation(view,options={}) {
  if(view==='workbench'&&safe.route==='cooperation')return {view,options:{route:'cooperation',conversationId:routeId(safe.conversationId),workflowId:routeId(safe.workflowId)}};
  if(view==='workbench'&&!WORKBENCH_FEATURES.includes(safe.route))return {view,options:{hub:normalizedHubState(safe.hub)}};
  if(view==='discover')return {view,options:{...safe,route:discoveryRoutes.has(safe.route)?safe.route:'hub',origin:safe.origin==='mine'?'mine':'discover'}};
- return {view:isAppView(view)?view:'workbench',options:safe};
+ return {view:isAppView(view)?view:'messages',options:safe};
 }
 export function hashForView(view,options={}) {
  if(view==='workbench'&&options.route==='ai-channel'&&routeId(options.deviceId))return '#workbench/devices/'+options.deviceId+'/chat'+(providerId(options.provider)?'/ai/'+options.provider:'');
@@ -41,7 +41,7 @@ export function hashForView(view,options={}) {
   const hub=normalizedHubState(options.hub),prefix=hub.mode==='chat'?'#workbench/chat':'#workbench';
   return prefix+(hub.screen==='home'?'':'/'+hub.screen)+(hub.selected?'/'+hub.selected:'');
  }
- return '#'+(isAppView(view)?view:'workbench');
+ return '#'+(isAppView(view)?view:'messages');
 }
 export function navigationFromHash(hash) {
  const value=String(hash||'').replace(/^#/,'');
@@ -58,7 +58,7 @@ export function navigationFromHash(hash) {
   const chat=parts[1]==='chat';
   return normalizeNavigation('workbench',{hub:{mode:chat?'chat':'work',screen:parts[chat?2:1]||'home',selected:parts[chat?3:2]}});
  }
- return {view:isAppView(value)?value:'workbench',options:{}};
+ return {view:isAppView(value)?value:'messages',options:{}};
 }
 export const viewFromHash=hash=>navigationFromHash(hash).view;
 export function activeNavView(view,billOrigin='mine',options={}) {

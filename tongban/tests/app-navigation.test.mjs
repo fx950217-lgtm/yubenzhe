@@ -1,19 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MAIN_NAV,WORKBENCH_FEATURES,viewFromHash,hashForView,navigationFromHash,normalizeNavigation,activeNavView,isAppView} from '../src/app-navigation.js';
-test('five tabs keep Workspace first and Wallet third with legacy bookmarks',()=>{
- assert.deepEqual(MAIN_NAV.map(x=>x[2]),['工作台','消息','钱包','发现','我的']);
+test('five tabs follow the signed-off design with a central workbench and legacy bookmarks',()=>{
+ assert.deepEqual(MAIN_NAV.map(x=>x[2]),['消息','发现','工作台','钱包','我的']);
  assert.equal(viewFromHash('#mine/assets'),'wallet');assert.equal(viewFromHash('#wallet'),'wallet');
  assert.equal(hashForView('wallet'),'#wallet');assert.equal(activeNavView('wallet'),'wallet');assert.equal(viewFromHash('#contacts'),'contacts');assert.equal(activeNavView('contacts'),'messages');
  assert.equal(isAppView('wallet'),true);
 });
 test('bill return keeps the correct parent tab and unknown routes stay safe',()=>{
  assert.equal(activeNavView('bills','wallet'),'wallet');assert.equal(activeNavView('bills','messages'),'messages');
- assert.equal(viewFromHash('#bogus'),'workbench');assert.equal(hashForView('bogus'),'#workbench');
+ assert.equal(viewFromHash('#bogus'),'messages');assert.equal(hashForView('bogus'),'#messages');
  for(const [id] of MAIN_NAV)assert.equal(viewFromHash(hashForView(id)),id);
 });
 
-test('removed service-credit bookmarks fall back safely and cannot expose a retired page',()=>{assert.equal(viewFromHash(''),'workbench');assert.equal(viewFromHash('#mine/points'),'workbench');assert.equal(viewFromHash('#workbench/points'),'workbench');assert.equal(hashForView('points'),'#workbench');assert.equal(isAppView('points'),false);});
+test('removed service-credit bookmarks fall back safely and cannot expose a retired page',()=>{assert.equal(viewFromHash(''),'messages');assert.equal(viewFromHash('#mine/points'),'messages');assert.equal(viewFromHash('#workbench/points'),'workbench');assert.equal(hashForView('points'),'#messages');assert.equal(isAppView('points'),false);});
 test('business entry links and legacy discovery links resolve to the same workbench feature',()=>{
  for(const route of WORKBENCH_FEATURES){
   const target={view:'workbench',options:{route}};

@@ -1,0 +1,25 @@
+/* Signed-off mobile reference, adapted to live data and all three skins. */
+.bottom-nav .nav-item { min-height: 64px; padding: var(--sp-2) var(--sp-1); gap: var(--sp-1); font-size: var(--fs-xs); line-height: calc(1em + 8px); }
+.bottom-nav .nav-item svg { width: 24px; height: 24px; stroke-width: 1.8; }
+.bottom-nav .nav-workbench { overflow: visible; position: relative; color: var(--brand); }
+.bottom-nav .nav-workbench svg { width: 52px; height: 52px; padding: 14px; margin-top: -26px; border-radius: var(--r-full); background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-1); }
+.bottom-nav .nav-workbench.active svg { background: var(--brand-hi); }
+.live-social.is-messages { background: var(--bg-page); }
+.live-social .live-conversation { background: transparent; border-radius: 0; padding: var(--sp-3) 0; }
+.live-social .live-conversation-copy { min-width: 0; padding-bottom: var(--sp-3); border-bottom: 1px solid var(--border); }
+.live-social .live-conversation strong { font-size: var(--fs-m); line-height: calc(1em + 8px); font-weight: 400; }
+.workspace .live-social .live-avatar { width: 48px; height: 48px; border-radius: var(--r-m); flex: 0 0 48px; }
+.workspace .live-social .live-ai-avatar { position: relative; overflow: visible; background: var(--brand); color: var(--on-brand); }
+.live-social .live-ai-avatar svg { width: 24px; height: 24px; }
+.live-social .live-ai-corner { position: absolute; top: -4px; left: -4px; padding: 0 var(--sp-1); border-radius: var(--r-s); background: var(--brand-hi); color: var(--on-brand); font-size: var(--fs-xs); line-height: calc(1em + 8px); }
+.live-social .live-private-note { margin: var(--sp-6) 0; text-align: center; font-size: var(--fs-s); line-height: calc(1em + 8px); color: var(--t2); }
+.workspace .live-social .live-conversation-copy .live-group-tag { background: var(--brand-1); color: var(--brand-hi); border: 0; border-radius: var(--r-s); font-size: var(--fs-xs); line-height: calc(1em + 8px); }
+.live-social .live-header h1 { font-size: var(--fs-l); line-height: calc(1em + 8px); font-weight: 600; }
+.live-social .live-header { padding-inline: 0; }
+.live-social .live-search { border: 0; border-radius: var(--r-m); background: var(--bg-2); }
+@media(max-width: 760px) {
+  .workspace[data-view="messages"] .live-social:not(.is-chat) { padding: var(--sp-2) var(--sp-4) var(--sp-6); }
+  .bottom-nav { overflow: visible; background: var(--bg-container); border-top: 1px solid var(--border); padding: 0 var(--sp-2) env(safe-area-inset-bottom); }
+}
+
+.workspace .live-social .live-conversation::after { display: none; }
