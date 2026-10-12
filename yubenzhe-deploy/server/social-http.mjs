@@ -22,7 +22,7 @@ export async function handleSocialHTTP({request,response,url,publicURL,service,r
  const bearer=/^Bearer ([-_A-Za-z0-9]{43})$/.exec(request.headers.authorization||'')?.[1];
  const cookie=String(request.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('ybz_social='))?.slice(11)||'';
  let ip=request.socket.remoteAddress||'unknown';if(['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip)){const forwarded=String(request.headers['x-forwarded-for']||'').split(',').at(-1).trim();if(isIP(forwarded))ip=forwarded;}
- const handled=await service.handle({method:request.method,path,input,query:Object.fromEntries(url.searchParams),token:bearer||cookie,ip,...(internalPreviewUser?{internalPreviewSession:INTERNAL_PREVIEW_SESSION}:{}),userAgent:String(request.headers['user-agent']||'').slice(0,300),...(desktopRequest?{proof:request.headers['x-desktop-proof']}:{} )});
+ const handled=await service.handle({method:request.method,path,input,query:Object.fromEntries(url.searchParams),token:bearer||cookie,ip,devicePeerIp:request.socket.remoteAddress||'unknown',...(internalPreviewUser?{internalPreviewSession:INTERNAL_PREVIEW_SESSION}:{}),userAgent:String(request.headers['user-agent']||'').slice(0,300),...(desktopRequest?{proof:request.headers['x-desktop-proof']}:{} )});
  const value=desktopRequest?handled.value:handled;
  const status=desktopRequest?(handled.status||200):200;
  if(value.token){const secure=publicURL.protocol==='https:'?'; Secure':'';response.setHeader('Set-Cookie','ybz_social='+value.token+'; Path=/api/social; HttpOnly; SameSite=Strict; Max-Age=2592000'+secure);if(!native)delete value.token;}

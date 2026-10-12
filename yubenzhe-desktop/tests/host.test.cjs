@@ -43,7 +43,7 @@ async function host({ saveResult = { canceled: true }, writeError = null, camera
   const filename = path.resolve(__dirname, '../src/main.cjs');
   vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {
     require: name => name === 'electron' ? electron : name === 'node:fs/promises' ? fakeFs : name === './security.cjs' ? security : name === './internal-preview.cjs' ? {createInternalPreview:()=>({status:async()=>({authenticated:false}),login:async()=>({authenticated:true}),logout:async()=>({authenticated:false}),request:async()=>({status:200,bodyBase64:'',headers:{}}),clear:()=>{calls.previewCleared=true;}})} : name === './local-ai.cjs' ? {createLocalAI:()=>({status:async()=>({available:true,models:[]}),generate:async()=>({text:'test'}),cancel:()=>true})} : require(name),
-    __dirname: path.dirname(filename), URL, Response, Buffer, console, Set,
+    __dirname: path.dirname(filename), URL, Response, Buffer, console, Set, process: {argv:[]},
   }, { filename });
   await new Promise(resolve => setImmediate(resolve));
   const event = () => ({ sender: win.webContents, senderFrame: win.webContents.mainFrame });

@@ -44,5 +44,6 @@ pushTimer?.unref();
 const moduleTimer=role==='frontend'&&modules?setInterval(()=>modules.tick().catch(()=>console.error('Local module worker retry pending.')),1000):null;
 moduleTimer?.unref();
 const server=createAcceptanceServer({aiService,socialService:socialRouter,rpcUrls:deployment.rpcUrls,role,origin:process.env.PUBLIC_ORIGIN,publicFrontend,internalPreview,chainPreviewConfigFile:process.env.CHAIN_PREVIEW_CONFIG_FILE,authConfig,database,staticRoot:resolve(process.env.STATIC_ROOT || `./public/${role}`)});
-server.listen(port,host,()=>console.log(`${role} ${internalPreview ? 'internal-preview' : role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'} 0.14.0-dev.10 listening on ${host}:${port}`));
+const appVersion=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version;
+server.listen(port,host,()=>console.log(`${role} ${internalPreview ? 'internal-preview' : role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'} ${appVersion} listening on ${host}:${port}`));
 for(const signal of ['SIGTERM','SIGINT']) process.once(signal,()=>{server.close(async()=>{clearInterval(pushTimer);clearInterval(moduleTimer);await notifications?.close();await socialAI?.close();await aiService.close();aiDatabase.close();socialDatabase?.close();database?.close();process.exit(0)});setTimeout(()=>process.exit(1),12000).unref()});

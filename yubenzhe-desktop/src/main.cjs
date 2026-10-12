@@ -15,6 +15,10 @@ let window = null;
 let saving = false;
 let cameraPrompt = false;
 const cameraGrants = new Set();
+let deviceManager = null;
+let quitting = false;
+// A separate per-user review profile leaves the installed user's wallet intact.
+if (process.argv.includes('--device-review')) app.setPath('userData',path.join(app.getPath('appData'),'YBZ Device Installer Review'));
 
 function trustedSender(event) {
   return !!window && !window.isDestroyed() && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame && isLocalUrl(event.senderFrame.url);
@@ -82,11 +86,21 @@ async function initialize() {
   // A native permission/save dialog belongs to this app; do not tear down the scanner/export behind it.
   window.on('blur', () => { if (!cameraPrompt && !saving) lockWallet(); });
   window.on('minimize', lockWallet);
+  window.on('close',event=>{if(deviceManager&&!quitting){event.preventDefault();lockWallet();window.hide();}});
   window.on('closed', () => { localAI.cancel(); internalPreview.clear(); window = null; });
-  window.once('ready-to-show', () => window?.show());
+  window.once('ready-to-show', () => { if (!process.argv.includes('--device-background') && !process.argv.includes('--device-review')) window?.show(); });
   powerMonitor.on('lock-screen', lockWallet);
   powerMonitor.on('suspend', lockWallet);
   await window.loadURL(`${LOCAL_ORIGIN}/index.html`);
+  const {createDeviceManager}=require('./device-manager.cjs');
+  deviceManager=createDeviceManager({electron:require('electron'),showApp:()=>{if(window){window.show();window.focus();}}});
+  await deviceManager.initialize();
+  if(process.argv.includes('--device-review')&&process.argv.includes('--device-smoke-test')){
+    const output=path.join(app.getPath('userData'),'smoke-evidence');await fs.mkdir(output,{recursive:true});
+    const setup=deviceManager.wizard;
+    if(setup){if(setup.webContents.isLoading())await new Promise(resolve=>setup.webContents.once('did-finish-load',resolve));await new Promise(resolve=>setTimeout(resolve,1200));await fs.writeFile(path.join(output,'wizard.png'),(await setup.webContents.capturePage()).toPNG());await fs.writeFile(path.join(output,'wizard-dom.txt'),await setup.webContents.executeJavaScript('document.body.innerText'));}
+    await fs.writeFile(path.join(output,'installed-state.json'),JSON.stringify({version:app.getVersion(),packaged:app.isPackaged,execPath:process.execPath,state:deviceManager.state},null,2));app.quit();
+  }
 }
 
 for (const method of ['status','login','logout','request']) ipcMain.handle('yubenzhe:internal-'+method, async (event, value) => {
@@ -141,5 +155,6 @@ if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => { if (window) { if (window.isMinimized()) window.restore(); window.focus(); } });
   app.whenReady().then(initialize).catch(() => { dialog.showErrorBox('愚笨者无法启动', '应用文件可能不完整，请保留本机数据，重新安装完整客户端。'); app.quit(); });
-  app.on('window-all-closed', () => app.quit());
+  app.on('window-all-closed', () => { if(!deviceManager)app.quit(); });
+  app.on('before-quit',event=>{if(deviceManager&&!quitting){event.preventDefault();quitting=true;deviceManager.close().then(()=>app.quit()).catch(()=>{quitting=false;dialog.showErrorBox('设备连接尚未停止','后台任务未确认退出，应用保持打开。请在设备设置中重试停止，不要将此状态视为已退出。');deviceManager.show();});}});
 }

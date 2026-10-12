@@ -37,7 +37,11 @@ function pe(file) {
     assert.equal(hash(fs.readFileSync(path.join(root, '../tongban/dist', file))), sha256, `Current consumer asset: ${file}`);
     assert.equal(hash(asar.extractFile(archive, `web/${file}`)), sha256, file);
   }
-  for (const file of ['main.cjs', 'preload.cjs', 'security.cjs', 'local-ai.cjs', 'internal-preview.cjs']) assert.deepEqual(asar.extractFile(archive, `src/${file}`), fs.readFileSync(path.join(root, 'src', file)), file);
+  for (const file of ['main.cjs', 'preload.cjs', 'security.cjs', 'local-ai.cjs', 'internal-preview.cjs','device-manager.cjs','device-process-stop.cjs','device-preload.cjs','device-wizard.html','device-wizard.css','device-wizard.js']) assert.deepEqual(asar.extractFile(archive, `src/${file}`), fs.readFileSync(path.join(root, 'src', file)), file);
+  const bridgeFiles=['agent.mjs','desktop.ps1','ai-channel.mjs','codex-runner.mjs','ai-channel-files.mjs','protocol.mjs','capabilities.mjs','capability-probe.ps1','desktop-worker.mjs'];
+  const bridge=path.join(dist,'win-unpacked/resources/device-bridge');
+  assert.deepEqual(fs.readdirSync(bridge).sort(),[...bridgeFiles].sort(),'Only allowlisted connector files are bundled; no Codex, tokens or Node install is included');
+  for(const file of bridgeFiles)assert.deepEqual(fs.readFileSync(path.join(bridge,file)),fs.readFileSync(path.join(root,'../yubenzhe-deploy/device-bridge',file)),file);
   const pkg = JSON.parse(asar.extractFile(archive, 'package.json').toString());
   assert.equal(pkg.version, sourcePackage.version); assert.equal(pkg.productName, '愚笨者');
   const runtimePath = path.join(dist, 'win-unpacked/Yubenzhe.exe');

@@ -1,5 +1,6 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {fail,fields,text} from './social-validation.mjs';
+import {readDeviceCapabilities,deviceSource,validateDeviceCapabilities} from './device-capabilities.mjs';
 
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid=value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
@@ -40,7 +41,7 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
  }
  function statusView(device){
   const current=one('SELECT * FROM ai_channel_devices WHERE device_id=?',device.id),online=Boolean(!device.revoked_at&&device.token_hash&&current?.last_seen&&current.last_seen>now()-AI_CHANNEL_LIMITS.onlineMs);
-  return {id:device.id,name:device.name,online,aiStatus:online?current.status_code:'offline',workspaceLabel:current?.workspace_label||'',provider:'Codex',filePublicKey:online?publicKeys.get(device.id)||null:null};
+  return {id:device.id,name:device.name,online,aiStatus:online?current.status_code:'offline',workspaceLabel:current?.workspace_label||'',provider:'Codex',filePublicKey:online?publicKeys.get(device.id)||null:null,source:device.source,capabilities:readDeviceCapabilities(device)};
  }
  function taskView(task){
   const entry=memory.get(task.id),device=one('SELECT name FROM personal_devices WHERE id=?',task.device_id);
@@ -59,6 +60,8 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
   const previous=one('SELECT * FROM ai_channel_tasks WHERE owner_id=? AND request_id=?',account.id,input.requestId);
   if(previous){if(previous.request_hash!==signature)fail(409,'IDEMPOTENCY_CONFLICT','同一操作标识不能更改任务内容。');return {task:taskView(previous)};}
   const state=statusView(device);if(!state.online)fail(409,'AI_DEVICE_OFFLINE','电脑离线，请启动 AI 连接器。');
+  if(state.capabilities.ai.state==='unsupported')fail(409,'AI_NOT_READY',state.capabilities.ai.reason||'这台设备不支持 AI 任务。');
+  if(attachments.length&&state.capabilities.files.state==='unsupported')fail(409,'AI_FILES_UNAVAILABLE','这台设备的文件通道不可用。');
   if(state.aiStatus!=='ready')fail(409,state.aiStatus==='login-required'?'AI_LOGIN_REQUIRED':state.aiStatus==='quota'?'AI_QUOTA':'AI_NOT_READY',state.aiStatus==='login-required'?'请在电脑上登录 Codex 后重试。':state.aiStatus==='quota'?'电脑上的 Codex 额度不足，请稍后重试。':'电脑上的 AI 暂未就绪。');
   if(one("SELECT count(*) n FROM ai_channel_tasks WHERE device_id=? AND status='queued'",device.id).n>=AI_CHANNEL_LIMITS.queue)fail(429,'AI_QUEUE_FULL','任务队列已满，请先等待现有任务完成。');
   if(one('SELECT count(*) n FROM ai_channel_tasks WHERE owner_id=? AND created_at>?',account.id,now()-3600000).n>=100)fail(429,'AI_RATE_LIMIT','近期任务过多，请稍后再试。');
@@ -90,11 +93,11 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
   fail(404,'AI_CHANNEL_ROUTE','AI 通道入口不存在。');
  }
  function checkedStatus(input){
-  if(!input||typeof input!=='object'||Array.isArray(input))fail(400,'INVALID_AI_STATUS','AI 状态无效。');fields(input,['code','workspaceLabel','provider','filePublicKey']);
+  if(!input||typeof input!=='object'||Array.isArray(input))fail(400,'INVALID_AI_STATUS','AI 状态无效。');fields(input,['code','workspaceLabel','provider','filePublicKey','source','capabilities']);
   if(!allowedStatus.has(input.code)||input.provider!=='Codex')fail(400,'INVALID_AI_STATUS','AI 状态或来源无效。');
   const label=text(input.workspaceLabel,60,'工作区标签',1);if(/[\\/:]|(?:\.\.)/.test(label))fail(400,'INVALID_AI_STATUS','工作区只可报告名称，不能报告本机路径。');
   if(input.filePublicKey!==undefined&&(typeof input.filePublicKey!=='string'||!/^[A-Za-z0-9+/]{40,1024}={0,2}$/.test(input.filePublicKey)))fail(400,'AI_FILE_PUBLIC_KEY','文件公钥格式无效。');
-  return {code:input.code,workspaceLabel:label,provider:'Codex',filePublicKey:input.filePublicKey};
+  return {code:input.code,workspaceLabel:label,provider:'Codex',filePublicKey:input.filePublicKey,...(input.source===undefined?{}:{source:deviceSource(input.source)}),...(input.capabilities===undefined?{}:{capabilities:validateDeviceCapabilities(input.capabilities)})};
  }
  function normalizeEvent(event){
   if(!event||typeof event!=='object'||Array.isArray(event))fail(400,'INVALID_AI_EVENT','事件格式无效。');fields(event,['seq','kind','itemId','text','code']);
@@ -133,10 +136,10 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
   const events=(input.events||[]).map(normalizeEvent),device=devices.authenticateAgent(token);maintain();
   return transaction(()=>{
    devices.authenticateAgent(token);
+   devices.updateMetadata(device,state);
    const active=one("SELECT * FROM ai_channel_tasks WHERE device_id=? AND status='running'",device.id);
    if(active&&active.connector_id!==input.connectorId)fail(409,'AI_CONNECTOR_BUSY','另一连接器正在执行任务。');
    run("INSERT INTO ai_channel_devices VALUES(?,?,?,?,?,?) ON CONFLICT(device_id) DO UPDATE SET connector_id=excluded.connector_id,status_code=excluded.status_code,workspace_label=excluded.workspace_label,provider=excluded.provider,last_seen=excluded.last_seen",device.id,input.connectorId,state.code,state.workspaceLabel,'Codex',now());
-   run('UPDATE personal_devices SET last_seen=? WHERE id=?',now(),device.id);
    if(state.filePublicKey)publicKeys.set(device.id,state.filePublicKey);
    let task=input.taskId?row(input.taskId):null;
    if(input.taskId){
@@ -160,7 +163,7 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
    return {serverNow:now(),expiresAt:until,task:{id:task.id,prompt:entry.prompt,leaseId,expiresAt:hardUntil,attachments:entry.attachments||[],replyPublicKey:entry.replyPublicKey||null},ack:0};
   });
  }
- function authorizeOwner(token,deviceId){const account=socialService.assertAIAccess(token,{write:true}),device=devices.ownedDevice(account,deviceId);if(device.revoked_at||!device.token_hash)fail(403,'AI_DEVICE_REVOKED','设备已撤销或尚未配对。');return {ownerId:account.id,deviceId:device.id};}
+ function authorizeOwner(token,deviceId){const account=socialService.assertAIAccess(token,{write:true}),device=devices.ownedDevice(account,deviceId);if(device.revoked_at||!device.token_hash)fail(403,'AI_DEVICE_REVOKED','设备已撤销或尚未配对。');if(readDeviceCapabilities(device).files.state==='unsupported')fail(409,'AI_FILES_UNAVAILABLE','这台设备的文件通道不可用。');return {ownerId:account.id,deviceId:device.id};}
  function authorizeAgent(token,{taskId,leaseId}={}){const device=devices.authenticateAgent(token);maintain();const task=row(taskId);if(!task||task.device_id!==device.id||task.status!=='running'||task.lease_id!==leaseId||task.lease_until<=now()||task.hard_until<=now())fail(403,'AI_LEASE_DENIED','AI 执行租约已失效。');return {ownerId:task.owner_id,deviceId:device.id,taskId:task.id};}
  function handleAgentFiles(token,path,input){if(!filesService)fail(503,'AI_FILES_UNAVAILABLE','加密文件中转尚未配置。');devices.authenticateAgent(token);return filesService.handleAgent(token,path,input);}
  return {handle,poll,maintain,restart,revokeDevice,authorizeOwner,authorizeAgent,handleAgentFiles,setFilesService(value){filesService=value;},limits:AI_CHANNEL_LIMITS};

@@ -52,6 +52,10 @@ function seedExistingData(raw){
  raw.prepare('INSERT INTO points_entries VALUES(?,?,?,?)').run('old-entry-3','old-points-spend',A+':available','-30');
  raw.prepare('INSERT INTO points_entries VALUES(?,?,?,?)').run('old-entry-4','old-points-spend','system:consumed','30');
  raw.prepare("INSERT INTO points_reservations VALUES(?,?,?,'30','70','settled',?)").run(T,A,'100',time);
+ for(const [index,state] of ['paired','pending','revoked'].entries()){
+  raw.prepare('INSERT INTO personal_devices(id,owner_id,name,pair_hash,pair_expires,token_hash,created_at,last_seen,revoked_at,session_id,session_until,agent_status,viewer_until) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run('old-device-'+index,A,'旧设备 '+state,state==='pending'?sha256('synthetic-pair-hash'):null,time+600000,state==='paired'?sha256('synthetic-token-hash'):null,time,time,state==='revoked'?time:null,state==='paired'?'old-control-session':null,state==='paired'?time+600000:null,state==='paired'?'ready':'',state==='paired'?time+15000:null);
+ }
+ raw.prepare('INSERT INTO personal_device_commands VALUES(?,?,?,?,?,?,?,?)').run('old-control-command','old-device-0','old-control-session','old-control-request',sha256('synthetic-control-payload'),'done',time,time+15000);
  assert.deepEqual(raw.prepare('PRAGMA foreign_key_check').all(),[]);
 }
 
@@ -64,7 +68,7 @@ function tableSnapshot(raw,names){
  }));
 }
 
-test('migration020 preserves every old business table byte-for-byte, old migration checksums, files and points after reopen',t=>{
+test('migrations020 through022 preserve old rows, columns, hashes, files and points; device metadata is additive after reopen',t=>{
  const parent=realpathSync(tmpdir()),directory=mkdtempSync(join(parent,'ybz-group-migration-')),filename=join(directory,'synthetic-social.sqlite');
  let raw=null,database=null;
  t.after(()=>{
@@ -78,13 +82,24 @@ test('migration020 preserves every old business table byte-for-byte, old migrati
  });
  raw=new DatabaseSync(filename);installOldSchema(raw);seedExistingData(raw);
  const names=raw.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name<>'social_migrations' ORDER BY name").all().map(row=>row.name);
- const before=tableSnapshot(raw,names),oldMigrations=raw.prepare('SELECT * FROM social_migrations ORDER BY version').all();
+ const unchangedNames=names.filter(name=>name!=='personal_devices');
+ const before=tableSnapshot(raw,unchangedNames),oldMigrations=raw.prepare('SELECT * FROM social_migrations ORDER BY version').all();
+ const oldColumns=raw.prepare('PRAGMA table_info(personal_devices)').all();
+ const deviceProjection=oldColumns.map(c=>'"'+c.name+'"').join(',');
+ const oldDevices=raw.prepare('SELECT '+deviceProjection+' FROM personal_devices ORDER BY id').all();
  assert.equal(oldMigrations.length,17);raw.close();raw=null;
  for(let pass=0;pass<2;pass++){
   database=openSocialDatabase(filename);
-  assert.deepEqual(tableSnapshot(database.raw,names),before,'Pre-existing rows, BLOB bytes and table definitions must be unchanged.');
+  assert.deepEqual(tableSnapshot(database.raw,unchangedNames),before,'Unchanged business tables retain every row, BLOB byte and definition.');
+  assert.deepEqual(database.raw.prepare('SELECT '+deviceProjection+' FROM personal_devices ORDER BY id').all(),oldDevices,'All legacy device values and credentials remain byte-for-byte intact.');
+  const columns=database.raw.prepare('PRAGMA table_info(personal_devices)').all();
+  assert.deepEqual(columns.slice(0,oldColumns.length),oldColumns,'Existing device columns retain their definitions.');
+  assert.deepEqual(columns.slice(oldColumns.length).map(c=>c.name),['source','capabilities','capabilities_at']);
+  for(const d of database.raw.prepare('SELECT source,capabilities,capabilities_at FROM personal_devices').all())assert.deepEqual({...d},{source:'local',capabilities:'{}',capabilities_at:null});
   assert.deepEqual(database.raw.prepare('SELECT * FROM social_migrations WHERE version<=17 ORDER BY version').all(),oldMigrations);
-  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,19);
+  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,20);
+  assert.equal(database.raw.prepare('SELECT checksum FROM social_migrations WHERE version=20').get().checksum,sha256(readFileSync(new URL('022-device-claims-capabilities.sql',migrationsURL),'utf8')));
+  for(const table of ['device_pair_claims','device_pair_rates'])assert.equal(database.raw.prepare('SELECT count(*) n FROM '+table).get().n,0);
   const current=database.raw.prepare('SELECT checksum FROM social_migrations WHERE version=18').get();
   assert.equal(current.checksum,sha256(readFileSync(new URL('020-group-workflows.sql',migrationsURL),'utf8')));
   for(const name of ['group_workflows','group_workflow_events','group_workflow_commands','group_workflow_payments'])assert.equal(database.raw.prepare('SELECT count(*) n FROM '+name).get().n,0);

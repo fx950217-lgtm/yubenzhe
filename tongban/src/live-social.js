@@ -44,6 +44,7 @@ export async function catchUpMessages(service, id, after, isCurrent = () => true
   return { messages: values, cursor, hasMore };
 }
 export function validateGroup(name, memberIds, friendIds) { const cleanName = String(name || '').trim(); const ids = [...new Set(memberIds)]; if (!cleanName || cleanName.length > 24) throw new Error('请填写 1–24 字的群聊名称'); if (ids.length < 1 || ids.length > 199) throw new Error('请选择 1–199 位好友，与自己组成群聊'); if (ids.some(id => !friendIds.includes(id))) throw new Error('只能邀请当前好友，请重新选择成员'); return { name: cleanName, memberIds: ids }; }
+export function privateDeviceEntries(value){return Array.isArray(value)?value.filter(item=>item?.kind==='device'&&typeof item.deviceId==='string'&&/^[a-f0-9-]{36}$/i.test(item.deviceId)&&item.id==='device:'+item.deviceId&&typeof item.name==='string'):[];}
 
 export async function prepareChatPhoto(file) {
   if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('请选择 JPG、PNG 或 WebP 照片');
@@ -71,6 +72,7 @@ export function mountLiveSocial(container, options = {}) {
   if (!service) throw new Error('社交服务未初始化');
   const root = document.createElement('section'); root.className = 'live-social'; root.setAttribute('aria-label', '好友与消息'); container.append(root);
   let state = { profile: options.profile || null, friends: [], requests: [], outgoingRequests: [], conversations: [] }, loaded = false, loadError = '', networkError = '', disposed = false, loadingState = false;
+  let deviceEntries=[],deviceReadError='';
   let page = { type: 'list', view }, menu = false, modal = null, epoch = 0, lookupSequence = 0, busy = new Set(), timer;
   const permissionRevisions = new Map(), readThrough = new Map(), syncCursors = new Map();
   const replies = new Map(), messages = new Map(), messageErrors = new Map(), messageLoading = new Set(), olderCursors = new Map(), drafts = draftSession(options.profile?.userId), pending = new Map();
@@ -131,7 +133,8 @@ export function mountLiveSocial(container, options = {}) {
       const list = state.conversations.filter(item => title(item).toLowerCase().includes(query)).sort((a, b) => Number(b.pinned) - Number(a.pinned) || Number(b.updatedAt) - Number(a.updatedAt));
       content = '<div data-list-results>' + (list.length ? list.map(item => '<button class="live-conversation' + (item.pinned ? ' is-pinned' : '') + '" data-action="chat" data-id="' + esc(item.id) + '">' + avatar(peer(item), item.type === 'group') + '<span class="live-conversation-copy"><span><strong>' + esc(title(item)) + (item.type === 'group' ? '<small class="live-group-tag">群</small>' : '') + '</strong><time>' + stamp(item.lastMessage?.createdAt) + '</time></span><span><small>' + esc(drafts.get(item.id) ? '[草稿] ' + drafts.get(item.id) : preview(item.lastMessage)) + '</small>' + (item.unread > 0 ? '<b class="live-count">' + Math.min(99, item.unread) + '</b>' : item.muted ? '<small>免打扰</small>' : '') + '</span></span></button>').join('') : empty(query ? '没有找到聊天' : '从一位好友开始', query ? '试试其他聊天名称。' : '添加好友或创建群聊，消息会同步到同账号的设备。', '<button class="live-primary" data-action="add-friend">添加好友</button>')) + '</div>';
     }
-    return head + errorBox(networkError, 'reload') + search + content;
+    const deviceRows=!contacts?deviceEntries.filter(item=>item.name.toLowerCase().includes(query)).map(item=>'<button type="button" class="live-conversation live-device-entry" data-action="device-chat" data-id="'+esc(item.deviceId)+'" '+(item.capabilities?.ai?.state==='unsupported'?'disabled':'')+'><span class="live-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg></span><span class="live-conversation-copy"><span><strong>'+esc(item.name)+'<small class="live-group-tag">我的设备</small></strong><small>'+(({local:'本机',cloud:'云端',server:'服务器'})[item.source]||'来源未报告')+'</small></span><span><small>'+esc(item.capabilities?.ai?.state==='unsupported'?'AI 任务不支持 · '+(item.capabilities.ai.reason||'请查看设备检测结果'):item.online?'电脑已连接 · 和它聊天':'电脑离线 · 等待连接')+'</small></span></span></button>').join(''):'';
+    return head + errorBox(networkError, 'reload') + search + (deviceRows?'<section aria-label="我的设备会话" class="live-device-conversations"><p class="live-section-title">仅自己可见的设备入口</p>'+deviceRows+'</section>':'')+(!contacts&&deviceReadError?'<p class="live-note" role="status">'+esc(deviceReadError)+'</p>':'')+content;
   }
   function renderLookup() {
     const result = page.result;
@@ -211,9 +214,10 @@ export function mountLiveSocial(container, options = {}) {
     loadingState = true;
     statePromise = (async () => {
       try {
-        const next = await service.getState(); if (disposed) return;
+        const results=await Promise.allSettled([service.getState(),service.authenticatedRequest?service.authenticatedRequest('devices/conversations'):Promise.resolve({conversations:[]})]);if(disposed)return;if(results[0].status==='rejected')throw results[0].reason;const next=results[0].value;
         if (!next?.profile?.userId || !Array.isArray(next.friends) || !Array.isArray(next.conversations) || !Array.isArray(next.requests)) throw new Error('消息服务返回了不完整的数据，请重试');
-        const signature = JSON.stringify(next), changed = signature !== snapshotSignature || !loaded || !!loadError || !!networkError;
+        const devices=results[1].status==='fulfilled'?privateDeviceEntries(results[1].value?.conversations):[];deviceReadError=results[1].status==='rejected'?'设备入口暂时无法同步，可从工作台的“我的设备”查看。':'';
+        const signature = JSON.stringify({state:next,devices,deviceReadError}), changed = signature !== snapshotSignature || !loaded || !!loadError || !!networkError;deviceEntries=devices;
         for (const id of invalidatedConversationIds(state.conversations, next.conversations)) { permissionRevisions.set(id, (permissionRevisions.get(id) || 0) + 1); messages.delete(id); replies.delete(id); messageErrors.delete(id); olderCursors.delete(id); pending.delete(id); readThrough.delete(id); syncCursors.delete(id); if (['gallery','photo'].includes(modal?.type) && modal.conversationId === id) modal = null; }
         state = next; loaded = true; loadError = ''; networkError = ''; snapshotSignature = signature;
         if (page.result?.profile) { const updated = state.friends.find(person => person.userId === page.result.profile.userId); if (updated) page.result = { profile: updated, relationship: 'friend' }; else if (page.result.relationship === 'friend') page.result.relationship = 'none'; }
@@ -325,6 +329,7 @@ export function mountLiveSocial(container, options = {}) {
     else if (['report-user','report-message','report-group'].includes(action)) openModal('report', { targetType: action.slice(7), targetId: id, reason: 'spam', detail: '', requestId: uid() });
     else if (action === 'block-user') openModal('confirm', { label: blocked(id) ? '解除拉黑' : '拉黑用户', detail: blocked(id) ? '解除后，如果仍是好友即可恢复私聊。' : '将阻止双方私聊、好友申请和直接群邀请，共同群聊中的消息仍可见。', operation: blocked(id) ? 'unblock' : 'block', userId: id });
     else if (action === 'chat') openChat(id);
+    else if (action === 'device-chat') {const device=deviceEntries.find(item=>item.deviceId===id);if(device&&device.capabilities?.ai?.state!=='unsupported')onNavigate('workbench',{route:'ai-channel',deviceId:device.deviceId});}
     else if (action === 'group-task' && page.type === 'chat' && conversation(page.id)?.type === 'group') options.onGroupTask?.(page.id);
     else if (action === 'workflow-event' && page.type === 'chat' && conversation(page.id)?.type === 'group') {const taskEvent=trustedGroupWorkflow(messages.get(page.id)?.find(message=>message.id===id));if(taskEvent)options.onGroupTask?.(page.id,taskEvent.workflowId);}
     else if (action === 'friend-chat') void openFriendChat(id);

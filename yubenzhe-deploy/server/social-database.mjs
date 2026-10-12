@@ -3,7 +3,7 @@ import { readFileSync,mkdirSync,chmodSync } from 'node:fs';
 import { dirname,resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { archiveRetiredSimulation } from './retire-platform-assets.mjs';
-const MIGRATIONS=['003-social.sql','004-social-safety.sql','005-account-security.sql','006-social-moments.sql','007-social-notifications.sql','008-account-access.sql','009-platform-assets.sql','010-community.sql','011-workbench.sql','012-workbench-experience.sql','013-social-experience.sql','014-points.sql','015-retire-platform-assets.sql','016-cloud-desktops.sql','017-moment-artifacts.sql','018-personal-devices.sql','019-device-viewer-lease.sql','020-group-workflows.sql','021-ai-channel.sql'];
+const MIGRATIONS=['003-social.sql','004-social-safety.sql','005-account-security.sql','006-social-moments.sql','007-social-notifications.sql','008-account-access.sql','009-platform-assets.sql','010-community.sql','011-workbench.sql','012-workbench-experience.sql','013-social-experience.sql','014-points.sql','015-retire-platform-assets.sql','016-cloud-desktops.sql','017-moment-artifacts.sql','018-personal-devices.sql','019-device-viewer-lease.sql','020-group-workflows.sql','021-ai-channel.sql','022-device-claims-capabilities.sql'];
 export function openSocialDatabase(filename) {
  if(!filename)throw new Error('SOCIAL_DATABASE_PATH is required.');
  if(filename!==':memory:')mkdirSync(dirname(resolve(filename)),{recursive:true,mode:0o700});

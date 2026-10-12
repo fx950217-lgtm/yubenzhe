@@ -8,6 +8,7 @@ import {EventEmitter} from 'node:events';
 import {PassThrough} from 'node:stream';
 import {createCodexJsonlParser,createCodexRunner,killCodexProcessTree,validateCodexPaths,codexExecutionArguments,assertCodexConfigBoundary} from '../device-bridge/codex-runner.mjs';
 import {createAIChannel,openAIChannelJournal,parseAIChannelArguments,redactAIChannelText} from '../device-bridge/ai-channel.mjs';
+import {generateKeyPairSync} from 'node:crypto';
 
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 async function fixture(t){const base=await mkdtemp(path.join(tmpdir(),'ybz-ai-fixture-'));t.after(()=>rm(base,{recursive:true,force:true}));const workspace=path.join(base,'work'),runtimeDir=path.join(base,'private');await mkdir(workspace);await mkdir(runtimeDir);const statePath=path.join(base,'pair.json');await writeFile(statePath,JSON.stringify({origin:'https://relay.example',token:'a'.repeat(43)}));return {base,workspace,runtimeDir,statePath};}
@@ -65,7 +66,14 @@ test('file collection cancellation cannot later emit a successful result',async 
 
 test('failed poll resends identical event sequence, invalid acknowledgement stops job',async t=>{const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[];let calls=0;const channel=await createAIChannel({...f,runner,clock:()=>0,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);calls++;if(calls===1)return response(reply(input,{task}));if(calls===2)throw Error('network');return response(reply(input,{ack:999}));}});t.after(()=>channel.close());await channel.pollOnce();await tick();runner.runs[0].onEvent({kind:'message',itemId:'a',text:'结果'});await channel.pollOnce();await channel.pollOnce();assert.deepEqual(inputs[1].events,inputs[2].events);assert.deepEqual(runner.cancelled,['AI_LEASE_EXPIRED']);});
 
-test('credential redaction removes common secrets while preserving useful prose',()=>{assert.equal(redactAIChannelText('文件已整理。'),'文件已整理。');assert.doesNotMatch(redactAIChannelText('private_key: very-sensitive\nsk-abcdefghijklmnop\n-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----'),/very-sensitive|abcdefghijklmnop|abc/);});
+test('credential redaction removes common secrets while preserving useful prose',()=>{
+ assert.equal(redactAIChannelText('文件已整理。'),'文件已整理。');
+ // Generate a disposable test key in memory; no credential material belongs in source.
+ const key=generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'});
+ const result=redactAIChannelText('private_key: very-sensitive\nsk-abcdefghijklmnop\n'+key);
+ assert.doesNotMatch(result,/very-sensitive|abcdefghijklmnop/);
+ assert.equal(result.includes(key.trim().split('\n')[1]),false);
+});
 
 test('credential masking is applied before message chunk boundaries',()=>{const events=[],parser=createCodexJsonlParser({onEvent:e=>events.push(e)});parser.push(JSON.stringify({type:'item.completed',item:{id:'item_1',type:'agent_message',text:'x'.repeat(1995)+'\nAPI_KEY=boundary-secret\nfinished'}})+'\n');assert.doesNotMatch(JSON.stringify(events),/boundary-secret|API_KEY/);assert.match(events.map(e=>e.text).join(''),/finished/);});
 

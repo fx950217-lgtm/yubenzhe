@@ -36,7 +36,8 @@ try{
  while(!quit){
   try{
    if(await stat(stopPath).then(()=>true).catch(()=>false)){quit=true;break;}
-   const sentAt=performance.now();const reply=await call('poll',{sessionId,ack,frame,status});const receivedAt=performance.now(),rtt=receivedAt-sentAt;
+   const capabilities=config.capabilities?{...(config.capabilities.screen?{screen:status==='screen-unavailable'?{state:'unknown',reason:'屏幕采集尚未成功，请在电脑检查桌面会话。'}:config.capabilities.screen}:{}),...(typeof config.capabilities.headless==='boolean'?{headless:config.capabilities.headless}:{})}:null;
+   const sentAt=performance.now();const reply=await call('poll',{sessionId,ack,frame,status,...(capabilities?{capabilities}:{}),...(config.source?{source:config.source}:{})});const receivedAt=performance.now(),rtt=receivedAt-sentAt;
    if(!Number.isFinite(reply.serverTime))throw Error('Unsupported relay clock');
    ack=[];frame=null;status='ready';
    sessionId=reply.sessionId;sessionUntil=localDeadline({expiresAt:reply.sessionUntil,serverTime:reply.serverTime,receivedAt,roundTrip:rtt});

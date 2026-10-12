@@ -1,0 +1,10 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-src 'none'"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YBZ · 连接这台电脑</title><link rel="stylesheet" href="device-wizard.css"></head><body><main>
+<header><span class="avatar">愚</span><div><h1>连接这台电脑</h1><p>技能交给 AI，判断留给自己。</p></div></header>
+<section><h2>1 · 电脑准备，手机配对</h2><p>在手机「我的设备」输入这里的机器码。这台电脑会成为仅你可见的设备会话。</p>
+<label>可信 HTTPS 中转服务<input id="origin" type="url" placeholder="https://你的内部服务地址" autocomplete="off" maxlength="200"></label>
+<div class="row"><label>设备名称<input id="name" maxlength="60" autocomplete="off"></label><label>来源<select id="source"><option value="local">本机</option><option value="cloud">云端</option><option value="server">服务器</option></select></label></div>
+<p class="hint">手机与电脑需连接同一个已配置的服务。当前安装器不预设生产地址，不会打开本机网络端口。</p>
+<div id="code" class="machine-code" aria-live="polite">等待生成机器码</div><p id="expiry" class="hint">有效期最多 10 分钟，用后即失效。只交给自己，不公开截图。</p>
+<button id="generate" class="primary">生成机器码</button><div class="actions"><button id="import">使用旧配对文件</button><button id="start" hidden>启动连接</button><button id="stop" hidden>停止连接</button></div>
+</section><section><div class="row"><h2>2 · 这台电脑的能力</h2><button id="probe">重新检测</button></div><div id="capabilities" aria-live="polite">正在检测…</div><label class="check"><input type="checkbox" id="autoStart"> 登录 Windows 后自动启动（可选）</label><p class="hint">Codex 需你从官方来源安装并本人登录，安装器不包含 AI、不代登录。已登录不代表所有工具均可执行。传输成功不代表文件已生成或已保存。</p><details><summary>工作目录与安全边界</summary><p id="workspace"></p><p>手机不能指定程序或工作目录。AI 使用已有 workspace-write 沙箱；停止连接会结束当前任务。该沙箱不等于整个系统的读取隔离。</p></details></section>
+<p id="message" role="status"></p><details><summary>重新配对</summary><p>先在手机撤销旧设备，再重置本机连接。原加密凭据留作本机备份，不删除工作文件。</p><button id="reset">重置本机设备连接</button></details><footer>内部测试版 · 安装包尚未签名，Windows 可能显示信誉或安全提示。请核对来源与安装包摘要。</footer></main><script src="device-wizard.js"></script></body></html>

@@ -1,6 +1,8 @@
 
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {fail,fields,text,imageData} from './social-validation.mjs';
+import {createDeviceClaims} from './device-claims.mjs';
+import {readDeviceCapabilities,updateDeviceMetadata} from './device-capabilities.mjs';
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const secret=()=>randomBytes(32).toString('base64url');
 const keys=new Set(['Enter','Backspace','Tab','Escape','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','Delete','Home','End','PageUp','PageDown','Ctrl+C','Ctrl+V','Ctrl+A','Ctrl+Z']);
@@ -10,8 +12,9 @@ export function createPersonalDevices({database,socialService,now=Date.now,onDev
  function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const r=fn();db.exec('COMMIT');return r;}catch(e){db.exec('ROLLBACK');throw e;}}
  function owned(account,id){const r=one('SELECT * FROM personal_devices WHERE id=? AND owner_id=?',id,account.id);if(!r)fail(404,'DEVICE_NOT_FOUND','设备不存在。');return r;}
  const live=r=>!r.revoked_at&&r.session_id&&r.session_until>now()&&r.viewer_until>now();
- function view(r){return {id:r.id,name:r.name,paired:!!r.token_hash,online:!r.revoked_at&&!!r.last_seen&&r.last_seen>now()-20000,revoked:!!r.revoked_at,lastSeen:r.last_seen,sessionId:live(r)?r.session_id:null,sessionUntil:live(r)?r.session_until:null,status:r.agent_status};}
+ function view(r){const ai=one('SELECT last_seen FROM ai_channel_devices WHERE device_id=?',r.id),lastSeen=Math.max(r.last_seen||0,ai?.last_seen||0)||null;const awaitingConnection=!r.revoked_at&&!r.token_hash&&!!one('SELECT 1 FROM device_pair_claims WHERE device_id=? AND delivery_expires>?',r.id,now());return {id:r.id,name:r.name,paired:!!r.token_hash,awaitingConnection,online:!r.revoked_at&&!!lastSeen&&lastSeen>now()-20000,screenOnline:!r.revoked_at&&!!r.last_seen&&r.last_seen>now()-20000,revoked:!!r.revoked_at,lastSeen,screenLastSeen:r.last_seen,sessionId:live(r)?r.session_id:null,sessionUntil:live(r)?r.session_until:null,status:r.agent_status,source:r.source,capabilities:readDeviceCapabilities(r),capabilitiesAt:r.capabilities_at};}
  function stop(id){run("UPDATE personal_devices SET session_id=NULL,session_until=NULL,viewer_until=NULL WHERE id=?",id);run("UPDATE personal_device_commands SET status='expired' WHERE device_id=? AND status IN('queued','sent')",id);frames.delete(id);for(const [key,p]of payloads)if(p.deviceId===id)payloads.delete(key);}
+ function metadata(device,input){updateDeviceMetadata(db,device,input,now());if(input.capabilities?.screen?.state==='unsupported')stop(device.id);}
  function active(r,session){if(!live(r)||session!==r.session_id)fail(409,'CONTROL_EXPIRED','控制已停止或授权已到期，请重新连接。');}
  function agent(token){
   if(typeof token!=='string'||token.length!==43)fail(401,'DEVICE_AUTH_REQUIRED','设备凭据无效。');
@@ -31,16 +34,21 @@ export function createPersonalDevices({database,socialService,now=Date.now,onDev
   if(input.kind==='scroll'&&[-3,-1,1,3].includes(input.delta))return {kind:'scroll',delta:input.delta};
   fail(400,'INVALID_COMMAND','不支持这个操作。');
  }
+ const claims=createDeviceClaims({database,now,view,authenticateDevice:agent});
  return {
   authenticateAgent:agent,
   ownedDevice:owned,
-  maintain(){for(const [id,f]of frames)if(f.time<now()-10000)frames.delete(id);for(const [id,p]of payloads)if(p.expiresAt<=now())payloads.delete(id);run("UPDATE personal_device_commands SET status='expired' WHERE status IN('queued','sent') AND expires_at<=?",now());},
+  updateMetadata:metadata,
+  claimMachine:claims.machine,
+  maintain(){claims.maintain();for(const [id,f]of frames)if(f.time<now()-10000)frames.delete(id);for(const [id,p]of payloads)if(p.expiresAt<=now())payloads.delete(id);run("UPDATE personal_device_commands SET status='expired' WHERE status IN('queued','sent') AND expires_at<=?",now());},
   resetSessions(){for(const r of db.prepare('SELECT id FROM personal_devices WHERE session_id IS NOT NULL').all())stop(r.id);},
   cleanup(owner){for(const r of db.prepare('SELECT id FROM personal_devices WHERE owner_id=?').all(owner)){stop(r.id);onDeviceRevoked(r.id);}run('DELETE FROM personal_device_commands WHERE device_id IN(SELECT id FROM personal_devices WHERE owner_id=?)',owner);run('DELETE FROM personal_devices WHERE owner_id=?',owner);},
-  handle({method,path,input={},query={},token}){
+  handle({method,path,input={},query={},token,ip,devicePeerIp}){
    const account=socialService.assertAIAccess(token,{write:method==='POST'});
    const parts=path.split('/'),id=parts[1],action=parts[2];
    if(path==='devices'&&method==='GET')return {devices:db.prepare('SELECT * FROM personal_devices WHERE owner_id=? ORDER BY created_at DESC LIMIT 20').all(account.id).map(view)};
+   if(path==='devices/claim'&&method==='POST')return claims.claim(account,input,devicePeerIp??ip);
+   if(path==='devices/conversations'&&method==='GET')return {conversations:db.prepare('SELECT * FROM personal_devices WHERE owner_id=? AND token_hash IS NOT NULL AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 5').all(account.id).map(r=>({id:'device:'+r.id,kind:'device',deviceId:r.id,name:r.name,source:r.source,capabilities:readDeviceCapabilities(r),online:view(r).online,route:'#workbench/devices/'+r.id+'/chat'}))};
    if(path==='devices/pair'&&method==='POST'){
     fields(input,['name']);const name=text(input.name,60,'设备名称',1);
     return transaction(()=>{
@@ -59,6 +67,7 @@ export function createPersonalDevices({database,socialService,now=Date.now,onDev
    if(method==='GET'&&action==='state')return {device:view(r),commands:db.prepare('SELECT id,status FROM personal_device_commands WHERE device_id=? ORDER BY created_at DESC LIMIT 8').all(id)};
    if(method==='POST'&&action==='start'){
     fields(input,[]);if(r.revoked_at||!r.token_hash)fail(409,'DEVICE_UNPAIRED','请先连接电脑。');
+    if(readDeviceCapabilities(r).screen.state==='unsupported')fail(409,'DEVICE_SCREEN_UNAVAILABLE',readDeviceCapabilities(r).screen.reason||'这台设备不支持屏幕远控。');
     if(!r.last_seen||r.last_seen<now()-20000)fail(409,'DEVICE_OFFLINE','电脑当前离线，请启动连接器。');
     stop(id);const sessionId=randomUUID(),until=now()+600000;
     run('UPDATE personal_devices SET session_id=?,session_until=?,viewer_until=? WHERE id=?',sessionId,until,now()+15000,id);
@@ -94,11 +103,12 @@ export function createPersonalDevices({database,socialService,now=Date.now,onDev
    });
   },
   poll(token,input){
-   fields(input,['sessionId','frame','ack','status','localStop']);
+   fields(input,['sessionId','frame','ack','status','localStop','source','capabilities']);
    return transaction(()=>{
     let r=agent(token);
     if(input.localStop===true){stop(r.id);r=agent(token);}
     if(input.status!==undefined&&!['ready','screen-unavailable','control-error','stopped'].includes(input.status))fail(400,'INVALID_STATUS','设备状态无效。');
+    metadata(r,input);r=agent(token);
     run('UPDATE personal_devices SET last_seen=?,agent_status=? WHERE id=?',now(),input.status||'ready',r.id);
     if(input.sessionId&&live(r)&&input.sessionId===r.session_id){
      if(input.frame){

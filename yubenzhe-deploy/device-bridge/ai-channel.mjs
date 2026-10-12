@@ -39,7 +39,7 @@ export async function openAIChannelJournal({runtimeDir,workspace,maxStarted=2048
  return {connectorId:state.connectorId,runtimeDir:base,has:taskId=>state.started.includes(hash(taskId)),get full(){return state.started.length>=maxStarted;},async markStarted(taskId){if(!id(taskId))throw fail('AI_TASK_INVALID','任务标识无效。');if(this.has(taskId))return false;if(this.full)throw fail('AI_JOURNAL_FULL','任务去重记录已满，请先归档并人工确认历史任务不会重发。');state.started.push(hash(taskId));await persist();return true;},async close(){await lock.close();await unlink(lockPath).catch(()=>{});}};
 }
 
-export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=globalThis.fetch,workspaceLabel,clock=()=>performance.now(),log=()=>{},fileHooks=null,fileHooksFactory=null,heartbeatMs=15000,maxStarted=2048}={}){
+export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=globalThis.fetch,workspaceLabel,clock=()=>performance.now(),log=()=>{},fileHooks=null,fileHooksFactory=null,heartbeatMs=15000,maxStarted=2048,capabilities=null,source=null}={}){
  if(!runner?.configuration?.workspace||typeof statePath!=='string'||!path.isAbsolute(statePath))throw fail('AI_STARTUP_PATH','必须提供本机固定工作目录与绝对配对文件路径。');
  const stateFile=await realpath(statePath),cwd=await realpath(runner.configuration.workspace);
  if(inside(cwd,stateFile))throw fail('AI_STATE_PATH','设备凭据文件必须位于 AI 工作区之外。');
@@ -110,7 +110,7 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
    await enroll();enforceLease();
    if(!active&&clock()-lastLoginCheck>=60000){const login=await runner.loginStatus();statusCode=['ready','login-required','quota','error'].includes(login.code)?login.code:'error';lastLoginCheck=clock();}
    if(journal.full)statusCode='error';
-   const current=active,input={connectorId:journal.connectorId,...(current?{taskId:current.id,leaseId:current.leaseId}:{}),events:current?current.events.slice(0,20):[],status:{code:statusCode,workspaceLabel:label,provider:'Codex',...(fileHooks?.publicKey?{filePublicKey:fileHooks.publicKey}:{})}};
+   const current=active,input={connectorId:journal.connectorId,...(current?{taskId:current.id,leaseId:current.leaseId}:{}),events:current?current.events.slice(0,20):[],status:{code:statusCode,workspaceLabel:label,provider:'Codex',...(fileHooks?.publicKey?{filePublicKey:fileHooks.publicKey}:{}),...(capabilities?{capabilities}:{}),...(source?{source}:{})}};
    const sentAt=clock(),reply=await call('ai/poll',input),receivedAt=clock();
    if(!Number.isFinite(reply.serverNow)||!Number.isFinite(reply.expiresAt)||!Number.isSafeInteger(reply.ack)||reply.ack<0)throw fail('AI_RELAY_RESPONSE','授权租约响应无效。');
    if(stopped)return;

@@ -1,7 +1,7 @@
 {
   "name": "yubenzhe-desktop",
   "productName": "愚笨者",
-  "version": "0.14.0-dev.8",
+  "version": "0.14.0-dev.11",
   "description": "愚笨者桌面客户端，钱包与熟人社交",
   "private": true,
   "main": "src/main.cjs",
@@ -36,8 +36,15 @@
     },
     "files": [
       "src/*.cjs",
+      "src/device-wizard.html",
+      "src/device-wizard.css",
+      "src/device-wizard.js",
       "web/*",
       "package.json"
+    ],
+    "extraResources": [
+      {"from":"../yubenzhe-deploy/device-bridge","to":"device-bridge","filter":["agent.mjs","desktop.ps1","ai-channel.mjs","codex-runner.mjs","ai-channel-files.mjs","protocol.mjs","capabilities.mjs","capability-probe.ps1","desktop-worker.mjs"]},
+      {"from":"build/icon.ico","to":"device-icon.ico"}
     ],
     "win": {
       "target": [
