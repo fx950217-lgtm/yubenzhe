@@ -67,7 +67,7 @@ public class ReleaseWebViewActionsTest {
         org.junit.Assume.assumeTrue("Explicit private test input required",encoded!=null&&!encoded.isEmpty());
         JSONObject input=new JSONObject(new String(Base64.decode(encoded,Base64.NO_WRAP),StandardCharsets.UTF_8));
         String action=input.optString("action"),owner=input.optString("userId");
-        assertTrue("Unsupported test action",action.matches("login|login-pair|pair|device-session|task-result"));
+        assertTrue("Unsupported test action",action.matches("login|login-pair|pair|device-session|send-task|task-result"));
         assertTrue("Expected public account ID required",owner.matches("[A-Za-z0-9_]{5,24}"));
         String pkg=instrumentation.getTargetContext().getPackageName();
         assertEquals("app.yubenzhe.mobile",pkg);
@@ -121,18 +121,32 @@ public class ReleaseWebViewActionsTest {
             Object ids=js("JSON.stringify([...document.querySelectorAll('[data-device-id]')].map(e=>e.dataset.deviceId))");
             result.put("deviceIds",new org.json.JSONArray((String)ids)).put("pairVerified",true);
         }
-        if(action.equals("device-session")||action.equals("task-result")){
+        if(action.equals("device-session")||action.equals("send-task")||action.equals("task-result")){
             String id=input.optString("deviceId");assertTrue("Owned device ID required",id.matches("[a-fA-F0-9-]{36}"));
             assertFalse("Complete or explicitly skip onboarding before opening a device",yes("document.querySelector('.device-onboarding[open]')"));
             devices();String selector="[data-device=provider-chat][data-provider=codex][data-id='"+id+"']";
             until("(()=>{const b=document.querySelector("+JSONObject.quote(selector)+");return b&&!b.disabled})()","Codex is not available on the requested device",60);
             click(selector);until("document.querySelector('.ac-chat [data-ac-form]')","Device conversation did not open",20);
             result.put("deviceId",id).put("conversationVisible",true).put("codexConnected",yes("document.querySelector('.ac-online.is-online')"));
+            if(action.equals("send-task")){
+                String prompt=input.optString("prompt"),expected=input.optString("expectedText");
+                assertTrue("Explicit task prompt and unique expected marker required",prompt.length()>0&&prompt.length()<=8000&&expected.length()>0&&expected.length()<200&&prompt.contains(expected));
+                assertTrue("Existing drafts or uncertain requests must be reviewed, never overwritten",yes("(()=>{const f=document.querySelector('[data-ac-form]');return f?.querySelector('textarea[name=prompt]')?.value===''&&!f?.querySelector('button[type=submit]')?.textContent.includes('重试')})()"));
+                String previous=(String)js("JSON.stringify([...document.querySelectorAll('.ac-task[data-task-id]')].map(e=>e.dataset.taskId))");
+                fill("[data-ac-form] textarea[name=prompt]",prompt);
+                until("document.querySelector('[data-ac-form] button[type=submit]')?.disabled===false","Task submit is unavailable; no request was sent",20);
+                submit("[data-ac-form]");
+                String newTask="(()=>{const previous="+previous+";return [...document.querySelectorAll('.ac-task[data-task-id]')].find(e=>!previous.includes(e.dataset.taskId)&&e.querySelector('strong + p')?.textContent==="+JSONObject.quote(prompt.trim())+")})()";
+                until(newTask,"Task submission result unknown; do not submit again",45);
+                Object taskId=js("("+newTask+")?.dataset.taskId");
+                assertTrue("Server task ID was not confirmed",taskId instanceof String&&((String)taskId).matches("[a-fA-F0-9-]{36}"));
+                result.put("taskId",taskId).put("submittedFromAndroidUI",true).put("sendCount",1).put("replyVerified",false).put("noDecisionApproved",true);
+            }
             if(action.equals("task-result")){
                 String task=input.optString("taskId"),expected=input.optString("expectedAnswer","ybz-acceptance.txt");
                 assertTrue("Task ID required",task.matches("[a-fA-F0-9-]{36}"));assertTrue("Expected answer marker too long",expected.length()>0&&expected.length()<200);
                 String taskSelector="[data-task-id='"+task+"']";
-                until("(()=>{const e=document.querySelector("+JSONObject.quote(taskSelector)+");return e&&e.querySelector('.ac-answer')?.textContent.includes("+JSONObject.quote(expected)+")})()","Expected real task reply has not appeared",60);
+                until("(()=>{const e=document.querySelector("+JSONObject.quote(taskSelector)+");return e&&[...e.querySelectorAll('.ac-answer')].some(row=>row.textContent.includes("+JSONObject.quote(expected)+"))})()","Expected real task reply has not appeared",60);
                 result.put("taskId",task).put("expectedReplyVisible",true).put("artifactDownloadVisible",yes("document.querySelector("+JSONObject.quote(taskSelector+" [data-ac=download]")+")"));
             }
         }

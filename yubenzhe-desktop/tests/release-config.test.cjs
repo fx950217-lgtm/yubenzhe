@@ -3,12 +3,14 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {BRIDGE_FILES,verifyBridgeBundle}=require('../scripts/verify-release.cjs');
 const pkg=require('../package.json');
 const filter=pkg.build.extraResources.find(entry=>entry.to==='device-bridge').filter;
-function preload(argv){
- const exposed={};
- vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/preload.cjs'),'utf8'),{
-  require:name=>{assert.equal(name,'electron','Sandboxed preload must not require package files or Node APIs');return {contextBridge:{exposeInMainWorld:(key,value)=>exposed[key]=value},ipcRenderer:{}};},
-  process:{argv},document:{addEventListener(){}}
- });
+function preload(argv,{globalProcess}={}){
+  const exposed={};
+  // Match Electron's sandbox wrapper: require/process are lexical function arguments.
+  // They are deliberately absent from window/globalThis, unlike the old misleading mock.
+  const context=vm.createContext(globalProcess===undefined?{}:{process:globalProcess});
+  const wrapper=vm.runInContext('(function(require, process, document){\n'+fs.readFileSync(path.resolve(__dirname,'../src/preload.cjs'),'utf8')+'\n})',context);
+  assert.equal(vm.runInContext('globalThis.process',context),globalProcess);
+  wrapper(name=>{assert.equal(name,'electron','Sandboxed preload must not require package files or Node APIs');return {contextBridge:{exposeInMainWorld:(key,value)=>exposed[key]=value},ipcRenderer:{}};},{argv},{addEventListener(){}});
  return exposed.YubenzheDesktop;
 }
 test('desktop app ID is stable and uninstall still preserves application data',()=>{
@@ -18,7 +20,8 @@ test('desktop app ID is stable and uninstall still preserves application data',(
 test('sandboxed preload reports the host package version without enabling package or filesystem reads',()=>{
  const exposed=preload(['electron','--ybz-app-version=0.0.0-old','--ybz-app-version='+pkg.version]);
  assert.equal(exposed.version,pkg.version);assert.equal(Object.isFrozen(exposed),true);
- for(const version of ['1.2.3','1.2.3-dev.999'])assert.equal(preload(['--ybz-app-version='+version]).version,version);
+  for(const version of ['1.2.3','1.2.3-dev.999'])assert.equal(preload(['--ybz-app-version='+version]).version,version);
+  assert.equal(preload(['--ybz-app-version='+pkg.version],{globalProcess:{argv:['--ybz-app-version=9.9.9-spoof']}}).version,pkg.version);
 });
 test('missing or malformed runtime version is unknown rather than a misleading hard-coded release',()=>{
  for(const argv of [[],['--ybz-app-version='],['--ybz-app-version=<script>'],['--ybz-app-version=1.2.3\nspoof'],['--ybz-app-version='+('x'.repeat(100))]])assert.equal(preload(argv).version,'unknown');

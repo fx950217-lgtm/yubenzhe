@@ -1,7 +1,9 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 // Sandboxed preloads cannot read package.json; the host appends its own build version.
-const versionArgument=globalThis.process?.argv?.findLast(value=>typeof value==='string'&&value.startsWith('--ybz-app-version='));
+// Electron supplies process as a lexical preload argument, not window/globalThis.process.
+const preloadProcess=typeof process==='object'&&process?process:null;
+const versionArgument=Array.isArray(preloadProcess?.argv)?preloadProcess.argv.findLast(value=>typeof value==='string'&&value.startsWith('--ybz-app-version=')):null;
 const version=typeof versionArgument==='string'&&versionArgument.length<=96?versionArgument.match(/^--ybz-app-version=(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/)?.[1]:null;
 
 contextBridge.exposeInMainWorld('YubenzheDesktop', Object.freeze({

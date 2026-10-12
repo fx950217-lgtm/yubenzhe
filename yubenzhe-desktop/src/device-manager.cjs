@@ -7,16 +7,19 @@ const {pathToFileURL}=require('node:url');
 const {stopUtility}=require('./device-process-stop.cjs');
 const {SETUP_CATALOG,setupToolUrl}=require('./setup-catalog.cjs');
 const {publicProviders,normalizeOllamaModel}=require('./device-provider-state.cjs');
+const deployment=require('./deployment.cjs');
 const CODE=/^YBZ-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/;
 function trustedOrigin(value){let url;try{url=new URL(value);}catch{throw Error('请填写可信服务的 HTTPS 地址。');}if(url.protocol!=='https:'||url.origin!==value||url.username||url.password)throw Error('只允许完整 HTTPS 源地址，不带路径、账号或密码。');return url.origin;}
 function publicState(state){return {origin:state.origin||'',name:state.name||os.hostname().slice(0,60),source:state.source||'local',code:state.code||null,expiresAt:state.expiresAt||null,paired:Boolean(state.deviceId&&state.token),deviceId:state.deviceId||null,running:state.running===true,autoStart:state.autoStart===true,capabilities:state.capabilities||null,message:state.message||'',workspace:state.workspace||'',setupCatalog:SETUP_CATALOG,providers:publicProviders(state.providers),scannedAt:Number.isSafeInteger(state.scannedAt)?state.scannedAt:0,ollamaModel:state.ollamaModel||''};}
 function safeEnvironment(env=process.env){const out={...env};for(const key of Object.keys(out))if(/^(NODE_OPTIONS|ELECTRON_RUN_AS_NODE|NODE_TLS_REJECT_UNAUTHORIZED)$/i.test(key))delete out[key];return out;}
 async function boundedJson(response){if(!response.ok){await response.body?.cancel();throw Error(response.status===429?'操作过于频繁，请稍后再试。':response.status===401||response.status===403?'当前服务拒绝设备连接，请核对中转服务配置。':'服务暂不可用，请核对地址与网络。');}const reader=response.body?.getReader();if(!reader)throw Error('服务响应无效。');let chunks=[],size=0;try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>32768){await reader.cancel();throw Error('服务响应过大。');}chunks.push(value);}}finally{reader.releaseLock();}return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
-function createDeviceManager({electron,showApp,connectorDirectory,probeImpl=null,fetchImpl=globalThis.fetch}={}){
+function createDeviceManager({electron,showApp,connectorDirectory,probeImpl=null,fetchImpl=globalThis.fetch,deploymentConfig=deployment}={}){
  const {app,BrowserWindow,ipcMain,dialog,Tray,Menu,safeStorage,utilityProcess}=electron;
  const data=path.join(app.getPath('userData'),'device-link'),saved=path.join(data,'private-state.bin'),runtime=path.join(data,'runtime'),workspace=path.join(data,'workspace');
  const connector=connectorDirectory||(app.isPackaged?path.join(process.resourcesPath,'device-bridge'):path.resolve(__dirname,'../../yubenzhe-deploy/device-bridge'));
- let state={workspace},wizard=null,tray=null,pairTimer=null,busy=false,worker=null,screen=null,closed=false;
+ // Build configuration is a starting value only; saved/legacy pairings keep their own origin.
+ const defaultOrigin=deploymentConfig?.previewOrigin?trustedOrigin(deploymentConfig.previewOrigin):'';
+ let state={workspace,origin:defaultOrigin},wizard=null,tray=null,pairTimer=null,busy=false,worker=null,screen=null,closed=false;
  let operations=Promise.resolve(),intent=0,unreadable=false,stopFailed=false;
  const serialize=fn=>{const next=operations.then(fn);operations=next.catch(()=>{});return next;};
  const wizardUrl=pathToFileURL(path.join(__dirname,'device-wizard.html')).href;
@@ -74,7 +77,7 @@ function createDeviceManager({electron,showApp,connectorDirectory,probeImpl=null
  }
  function show(){if(wizard&&!wizard.isDestroyed()){wizard.show();wizard.focus();return;}wizard=new BrowserWindow({width:720,height:790,minWidth:620,minHeight:620,title:'YBZ · 连接这台电脑',backgroundColor:'#F7F7F9',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'device-preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true,devTools:false,partition:'ybz-device-setup'}});wizard.setContentProtection(true);wizard.webContents.setWindowOpenHandler(()=>({action:'deny'}));for(const event of ['will-navigate','will-frame-navigate','will-attach-webview'])wizard.webContents.on(event,e=>e.preventDefault());wizard.webContents.session.setPermissionRequestHandler((_wc,_permission,cb)=>cb(false));wizard.webContents.session.webRequest.onBeforeRequest((details,cb)=>cb({cancel:!details.url.startsWith(pathToFileURL(__dirname+path.sep).href)}));wizard.on('closed',()=>{wizard=null;});wizard.loadURL(wizardUrl);}
  function trusted(event){return wizard&&!wizard.isDestroyed()&&wizard.isFocused()&&event.sender===wizard.webContents&&event.senderFrame===wizard.webContents.mainFrame&&event.senderFrame.url===wizardUrl;}
- async function initialize(){await fs.mkdir(data,{recursive:true});try{const bytes=await fs.readFile(saved);if(!safeStorage.isEncryptionAvailable())throw Error();state={...JSON.parse(safeStorage.decryptString(bytes)),workspace,running:false};}catch(error){if(error.code!=='ENOENT'){unreadable=true;state.message='旧设备状态无法解密，已停止连接；原文件保持不动，请检查 Windows 账号或使用本机重置连接。';}}
+ async function initialize(){await fs.mkdir(data,{recursive:true});try{const bytes=await fs.readFile(saved);if(!safeStorage.isEncryptionAvailable())throw Error();state={...state,...JSON.parse(safeStorage.decryptString(bytes)),workspace,running:false};}catch(error){if(error.code!=='ENOENT'){unreadable=true;state.message='旧设备状态无法解密，已停止连接；原文件保持不动，请检查 Windows 账号或使用本机重置连接。';}}
   ipcMain.handle('ybz-device:action',async(event,input)=>{if(!trusted(event))throw Error('请在本机设备设置窗口操作。');try{switch(input?.action){
    case 'status':return publicState(state);
    case 'openTool':{const url=setupToolUrl(input.itemId);try{await electron.shell.openExternal(url);}catch{throw Error('未能打开系统浏览器，请稍后再试。');}update('已请求系统浏览器打开官方页面，请由你本人完成安装与登录。');return publicState(state);}
