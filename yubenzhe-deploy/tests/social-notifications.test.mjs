@@ -1,50 +1,65 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { randomUUID, randomBytes, createECDH } from 'node:crypto';
-import { openSocialDatabase } from '../server/social-database.mjs';
-import { createSocialService } from '../server/social-service.mjs';
-import { createSocialNotifications,validateSubscription } from '../server/social-notifications.mjs';
-const makeSub=(suffix='a')=>{const ec=createECDH('prime256v1');ec.generateKeys();return {endpoint:'https://fcm.googleapis.com/fcm/send/'+suffix,keys:{p256dh:ec.getPublicKey().toString('base64url'),auth:randomBytes(16).toString('base64url')}}};
-async function fixture(t,sender=async()=>{}){
- const database=openSocialDatabase(':memory:');t.after(()=>database.close());let clock=1000000;
- const service=createSocialService({database,now:()=>clock});
- const call=(token,path,input,query={})=>service.handle({method:input===undefined?'GET':'POST',path,input,query,token,ip:'test-'+token.slice(0,6)});
- const a=await call('','register',{password:'245836',requestId:randomUUID()}),b=await call('','register',{password:'593628',requestId:randomUUID()});
- const req=await call(a.token,'friends/request',{userId:b.profile.userId});const accepted=await call(b.token,'friends/respond',{requestId:req.requestId,accept:true});
- const config={subject:'https://example.com',publicKey:'test-public',privateKey:'test-private'},notifications=createSocialNotifications({database,socialService:service,config,sendNotification:sender,now:()=>clock});
- const route=(token,path,input)=>notifications.handle({method:input===undefined?'GET':'POST',path:'notifications/'+path,input,token});
- const send=()=>{clock++;return call(a.token,'conversations/'+accepted.conversationId+'/messages',{type:'text',text:'Private content never in push',clientId:randomUUID()})};
- return {database,service,call,a,b,notifications,route,send,chat:accepted.conversationId,advance:n=>clock+=n};
+// Uses the real local database/service/schema, with fake sendNotification only.
+// No server is started and no browser or push network is contacted.
+import test from 'node:test';import assert from 'node:assert/strict';
+import {randomUUID,randomBytes,createECDH} from 'node:crypto';import {readFileSync} from 'node:fs';
+import {openSocialDatabase} from '../server/social-database.mjs';
+import {createSocialService} from '../server/social-service.mjs';
+import {createSocialNotifications,validateSubscription} from '../server/social-notifications.mjs';
+const sub=(suffix='a')=>{const ec=createECDH('prime256v1');ec.generateKeys();return {endpoint:'https://fcm.googleapis.com/fcm/send/'+suffix,keys:{p256dh:ec.getPublicKey().toString('base64url'),auth:randomBytes(16).toString('base64url')}}};
+async function fixture(t){
+ const database=openSocialDatabase(':memory:'),db=database.raw,run=(sql,...params)=>db.prepare(sql).run(...params),one=(sql,...params)=>db.prepare(sql).get(...params),sent=[],available=new Set(),workers=[];let clock=1000000;
+ const socialService=createSocialService({database,now:()=>clock}),call=(token,path,input)=>socialService.handle({method:input===undefined?'GET':'POST',path,input,token,ip:'fixture-'+token.slice(0,6)});
+ const a=await call('','register',{password:'245836',requestId:randomUUID()}),b=await call('','register',{password:'593628',requestId:randomUUID()}),owner=socialService.authenticate(a.token).id,other=socialService.authenticate(b.token).id;
+ const worker=({sender=async(...args)=>sent.push(args),configured=true,maintain=()=>{}}={})=>{const value=createSocialNotifications({database,socialService,now:()=>clock,config:configured?{subject:'mailto:fixture@example.invalid',publicKey:'synthetic',privateKey:'synthetic'}:null,sendNotification:sender,decisionAvailable:id=>available.has(id),maintain});workers.push(value);return value;};
+ const notifications=worker(),route=(token,path,input)=>notifications.handle({method:input===undefined?'GET':'POST',path:'notifications/'+path,input,token});
+ const device=randomUUID();run("INSERT INTO personal_devices(id,owner_id,name,pair_expires,token_hash,created_at) VALUES(?,?,?,0,?,?)",device,owner,'fixture device',randomUUID(),clock);
+ const ai=(status='succeeded')=>{const id=randomUUID();clock++;run("INSERT INTO ai_channel_tasks(id,device_id,owner_id,request_id,request_hash,prompt_length,status,created_at,finished_at) VALUES(?,?,?,?,?,1,?,?,?)",id,device,owner,randomUUID(),'fixture-hash',status,clock,clock);return id;};
+ const work=(status='succeeded')=>{let workspace=one('SELECT id FROM workbench_workspaces WHERE owner_id=?',owner)?.id;if(!workspace){workspace=randomUUID();run("INSERT INTO workbench_workspaces(id,owner_id,state,created_at,updated_at) VALUES(?,?,'ready',?,?)",workspace,owner,clock,clock);}const id=randomUUID();clock++;run("INSERT INTO workbench_tasks(id,owner_id,workspace_id,title,operation,input_ids,status,quote_expires_at,estimated_micro,budget_micro,price_version,created_at,updated_at) VALUES(?,?,?,?,?,'[]',?,0,'0','0','retired',?,?)",id,owner,workspace,'SYNTHETIC_PRIVATE_TASK_TITLE','text-cleanup',status,clock,clock);return id;};
+ t.after(async()=>{for(const w of workers)await w.close();database.close();});
+ return {database,run,one,sent,available,a,b,owner,other,device,worker,notifications,route,ai,work,call,advance:n=>clock+=n,now:()=>clock};
 }
-test('push endpoints reject arbitrary hosts, credentials and invalid keys',()=>{
- const good=makeSub();assert.equal(validateSubscription(good).endpoint,good.endpoint);
- for(const endpoint of ['http://fcm.googleapis.com/x','https://127.0.0.1/x','https://fcm.googleapis.com.evil.test/x','https://user:password@fcm.googleapis.com/x','https://fcm.googleapis.com:444/x'])assert.throws(()=>validateSubscription({...good,endpoint}));
- assert.throws(()=>validateSubscription({...good,keys:{...good.keys,auth:'invalid'}}));
+test('real schema retains safe push allowlist and rejects extra client event fields',async t=>{const f=await fixture(t);for(const endpoint of ['http://fcm.googleapis.com/x','https://127.0.0.1/x','https://fcm.googleapis.com.evil.test/x','https://user:password@fcm.googleapis.com/x','https://fcm.googleapis.com:444/x'])assert.throws(()=>validateSubscription({...sub(),endpoint}));await assert.rejects(f.route(f.a.token,'subscribe',{subscription:sub(),event:{kind:'task-completed'}}));await assert.rejects(f.route('', 'status'));});
+test('real subscription retries keep stable id and created_at; account switch rebinds without exposure',async t=>{const f=await fixture(t),s=sub(),first=await f.route(f.a.token,'subscribe',{subscription:s}),created=f.one('SELECT created_at FROM push_subscriptions WHERE id=?',first.id).created_at;f.advance(1);assert.equal((await f.route(f.a.token,'subscribe',{subscription:s})).id,first.id);assert.equal(f.one('SELECT created_at FROM push_subscriptions WHERE id=?',first.id).created_at,created);await f.route(f.b.token,'subscribe',{subscription:s});assert.equal((await f.route(f.a.token,'status')).subscriptions.length,0);const status=await f.route(f.b.token,'status');assert.equal(status.scope,'critical-tasks');assert.equal(status.subscriptions.length,1);assert.doesNotMatch(JSON.stringify(status),/endpoint|p256dh|privateKey/);});
+test('real social messages keep unread history and create no pushes',async t=>{const f=await fixture(t);const req=await f.call(f.a.token,'friends/request',{userId:f.b.profile.userId}),accepted=await f.call(f.b.token,'friends/respond',{requestId:req.requestId,accept:true});await f.route(f.b.token,'subscribe',{subscription:sub()});f.advance(1);await f.call(f.a.token,'conversations/'+accepted.conversationId+'/messages',{type:'text',text:'SYNTHETIC_PRIVATE_CHAT_BODY',clientId:randomUUID()});await f.notifications.tick();assert.equal(f.sent.length,0);assert.equal(f.one('SELECT count(*) n FROM messages WHERE conversation_id=?',accepted.conversationId).n,1);assert.equal(f.one('SELECT count(*) n FROM push_jobs').n,0);});
+test('real workbench terminal metadata emits once without reading or storing titles',async t=>{const f=await fixture(t);await f.route(f.a.token,'subscribe',{subscription:sub()});await f.route(f.b.token,'subscribe',{subscription:sub('b')});f.work();f.work('failed');f.work('running');await f.notifications.tick();await f.notifications.tick();assert.equal(f.sent.length,2);assert.deepEqual(new Set(f.sent.map(s=>JSON.parse(s[1]).kind)),new Set(['task-completed','task-failed']));const rows=f.database.raw.prepare('SELECT * FROM critical_notification_events').all();assert.equal(rows.length,2);assert.equal(rows.every(x=>x.owner_id===f.owner),true);assert.doesNotMatch(JSON.stringify(rows)+JSON.stringify(f.sent),/SYNTHETIC_PRIVATE_TASK_TITLE/);});
+test('real F4 schema excludes original segment forever and requires decisionAvailable for delivery',async t=>{const f=await fixture(t);await f.route(f.a.token,'subscribe',{subscription:sub()});const task=f.ai(),id=randomUUID();f.run("INSERT INTO ai_task_decisions(id,task_id,owner_id,device_id,provider,proposal_digest,state,option_count,workspace_task_id,created_at,expires_at) VALUES(?,?,?,?,'codex',?,'pending',2,?,?,?)",id,task,f.owner,f.device,'a'.repeat(64),task,f.now(),f.now()+1800000);f.available.add(id);await f.notifications.tick();assert.equal(JSON.parse(f.sent[0][1]).kind,'decision-required');f.run("UPDATE ai_task_decisions SET state='continued' WHERE id=?",id);await f.notifications.tick();assert.equal(f.sent.length,1);f.ai();await f.notifications.tick();assert.equal(f.sent.length,2);});
+test('real worker skips preactivation tasks, expired events and deleted owners',async t=>{const f=await fixture(t);await f.route(f.a.token,'subscribe',{subscription:sub()});const old=f.ai();f.run('UPDATE ai_channel_tasks SET finished_at=1 WHERE id=?',old);await f.notifications.tick();assert.equal(f.sent.length,0);f.ai();await f.notifications.tick();assert.equal(f.sent.length,1);f.advance(86400001);await f.notifications.tick();assert.equal(f.one('SELECT count(*) n FROM critical_notification_events').n,0);assert.equal(f.sent.length,1);f.ai();f.run('UPDATE accounts SET deleted_at=? WHERE id=?',f.now(),f.owner);await f.notifications.tick();assert.equal(f.sent.length,1);});
+test('real expired subscription is removed without affecting another account; config absence is honest',async t=>{const f=await fixture(t);await f.route(f.a.token,'subscribe',{subscription:sub()});await f.route(f.b.token,'subscribe',{subscription:sub('b')});f.ai();const gone=f.worker({sender:async()=>{throw Object.assign(Error('fixture'),{statusCode:410});}});await gone.tick();assert.equal((await f.route(f.a.token,'status')).subscriptions.length,0);assert.equal((await f.route(f.b.token,'status')).subscriptions.length,1);const disabled=f.worker({configured:false});const status=await disabled.handle({method:'GET',path:'notifications/status',token:f.a.token});assert.equal(status.available,false);assert.equal(status.reason,'push-not-configured');await assert.rejects(disabled.handle({method:'POST',path:'notifications/subscribe',token:f.a.token,input:{subscription:sub()}}),e=>e.code==='PUSH_UNAVAILABLE');});
+test('authoritative maintenance runs before observing and again before each queued send',async t=>{const f=await fixture(t);await f.route(f.a.token,'subscribe',{subscription:sub()});const first=f.ai(),second=f.ai();let checks=0;const w=f.worker({maintain:()=>{checks++;if(f.sent.length)f.run("UPDATE ai_channel_tasks SET status='cancelled' WHERE id=?",second);}});await w.tick();assert.equal(checks,3);assert.equal(f.sent.length,1);assert.equal(f.one("SELECT count(*) n FROM critical_notification_deliveries WHERE status='suppressed'").n,1);assert.equal(f.one("SELECT source_id FROM critical_notification_events ORDER BY occurred_at LIMIT 1").source_id,first);});
+function createGroup(f){
+ const group=randomUUID(),session=randomUUID();
+ f.run("INSERT INTO conversations(id,type,name,owner_id,created_at,updated_at,allow_device_ai) VALUES(?,'group','fixture',?,?,?,1)",group,f.owner,f.now(),f.now());
+ for(const account of [f.owner,f.other])f.run('INSERT INTO conversation_members(conversation_id,account_id,joined_at) VALUES(?,?,?)',group,account,f.now());
+ const anchor=Number(f.run("INSERT INTO messages(conversation_id,sender,client_id,type,text,created_at) VALUES(?,?,?,'text','fixture anchor',?)",group,f.owner,randomUUID(),f.now()).lastInsertRowid);
+ f.run("INSERT INTO device_ai_sessions(id,conversation_id,owner_id,device_id,providers,status,max_rounds,created_at,expires_at,viewer_until,anchor_id,request_id,request_hash) VALUES(?,?,?,?,'[\"codex\"]','running',2,?,?,?,?,?,?)",session,group,f.owner,f.device,f.now(),f.now()+1800000,f.now()+15000,anchor,randomUUID(),'fixture-hash');
+ const roster=randomUUID();f.run("INSERT INTO conversation_ai_roster(id,conversation_id,owner_id,device_id,provider,alias,created_at,updated_at) VALUES(?,?,?,?,'codex','fixture',?,?)",roster,group,f.owner,f.device,f.now(),f.now());f.run('UPDATE device_ai_sessions SET roster_ids=? WHERE id=?',JSON.stringify([roster]),session);
+ return {group,session,roster};
+}
+function createDecision(f,task){const id=randomUUID();f.run("INSERT INTO ai_task_decisions(id,task_id,owner_id,device_id,provider,proposal_digest,state,option_count,workspace_task_id,created_at,expires_at) VALUES(?,?,?,?,'codex',?,'pending',2,?,?,?)",id,task,f.owner,f.device,'a'.repeat(64),task,f.now(),f.now()+1800000);f.available.add(id);return id;}
+function continueGroup(f,{parent,root=parent,decision,status='succeeded'}){const child=f.ai(status);f.run('UPDATE ai_channel_tasks SET parent_task_id=?,workspace_task_id=?,parent_decision_id=? WHERE id=?',parent,root,decision,child);f.run("UPDATE ai_task_decisions SET state='continued',continuation_task_id=? WHERE id=?",child,decision);return child;}
+test('real two-round group decision continuations never push private segment completion and finish once at the final child time',async t=>{
+ const f=await fixture(t);await f.route(f.a.token,'subscribe',{subscription:sub()});await f.route(f.b.token,'subscribe',{subscription:sub('other')});const {session}=createGroup(f);let child;
+ for(let round=1;round<=2;round++){
+  const parent=f.ai(),decision=createDecision(f,parent);f.run("INSERT INTO device_ai_rounds(session_id,round,provider,task_id) VALUES(?,?,'codex',?)",session,round,parent);f.run("UPDATE device_ai_sessions SET status='awaiting-decision',round=? WHERE id=?",round,session);
+  await f.notifications.tick();assert.equal(f.sent.length,round);assert.equal(JSON.parse(f.sent.at(-1)[1]).kind,'decision-required');
+  child=continueGroup(f,{parent,decision});f.run("UPDATE device_ai_sessions SET status='running' WHERE id=?",session);await f.notifications.tick();await f.notifications.tick();assert.equal(f.sent.length,round,'no root or continuation completion push');
+ }
+ const finalTime=f.one('SELECT finished_at FROM ai_channel_tasks WHERE id=?',child).finished_at;f.run("UPDATE device_ai_sessions SET status='finished' WHERE id=?",session);await f.notifications.tick();await f.notifications.tick();
+ assert.equal(f.sent.length,3);assert.equal(JSON.parse(f.sent[2][1]).kind,'task-completed');assert.equal(f.one("SELECT count(*) n FROM critical_notification_events WHERE source_kind='ai-task'").n,0);assert.equal(f.one("SELECT occurred_at FROM critical_notification_events WHERE source_kind='group-session'").occurred_at,finalTime);assert.equal(f.one("SELECT count(*) n FROM critical_notification_deliveries d JOIN push_subscriptions p ON p.id=d.subscription_id WHERE p.account_id=?",f.other).n,0);
 });
-test('push persists delivery, retries transient failures and never sends message text',async t=>{
- const sent=[];let failures=1;const f=await fixture(t,async(...args)=>{if(failures-- >0)throw Object.assign(Error('offline'),{statusCode:503});sent.push(args)});
- await f.route(f.b.token,'subscribe',{subscription:makeSub()});await f.send();await f.notifications.tick();
- assert.equal(f.database.raw.prepare('SELECT count(*) n FROM push_jobs').get().n,1);assert.equal(sent.length,0);
- f.advance(60001);await f.notifications.tick();await f.notifications.tick();assert.equal(sent.length,1);
- assert.deepEqual(JSON.parse(sent[0][1]),{title:'愚笨者',body:'你有新的消息',tag:'ybz-messages',url:'/#messages'});
- assert.equal(f.database.raw.prepare('SELECT count(*) n FROM push_jobs').get().n,0);
+test('real group continuation failure is aggregated from the child, never a fake direct failure or parent completion',async t=>{
+ const f=await fixture(t);await f.route(f.a.token,'subscribe',{subscription:sub()});const {session}=createGroup(f),parent=f.ai(),decision=createDecision(f,parent);f.run("INSERT INTO device_ai_rounds(session_id,round,provider,task_id) VALUES(?,1,'codex',?)",session,parent);
+ const child=continueGroup(f,{parent,decision,status:'failed'});f.run("UPDATE device_ai_sessions SET status='stopped' WHERE id=?",session);await f.notifications.tick();await f.notifications.tick();assert.equal(f.sent.length,1);assert.equal(JSON.parse(f.sent[0][1]).kind,'task-failed');const event=f.one('SELECT source_kind,source_id,occurred_at FROM critical_notification_events');assert.equal(event.source_kind,'group-session');assert.equal(event.source_id,session);assert.equal(event.occurred_at,f.one('SELECT finished_at FROM ai_channel_tasks WHERE id=?',child).finished_at);
 });
-test('logout and revoked sessions prevent queued delivery',async t=>{
- const sent=[];const f=await fixture(t,async(...args)=>sent.push(args));await f.route(f.b.token,'subscribe',{subscription:makeSub()});await f.send();await f.call(f.b.token,'logout',{});await f.notifications.tick();assert.equal(sent.length,0);assert.equal(f.database.raw.prepare('SELECT count(*) n FROM push_subscriptions').get().n,0);
+test('terminal group notifications recheck owner revision and roster revocation before a retry',async t=>{
+ for(const mode of ['owner-transfer-return','roster-removed']){
+  const f=await fixture(t);await f.route(f.a.token,'subscribe',{subscription:sub()});const {group,session,roster}=createGroup(f),task=f.ai();f.run("INSERT INTO device_ai_rounds(session_id,round,provider,task_id) VALUES(?,1,'codex',?)",session,task);f.run("UPDATE device_ai_sessions SET status='finished' WHERE id=?",session);
+  let calls=0;const worker=f.worker({sender:async()=>{calls++;throw Object.assign(Error('fixture timeout'),{statusCode:503});}});await worker.tick();assert.equal(calls,1);
+  if(mode==='owner-transfer-return'){f.run('UPDATE conversations SET owner_id=?,ai_owner_revision=ai_owner_revision+1 WHERE id=?',f.other,group);f.run('UPDATE conversations SET owner_id=?,ai_owner_revision=ai_owner_revision+1 WHERE id=?',f.owner,group);}else f.run('UPDATE conversation_ai_roster SET removed_at=? WHERE id=?',f.now(),roster);
+  f.advance(60001);await worker.tick();assert.equal(calls,1,mode);assert.equal(f.one("SELECT count(*) n FROM critical_notification_deliveries WHERE status='suppressed'").n,1);
+ }
 });
-test('muted conversations, read messages and block relations suppress push',async t=>{
- const sent=[];const f=await fixture(t,async(...args)=>sent.push(args));await f.route(f.b.token,'subscribe',{subscription:makeSub()});
- await f.call(f.b.token,'conversations/'+f.chat+'/settings',{muted:true});await f.send();await f.notifications.tick();assert.equal(sent.length,0);
- await f.call(f.b.token,'conversations/'+f.chat+'/settings',{muted:false});await f.send();await f.call(f.b.token,'conversations/'+f.chat+'/read',{});await f.notifications.tick();assert.equal(sent.length,0);
- await f.send();const a=f.service.authenticate(f.a.token),b=f.service.authenticate(f.b.token);f.database.raw.prepare('INSERT INTO social_blocks VALUES(?,?,?)').run(b.id,a.id,1000000);await f.notifications.tick();assert.equal(sent.length,0);
-});
-test('endpoint moves between accounts without exposing keys; permanent endpoint expiry clears it',async t=>{
- const f=await fixture(t,async()=>{throw Object.assign(Error('gone'),{statusCode:410})}),sub=makeSub();
- await f.route(f.a.token,'subscribe',{subscription:sub});await f.route(f.b.token,'subscribe',{subscription:sub});
- assert.equal((await f.route(f.a.token,'status')).subscriptions.length,0);const status=await f.route(f.b.token,'status');assert.equal(status.subscriptions.length,1);assert.ok(!JSON.stringify(status).includes(sub.keys.auth));assert.ok(!JSON.stringify(status).includes(sub.endpoint));
- await f.send();await f.notifications.tick();assert.equal(f.database.raw.prepare('SELECT count(*) n FROM push_subscriptions').get().n,0);
-});
-test('push disabled without explicit server credentials',async t=>{
- const f=await fixture(t),service=createSocialNotifications({database:f.database,socialService:f.service});assert.equal((await service.handle({method:'GET',path:'notifications/status',token:f.a.token})).available,false);
- await assert.rejects(()=>service.handle({method:'POST',path:'notifications/subscribe',token:f.a.token,input:{subscription:makeSub()}}),e=>e.code==='PUSH_UNAVAILABLE');
+test('account deletion immediately removes its critical events and deliveries while preserving other subscriptions',async t=>{
+ const f=await fixture(t);await f.route(f.a.token,'subscribe',{subscription:sub()});await f.route(f.b.token,'subscribe',{subscription:sub('other')});f.ai();await f.notifications.tick();assert.equal(f.one('SELECT count(*) n FROM critical_notification_events').n,1);
+ const result=await f.call(f.a.token,'security/delete-account',{currentPassword:'245836',confirmation:'注销账号'});assert.equal(result.deleted,true);assert.equal(f.one('SELECT count(*) n FROM critical_notification_events').n,0);assert.equal(f.one('SELECT count(*) n FROM critical_notification_deliveries').n,0);assert.equal(f.one('SELECT count(*) n FROM push_subscriptions WHERE account_id=?',f.other).n,1);
 });

@@ -206,7 +206,7 @@ function accountSettings(){
  const profile=socialClient.getProfile();if(!profile){navigate('mine');return;}
  showModal('账号设置',accountSettingsHTML(profile),el=>{
   modalCleanup=mountAccountSecurity(el.querySelector('[data-account-security]'),{client:socialClient,onDeleted:()=>{wallet.lock();closeModal();navigate('messages');toast('账号已注销，本机钱包保留并已锁定。')},onRefresh:()=>{updateRailProfile()}});
-  el.querySelector('#account-notifications').onclick=()=>showModal('消息通知','<div id="notification-settings"></div>',body=>{modalCleanup=mountNotificationSettings(body.querySelector('#notification-settings'),{client:socialClient})});
+  el.querySelector('#account-notifications').onclick=()=>showModal('任务关键通知','<div id="notification-settings"></div>',body=>{modalCleanup=mountNotificationSettings(body.querySelector('#notification-settings'),{client:socialClient})});
   el.querySelector('#account-copy-id').onclick=async()=>{try{await navigator.clipboard.writeText(profile.userId);toast('用户 ID 已复制')}catch{toast('复制权限不可用，请长按 ID 复制')}};
   el.querySelector('#account-qr').onclick=myFriendQr;
   el.querySelector('form').onsubmit=event=>{event.preventDefault();const form=event.target;busyForm(form,async()=>{if(form.elements.newPassword.value!==form.elements.repeat.value)throw new Error('两次输入的新密码不一致。');if(!/^\d{6}$/.test(form.elements.newPassword.value))throw new Error('新密码需要 6 位数字。');await socialClient.changePassword(form.elements.currentPassword.value,form.elements.newPassword.value);form.reset();if(form.isConnected&&dialog.open)closeModal();toast('账号密码已更新，其他设备需重新登录。')})};

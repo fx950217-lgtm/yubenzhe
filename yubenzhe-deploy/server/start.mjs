@@ -36,7 +36,7 @@ if(role==='frontend')modules?.aiChannel.restart();
 const socialService=modules?.social;
 const pushConfig=process.env.PUSH_CONFIG_FILE ? JSON.parse(readFileSync(process.env.PUSH_CONFIG_FILE,'utf8')) : null;
 if(pushConfig)webpush.setVapidDetails(pushConfig.subject,pushConfig.publicKey,pushConfig.privateKey);
-const notifications=role==='frontend'&&socialService ? createSocialNotifications({database:socialDatabase,socialService,config:pushConfig,sendNotification:webpush.sendNotification.bind(webpush)}) : null;
+const notifications=role==='frontend'&&socialService ? createSocialNotifications({database:socialDatabase,socialService,config:pushConfig,sendNotification:webpush.sendNotification.bind(webpush),decisionAvailable:id=>modules.aiChannel.decisionAvailable(id),maintain:()=>modules.groupDeviceAI.maintain()}) : null;
 const socialAI=role==='frontend'&&socialService ? createSocialAI({socialService,aiService,onCleanupError:()=>console.error('AI account cleanup pending; retry scheduled.')}) : null;
 const socialRouter=socialService ? {desktop:modules.desktop,devices:modules.devices,aiChannel:modules.aiChannel,moderation:socialService.moderation,community:modules.community,operations:modules.operations,health:()=>socialDatabase.raw.prepare('SELECT count(*) FROM social_migrations').get(),handle:request=>request.path.startsWith('notifications/')?notifications.handle(request):request.path.startsWith('ai/')?socialAI.handle(request):modules.handle(request)} : null;
 const pushTimer=notifications?setInterval(()=>notifications.tick().catch(()=>console.error('Notification worker failed; pending jobs retained.')),3000):null;
