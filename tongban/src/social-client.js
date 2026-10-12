@@ -1,9 +1,10 @@
+import {PUBLIC_DEPLOYMENT} from './deployment-config.js';
 import { applyRemoteProfile } from './profile-store.js';
 import { isNativeApp } from './native-runtime.js';
 const TOKEN_KEY='yubenzhe.account.session.v1',PROFILE_KEY='tongban.profile.v1';
 const copy=value=>value===null?null:JSON.parse(JSON.stringify(value));
 const clientError=(message,code)=>Object.assign(new Error(message),{code});
-export function createSocialClient({baseURL=isNativeApp()?'https://66.42.56.29':location.origin,native=isNativeApp(),fetcher=globalThis.fetch.bind(globalThis),storage,onChange=()=>{}}={}){
+export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.previewOrigin:location.origin,native=isNativeApp(),fetcher=globalThis.fetch.bind(globalThis),storage,onChange=()=>{}}={}){
  let accessRecoveryToken='';
  let current=null,token='',generation=0,cacheVersion=0,readSequence=0,storageWarning='',disposed=false;
  const cache=new Map(),media=new Map(),groupRequests=new Map(),pendingMedia=new Map(),reads=new Map(),controllers=new Set();

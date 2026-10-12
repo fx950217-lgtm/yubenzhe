@@ -5,6 +5,7 @@ import { resolve, extname, basename, relative, isAbsolute, sep } from 'node:path
 import { createAuthentication } from './auth.mjs';
 import { handleSocialHTTP } from './social-http.mjs';
 import {validateInternalPreview} from './internal-preview.mjs';
+import {readDeploymentConfiguration} from './deployment-config.mjs';
 import {readChainPreviewConfig} from './chain-preview-config.mjs';
 import { AdminError, assertSameOrigin, authorizeAdmin, setupAdmin, getBootstrap, listRecords, getRecord, applyAction, listAudit } from '../upstream/admin/core.mjs';
 
@@ -23,13 +24,14 @@ async function body(request,limit=16384) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-export function createAcceptanceServer({ role, origin, authConfig, database, aiService = null, socialService = null, publicFrontend = false, internalPreview = false, chainPreviewConfigFile, staticRoot, reportFile = new URL('../reports/thousand-users.json', import.meta.url) }) {
+export function createAcceptanceServer({ role, origin, authConfig, database, aiService = null, socialService = null, publicFrontend = false, internalPreview = false, chainPreviewConfigFile, rpcUrls=readDeploymentConfiguration({}).rpcUrls, staticRoot, reportFile = new URL('../reports/thousand-users.json', import.meta.url) }) {
   if (!['admin','frontend'].includes(role)) throw new Error('ROLE must be admin or frontend.');
   validateInternalPreview({internalPreview,role,origin,publicFrontend});
   const publicURL = new URL(origin);
   if (!['http:','https:'].includes(publicURL.protocol) || publicURL.pathname !== '/' || publicURL.search || publicURL.hash || publicURL.username || publicURL.password) throw new Error('PUBLIC_ORIGIN must be a single origin.');
   if (publicURL.protocol === 'http:' && !['localhost','127.0.0.1','[::1]'].includes(publicURL.hostname)) throw new Error('Plain HTTP is permitted only through loopback/SSH forwarding.');
   if (role === 'admin' && !database) throw new Error('Admin requires a real SQLite database.');
+  const rpcOrigins=[...new Set(rpcUrls.map(value=>{const url=new URL(value);if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash)throw Error('Invalid public RPC URL.');return url.origin;}))];
   const auth = createAuthentication(authConfig, { role, origin: publicURL.origin });
   const staticBase = realpathSync.native(resolve(staticRoot));
   const insideStatic = file => {const path=relative(staticBase,file);return path!=='' && path!=='..' && !path.startsWith('..'+sep) && !isAbsolute(path);};
@@ -38,15 +40,27 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
     response.setHeader('Cache-Control','no-store, private'); response.setHeader('X-Content-Type-Options','nosniff');
     response.setHeader('Referrer-Policy','same-origin'); response.setHeader('X-Frame-Options','DENY');
     response.setHeader('Permissions-Policy',role === 'frontend' ? 'camera=(self), microphone=(), geolocation=()' : 'camera=(), microphone=(), geolocation=()');
-    response.setHeader('Content-Security-Policy',`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'${role === 'frontend' ? ' https://bsc-testnet-dataseed.bnbchain.org https://bsc-testnet.bnbchain.org' : ''}; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`);
+    response.setHeader('Content-Security-Policy',`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'${role === 'frontend' ? ' '+rpcOrigins.join(' ') : ''}; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`);
     try {
       const url = new URL(request.url || '/', publicURL.origin);
       if (url.pathname === '/healthz' && request.method === 'GET') {
         if (role === 'admin') database.raw.prepare('SELECT 1').get();
         socialService?.health?.();
-        json(response,{ok:true,service:role,version:APP_VERSION,stage:internalPreview ? 'internal-preview' : role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance'}); return;
+        json(response,{ok:true,service:role,version:APP_VERSION,stage:internalPreview ? 'internal-preview' : role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance',...(socialService?.desktop?{desktop:{available:socialService.desktop.capabilities().available,code:socialService.desktop.capabilities().code}}:{})}); return;
       }
       if (request.headers.host !== publicURL.host || url.origin !== publicURL.origin) throw new AdminError(403,'HOST_DENIED','访问地址不匹配，请使用验收地址。');
+      if(role==='frontend'&&['/api/device-bridge/enroll','/api/device-bridge/poll'].includes(url.pathname)){
+        if(request.method!=='POST'||request.headers.origin)throw new AdminError(403,'DEVICE_AGENT_ONLY','此接口仅接受设备连接器。');
+        if(request.headers['content-type']?.split(';')[0]!=='application/json')throw new AdminError(415,'JSON_REQUIRED','操作仅接受 JSON。');
+        if(!socialService?.devices)throw new AdminError(503,'DEVICE_UNAVAILABLE','设备服务未启用。');
+        let input;try{input=JSON.parse(await body(request,650*1024));}catch(e){if(e.status)throw e;throw new AdminError(400,'INVALID_JSON','请求内容无效。');}
+        const token=/^Bearer ([-_A-Za-z0-9]{43})$/.exec(request.headers.authorization||'')?.[1];
+        const value=url.pathname.endsWith('/enroll')?socialService.devices.enroll(input):socialService.devices.poll(token,input);
+        json(response,value);return;
+      }
+      if (!internalPreview && role === 'frontend' && (url.pathname==='/api/desktop'||url.pathname.startsWith('/api/desktop/'))) {
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,pathPrefix:'/api/desktop',pathBase:'desktop'}); return;
+      }
       if (!internalPreview && role === 'frontend' && url.pathname.startsWith('/api/social/')) {
         await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body}); return;
       }
@@ -68,6 +82,9 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       }
       if (internalPreview && role === 'frontend' && url.pathname.startsWith('/api/social/')) {
         await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,internalPreviewUser:user}); return;
+      }
+      if (internalPreview && role === 'frontend' && (url.pathname==='/api/desktop'||url.pathname.startsWith('/api/desktop/'))) {
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,internalPreviewUser:user,pathPrefix:'/api/desktop',pathBase:'desktop'}); return;
       }
       if (internalPreview && url.pathname.startsWith('/api/ai/'))throw new AdminError(404,'NOT_FOUND','请使用产品账号工作台入口。');
       if (internalPreview && url.pathname === '/api/chain-preview/config') {
