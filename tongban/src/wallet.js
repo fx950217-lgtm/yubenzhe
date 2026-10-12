@@ -1,3 +1,4 @@
+import {PUBLIC_DEPLOYMENT} from './deployment-config.js';
 import { Wallet, getAddress, formatEther, parseEther, keccak256, toQuantity } from 'ethers';
 import { walletFromMnemonic, walletFromPrivateKey, walletFromKeystore, normalizePublicAddress, validateExpectedAddress } from './wallet-compatibility.js';
 import { requireWatchWallet } from './wallet-watchlist.js';
@@ -7,12 +8,9 @@ export { DEFAULT_DERIVATION_PATH, MAX_KEYSTORE_BYTES, previewMnemonic, previewPr
 // This pilot is deliberately pinned to BSC testnet. There is no mainnet toggle.
 export const NETWORK = Object.freeze({
   name: 'BSC 测试网', chainId: 97, symbol: 'tBNB',
-  explorer: 'https://testnet.bscscan.com',
+  explorer: PUBLIC_DEPLOYMENT.explorerUrl,
 });
-const RPC_URLS = Object.freeze([
-  'https://bsc-testnet-dataseed.bnbchain.org',
-  'https://bsc-testnet.bnbchain.org',
-]);
+const RPC_URLS = Object.freeze([...PUBLIC_DEPLOYMENT.rpcUrls]);
 const VAULT_KEY = 'tongban.wallet.bsc-testnet.v1';
 const RECORD_PREFIX = 'tongban.transactions.bsc-testnet.v1.';
 const AUTO_LOCK_MS = 5 * 60 * 1000;
@@ -280,13 +278,13 @@ function validateTransfer(to, amount, address) {
   return { to: recipient, value };
 }
 
-async function quote(url, from, to, value) {
+async function quote(url, from, to, value, data = '0x') {
   const [code, balanceResult, gasPriceResult, nonceResult, gasResult] = await Promise.all([
     rpc(url, 'eth_getCode', [to, 'latest']),
     rpc(url, 'eth_getBalance', [from, 'pending']),
     rpc(url, 'eth_gasPrice'),
     rpc(url, 'eth_getTransactionCount', [from, 'pending']),
-    rpc(url, 'eth_estimateGas', [{ from, to, value: toQuantity(value), data: '0x' }]),
+    rpc(url, 'eth_estimateGas', [{ from, to, value: toQuantity(value), data }]),
   ]);
   if (code !== '0x' && code !== '0x0') throw fail('首版仅支持向普通钱包地址转账，暂不支持合约收款。', 'CONTRACT_UNSUPPORTED');
   const balance = quantity(balanceResult);
@@ -346,21 +344,40 @@ export async function getWatchBalance(address) {
   return formatEther(quantity(await rpc(url, 'eth_getBalance', [checked, 'latest'])));
 }
 
-export async function prepareTransfer(to, amount) {
+function taskTransferIntent(intent, transfer, from) {
+  if (!intent || intent.chainId !== 97 || typeof intent.id !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(intent.id) || typeof intent.valueWei !== 'string' || !/^[1-9][0-9]{0,77}$/.test(intent.valueWei) || typeof intent.data !== 'string' || !/^0x(?:[0-9a-f]{2}){1,256}$/i.test(intent.data)) {
+    throw fail('任务付款内容无效，请重新打开已验收的任务。', 'TASK_PAYMENT_INVALID');
+  }
+  let expectedFrom, expectedTo;
+  try { expectedFrom = getAddress(intent.from); expectedTo = getAddress(intent.to); }
+  catch { throw fail('任务付款地址无效。', 'TASK_PAYMENT_INVALID'); }
+  const bytes = new Uint8Array(intent.data.slice(2).match(/../g).map(value => parseInt(value, 16)));
+  let memo;
+  try { memo = new TextDecoder('utf-8', {fatal:true}).decode(bytes); }
+  catch { throw fail('任务付款授权摘要无效。', 'TASK_PAYMENT_INVALID'); }
+  if (expectedFrom !== from || expectedTo !== transfer.to || BigInt(intent.valueWei) !== transfer.value || !new RegExp('^YBZ-TASK-PAYMENT:v1:' + intent.id.toLowerCase() + ':[a-f0-9]{64}$').test(memo)) {
+    throw fail('任务付款与当前钱包、金额或授权内容不一致。', 'TASK_PAYMENT_MISMATCH');
+  }
+  return {intentId:intent.id, data:intent.data.toLowerCase()};
+}
+
+export async function prepareTransfer(to, amount, {taskIntent} = {}) {
   const vault = requireSession();
   requireNoPending(vault.address);
   prepared = null;
   const startEpoch = epoch;
   const transfer = validateTransfer(to, amount, vault.address);
+  const task = taskIntent === undefined ? {data:'0x'} : taskTransferIntent(taskIntent, transfer, vault.address);
   const url = await connectRpc();
-  const fees = await quote(url, vault.address, transfer.to, transfer.value);
+  const fees = await quote(url, vault.address, transfer.to, transfer.value, task.data);
   requireSameSession(startEpoch, vault.address, vault.encryptedJson);
   const id = globalThis.crypto.randomUUID();
-  prepared = { id, kind:'transfer', ...transfer, ...fees, from: vault.address, expiresAt: Date.now() + PREVIEW_MS };
+  prepared = { id, kind:'transfer', ...transfer, ...task, ...fees, from: vault.address, expiresAt: Date.now() + PREVIEW_MS };
   return {
     id, to: transfer.to, amount: formatEther(transfer.value),
     gasFee: formatEther(fees.gasFee), total: formatEther(transfer.value + fees.gasFee),
     chainId: 97, symbol: NETWORK.symbol, expiresAt: prepared.expiresAt,
+    ...(task.intentId ? {intentId:task.intentId, from:vault.address, data:task.data} : {}),
   };
 }
 
@@ -389,7 +406,7 @@ export function getRecords() {
   return vault ? readRecords(vault.address).sort((a, b) => b.createdAt - a.createdAt) : [];
 }
 
-export async function confirmTransfer(id, password) {
+export async function confirmTransfer(id, password, {beforeBroadcast} = {}) {
   if (confirming) throw fail('上一笔交易正在处理中，请稍候。', 'TRANSACTION_BUSY');
   const vault = requireSession();
   const tx = prepared;
@@ -397,6 +414,7 @@ export async function confirmTransfer(id, password) {
   if (!tx || tx.kind !== 'transfer' || tx.id !== id || tx.expiresAt <= Date.now() || tx.from !== vault.address) {
     throw fail('转账预览已过期，请重新核对金额和手续费。', 'PREVIEW_EXPIRED');
   }
+  if (tx.intentId && typeof beforeBroadcast !== 'function') throw fail('任务付款需要先登记交易哈希，尚未签名或提交。', 'TASK_PAYMENT_REGISTRATION_REQUIRED');
   requireNoPending(vault.address);
   const startEpoch = epoch;
   confirming = true;
@@ -404,7 +422,7 @@ export async function confirmTransfer(id, password) {
     const signer = await decrypt(vault, password);
     requireSameSession(startEpoch, vault.address, vault.encryptedJson);
     const url = await connectRpc();
-    const fresh = await quote(url, vault.address, tx.to, tx.value);
+    const fresh = await quote(url, vault.address, tx.to, tx.value, tx.data);
     if (fresh.nonce !== tx.nonce || fresh.gasPrice !== tx.gasPrice || fresh.gasLimit !== tx.gasLimit) {
       throw fail('网络手续费或账户状态已变化，请重新预览后确认。', 'QUOTE_CHANGED');
     }
@@ -414,16 +432,30 @@ export async function confirmTransfer(id, password) {
     if (signer.address !== tx.from) throw fail('钱包地址校验失败，已阻止交易。', 'SIGNER_MISMATCH');
     const signed = await signer.signTransaction({
       type: 0, chainId: 97, to: tx.to, value: tx.value,
-      nonce: fresh.nonce, gasPrice: fresh.gasPrice, gasLimit: fresh.gasLimit, data: '0x',
+      nonce: fresh.nonce, gasPrice: fresh.gasPrice, gasLimit: fresh.gasLimit, data: tx.data,
     });
     requireSameSession(startEpoch, vault.address, vault.encryptedJson);
     const hash = keccak256(signed);
     const record = {
       hash, from: tx.from, to: tx.to, amount: formatEther(tx.value), gasFee: formatEther(fresh.gasFee),
       createdAt: Date.now(), chainId: 97, symbol: NETWORK.symbol, status: 'pending', nonce: fresh.nonce, kind: 'transfer',
+      ...(tx.intentId ? {intentId:tx.intentId, data:tx.data, valueWei:tx.value.toString()} : {}),
     };
     // Store only public transaction details, never the signed transaction or secrets.
     saveRecord(vault.address, record, true);
+    if (tx.intentId) {
+      try {
+        // Only public transaction facts leave the wallet. The signed payload,
+        // password, key and decrypted signer are never exposed to this callback.
+        await beforeBroadcast(Object.freeze({hash,intentId:tx.intentId,chainId:97,from:tx.from,to:tx.to,valueWei:tx.value.toString(),data:tx.data,nonce:fresh.nonce}));
+      } catch {
+        saveRecord(vault.address, {...record,status:'unknown',broadcastUncertain:true,broadcastAttempted:false});
+        const error = fail('付款登记未确认，未广播交易。请核对现有任务和交易哈希，不要重新签名。', 'TASK_PAYMENT_REGISTRATION_FAILED');
+        error.hash=hash;error.intentId=tx.intentId;throw error;
+      }
+      requireSameSession(startEpoch, vault.address, vault.encryptedJson);
+      if (tx.expiresAt <= Date.now()) throw fail('付款登记期间预览已过期，未广播；请核对现有交易哈希。', 'PREVIEW_EXPIRED');
+    }
     let broadcastUncertain = false;
     try {
       const remoteHash = await rpc(url, 'eth_sendRawTransaction', [signed]);
