@@ -52,7 +52,7 @@ test('switching section during an in-flight refresh keeps the latest selection a
   const wait=deferred(),h=walletHarness({getBalance:()=>wait.promise});h.render();const pending=h.refresh();h.context.chainSection='bills';h.render();
   if(failure)wait.reject(Error('RPC unavailable'));else wait.resolve('7.25');await pending;
   assert.equal(h.context.chainSection,'bills');assert.match(h.page.innerHTML,/data-wallet-section="bills"/);assert.match(h.page.innerHTML,/id="recent-records"/);
-  if(failure)assert.match(h.page.innerHTML,/id="balance-number">—/);
+   if(failure){assert.match(h.page.innerHTML,/id="balance-number">12\.5/);assert.match(h.page.innerHTML,/显示上次读取的资产/);assert.match(h.page.innerHTML,/RPC unavailable/);assert.doesNotMatch(h.page.innerHTML,/data-loading-skeleton/);}
  }
 });
 

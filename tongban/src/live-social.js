@@ -1,4 +1,5 @@
 import './live-social.css';
+import {loadingSkeleton} from './loading-skeleton.js';
 import {rosterCandidates,rosterKey,rosterFields,validateRosterSelection,saveRosterDraft,createDiscussionDraft} from './group-ai-roster.js';
 import { EMOJI_GROUPS, STICKERS, getSticker, readChatImages, isSafeChatImage } from './chat-media.js';
 
@@ -93,6 +94,7 @@ export function mountLiveSocial(container, options = {}) {
   let page = { type: 'list', view }, menu = false, modal = null, epoch = 0, lookupSequence = 0, busy = new Set(), timer;
   let messageMenu=null,press=null,pressTimer=null,suppressClickUntil=0;
   const initialOwner = options.profile?.userId || service.getProfile?.()?.userId || null;
+  const currentOwner = () => !disposed && (!initialOwner || !service.getProfile || service.getProfile()?.userId === initialOwner);
   let initialDestination = initialConversationId ? { type: 'chat', id: initialConversationId } : initialProfileId ? { type: 'profile', userId: initialProfileId } : null;
   const permissionRevisions = new Map(), readThrough = new Map(), syncCursors = new Map();
   const replies = new Map(), messages = new Map(), messageErrors = new Map(), messageLoading = new Set(), olderCursors = new Map(), drafts = draftSession(options.profile?.userId), pending = new Map();
@@ -133,12 +135,13 @@ export function mountLiveSocial(container, options = {}) {
   function fitViewport() { const viewport = globalThis.window?.visualViewport; if (viewport) { root.style.setProperty('--live-height', viewport.height + 'px'); root.style.setProperty('--live-top', viewport.offsetTop + 'px'); } }
   function rememberFocus() { const element = document.activeElement; return element && root.contains(element) && element.name ? { name: element.name, start: element.selectionStart, end: element.selectionEnd } : null; }
   function render() {
-    if (disposed) return;
+    if (!currentOwner()) return;
     closeMessageMenu();
     const focus = rememberFocus(), scroll = root.querySelector('[data-messages]'), top = scroll?.scrollTop || 0, bottom = scroll ? scroll.scrollHeight - scroll.clientHeight - top < 70 : true;
     notify();
     let html = '';
-    if (!loaded) html = header(view === 'contacts' ? '好友' : '消息') + (loadError ? errorBox(loadError, 'reload') : '<p class="live-loading" role="status">正在连接消息服务…</p>');
+    root.setAttribute('aria-busy',String(!loaded&&!loadError));
+    if (!loaded) html = header(view === 'contacts' ? '好友' : '消息') + (loadError ? errorBox(loadError, 'reload') : loadingSkeleton('messages',{rows:5}));
     else if (page.type === 'list') html = renderList();
     else if (page.type === 'lookup') html = renderLookup();
     else if (page.type === 'profile') html = renderProfile();
@@ -308,14 +311,16 @@ export function mountLiveSocial(container, options = {}) {
   let statePromise = null, snapshotSignature = '', composing = false, pollRunning = false;
   const staleResponse = error => ['SESSION_CHANGED', 'STALE_RESPONSE'].includes(error?.code);
   async function refresh(force = false) {
-    if (disposed) return;
+    if (!currentOwner()) return;
     if (statePromise) { await statePromise; if (force && !disposed) return refresh(false); return; }
     loadingState = true;
+    if(!loaded){loadError='';render();}
     statePromise = (async () => {
       try {
-        const results=await Promise.allSettled([service.getState(),service.authenticatedRequest?service.authenticatedRequest('devices/conversations'):Promise.resolve({conversations:[]})]);if(disposed)return;if(results[0].status==='rejected')throw results[0].reason;const next=results[0].value;
+        const results=await Promise.allSettled([service.getState(),service.authenticatedRequest?service.authenticatedRequest('devices/conversations'):Promise.resolve({conversations:[]})]);if(!currentOwner())return;if(results[0].status==='rejected')throw results[0].reason;const next=results[0].value;
+        if(initialOwner&&next?.profile?.userId!==initialOwner)return;
         if (!next?.profile?.userId || !Array.isArray(next.friends) || !Array.isArray(next.conversations) || !Array.isArray(next.requests)) throw new Error('消息服务返回了不完整的数据，请重试');
-        const devices=results[1].status==='fulfilled'?privateDeviceEntries(results[1].value?.conversations):[];deviceReadError=results[1].status==='rejected'?'设备入口暂时无法同步，可从工作台的“我的设备”查看。':'';
+        const devices=results[1].status==='fulfilled'?privateDeviceEntries(results[1].value?.conversations):deviceEntries;deviceReadError=results[1].status==='rejected'?'设备入口暂时无法同步，可从工作台的“我的设备”查看。':'';
         const signature = JSON.stringify({state:next,devices,deviceReadError}), changed = signature !== snapshotSignature || !loaded || !!loadError || !!networkError;deviceEntries=devices;
         for (const id of invalidatedConversationIds(state.conversations, next.conversations)) { permissionRevisions.set(id, (permissionRevisions.get(id) || 0) + 1); messages.delete(id); replies.delete(id); messageErrors.delete(id); olderCursors.delete(id); pending.delete(id); readThrough.delete(id); syncCursors.delete(id); if (['gallery','photo'].includes(modal?.type) && modal.conversationId === id) modal = null; }
         state = next; loaded = true; loadError = ''; networkError = ''; snapshotSignature = signature;

@@ -6,7 +6,7 @@ const dataURL = source => 'data:text/javascript;base64,' + Buffer.from(source).t
 const stripCSS = source => source.replace(/import '\.\/[^']+\.css';\n/g, '');
 const mediaURL = dataURL(stripCSS(await readFile(new URL('../src/chat-media.js', import.meta.url), 'utf8')));
 const rosterURL=dataURL(await readFile(new URL('../src/group-ai-roster.js',import.meta.url),'utf8'));
-const source = stripCSS(await readFile(new URL('../src/live-social.js', import.meta.url), 'utf8')).replace("'./chat-media.js'", JSON.stringify(mediaURL)).replace("'./group-ai-roster.js'",JSON.stringify(rosterURL));
+const source = stripCSS(await readFile(new URL('../src/live-social.js', import.meta.url), 'utf8')).replace("'./chat-media.js'", JSON.stringify(mediaURL)).replace("'./group-ai-roster.js'",JSON.stringify(rosterURL)).replace("'./loading-skeleton.js'",JSON.stringify(new URL('../src/loading-skeleton.js',import.meta.url).href));
 const { mountLiveSocial, messageMenuItems, groupAIEntries, validateFriendId, validateGroup, mergeMessages, safeProfilePhoto, invalidatedConversationIds, catchUpMessages, trustedGroupWorkflow } = await import(dataURL(source));
 
 test('message actions are selected by available content and never expose unfinished recall/forward',()=>{

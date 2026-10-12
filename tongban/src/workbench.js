@@ -1,4 +1,5 @@
 import { saveArtifactFile } from './native-runtime.js';
+import {loadingSkeleton} from './loading-skeleton.js';
 import './workbench.css';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const estimatedTime=seconds=>typeof seconds==='number'&&Number.isSafeInteger(seconds)&&seconds>0?'约 '+seconds+' 秒':'未提供';
@@ -14,7 +15,8 @@ const examples=[
  {title:'整理会议文字',goal:'整理会议文字，删除重复行并统计内容',hint:'上传 TXT 或 Markdown',file:true}
 ];
 export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},onShare=()=>{},toast=()=>{},embedded=false,initialGoal='',initialScreen='home',initialTaskId=null}={}){
- let active=true,timer=null,busy=false,cap=null,tasks=[],files=[],selected=null,error='',uploading=false;
+  let active=true,timer=null,busy=false,cap=null,tasks=[],files=[],selected=null,error='',uploading=false;
+  let hasSnapshot=false,loadEpoch=0;
  let screen=initialScreen==='tasks'?'tasks':'home',taskTab='overview',filter='all',search='',catalog=null,reminders=[],planNotice=null,preview=null,cancelPrompt=false,editing=false;
  let requestedTask=typeof initialTaskId==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(initialTaskId)?initialTaskId:null;
  const draft={goal:String(initialGoal||'').slice(0,4000),fileIds:[]};let instruction='';
@@ -37,7 +39,7 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},onS
  function render(){
   if(!isCurrent())return;
   if(!client.getProfile()){shell('<div class="wb-empty"><h2>登录后开始</h2><p>任务、文件和成果跟随你的账号。</p>'+button('login','登录账号','',true)+'</div>');return;}
-  if(!cap){shell('<div class="wb-empty"><p>正在连接工作台…</p>'+button('refresh','重新连接')+'</div>');return;}
+   if(!hasSnapshot){shell(error?'<div class="wb-empty"><p>任务暂时无法读取。</p>'+button('refresh','重新连接')+'</div>':loadingSkeleton('tasks'));return;}
   if(!cap.enabled){shell('<div class="wb-empty"><h2>工作台尚未启用</h2><p>当前文件工具尚未接通。</p>'+button('legacy','查看文字模型设置')+'</div>');return;}
   if(selected){renderTask();return;}
   if(screen==='environment'){renderEnvironment();return;}
@@ -120,16 +122,18 @@ export function mountWorkbench(root,{client,onAccount=()=>{},onLegacy=()=>{},onS
   shell(body);if(busy)root.querySelectorAll('button').forEach(b=>b.disabled=true);
  }
  async function load(){
-  if(!client.getProfile()){render();return;}const turn=viewEpoch,id=selected?.id||requestedTask;
-  try{
-   const c=await get('capabilities');if(!isCurrent()||turn!==viewEpoch)return;cap=c;
-   if(cap.enabled){
-    if(id){const result=await get('tasks/'+id);if(!isCurrent()||turn!==viewEpoch)return;if(!selected||Number(result.task.version)>=Number(selected.version)){selected=result.task;}requestedTask=null;}
-    else{const values=await Promise.all([get('tasks'),get('files')]);if(!isCurrent()||turn!==viewEpoch)return;tasks=values[0].tasks||[];files=values[1].files||[];draft.fileIds=draft.fileIds.filter(id=>files.some(f=>f.id===id));}
-    if(screen==='environment'){const value=await get('catalog');if(!isCurrent()||turn!==viewEpoch)return;catalog=value;}
-    if(screen==='files'){const value=await get('retention');if(!isCurrent()||turn!==viewEpoch)return;reminders=value.reminders||[];}
-   }error='';
-  }catch(e){if(!isCurrent()||turn!==viewEpoch)return;error=e.message;}
+   if(!client.getProfile()){render();return;}const turn=viewEpoch,read=++loadEpoch,id=selected?.id||requestedTask;
+   const currentRead=()=>isCurrent()&&turn===viewEpoch&&read===loadEpoch;
+   if(!hasSnapshot){error='';render();}
+   try{
+    const c=await get('capabilities');if(!currentRead())return;cap=c;
+    if(cap.enabled){
+     if(id){const result=await get('tasks/'+id);if(!currentRead())return;if(!selected||Number(result.task.version)>=Number(selected.version)){selected=result.task;}requestedTask=null;}
+     else{const values=await Promise.all([get('tasks'),get('files')]);if(!currentRead())return;if(!Array.isArray(values[0]?.tasks)||!Array.isArray(values[1]?.files))throw Error('任务或文件列表返回不完整，请重试。');tasks=values[0].tasks;files=values[1].files;draft.fileIds=draft.fileIds.filter(id=>files.some(f=>f.id===id));}
+     if(screen==='environment'){const value=await get('catalog');if(!currentRead())return;catalog=value;}
+     if(screen==='files'){const value=await get('retention');if(!currentRead())return;reminders=value.reminders||[];}
+    }error='';hasSnapshot=true;
+   }catch(e){if(!currentRead())return;error=e.message||'任务暂不可用，请重试。';}
   render();
  }
  async function act(fn){

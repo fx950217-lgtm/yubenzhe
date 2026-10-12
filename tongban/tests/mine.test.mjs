@@ -18,11 +18,13 @@ const { mountMine } = await import(`data:text/javascript;base64,${Buffer.from(so
 // profile storage, rather than adding a browser DOM dependency to the application.
 function harness({ wallet = { exists: false }, drafts = 3, raw = null, failWrite = false, isNative = false, profileService = null, processPhoto = undefined, themeService = undefined } = {}) {
   const data = new Map(raw === null ? [] : [['tongban.profile.v1', raw]]);
-  const events = new Map(), calls = [], messages = [], attrs = new Map(), scrolls = [], reads = { wallet: 0, drafts: 0 };
+  const events = new Map(), windowEvents = new Map(), calls = [], messages = [], attrs = new Map(), scrolls = [], reads = { wallet: 0, drafts: 0 };
   globalThis.window = {
     scrollY: 0,
     scrollTo(options) { scrolls.push(options); this.scrollY = options.top; },
-    addEventListener() {}, removeEventListener() {},
+    addEventListener(name,listener) { if(!windowEvents.has(name))windowEvents.set(name,new Set());windowEvents.get(name).add(listener); },
+    removeEventListener(name,listener) { windowEvents.get(name)?.delete(listener); },
+    dispatchEvent(event) { for(const listener of windowEvents.get(event.type)||[])listener(event); },
   };
   const preview = { textContent: '', innerHTML: '' }, photoStatus = { textContent: '' }, removePhoto = { disabled: true }, save = { disabled: false };
   const password = { value: '', required: false }, passwordSection = { hidden: true, querySelector: () => password };
@@ -64,7 +66,7 @@ function harness({ wallet = { exists: false }, drafts = 3, raw = null, failWrite
     const input = { owner: container, matches: () => true, files: [file], value: 'chosen' };
     return events.get('change')?.({ target: input });
   }
-  return { container, calls, messages, data, reads, click, submit, cleanup, events, preview, attrs, scrolls, photo, photoStatus, removePhoto, save, password, passwordSection };
+  return { container, calls, messages, data, reads, click, submit, cleanup, events, windowEvents, preview, attrs, scrolls, photo, photoStatus, removePhoto, save, password, passwordSection };
 }
 
 test('installation lives in web settings and nested settings back returns through the correct parent', () => {
@@ -278,7 +280,13 @@ test('cloud conflicts stay editable and ordinary saves omit passwords; late resp
   canceled.click('edit'); const pending = canceled.submit('晚返回', ''); canceled.cleanup(); finish(); await pending.pending; assert.equal(canceled.messages.length, 0); assert.match(canceled.container.innerHTML, /data-mine-view="edit"/);
 });
 
-function themeFixture(initial='light',persistent=true){let current=initial;const selected=[];return{selected,service:{getTheme:()=>current,setTheme:id=>{current=id;selected.push(id)},isPersistent:()=>persistent}};}
+function themeFixture(initial='light',persistent=true){
+  let preference=initial,systemDark=false;const selected=[];
+  const current=()=>preference==='system'?(systemDark?'dark':'light'):preference;
+  return{selected,service:{getTheme:current,getPreference:()=>preference,setTheme:id=>{preference=id;selected.push(id);return current()},isPersistent:()=>persistent},
+    systemChange(dark){systemDark=dark;globalThis.window.dispatchEvent({type:'ybz:theme-changed'})},
+    remoteChange(next){preference=next;globalThis.window.dispatchEvent({type:'ybz:theme-changed'})}};
+}
 test('public password accounts can authorize an ID edit with a long password without storing it in the profile',async()=>{
   const calls=[],profile={...cloudProfile(),authMode:'password'};
   const app=harness({profileService:{getProfile:()=>profile,saveProfile:async input=>{calls.push(input);const {currentPassword,...fields}=input;return {...profile,...fields,revision:8};}}});
@@ -324,14 +332,14 @@ test('device counter refresh never closes a profile editor',async()=>{
   let resolve;const app=harness({profileService:{getProfile:()=>personalProfile('owner_a'),authenticatedRequest:()=>new Promise(done=>{resolve=done;})}});
   app.click('edit');const editor=app.container.innerHTML;resolve({devices:[{id:'a',online:true}]});await deviceSettle();assert.equal(app.container.innerHTML,editor);app.cleanup();
 });
-test('appearance entry displays exactly the three allowed skins and reads the current selection',()=>{
+test('appearance entry offers system following alongside the three actual skins and reads the preference',()=>{
   const theme=themeFixture('dark'),app=harness({themeService:theme.service});
   assert.match(app.container.innerHTML,/data-mine-action="appearance"/);app.click('settings');
   assert.match(app.container.innerHTML,/data-mine-action="appearance"/);app.click('appearance');
   assert.match(app.container.innerHTML,/data-mine-view="appearance"/);
   const options=[...app.container.innerHTML.matchAll(/data-mine-theme="([^"]+)" aria-pressed="([^"]+)"/g)].map(m=>[m[1],m[2]]);
-  assert.deepEqual(options,[['light','false'],['dark','true'],['eyecare','false']]);
-  for(const label of ['白天','黑天','护眼'])assert.ok(app.container.innerHTML.includes(label));
+  assert.deepEqual(options,[['system','false'],['light','false'],['dark','true'],['eyecare','false']]);
+  for(const label of ['跟随系统','白天','黑天','护眼'])assert.ok(app.container.innerHTML.includes(label));
   assert.equal(theme.selected.length,0);assert.deepEqual(app.messages,[]);app.cleanup();
 });
 test('skin selection immediately invokes the theme service, updates selection, and names the exact skin in its toast',()=>{
@@ -355,7 +363,7 @@ test('failed persistent storage keeps the live skin selected but explains that i
 test('unlisted themes, out-of-view clicks and a detached appearance view cannot invoke the theme service',()=>{
   const theme=themeFixture(),app=harness({themeService:theme.service});app.click('theme-select',{mineTheme:'dark'});
   assert.deepEqual(theme.selected,[]);app.click('settings');app.click('appearance');
-  for(const id of ['system','<script>','',undefined,'__proto__','constructor','toString'])app.click('theme-select',{mineTheme:id});
+  for(const id of ['unknown','<script>','',undefined,'__proto__','constructor','toString'])app.click('theme-select',{mineTheme:id});
   assert.deepEqual(theme.selected,[]);assert.equal(theme.service.getTheme(),'light');
   assert.ok(app.messages.every(m=>m==='外观设置暂不可用，请重新打开页面。'));
   assert.match(app.container.innerHTML,/data-mine-theme="light" aria-pressed="true"/);
@@ -367,6 +375,36 @@ test('appearance returns to settings through visible back, while editing profile
   assert.match(app.container.innerHTML,/aria-label="返回设置"/);app.click('back');assert.match(app.container.innerHTML,/data-mine-view="settings"/);
   app.click('back');assert.match(app.container.innerHTML,/data-mine-view="home"/);app.click('edit');assert.match(app.container.innerHTML,/aria-label="返回个人中心"/);
   assert.equal(app.cleanup.back(),true);assert.match(app.container.innerHTML,/data-mine-view="home"/);app.cleanup();
+});
+
+test('system selection stays selected during live color changes and manual eyecare exits following',()=>{
+  const theme=themeFixture(),app=harness({themeService:theme.service});app.click('appearance');app.click('theme-select',{mineTheme:'system'});
+  assert.equal(theme.service.getPreference(),'system');assert.equal(theme.service.getTheme(),'light');assert.equal(app.messages.at(-1),'已开启跟随系统');
+  assert.match(app.container.innerHTML,/data-mine-theme="system" aria-pressed="true"/);assert.match(app.container.innerHTML,/当前为白天，随系统自动切换/);
+  theme.systemChange(true);assert.match(app.container.innerHTML,/当前为黑天，随系统自动切换/);
+  assert.match(app.container.innerHTML,/data-mine-theme="system" aria-pressed="true"/);assert.match(app.container.innerHTML,/data-mine-theme="dark" aria-pressed="false"/);
+  app.click('theme-select',{mineTheme:'eyecare'});theme.systemChange(false);
+  assert.equal(theme.service.getPreference(),'eyecare');assert.match(app.container.innerHTML,/data-mine-theme="eyecare" aria-pressed="true"/);
+  assert.deepEqual(theme.selected,['system','eyecare']);app.cleanup();
+});
+
+test('system preference persistence failure remains explicit, and cross-tab preference updates refresh the appearance UI',()=>{
+  const theme=themeFixture('dark',false),app=harness({themeService:theme.service});app.click('appearance');app.click('theme-select',{mineTheme:'system'});
+  theme.systemChange(true);assert.match(app.container.innerHTML,/本机存储暂不可用，本次选择仅在当前页面生效/);assert.equal(app.messages.at(-1),'已开启跟随系统；本机暂时无法保存');
+  theme.remoteChange('light');assert.match(app.container.innerHTML,/data-mine-theme="light" aria-pressed="true"/);
+  theme.remoteChange('system');assert.match(app.container.innerHTML,/data-mine-theme="system" aria-pressed="true"/);assert.match(app.container.innerHTML,/当前为黑天，随系统自动切换/);app.cleanup();
+});
+
+test('external theme changes do not replace an editor and cleanup releases the appearance listener',()=>{
+  const theme=themeFixture('system'),app=harness({themeService:theme.service});app.click('edit');const editor=app.container.innerHTML;
+  theme.systemChange(true);assert.equal(app.container.innerHTML,editor);assert.equal(app.windowEvents.get('ybz:theme-changed').size,1);
+  app.click('appearance');const listener=[...app.windowEvents.get('ybz:theme-changed')][0];app.cleanup();const old=app.container.innerHTML;
+  assert.equal(app.windowEvents.get('ybz:theme-changed').size,0);theme.systemChange(false);listener();assert.equal(app.container.innerHTML,old);
+});
+
+test('an older theme service without the preference reader still shows its actual manual skin',()=>{
+  const app=harness({themeService:{getTheme:()=> 'eyecare',setTheme(){},isPersistent:()=>true}});app.click('appearance');
+  assert.match(app.container.innerHTML,/data-mine-theme="eyecare" aria-pressed="true"/);app.cleanup();
 });
 
 test('account profile editing returns through account and settings help returns through settings',()=>{

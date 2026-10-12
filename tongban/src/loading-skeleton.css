@@ -1,0 +1,27 @@
+/* Match the design's list avatars, device cards, task tiles and asset rows. */
+.ybz-skeleton{width:100%;min-width:0;color:var(--muted);padding:0}
+.ybz-skeleton-label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.ybz-skeleton-row{display:flex;align-items:center;gap:12px;min-height:76px;padding:16px;border-bottom:1px solid var(--line);box-sizing:border-box}
+.ybz-skeleton-row:last-child{border-bottom:0}
+.ybz-skeleton-block{display:block;background:var(--line,#E8E8EE);border-radius:6px;animation:ybz-skeleton-pulse 1.6s ease-in-out infinite}
+.ybz-skeleton-tile{width:48px;height:48px;flex-shrink:0;border-radius:var(--radius-m,12px)}
+.ybz-skeleton-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:10px}
+.ybz-skeleton-title{height:16px;width:48%;max-width:190px}
+.ybz-skeleton-line{height:12px;width:78%;max-width:300px}
+.ybz-skeleton-short{height:10px;width:36%;max-width:120px}
+.ybz-skeleton-meta{height:12px;width:42px;flex-shrink:0;align-self:flex-start;margin-top:3px}
+.ybz-skeleton-devices{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
+.ybz-skeleton-devices .ybz-skeleton-row{min-height:128px;align-items:flex-start;border:1px solid var(--line);border-radius:var(--radius-m,12px);background:var(--paper)}
+.ybz-skeleton-devices .ybz-skeleton-tile,.ybz-skeleton-tasks .ybz-skeleton-tile{width:40px;height:40px}
+.ybz-skeleton-devices .ybz-skeleton-copy{padding-top:4px;gap:14px}
+.rw-device-list>.ybz-skeleton-devices{grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.wh-device-row>.ybz-skeleton-devices{display:flex;flex:0 0 auto;width:auto}
+.wh-device-row .ybz-skeleton-row{width:176px;flex:0 0 176px;min-height:132px}
+.ybz-skeleton-tasks .ybz-skeleton-row{min-height:100px;background:var(--paper);border-radius:var(--radius-m,12px)}
+.ybz-skeleton-wallet .ybz-skeleton-row{min-height:76px;padding:14px 0}
+.ybz-skeleton-wallet .ybz-skeleton-tile{width:40px;height:40px;border-radius:50%}
+.ybz-skeleton-wallet .ybz-skeleton-meta{width:68px;align-self:center;height:18px}
+.ybz-skeleton-amount{display:inline-block;width:128px;max-width:100%;height:34px;vertical-align:middle;background:currentColor;opacity:.2}
+@keyframes ybz-skeleton-pulse{0%,100%{opacity:.48}50%{opacity:.9}}
+@media(max-width:380px){.wh-device-row .ybz-skeleton-row{width:160px;flex-basis:160px}}
+@media(prefers-reduced-motion:reduce){.ybz-skeleton-block{animation:none;opacity:.65}}

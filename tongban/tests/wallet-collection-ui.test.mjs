@@ -17,7 +17,7 @@ const addressA='0x'+'1'.repeat(40),addressB='0x'+'2'.repeat(40);
 
 test('wallet collection storage failure keeps rendering the unavailable wallet without crashing the page',()=>{
  const page={innerHTML:''};
- const scope={walletHomeHTML,state:()=>({exists:true,unavailable:true,address:null}),wallet:{NETWORK:{name:'BSC 测试网',symbol:'tBNB'},listLocalWallets(){throw Error('storage blocked');}},displayedBalance:()=>'—',hideBalance:true,balanceError:'钱包暂不可用',loadingBalance:false,chainSection:'assets',recordsHtml:()=>'',icon:()=>''};
+ const scope={walletHomeHTML,state:()=>({exists:true,unavailable:true,address:null}),wallet:{NETWORK:{name:'BSC 测试网',symbol:'tBNB'},listLocalWallets(){throw Error('storage blocked');}},displayedBalance:()=>'—',hideBalance:true,balance:null,balanceError:'钱包暂不可用',loadingBalance:false,chainSection:'assets',recordsHtml:()=>'',icon:()=>''};
  vm.createContext(scope);vm.runInContext(part('function localWalletName(','\nfunction recordsHtml('),scope);
  assert.doesNotThrow(()=>scope.renderWallet(page));
  assert.match(page.innerHTML,/我的钱包/);assert.match(page.innerHTML,/资产暂不可用/);
