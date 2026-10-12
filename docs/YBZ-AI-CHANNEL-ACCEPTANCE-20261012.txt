@@ -125,7 +125,6 @@ codex.exe -a on-request exec --json --ignore-user-config --ephemeral --sandbox w
 文档：
 - docs/YBZ-AI-CHANNEL-ACCEPTANCE-20261012.txt：本验收记录。
 - docs/YBZ-AI-CHANNEL-DOWNLOAD-CHECK-20261012.txt：浏览器下载取消的实际证据与请求提示，原生保存限制。
-- docs/YBZ-AI-CHANNEL-DOWNLOAD-CHECK-20261012.txt：浏览器下载取消的实际证据与请求提示，原生保存限制。
 - AGENTS.md：增加本轮设备 AI 通道范围、安全边界及原三闭环继续有效的说明。
 - README.md：更新设备 AI 入口、真实文字验收状态、连接器启动文档与未完成边界。
 - PROJECT_CONTEXT.md：记录集成基线 e8a6003、本机文字及窄屏浏览器证据、云机本人登录延后。
@@ -199,7 +198,7 @@ HTTP 401
 - paragraph: 聊天通道已连通
 
 主任务记录视口 390×844、scrollWidth 375，无横向溢出。
-这是桌面浏览器窄屏验收，不是物理 iPhone／Android 真机验收。最终页面截图为 browser-mobile-final.png，DOM 为 browser-mobile-final-dom.txt；另保存 desktop DOM。下载反馈只称“已请求下载”，不称已写入磁盘。最终页面截图为 browser-mobile-final.png，DOM 为 browser-mobile-final-dom.txt；另保存 desktop DOM。下载反馈只称“已请求下载”，不称已写入磁盘。
+这是桌面浏览器窄屏验收，不是物理 iPhone／Android 真机验收。最终页面截图为 browser-mobile-final.png，DOM 为 browser-mobile-final-dom.txt；另保存 desktop DOM。下载反馈只称“已请求下载”，不称已写入磁盘。
 浏览器 taskId=cd3c7567-d8a2-49df-985f-99200bdece62；browser-real-task.json 与 curl 结果相互对应，status=succeeded、latestSeq=4。
 browser-mobile.png 和 browser-mobile-dom.txt 是当时快照，不替代物理手机验证；早期快照的授权文案不能当作已实现全面系统读取隔离的证据。
 
@@ -253,8 +252,8 @@ browser-mobile.png 和 browser-mobile-dom.txt 是当时快照，不替代物理�
 
 【七、测试结果】
 
-后端实际命令（yubenzhe-deploy 目录）：npm test
-package.json 对应：node --test tests/*.test.mjs
+后端实际命令（yubenzhe-deploy 目录）：node --test tests/*.test.mjs
+该命令也对应 package.json 中的 npm test 脚本。
 backend-tests.txt 原始汇总：
 ℹ tests 398
 ℹ suites 0
@@ -279,7 +278,7 @@ backend-tests.txt 原始汇总：
 node --test yubenzhe-deploy/tests/device-clock.test.mjs yubenzhe-deploy/tests/personal-devices.test.mjs yubenzhe-deploy/tests/personal-devices-http.test.mjs yubenzhe-deploy/tests/desktop-provider.test.mjs yubenzhe-deploy/tests/ai-channel.test.mjs yubenzhe-deploy/tests/ai-channel-http.test.mjs yubenzhe-deploy/tests/ai-channel-connector.test.mjs yubenzhe-deploy/tests/ai-channel-files.test.mjs > C:\Users\Administrator\Documents\Codex\2026-10-09\git-2\output\ybz-ai-channel-20261012\bridge-tests.txt 2>&1
 
 前端：tongban 目录执行 node --test tests\*.test.mjs，496/496 通过；日志为根工作区 output/ai-channel-ui-tests-20261012.txt。
-前端构建：node tongban/build.mjs；output/ai-channel-ui-build-20261012.txt 原始输出：Built Yubenzhe 0.14.0-dev.10。
+前端构建：tongban 目录执行 node build.mjs；output/ai-channel-ui-build-20261012.txt 原始输出：Built Yubenzhe 0.14.0-dev.10。
 本段是对应日志的验收快照；若后续继续改源码，应重新运行有关测试，不沿用旧数字。
 
 新增测试覆盖权限、事件协议、未知结果不重派、重启、取消、短租约、10 分钟截止、每设备并发、缓冲上限、密文上传、跨账号拒绝、过期、错密钥、篡改、路径穿越及软硬链接。
