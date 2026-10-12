@@ -17,3 +17,19 @@ test('packaged connector includes every provider runtime import alongside the ex
  const filter=pkg.build.extraResources.find(x=>x.to==='device-bridge').filter;
  for(const file of ['ai-registry.mjs','probe-process.mjs','provider-runner.mjs','ollama-runner.mjs','ai-channel.mjs','codex-runner.mjs','ai-channel-files.mjs'])assert.ok(filter.includes(file),file);
 });
+test('packaged bridge allowlist is closed over local imports including decision continuation support',()=>{
+ const pkg=JSON.parse(fs.readFileSync(path.join(__dirname,'../package.json'),'utf8'));
+ const resource=pkg.build.extraResources.find(x=>x.to==='device-bridge'),root=path.resolve(__dirname,'..',resource.from),included=new Set(resource.filter);
+ assert.ok(included.has('decision-protocol.mjs'),'decision continuation protocol must ship with the connector');
+ let dependencies=0;
+ for(const file of included){
+  if(!file.endsWith('.mjs'))continue;
+  const source=fs.readFileSync(path.join(root,file),'utf8');
+  for(const match of source.matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)["'](\.{1,2}\/[^"']+)["']/g)){
+   const dependency=path.posix.normalize(path.posix.join(path.posix.dirname(file),match[1]));dependencies++;
+   assert.ok(included.has(dependency),file+' imports '+dependency+' which must also be packaged');
+   assert.ok(fs.statSync(path.join(root,dependency)).isFile(),dependency);
+  }
+ }
+ assert.ok(dependencies>0,'test must inspect actual bridge imports');
+});

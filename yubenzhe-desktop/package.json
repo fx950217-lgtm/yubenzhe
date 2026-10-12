@@ -60,7 +60,8 @@
           "ai-registry.mjs",
           "provider-runner.mjs",
           "ollama-runner.mjs",
-          "task-pool.mjs"
+          "task-pool.mjs",
+          "decision-protocol.mjs"
         ]
       },
       {
