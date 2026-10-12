@@ -4,6 +4,7 @@ import { readFile, stat, realpath } from 'node:fs/promises';
 import { resolve, extname, basename, relative, isAbsolute, sep } from 'node:path';
 import { createAuthentication } from './auth.mjs';
 import { handleSocialHTTP } from './social-http.mjs';
+import {requestClientIP} from './request-client-ip.mjs';
 import {validateInternalPreview} from './internal-preview.mjs';
 import {readDeploymentConfiguration} from './deployment-config.mjs';
 import {readChainPreviewConfig} from './chain-preview-config.mjs';
@@ -72,7 +73,7 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
         let input;try{input=JSON.parse(await body(request,url.pathname.endsWith('/claim')?8192:650*1024));}catch(e){if(e.status)throw e;throw new AdminError(400,'INVALID_JSON','请求内容无效。');}
         const token=/^Bearer ([-_A-Za-z0-9]{43})$/.exec(request.headers.authorization||'')?.[1];
         if(url.pathname.startsWith('/api/device-bridge/ai/')&&!socialService.aiChannel)throw new AdminError(503,'AI_CHANNEL_UNAVAILABLE','AI 设备通道未启用。');
-        const value=url.pathname==='/api/device-bridge/claim'?socialService.devices.claimMachine(input,request.socket.remoteAddress||'unknown'):url.pathname==='/api/device-bridge/ai/poll'?socialService.aiChannel.poll(token,input):url.pathname.startsWith('/api/device-bridge/ai/files/')?socialService.aiChannel.handleAgentFiles(token,url.pathname.slice('/api/device-bridge/ai/files/'.length),input):url.pathname.endsWith('/enroll')?socialService.devices.enroll(input):socialService.devices.poll(token,input);
+        const value=url.pathname==='/api/device-bridge/claim'?socialService.devices.claimMachine(input,requestClientIP(request,trustedProxyIPs)):url.pathname==='/api/device-bridge/ai/poll'?socialService.aiChannel.poll(token,input):url.pathname.startsWith('/api/device-bridge/ai/files/')?socialService.aiChannel.handleAgentFiles(token,url.pathname.slice('/api/device-bridge/ai/files/'.length),input):url.pathname.endsWith('/enroll')?socialService.devices.enroll(input):socialService.devices.poll(token,input);
         json(response,value);return;
       }
       if (!internalPreview && role === 'frontend' && url.pathname.startsWith('/api/ai-channel/')) {

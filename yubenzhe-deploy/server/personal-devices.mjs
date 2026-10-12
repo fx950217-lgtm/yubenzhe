@@ -48,7 +48,9 @@ export function createPersonalDevices({database,socialService,now=Date.now,onDev
    const account=socialService.assertAIAccess(token,{write:method==='POST'});
    const parts=path.split('/'),id=parts[1],action=parts[2];
    if(path==='devices'&&method==='GET')return {devices:db.prepare('SELECT * FROM personal_devices WHERE owner_id=? ORDER BY created_at DESC LIMIT 20').all(account.id).map(view)};
-   if(path==='devices/claim'&&method==='POST')return claims.claim(account,input,devicePeerIp??ip);
+    // HTTP already resolves ip against the exact trusted-proxy allowlist. Using
+    // the physical proxy peer here would give unrelated public users one bucket.
+    if(path==='devices/claim'&&method==='POST')return claims.claim(account,input,ip??devicePeerIp);
    if(path==='devices/conversations'&&method==='GET')return {conversations:db.prepare('SELECT * FROM personal_devices WHERE owner_id=? AND token_hash IS NOT NULL AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 5').all(account.id).map(r=>({id:'device:'+r.id,kind:'device',deviceId:r.id,name:r.name,source:r.source,capabilities:readDeviceCapabilities(r),online:view(r).online,aiOnline:view(r).aiOnline,route:'#workbench/devices/'+r.id+'/chat'}))};
    if(path==='devices/pair'&&method==='POST'){
     fields(input,['name']);const name=text(input.name,60,'设备名称',1);

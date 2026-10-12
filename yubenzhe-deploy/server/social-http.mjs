@@ -1,16 +1,9 @@
 import { createHash } from 'node:crypto';
-import { isIP } from 'node:net';
 import { fail } from './social-validation.mjs';
 import {INTERNAL_PREVIEW_SESSION} from './internal-preview.mjs';
+import {DEFAULT_TRUSTED_PROXY_IPS,requestClientIP} from './request-client-ip.mjs';
+export {parseTrustedProxyIPs} from './request-client-ip.mjs';
 export const NATIVE_SOCIAL_ORIGINS=Object.freeze(['https://localhost','http://127.0.0.1:45931','yubenzhe://app']);
-const DEFAULT_TRUSTED_PROXY_IPS=Object.freeze(['127.0.0.1','::1','::ffff:127.0.0.1']);
-const normalizedIP=value=>value.toLowerCase().replace(/^::ffff:(?=\d+\.)/,'');
-export function parseTrustedProxyIPs(value){
- if(value===undefined||value==='')return [...DEFAULT_TRUSTED_PROXY_IPS];
- if(typeof value!=='string'||value.length>2048)throw new Error('TRUSTED_PROXY_IPS must list at most 32 exact IP addresses.');
- const ips=value.split(',').map(ip=>ip.trim());if(ips.length>32||ips.some(ip=>!isIP(ip)))throw new Error('TRUSTED_PROXY_IPS must list at most 32 exact IP addresses.');
- return [...new Set(ips.map(normalizedIP))];
-}
 export async function handleSocialHTTP({request,response,url,publicURL,service,readBody,internalPreviewUser=null,pathPrefix='/api/social/',pathBase='',trustedProxyIPs=DEFAULT_TRUSTED_PROXY_IPS}){
  const origin=request.headers.origin||'',native=NATIVE_SOCIAL_ORIGINS.includes(origin),same=origin===publicURL.origin;
  const path=pathBase+url.pathname.slice(pathPrefix.length);
@@ -29,7 +22,7 @@ export async function handleSocialHTTP({request,response,url,publicURL,service,r
  let input={};if(request.method==='POST'){if(request.headers['content-type']?.split(';')[0].trim().toLowerCase()!=='application/json')fail(415,'JSON_REQUIRED','操作仅接受 JSON。');try{input=JSON.parse(await readBody(request,800*1024));}catch(e){if(e.status)throw e;fail(400,'INVALID_JSON','请求内容无效。');}if(!input||typeof input!=='object'||Array.isArray(input))fail(400,'INVALID_JSON','请求内容无效。');}
  const bearer=/^Bearer ([-_A-Za-z0-9]{43})$/.exec(request.headers.authorization||'')?.[1];
  const cookie=String(request.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('ybz_social='))?.slice(11)||'';
- let ip=request.socket.remoteAddress||'unknown';if(trustedProxyIPs.some(trusted=>normalizedIP(trusted)===normalizedIP(ip))){const forwarded=String(request.headers['x-forwarded-for']||'').split(',').at(-1).trim();if(isIP(forwarded))ip=normalizedIP(forwarded);}
+  const ip=requestClientIP(request,trustedProxyIPs);
  const handled=await service.handle({method:request.method,path,input,query:Object.fromEntries(url.searchParams),token:bearer||cookie,ip,devicePeerIp:request.socket.remoteAddress||'unknown',...(internalPreviewUser?{internalPreviewSession:INTERNAL_PREVIEW_SESSION}:{}),userAgent:String(request.headers['user-agent']||'').slice(0,300),...(desktopRequest?{proof:request.headers['x-desktop-proof']}:{} )});
  const value=desktopRequest?handled.value:handled;
  const status=desktopRequest?(handled.status||200):200;
