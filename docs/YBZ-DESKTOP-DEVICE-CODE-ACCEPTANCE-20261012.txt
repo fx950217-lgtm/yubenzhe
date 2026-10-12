@@ -1,0 +1,159 @@
+YBZ 电脑版安装器与机器码配对验收
+日期：2026-10-12
+版本：0.14.0-dev.11；范围：本机开发与内部审阅，无服务器部署。
+
+【一、审计复核】
+真实仓库：C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/work/yubenzhe
+分支：codex/m0-local-test；开工提交：544303c。
+开工时已跟踪代码无未提交改动，有用户/其他 AI 的安装器任务文档未跟踪。
+期间新增的钱包合规、TP 对标及另一份租赁卡片文档不属于本轮，不修改、不删除、不自动提交。
+读取 AGENTS.md、PROJECT_CONTEXT.md、README.md、需求与 M0 说明及本任务书后，复用已有账号、设备、AI 通道、社交和 Windows 工程。
+没有创建替代演示站，也没有修改其他项目。tongban 是本项目沿用的消费者工程路径。
+
+三闭环状态：
+AI＋社交：本轮增加仅本人可见的设备消息入口；已有群方案、批准、执行和验收保留。开发态电脑机器码→真实浏览器绑定已验；完整安装版 AI 往返未复验。
+AI＋区块链钱包：原人工批准、成果验收、本人测试网签署和回执核验保留，本轮未改付款流程、未新增链上交易。
+社交＋区块链：群权限与回执回群保留并纳入后端/前端回归；没有把设备变成群成员。前轮本地 EVM 结果不是本轮新增公网测试网验收。
+不能将本轮称为三条真实公网闭环全部完成。
+
+【二、电脑版安装工具】
+安装包：yubenzhe-desktop/dist/yubenzhe-0.14.0-dev.11-windows-x64-setup.exe
+便携包：yubenzhe-desktop/dist/yubenzhe-0.14.0-dev.11-windows-x64.zip
+安装包112579233字节（约107.36 MiB），SHA-256：4449895d0a7077ffa14eb724a6ded9f0756414a52d8ea31b408d4b50b1da4ab3。
+便携包154182824字节（约147.04 MiB），SHA-256：7ffef315956534f2814b584534624389ebf8878150bbd5f2449a3d08cc2df6ad。
+精确摘要还见 yubenzhe-desktop/dist/SHA256SUMS.txt 与 yubenzhe-desktop/release-verification.json。
+NSIS 当前用户安装，无提权；Electron 自带 Node utilityProcess 运行连接器，无需用户另装 Node。
+没有打包 Codex、AI 模型、用户凭据或工作文件。Codex 必须用户自己安装并登录。
+安装命令（本轮实际运行，退出0）：
+  yubenzhe-desktop/dist/yubenzhe-0.14.0-dev.11-windows-x64-setup.exe /S /CURRENTUSER /D=C:\Users\Administrator\AppData\Local\Programs\Yubenzhe
+安装后的 EXE、app.asar 和连接器文件 SHA-256 与构建产物一致。
+真实安装路径：C:/Users/Administrator/AppData/Local/Programs/Yubenzhe/Yubenzhe.exe
+真实启动使用 --device-review --device-setup --device-smoke-test 隔离配置，packaged=true、version=dev.11、退出0；原用户钱包数据不用于验收。
+review 配置目录：%APPDATA%/YBZ Device Installer Review；长期设备凭据由 Electron safeStorage 加密，运行时文件仅在该目录下。
+向导：可信 HTTPS 服务地址、设备名称、来源、机器码/已配对状态、能力、启动/停止、自启可选、旧文件导入、重新配对。
+没有预置生产地址；需要先提供已升级的可信中转服务，再生成机器码。不能称为任意手机开箱即用。
+向导禁止网页调用；固定本机窗口/主 frame/焦点验证；不接受网页自定 exe、cwd 或 shell。
+停止等待真实子进程退出；失败保持错误状态，不宣称成功。启动/停止串行，启动失败清理已启动子进程。无法解密旧状态时保持原文件不动；重置先保留加密备份，不删工作文件/钱包。
+Windows 系统截图/点击接口两次返回 SetIsBorderRequired 0x80004002；使用应用自己的 capturePage 和实际可访问性文字保存证据。系统按钮自动点击也失败，完整安装版连接器启动/停止未计为真机通过。
+初次验收启动器将窗口隐藏，结束了已核对的本轮 review 进程后重新以可见窗口启动；第二次实际启动并截图成功。
+本次为静默安装，没有观察完整交互安装向导及 Defender/SmartScreen 提示。不声称“无警告”或“必然报毒”；包确实未签名。
+保留既有 dev.8 包用于回滚；没有清理账号、钱包、数据库、凭据或备份。新包没有上传公网下载区。
+
+【三、机器码配对】
+格式：YBZ-XXXX-XXXX，8 位字母/数字，排除 0/O、1/I；允许手机大小写、空格与分组输入。
+电脑：POST /api/device-bridge/claim，action=create / rotate / poll。
+手机：POST /api/social/devices/claim，原账号认证，输入 code 和可选 name。
+电脑拿到独立的 32 字节高熵 pollSecret；短机器码不能领取长期设备 token。
+只存短码哈希、轮询凭据哈希、设备 token 哈希；长期 token 由独立电脑秘密和设备 ID 的 HMAC 导出，响应丢失可在受限窗口重领，服务端无可恢复明文。
+代码有效10分钟、用后清空哈希；重新生成立即废旧码。同 IP/账号每分钟最多5次，错误累积指数冷却；冷却中继续尝试仍计数。配对限流使用 socket IP，不信任请求伪造的 X-Forwarded-For。
+最多5台设备；待配对记录1000、限流桶2048上限；容量满拒绝。
+实际开发态 Electron 生成短码→真实本机390px浏览器输入→设备上线完成；安装版随后恢复相同加密配对状态。
+脚本的真实 HTTP 验收使用隔离数据库与合成账号，没有冒充实体手机或远程云机。
+实际命令：
+  node scripts/verify-device-code.mjs --wait-expiry
+结果：八类检查通过。实际等待600155ms；创建03:08:41.983Z、过期03:18:41.983Z、使用03:18:42.138Z，返回401 PAIR_EXPIRED。
+第二次认领返回401；错码第6次429 PAIR_RATE_LIMIT；改 X-Forwarded-For 不能绕过；撤销后连接器401、本人消息入口移除；另一账号读任务/设备404。
+失败延迟通过 blocked_until 冷却拒绝实现，不占 HTTP 连接睡眠。原始请求耗时很短不代表没做冷却。
+原始请求、响应与脱敏哈希查询记录位于下方证据目录的 device-code-http-acceptance.json 和 device-code-database-hashes.json。
+旧 /devices/pair → /device-bridge/enroll 文件路径继续可用，真实HTTP回归通过；安装向导保留旧文件导入。
+022 只新增设备能力/来源字段和短码表。迁移测试比较旧表结构、旧行字节值、历史迁移校验和，并重复打开核验；原用户运行库没有升级。
+
+【四、设备统一入口】
+“我的设备”和旧 #workbench/connections 共用一套列表；工作台/我的相关入口统一。
+每条已连接设备显示来源：本机/云端/服务器。云资源记录保留在同列表并明确“尚未配对”，不把资源创建当连接成功。
+desktop-* 后端未删除；本机未配置云服务时显示“云资源服务未接入，已配对的电脑仍可正常使用”。
+真实浏览器记录本机设备；本机+云端/云资源同列表组合由前端测试的明确合成 fixture 验证，没有真实云机联机 DOM。
+390px页面无横向溢出（scrollWidth=390）；传统大屏与手机宽度均保存DOM/截图。
+AI 在线与屏幕在线分别判断；只有 AI 心跳不能开启远控。新增短码已认领但电脑未领令牌时显示“已绑定 · 等待电脑连接”。
+
+【五、能力检测】
+上报 screen / ai / files / autoStart：state=supported|partial|unsupported|unknown，reason；另有 headless。
+实际桌面采集探测，不从 Windows Server 名称或来源标签推断无头。目录可写不等于成果生成成功；Codex 已登录不等于工具能正常执行。
+本机结果：屏幕 unknown（桌面探测未能运行），AI partial（Codex 已登录），文件 partial（目录可读写、完整收发待验证），自启 supported（可选，未打开）。
+本机未知且没有屏幕连接时远控按钮禁用。服务端对明确不支持的屏幕/AI/文件请求同样拒绝。
+真实云机45.77.247.167：本轮没有连接，用户之前选择稍后登录。本轮不能报告“云机无桌面”或“云机AI可用”。无桌面/部分支持场景仅有模拟测试，见第九节。
+
+【六、社交集成】
+新增 GET /api/social/devices/conversations，只返回当前账号有效设备。
+“消息”中的“我的设备会话”是专用入口，点击复用 AI 设备聊天；不创建好友、普通社交会话或群成员记录。
+设备不能进入通讯录、群、朋友圈或分享范围。服务端权限检查和真实第二账号HTTP拒绝已验证，不依赖前端隐藏。
+实际消息DOM显示“仅自己可见的设备入口”和“我的验收电脑”。
+
+【七、装机清单】
+AI四档、邮箱、浏览器、社交软件、YBZ必备五类已渲染。
+邮箱：Gmail/Outlook/Proton/Zoho，验证要求可能按地区和风控变化，写明以官方注册流程为准，不保证免手机号或固定难度。
+浏览器：Chrome/Firefox/Edge；社交：Telegram/WhatsApp/Discord；YBZ：电脑版和手机端入口。
+保留本人登录/第三方费用自行支付/确认官方来源三条提示。
+实际DOM及前端断言确认：没有自动安装按钮、金额报价或收集 Key 的表单。
+Windows dev.11 标“本机审核版、尚未上传公网”；Android仍dev.8，iOS本轮未更新。
+
+【八、测试结果与实际改动】
+在各子目录执行：
+  tongban: node --test tests/*.test.mjs → 508/508，0失败
+  yubenzhe-deploy: node --test tests/*.test.mjs → 414/414，0失败
+  yubenzhe-deploy: node --test tests/ai-channel*.test.mjs → 62/62（已包含在414内，不重复计总数）
+  yubenzhe-desktop: node --test tests/*.test.cjs → 51/51，0失败
+  yubenzhe-desktop: node scripts/prepare-web.mjs → 通过
+  yubenzhe-desktop: electron-builder --win nsis zip --x64 --publish never → 退出0
+  yubenzhe-desktop: node scripts/verify-release.cjs → 通过，ASAR网页/原生源码逐文件匹配、9个连接器资源白名单、PE x64和安全fuses核验
+  根目录: node scripts/verify-device-code.mjs --wait-expiry → 八类真实HTTP检查通过
+  根目录: node scripts/check-project.mjs --allow-changes → 最初命中旧AI脱敏测试的假PEM示例；改为运行时生成一次性测试密钥，保留扫描器规则，再次运行通过（775文件、0问题、0删除）。
+  根目录: git diff --check → 通过。
+release-verification.json 记录构建阶段的二进制检查，不会自动吸收后续安装结果；实际安装与启动证据以 installed-launch.json、installed-exit.json 和 installed-installed-state.json 为准。
+合计独立自动化用例973项；不等于973名真实用户，也不等于完整云机验收。
+
+实际新增：
+  tongban/src/device-capabilities.js、setup-checklist.js；tests/device-code-ui.test.mjs
+  yubenzhe-deploy/migrations/022-device-claims-capabilities.sql
+  yubenzhe-deploy/server/device-claims.mjs、device-capabilities.mjs；tests/device-claims.test.mjs
+  yubenzhe-deploy/device-bridge/capabilities.mjs、capability-probe.ps1、desktop-worker.mjs
+  yubenzhe-desktop/src/device-manager.cjs、device-process-stop.cjs、device-preload.cjs、device-wizard.html/css/js
+  yubenzhe-desktop/tests/device-manager.test.cjs、device-lifecycle.test.cjs
+  scripts/start-device-review.mjs、verify-device-code.mjs；本报告
+实际修改：
+  tongban/package.json；src/ai-channel-chat.js、app.js、install.html、live-social.js、mine.js、personal-devices.js、remote-work.css、workbench-hub.js；tests/ai-channel-chat.test.mjs
+  yubenzhe-deploy/package.json及lock；server/ai-channel.mjs、personal-devices.mjs、server.mjs、social-database.mjs、social-http.mjs、start.mjs；device-bridge/agent.mjs、ai-channel.mjs；tests/group-workflow-migration.test.mjs、social-service.test.mjs、ai-channel-connector.test.mjs
+  yubenzhe-desktop/package.json、release-verification.json、src/main.cjs、preload.cjs、scripts/verify-release.cjs、tests/host.test.cjs
+  README.md、AGENTS.md、PROJECT_CONTEXT.md
+
+本机原始证据根目录：
+  C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/output/ybz-device-installer-20261012
+  backend-tests.txt / frontend-tests.txt / desktop-tests.txt / ai-channel-tests.txt
+  windows-build.txt / release-verification.txt / installed-launch.json / installed-exit.json
+  installed-wizard.png / installed-wizard-dom.txt / installed-installed-state.json
+  device-code-http-acceptance.json / device-code-database-hashes.json
+  device-list-desktop-dom.txt / device-list-mobile-dom.txt / messages-device-dom.txt / setup-checklist-dom.txt
+开发态配对截图与停止文字：同级 output/ybz-desktop-installer-20261012。
+测试账号信息、客户端凭据、TLS测试私钥、运行库只在仓库外，不进入Git。
+
+按任务书17项对照：
+1 安装并启动：通过；交互安装向导/杀软提示未观察。
+2 生成/输入/绑定：开发态Electron+真实浏览器通过；安装版恢复配对通过，安装版首次出码尚未单独重跑。
+3 实际10分钟过期：通过。
+4 一次性：通过。
+5 哈希落库：通过。
+6 第6次限流：通过。
+7 旧配对：真实HTTP及前端/原生入口测试通过，真实电脑选择旧JSON未重跑。
+8 统一列表：代码及合成云端fixture通过，真实云机列表待接入。
+9 能力标注：本机unknown、禁用已验；无头云机仅模拟，真实云机待验。
+10 云机AI任务：阻塞，未验。
+11 设备消息入口：真实浏览器通过。
+12 跨账号拒绝：真实HTTP通过。
+13 五类及三提示：实际DOM通过。
+14 无自动安装按钮/价格数字：通过。
+15 前端508：通过。
+16 后端414：通过。
+17 AI通道62：通过。
+
+【九、遗留问题、启动与回滚】
+仍需：用户本人完成云机 Codex 登录；明确并部署支持新增接口的可信 HTTPS 中转地址；真实云机桌面探测与AI往返；完整安装版文字/文件/远控；实体手机配对；交互安装/重启自启/卸载专项及代码签名。
+配置名称/位置：向导 origin（可信HTTPS源）、本机官方Codex安装及 login status、云机本人登录；云资源提供方现仍 DESKTOP_UNCONFIGURED。不需要把 AI Key 或钱包主钥匙交给平台。
+本轮只用回环测试HTTPS代理 localhost:18932 转发到18930；仅测试子进程信任专用localhost证书，无关闭TLS验证、无修改系统证书信任、无对外开放端口。
+不要把测试的 localhost 地址发给异地手机或云机，那里 localhost 指向它们自己。
+文件能力仍是部分支持：前轮真实CLI文件生成/完整保存存在未完成验收，不因51个原生测试通过而宣布修复。
+本机启动：先 node tongban/build.mjs，再 node scripts/start-device-review.mjs；浏览器 http://localhost:18930/#workbench/devices。
+服务状态目录固定为仓库同级 ../ybz-device-review-20261012，原用户库未迁移。产品账号为本地合成测试身份，不复用生产账户。
+回滚代码：在核对当前改动归属后，对本轮提交逐项 git revert；不要 reset --hard 或清掉其他AI文档。
+回滚运行：停止18930及测试HTTPS代理，只停本任务进程；恢复原18926预览或已保留的旧安装包。保留新增review数据与加密设备状态，不作缓存删除。
+数据库：022为增量，不应让旧程序直接读取已升级的新运行库。生产从未应用；将来上线须对两个写入者停写、成套备份并隔离恢复验收。回滚使用对应备份，不删列/表伪造旧版本。
+Git：代码/测试提交7978e5e，另以独立说明提交保存本任务书、本文和入口文档；没有push，没有公网部署，没有修改任何服务器、主网或购买资源。回滚本轮功能时先停止review进程，再在核对工作区后 git revert 7978e5e；文档提交按实际 git log 单独回退。

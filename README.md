@@ -1,5 +1,7 @@
 # 愚笨者 · YBZ
 
+当前本地审核版 **0.14.0-dev.11（2026-10-12）**：新增 Windows 安装器、电脑机器码配对、统一设备列表、本人设备消息入口和能力标注；五类装机清单齐全。旧配对文件和云电脑后端保留。安装器已经本机安装并验证启动，机器码真实 HTTP 安全检查通过；真实云机、实体手机和完整安装版 AI/文件/远控往返仍待验收。没有部署任何服务器，也没有更新 Android/iOS。审阅地址 [localhost:18930](http://localhost:18930/#workbench/devices)，详细结果见 [电脑版与设备配对验收](docs/YBZ-DESKTOP-DEVICE-CODE-ACCEPTANCE-20261012.txt)。下方“当前版本”和“未更新原生包”等内容保留为历史记录。
+
 2026-10-12 新增设备 AI 通道：工作台 → 我的设备 → 和它聊天，可通过原账号和设备配对向本机 Codex 派任务并接收回复，支持端点加密的临时文件中转。真实本机文字往返已验证；云电脑本人登录、可信 HTTPS 中转和物理手机验收仍待完成。严格区分 CLI 回复结束与用户目标完成。启动与逐项证据见 [AI 通道验收记录](docs/YBZ-AI-CHANNEL-ACCEPTANCE-20261012.txt) 和 [电脑连接器说明](yubenzhe-deploy/device-bridge/AI-CHANNEL-START.md)。本次未发布生产、未更新原生包。
 
 2026-10-12 群协作基线：保留 AI＋社交、AI＋钱包、社交＋区块链三条主线，新增群协作批准、真实文件成果、验收与本人签名的测试网付款/回执流程。群技术联测使用真实 HTTP、实际钱包及本地 EVM，模型为测试替身；设备 Codex 文字验收不代表群模型与公网测试网闭环已完成。此次未迁移原用户库。运行 `node scripts/start-group-review.mjs` 可在独立 localhost:18926 审核；先运行 `node tongban/build.mjs` 构建。详情见 [群协作实施记录](docs/YBZ-GROUP-LOOP-IMPLEMENTATION-20261012.txt)。下方旧版本状态为历史记录。
