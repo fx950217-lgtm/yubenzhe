@@ -1,0 +1,257 @@
+================================================================
+Codex 一整套执行指令（一次性粘贴）
+日期：2026-10-11
+用法：把本文件从【开始】到【结束】整段复制，一次发给 Codex。
+      它会自己按顺序做完，最后给你一份验证报告。
+================================================================
+
+
+【开始】
+
+
+项目根目录：
+C:\Users\Administrator\Documents\Codex\2026-10-09\git-2\work\yubenzhe
+
+现在是调整阶段，不要问我问题，按下面顺序一次做完，每步单独提交。
+最后输出一份验证报告（格式见文末）。
+
+详细依据在 docs/ 下这三个文件，动手前先各读一遍：
+  docs/CODEX-TASK-01-AI-PROVIDER-20261011.md
+  docs/CODEX-TASK-02-EMAIL-PROVIDER-20261011.md
+  docs/CODEX-TASK-03-MANIFEST-BASELINE-20261011.md
+
+================================
+步骤 1/3：把 AI 供应商换成 DeepSeek
+================================
+
+问题：server/ai-provider.mjs 第 7-8 行把供应商端点硬编码成了 OpenAI：
+
+  const ENDPOINT = 'https://api.openai.com/v1';
+  const ALLOWED_HOSTS = new Set(['api.openai.com']);
+
+所以只填 AI_API_KEY 切换不了供应商，请求会被自己的白名单拦住。
+
+改法（就改这两行）：
+  const ENDPOINT = 'https://api.deepseek.com/v1';
+  const ALLOWED_HOSTS = new Set(['api.deepseek.com']);
+
+第 49 行那句 host 校验逻辑**不要改**，换掉常量后它依然成立。
+
+必须原样保留的安全约束（一个都不能删）：
+  - fetch 的 redirect:'error'（防 SSRF）
+  - host 白名单校验
+  - 用户输入只进 user role，不进 system instructions
+  - boundedJson 响应体大小上限
+  - 30 秒超时上限
+  - 出错时不把上游 body 拼进错误消息
+  - AI_LIMITS 全部保持不动
+
+明确不要做：
+  - 不要改 AI_LIMITS（成本变了但真实用量未知，等跑一周再调）
+  - 不要改 BASE_INSTRUCTIONS（合规红线，与供应商无关）
+  - 不要把 'openai' 这个供应商标识改名成 'deepseek'。它在这里的含义是
+    「OpenAI 兼容协议」，DeepSeek 走这个分支是正确用法。改名会牵动
+    配置读取、start.mjs 校验和全部测试，属于无收益大改。如果你判断必须改，
+    不要动手，在报告里说明影响面即可。
+
+测试同步（关键，不改这条测试必红）：
+  tests/ai-workspace.test.mjs 第 106 行硬断言了 URL 前缀：
+    assert.ok(captured.every(x=>x.url.startsWith('https://api.openai.com/v1/')));
+  改成：
+    assert.ok(captured.every(x=>x.url.startsWith('https://api.deepseek.com/v1/')));
+  并补一条负向断言：即使配置里塞 AI_BASE_URL='https://attacker.example'，
+  实际请求也必须仍然打到 api.deepseek.com（证明白名单是真的防线）。
+
+残留清理：
+  全仓库 grep "api.openai.com"，代码和测试里零残留。
+  docs/ 下的历史文档**不要改**（那是审计证据，改了破坏可追溯性），
+  只在报告里列出命中的文档清单。
+
+.env.example 补充（默认必须仍是 disabled，不要改默认值）：
+  # For DeepSeek (OpenAI-compatible, endpoint pinned to https://api.deepseek.com/v1):
+  #   AI_PROVIDER=openai
+  #   AI_MODEL=deepseek-v4-flash
+  #   AI_API_KEY=<your DeepSeek key>
+  # Do NOT use legacy ids deepseek-chat / deepseek-reasoner (retired 2026-07-24).
+
+验收：
+  cd yubenzhe-deploy && node --test tests/*.test.mjs   → 226 passed / 0 failed
+  grep -rn "api.openai.com" yubenzhe-deploy/           → 代码里零命中
+
+完成后单独提交。
+
+
+================================
+步骤 2/3：接入真实邮件投递服务商
+================================
+
+问题：server/account-mail.mjs 只有三个适配器，没有一个能真的发信：
+  createDisabledMailAdapter        → mode 'disabled'，默认，send() 直接抛错
+  createSimulationMailAdapter      → mode 'simulation'，只塞内存 outbox，仅限 loopback
+  createInternalPreviewMailAdapter → mode 'simulation'，仅限 HTTPS 内测域
+
+文件末尾注释已写明契约，按它实现：
+  // A delivery provider implements {mode:'provider',send({to,kind,code,expiresAt,locale})}.
+
+新增一个 createHttpMailAdapter，返回 { mode:'provider', async send({to,kind,code,expiresAt,locale}) }。
+原有三个适配器一行不动。
+
+调用方的硬约束（必须先读再配合）：
+  server/account-access.mjs 第 13 行：
+    if(mail.mode==='provider'&&(!config.otpSecret||config.otpSecret.length<32)) throw Error(...)
+  即 mode 为 provider 时 EMAIL_OTP_SECRET 必须存在且 ≥32 字符，否则服务启动直接失败。
+
+  server/account-access.mjs 第 24 行 ensureMail()：
+    disabled → fail 503 / simulation 非 loopback → 403。
+  确认新增的 provider 模式不被这两个分支拦到。
+
+接线点：
+  server/product-modules.mjs 第 15 行现在是
+    const mail=mailAdapter||(internalPreview?...:simulation?...:undefined);
+  在这里增加 provider 分支：环境变量配好时返回 createHttpMailAdapter(...)，
+  没配就维持原行为（undefined，上层落到 disabled）。
+  server/start.mjs 的环境变量校验也要加新变量名（先读再改，不要猜）。
+
+配置全部从环境变量读，不要硬编码任何 Key 或发信地址。
+**优先支持 EMAIL_API_KEY_FILE（读文件）而不是直接放环境变量** —— Key 进环境变量容易进日志。
+参考 ai-provider.mjs 的既有写法，它读文件时会检查 statSync().mode & 0o077。
+
+安全要求（对齐 ai-provider.mjs 的既有标准）：
+  - endpoint 必须 https，否则构造失败
+  - fetch 用 redirect:'error'
+  - 出错时不要把上游响应体拼进错误消息（上游可能回显你的 Key）
+  - AbortController 超时，10 秒量级上限
+  - 日志里不得出现验证码明文，只记 challengeId / 邮箱域
+  - to 地址做格式校验，复用 normalizeEmail 的思路（注意别造成循环依赖）
+
+邮件正文用现有语言策略，第一版中英各一份即可，不要发明第三语言。
+正文至少含：验证码、有效期 expiresAt、「不是本人操作请忽略」提示。
+绝不索要助记词、私钥、密码。
+
+.env.example 追加（默认保持关闭）：
+  # Real email delivery (optional). When unset, email verification stays disabled.
+  # EMAIL_PROVIDER=http
+  # EMAIL_ENDPOINT=https://api.example-mail.com/v3/mail/send
+  # EMAIL_API_KEY_FILE=/run/secrets/email_api_key
+  # EMAIL_FROM=no-reply@yourdomain.com
+  # EMAIL_OTP_SECRET=<at least 32 random characters; persistent>
+
+新增测试至少覆盖：
+  1) mode 是 'provider'
+  2) 注入 mock fetchImpl，断言请求打到配置的 endpoint 且带 Authorization
+  3) endpoint 是 http: 时构造失败
+  4) 上游返回 500 时 send() 抛错，且错误消息里不含上游响应体内容
+  5) disabled / simulation / internal-preview 三个适配器行为不变（回归）
+
+明确不要做：
+  - 不要改原有三个适配器的行为
+  - **不要默认打开邮件**，默认必须仍是 disabled，避免误发信
+  - 不要提交真实 API Key 或真实发信域名
+  - 不要自行注册或购买任何邮件服务（那是人的运营动作）
+  - 不要引入重量级 SDK，优先原生 fetch
+
+验收：
+  cd yubenzhe-deploy && node --test tests/*.test.mjs  → 全过，总数 ≥ 226
+  不配置任何 EMAIL_* 时，行为与改动前完全一致（仍是 disabled）
+
+完成后单独提交。
+
+
+================================
+步骤 3/3：重建 MANIFEST 完整性基线
+================================
+
+问题：项目根 MANIFEST.json 记的 version 是 0.9.0，实际代码是 0.14.0-dev.7，
+实跑比对有 127 项文件不一致，不带 --allow-changes 时直接 status: failed。
+这道「防篡改 / 防泄密」保险现在是失效的。
+
+步骤：
+  1) 先把当前 MANIFEST.json 复制为 MANIFEST.0.9.0.json 存档。
+     不要删、不要改内容。放在项目根，与 MANIFEST.json 同级。
+  2) 先读 scripts/check-project.mjs 和生成脚本，看懂再动手，不要猜命令。
+  3) 用当前源码重新生成 MANIFEST.json，version 字段必须是 0.14.0-dev.7。
+     清单必须排除：.git/、node_modules/、任何 .env / .env.*（保留 .env.example）、
+     *.db / *.sqlite、任何 Key。reports/ 下的运行产物如果原本就排除，保持原样；
+     如果原本包含，先别改，在报告里说明。
+  4) 生成后自查一遍：grep 新 MANIFEST 里的路径，确认没有私密文件的路径被写进去。
+  5) 验证：node scripts/check-project.mjs（**不带 --allow-changes**）
+     期望 status: passed，changedSourceFiles 为空。
+
+明确不要做：
+  - 不要删掉旧基线
+  - 不要为了让检查通过而往排除规则里塞不该塞的东西（那是掩盖问题）
+  - 这个 commit 只许动 MANIFEST 相关文件，不要顺手做别的清理
+  - 死代码迁移（scripts/simulate-group-gifts-100.mjs）**不在本次范围**。
+    它仍 import 已删除的 platform-assets.mjs，跑不起来，且会让外部审计误以为
+    项目还在做「平台托管红包」（已退役的高危业务）。但处理它会改变文件清单，
+    让基线重建变脏。等本次基线稳定后单独开任务，之后再重建一次基线。
+  - 顺带说明：如果 .github/workflows/verify-latest.yml 里跑 check-project.mjs
+    带了 --allow-changes，那就是「永远通过」，等于没检查。可以尝试去掉该参数，
+    但如果 CI 因此变红，**先别提交**，把漂移清单写进报告让我确认。
+
+验收：
+  MANIFEST.0.9.0.json 存在且内容与改动前的 MANIFEST.json 一致
+  node scripts/check-project.mjs（不带参数）→ status: passed
+  新 MANIFEST.json 的 version 是 0.14.0-dev.7
+  新 MANIFEST.json 里没有任何 .env / Key / *.db 的路径
+
+完成后单独提交。
+
+
+================================
+环境注意（本机）
+================================
+
+- Bash 工具里 ls/head 常不可用，需要先：
+    export PATH="/usr/bin:/bin:/c/Windows/System32:$PATH"
+- PowerShell 工具的 stdout 经常传不回来（exit 0 但无输出），
+  查系统信息/注册表一律改走 Python（stdlib winreg + ctypes）。
+- 沙箱黑名单：wmic.exe、reg.exe 被拦截，不能用来查硬件或注册表。
+- 三个子项目的测试是分开的，改了哪个至少跑哪个：
+    tongban/          → node --test tests/*.test.mjs        （430 项）
+    yubenzhe-deploy/  → node --test tests/*.test.mjs        （226 项）
+    contracts/        → node --test distribution equal testnet-script  （37 项）
+- 每次改完必须实跑测试，不要把「我觉得对了」当成通过。
+
+
+================================
+最后，输出验证报告（这一步必须做）
+================================
+
+三步全部完成后，按下面格式输出一份报告，不要省略任何一项：
+
+=== 验证报告 ===
+
+【步骤 1：DeepSeek】
+  - 改动文件与行号：
+  - 测试命令与真实输出（粘贴，不要概括）：
+  - grep "api.openai.com" 在你的代码里的命中数（应为 0）：
+  - docs/ 下命中的历史文档清单：
+  - 提交 hash：
+
+【步骤 2：邮件适配器】
+  - 新增函数名与文件：
+  - 新增环境变量清单：
+  - 新增测试数与覆盖点：
+  - 测试命令与真实输出（粘贴）：
+  - 不配置 EMAIL_* 时的行为是否与改动前一致（是/否 + 依据）：
+  - 提交 hash：
+
+【步骤 3：MANIFEST 基线】
+  - MANIFEST.0.9.0.json 是否已存档（是/否）：
+  - 新 MANIFEST.json 的 version 字段：
+  - node scripts/check-project.mjs 的原始输出（粘贴）：
+  - 新基线里是否混入 .env / Key / *.db 路径（是/否 + 你 grep 的命令）：
+  - 提交 hash：
+
+【遗留问题】
+  - 任何你判断「应该做但本次没做」的事，逐条列出，写明原因
+  - 任何你偏离本指令的地方，逐条列出，写明原因
+  - 任何你不确定的地方，直接说「不确定」，不要猜
+
+【当前 git 状态】
+  - git status 输出（粘贴）
+  - git log --oneline -5 输出（粘贴）
+
+
+【结束】

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>愚笨者 · 工作台 UI 预览</title>
+<style>
+:root{
+  --ink:#2e2038;--muted:#827c87;--line:#eae5ed;--paper:#fff;--paper-2:#f3eff7;
+  --accent:#6C5CE7;--accent-2:#a99df5;--bg:#f7f5f9;--text:#2f2238;--text-2:#827c87;--text-3:#b0aab5;
+  --radius-s:10px;--radius-m:14px;--radius-l:18px;--radius-xl:24px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+.preview-bar{position:sticky;top:0;z-index:9;background:#1B1B1F;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.preview-bar strong{font-size:13px;letter-spacing:.5px}
+.preview-bar span{font-size:12px;color:#a99df5}
+.preview-bar button{background:transparent;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:100px;padding:6px 16px;font-size:12px;cursor:pointer;font-size:12.5px}
+.preview-bar button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);font-weight:700}
+.phone{max-width:420px;margin:22px auto 60px;background:var(--bg);border-radius:26px;overflow:hidden;border:1px solid var(--line);box-shadow:0 18px 50px rgba(46,32,56,.1)}
+
+.wh{padding:0 0 40px;color:var(--text);letter-spacing:.5px;overflow-wrap:anywhere}
+.wh *{box-sizing:border-box}
+.wh h1{font-size:29px;line-height:1.25;margin:0;font-weight:800}
+.wh h2{font-size:22px;margin:26px 0 14px;font-weight:750}
+.wh h3{font-size:14px;margin:16px 0 10px;font-weight:650}
+.wh p{font-size:13px;line-height:1.8;margin:0}
+.wh button{font:inherit;border:1px solid var(--line);background:var(--paper);color:var(--text);border-radius:var(--radius-m);padding:10px 16px;min-height:44px;cursor:pointer;font-size:13px}
+.wh button:hover{background:var(--bg)}
+.wh button.wh-primary{background:linear-gradient(90deg,#6C5CE7,#A29BFE);color:#fff;border:0;box-shadow:0 8px 22px rgba(108,92,231,.2);font-weight:700}
+.wh-modes{display:flex;gap:8px;margin:20px 24px 0}
+.wh-modes button{border:0;background:transparent;border-radius:100px;padding:10px 22px;color:var(--text-2);min-width:70px}
+.wh-modes button[aria-pressed=true]{background:var(--ink);color:#fff;font-weight:700}
+.wh-section{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.wh-section h2{font-size:12.5px;color:var(--text-2);font-weight:700;margin:0}
+.wh button.wh-text-button{padding:4px 0;min-height:30px;border:0;background:transparent;color:var(--accent);font-size:12px;font-weight:600}
+.wh-hero{background:linear-gradient(140deg,#1B1B1F,#2D2A3E);border-radius:0 0 var(--radius-xl) var(--radius-xl);padding:30px 24px;color:#fff}
+.wh-hero-top{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.wh-brand{display:flex;align-items:center;gap:10px;margin:0 0 12px;color:var(--accent-2);font-size:12px;font-weight:600}
+.wh-brand [lang=en]{font-size:15px;font-weight:800}
+.wh-hero h1{color:#fff;font-size:27px;font-weight:800}
+.wh-avatar{width:44px;height:44px;flex:0 0 44px;border:1px solid rgba(255,255,255,.14);border-radius:50%;padding:0;background:rgba(255,255,255,.1);color:#fff;font-size:17px;font-weight:750}
+.wh-hero-subtitle{color:#fff;font-size:23px;line-height:1.5;margin:20px 0 8px;font-weight:750}
+.wh-hero-description{color:#fff;font-size:14px;line-height:1.8}
+.wh-hero-quote{color:var(--accent-2);font-size:12px;line-height:1.7;margin:14px 0 6px}
+.wh-principles{display:flex;align-items:center;gap:12px;color:var(--accent-2);font-size:12.5px}
+.wh-principles span{color:rgba(255,255,255,.35)}
+.wh-hero-action{display:inline-flex;align-items:center;justify-content:center;gap:18px;margin-top:24px;padding:12px 22px;border-radius:100px;font-size:14px;min-height:46px}
+.wh-home-body{padding:24px 24px 0}
+.wh-home-section{margin-bottom:26px}
+.wh-routes{display:grid;gap:10px}
+.wh-route{display:flex;align-items:center;gap:14px;width:100%;min-height:76px;padding:18px 16px;border:1px solid var(--line);border-radius:var(--radius-m);background:var(--paper);text-align:left;box-shadow:none}
+.wh-route:hover{background:var(--bg)}
+.wh-route-icon{width:26px;height:26px;flex:0 0 26px;color:var(--accent);stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.wh-route-body{display:flex;flex-direction:column;gap:3px;min-width:0}
+.wh-route-body strong{font-size:15px;font-weight:700}
+.wh-route-body small{font-size:12px;color:var(--text-2);font-weight:400;line-height:1.6}
+.wh-route-arrow{width:15px;height:15px;flex:0 0 15px;margin-left:auto;color:var(--text-3);stroke:currentColor;fill:none;stroke-width:2.2}
+.wh-entries{overflow:hidden;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-m)}
+.wh-entry{display:flex;align-items:center;gap:14px;width:100%;min-height:60px;padding:16px;border:0;border-radius:0;text-align:left;background:transparent;font-size:14px;font-weight:650;box-shadow:none}
+.wh-entry:hover{background:var(--bg)}
+.wh-entry+ .wh-entry{position:relative}
+.wh-entry+.wh-entry:before{content:"";position:absolute;left:54px;right:16px;top:0;border-top:1px solid var(--line)}
+.wh-entry-icon{width:24px;height:24px;flex:0 0 24px;color:var(--accent);stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.wh-entry-chevron{width:14px;height:14px;flex:0 0 14px;margin-left:auto;color:var(--text-3);stroke:currentColor;fill:none;stroke-width:2.2}
+.wh-inline-status{display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:12px;color:var(--text-2);margin-top:10px}
+.wh-inline-status strong{color:var(--text);font-size:13px}
+.wh-compliance{font-size:11.5px;color:var(--text-3);margin-top:6px}
+.wh-empty{padding:22px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-m);text-align:center}
+.wh-empty p{color:var(--text-2);font-size:13px}
+.wh-empty span{font-size:12px;color:var(--text-3);display:block;margin-top:4px}
+.wh-about{border:1px solid var(--line);border-radius:var(--radius-m);background:var(--paper);padding:14px 16px}
+.wh-about summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-2)}
+.wh-about p{margin:6px 0 0;font-size:12px;line-height:1.8;color:var(--text-2)}
+.wh-back{padding:14px 24px 0}
+.wh-back button{border:0;background:transparent;color:var(--accent);padding:6px 0;font-size:13px;min-height:auto}
+.wh-catalog-head{margin-top:22px}
+.wh-pick{margin:0 0 12px;font-size:13px;color:var(--text-2)}
+.wh-catalog{display:grid;gap:10px}
+.wh-option{padding:20px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-m)}
+.wh-option p{color:var(--text-2)}
+.wh-option .wh-steps{font-size:12px;line-height:1.8;margin-top:8px}
+.wh-option .wh-steps strong{display:block;font-size:12.5px;color:var(--text);margin-bottom:3px}
+.wh-tag{display:inline-block;font-size:11.5px;color:var(--accent);background:var(--paper-2);padding:5px 9px;border-radius:var(--radius-s)}
+.wh-link{display:inline-block;margin-top:6px;font-size:12.5px;font-weight:600;color:var(--accent);text-decoration:none}
+.wh-link:hover{text-decoration:underline}
+.wh-note{padding:15px;background:var(--paper-2);color:var(--text-2);border-radius:var(--radius-m);font-size:12px;line-height:1.8;margin:14px 0}
+.wh-workflows{display:grid;gap:10px}
+.wh-workflows article{padding:20px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-m)}
+.wh-workflows p{color:var(--text-2);font-size:12.5px;line-height:1.7}
+.wh-workflows button{margin-top:10px;min-height:38px;padding:6px 14px;font-size:12.5px}
+.wh-row{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:6px}
+.wh-muted{font-size:11.5px;color:var(--text-2)}
+.view{display:none}.view.on{display:block}
+@media(min-width:760px){.wh-catalog{grid-template-columns:repeat(2,minmax(0,1fr))}.wh-workflows{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+
+<div class="preview-bar">
+  <strong>工作台 UI 预览</strong>
+  <span>点下面的按钮切换两个视图</span>
+  <button type="button" data-view="home" aria-pressed="true">首页</button>
+  <button type="button" data-view="ai" aria-pressed="false">我要装 AI</button>
+  <button type="button" data-view="connect" aria-pressed="false">连接我的电脑</button>
+</div>
+
+<div class="phone">
+
+<div class="view on" data-panel="home">
+<section class="wh wh-home">
+  <nav class="wh-modes"><button type="button" aria-pressed="true">工作</button><button type="button" aria-pressed="false">聊天</button></nav>
+  <header class="wh-hero">
+    <div class="wh-hero-top">
+      <div><p class="wh-brand"><span lang="en">YBZ</span><span>愚笨者</span></p><h1>工作台</h1></div>
+      <button type="button" class="wh-avatar" aria-label="打开账号">愚</button>
+    </div>
+    <p class="wh-hero-subtitle">把你的电脑变成 AI 工作站</p>
+    <p class="wh-hero-description">帮你装好 AI、配好环境、连上手机。不用懂技术。</p>
+    <p class="wh-hero-quote">技能交给 AI，判断留给自己。</p>
+    <p class="wh-principles">思维<span>·</span>决策<span>·</span>创造性</p>
+    <button type="button" class="wh-primary wh-hero-action">连接我的电脑 <span aria-hidden="true">→</span></button>
+  </header>
+  <div class="wh-home-body">
+    <section class="wh-home-section">
+      <div class="wh-section"><h2>你想做什么？</h2></div>
+      <div class="wh-routes" aria-label="选择你的情况">
+        <button type="button" class="wh-route" data-hub="devices">
+          <svg class="wh-route-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          <span class="wh-route-body"><strong>我要连接自己的电脑</strong><small>先装手机 App，再装电脑连接器，三步完成</small></span>
+          <svg class="wh-route-arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
+        </button>
+        <button type="button" class="wh-route" data-hub="workflows">
+          <svg class="wh-route-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="wh-route-body"><strong>我要装 AI</strong><small>免费、按量、有额度、效果好，四种选法</small></span>
+          <svg class="wh-route-arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
+        </button>
+        <button type="button" class="wh-route" data-hub="connections">
+          <svg class="wh-route-icon" viewBox="0 0 24 24"><path d="m9 15 6-6m-8 4-2 2a4 4 0 0 0 6 6l3-3m-4-12 3-3a4 4 0 0 1 6 6l-2 2"/></svg>
+          <span class="wh-route-body"><strong>我没有电脑</strong><small>用云电脑，开通即可连接手机 · 待接入</small></span>
+          <svg class="wh-route-arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+    </section>
+    <section class="wh-home-section">
+      <div class="wh-section"><h2>我的内容</h2></div>
+      <div class="wh-entries">
+        <button type="button" class="wh-entry"><svg class="wh-entry-icon" viewBox="0 0 24 24"><path d="M8 3h8l4 4v14H4V3h4m8 0v5h4M8 12h8M8 16h6"/></svg><span>我的任务与文件</span><svg class="wh-entry-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+        <button type="button" class="wh-entry"><svg class="wh-entry-icon" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6m-6 4h6"/></svg><span>积分与用量</span><svg class="wh-entry-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+        <button type="button" class="wh-entry"><svg class="wh-entry-icon" viewBox="0 0 24 24"><path d="M21 11a8 8 0 0 1-8 8H7l-4 3V5a3 3 0 0 1 3-3h7a8 8 0 0 1 8 9Z"/><path d="M7 8h9m-9 5h6"/></svg><span>聊天</span><svg class="wh-entry-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+      </div>
+      <div class="wh-inline-status"><span>可用积分 <strong>1,000 分</strong></span><span>任务预留 <strong>0 分</strong></span></div>
+      <p class="wh-compliance">积分不可转让、不可提现，仅可用于消耗站内服务。</p>
+    </section>
+    <section class="wh-home-section">
+      <div class="wh-section"><h2>近期动态</h2><button type="button" class="wh-text-button">查看全部</button></div>
+      <div class="wh-empty"><p>还没有任务动态</p><span>文件去重、格式整理和清单草稿，不需要 AI。</span></div>
+    </section>
+    <section class="wh-home-section">
+      <details class="wh-about"><summary>关于愚笨者工作台</summary>
+        <p>我们不提供 AI 本身。我们负责把它装好、配好、连上你的手机。</p>
+        <p>当前需你按说明安装；需要账号的 AI，需你自行登录。第三方 AI 的订阅或用量费用由你向服务商支付。</p>
+        <p>不用 AI 也能整理文件。添加的文件会发送到当前工作台服务处理；在线使用时会上传服务器。执行前需确认积分预算。</p>
+      </details>
+    </section>
+  </div>
+</section>
+</div>
+
+<div class="view" data-panel="ai">
+<section class="wh">
+  <div class="wh-back"><button type="button">‹ 返回工作</button></div>
+  <div class="wh-home-body">
+    <div class="wh-section wh-catalog-head"><h2>装 AI</h2><span class="wh-muted">四种选法，按自己的情况挑一个</span></div>
+    <p class="wh-pick">不知道选哪个？先装免费的 Ollama，够用再升级。</p>
+    <div class="wh-catalog">
+      <article class="wh-option"><div class="wh-row"><span class="wh-tag">免费</span></div><h3>Ollama + Qwen3</h3><p>装在自己电脑上，不花钱，也不用注册账号。</p><p class="wh-steps"><strong>怎么装</strong>下载安装包 → 双击安装 → 打开命令行运行 ollama run qwen3:0.6b</p><a class="wh-link" href="https://ollama.com/download" target="_blank" rel="noopener noreferrer nofollow">打开下载页</a></article>
+      <article class="wh-option"><div class="wh-row"><span class="wh-tag">按量付费</span></div><h3>DeepSeek</h3><p>联网使用，按用量付费，一次任务通常几分钱。</p><p class="wh-steps"><strong>怎么装</strong>官网注册 → 充值 → 创建 API Key → 填进工作台</p><a class="wh-link" href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer nofollow">打开官网</a></article>
+      <article class="wh-option"><div class="wh-row"><span class="wh-tag">有免费额度</span></div><h3>Codex CLI / Claude Code</h3><p>在命令行里用的 AI，有免费额度。</p><p class="wh-steps"><strong>怎么装</strong>按官网说明安装 → 打开终端 → 扫码登录</p><a class="wh-link" href="https://github.com/openai/codex" target="_blank" rel="noopener noreferrer nofollow">打开说明页</a></article>
+      <article class="wh-option"><div class="wh-row"><span class="wh-tag">按服务商标准</span></div><h3>ChatGPT Plus / Claude Pro</h3><p>装桌面客户端，效果最好，用你自己的账号。</p><p class="wh-steps"><strong>怎么装</strong>下载客户端 → 安装 → 自己登录</p><a class="wh-link" href="https://chatgpt.com" target="_blank" rel="noopener noreferrer nofollow">打开官网</a></article>
+    </div>
+    <p class="wh-note">需要账号的 AI，登录必须由你本人完成，我们无法代你登录。第三方 AI 的订阅或用量费用由你直接支付给服务商，我们不代收。安装时若系统提示安全警告，请确认来源是官方网站后再继续。</p>
+    <div class="wh-section wh-catalog-head"><h2>文件工具模板</h2><span class="wh-muted">不需要 AI 的小工具</span></div>
+    <div class="wh-workflows">
+      <article><div class="wh-row"><span class="wh-tag">文件整理</span><span class="wh-muted">规则工具可用</span></div><h3>订单表去重</h3><p>整理客户提供的 CSV，交付去重表格和处理报告。</p><button type="button">查看工具</button></article>
+      <article><div class="wh-row"><span class="wh-tag">文件整理</span><span class="wh-muted">规则工具可用</span></div><h3>会议文字整理</h3><p>删除会议文本中的重复行，交付整理文本与统计。</p><button type="button">查看工具</button></article>
+      <article><div class="wh-row"><span class="wh-tag">准备工作</span><span class="wh-muted">规则工具可用</span></div><h3>活动准备清单</h3><p>把活动目标整理成待办结构，交付前由你补充并核对。</p><button type="button">查看工具</button></article>
+      <article><div class="wh-row"><span class="wh-tag">AI 工作群</span><span class="wh-muted">待接入模型</span></div><h3>资料整理与行动方案</h3><p>资料员、撰写员、复核员依次协作，最多一轮返工。</p><button type="button">查看工具</button></article>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="view" data-panel="connect">
+<section class="wh">
+  <div class="wh-back"><button type="button">‹ 返回工作</button></div>
+  <div class="wh-home-body">
+    <h2>我的设备</h2>
+    <p class="wh-pick">适合你已经有电脑的情况。</p>
+    <p class="wh-note">电脑开机并运行连接器后，手机即可查看屏幕和操作。控制持续 10 分钟；离开或断网后最迟 15 秒停止控制。锁屏及系统提权窗口无法操作。</p>
+    <ol style="margin:0 0 16px;padding-left:20px;font-size:13px;line-height:2">
+      <li><strong>手机装 App</strong>：先登录账号；建议用网页版，安卓安装包仍为 dev.8。<br><a class="wh-link" href="#">打开手机端与下载页</a></li>
+      <li><strong>电脑装连接器</strong>：在 Windows 电脑浏览器打开下方链接，下载并解压。<br><a class="wh-link" href="#">下载电脑连接器</a></li>
+      <li><strong>装 AI</strong>：按说明手动安装；自动推荐与自动安装待接入。AI 账号需你自行登录，服务费用由你支付。<br><a class="wh-link" href="#">查看模型与工具</a></li>
+    </ol>
+    <div class="wh-option"><h3 style="margin-top:0">连接我的电脑</h3><p style="font-size:12.5px">1. 下载 Windows 连接器并解压。<br>2. 创建配对文件，在电脑上运行「启动连接器」，选择该文件。<br>3. 看到设备在线后，点击「查看并控制电脑」。</p><a class="wh-link" href="#">下载 Windows 连接器</a><div style="margin-top:12px"><button type="button" class="wh-primary" style="border-radius:100px">创建配对文件</button></div></div>
+    <p class="wh-note" style="margin-top:14px">没有电脑？云端电脑尚未开放，可回到工作台查看状态。</p>
+  </div>
+</section>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.preview-bar button').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.preview-bar button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+ document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.dataset.panel===b.dataset.view));
+ window.scrollTo({top:0,behavior:'smooth'});
+}));
+document.querySelectorAll('.wh-route').forEach(r=>r.addEventListener('click',()=>{
+ const map={devices:'connect',workflows:'ai'};
+ const target=map[r.dataset.hub];
+ if(!target)return;
+ const btn=document.querySelector('.preview-bar button[data-view="'+target+'"]');
+ if(btn)btn.click();
+}));
+</script>
+</body>
+</html>

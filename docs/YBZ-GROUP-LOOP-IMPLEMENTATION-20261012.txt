@@ -1,0 +1,131 @@
+愚笨者 / YBZ 群协作最小闭环实施记录
+日期：2026-10-12
+本轮状态：已实际修改原项目代码；本机审核与隔离联测通过；真实模型＋公网测试网完整闭环尚未验收。
+
+一、审计与开发基线
+
+源码目录：C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/work/yubenzhe
+仓库：fx950217-lgtm/yubenzhe；此前已改私有。
+分支：codex/m0-local-test
+开始时提交：1a98e74874d6d143a97b6d81448ff5f6bbcf1d5b（短号1a98e74）。
+本轮开始时已有大量未提交/未跟踪的 dev.10 工作，已保存改前副本并保留原修改；没有 reset、commit、push 或修改 main。
+tongban 是本项目既有消费者前端兼容目录名，不是误改其他项目；没有改代充值项目，也没有创建替代演示站。
+已读根 AGENTS.md、README.md、PROJECT_CONTEXT.md、requirements-v0.2.txt、V02-IMPLEMENTATION.txt、M0-RUNBOOK.txt、消费者及部署说明和实际实现。
+
+指定 YBZ-CODEX-HANDOFF-20261012.md 在本仓库、桌面、下载、WorkBuddy、附件及用户目录文件名搜索中未找到，已请求完整路径，尚未获得。因此不能声称已读取该文件，也不能声称满足其中未知的任务依赖或验收编号。本轮以用户最新消息列明的场景、权限边界和回报字段实施；文件补齐后仍需逐项对照。
+
+新基线保留 AI＋社交、AI＋区块链钱包、社交＋区块链三条闭环。人负责决策、判断、方向、创意和授权；AI/工具负责落实。手机、电脑、云机是协作载体。首页恢复共同目标与群协作；设备、云机、模型仍是辅助入口。原赏金、服务商、活跃榜等旧入口维持先前隐藏状态，旧路由和用户数据保留；2026-10-11电脑入口定位归为历史记录，没有删除历史文档或业务记录。
+
+二、实际修改文件
+
+业务服务：
+- yubenzhe-deploy/server/group-workflows.mjs（新增）：群任务、批准、实际执行关联、成果权限/验收、付款意图、签名哈希登记、回执核验、取消和可信群事件。
+- yubenzhe-deploy/migrations/020-group-workflows.sql（新增）：只增加群任务、事件、命令、付款意图四张表及索引；链固定97，不变更旧迁移。
+- yubenzhe-deploy/server/social-database.mjs：注册新迁移。
+- yubenzhe-deploy/server/social-service.mjs：允许邀请1位好友组成双账号群；序列化服务端专有groupWorkflow元数据。
+- yubenzhe-deploy/server/ai-service.mjs：复用现有模型/配额/任务服务，提供隔离的群方案接口；个人AI接口不可绕过群权限访问group-工作区。
+- yubenzhe-deploy/server/task-payment-verifier.mjs（新增）：只读RPC核对链、签名网络、付款内容、任务标记、回执、规范区块、至少3次确认和实际费用。
+- yubenzhe-deploy/server/product-modules.mjs：复用身份、社交、工作台和积分服务，接入群工作流与注销前未完事项检查。
+- yubenzhe-deploy/server/start.mjs：接入已有AI服务及明确启用的测试网回执服务；默认关闭新增付款入口。
+
+消费者页面：
+- tongban/src/group-workflows.js、group-workflows.css（新增）：选择群和资料、看方案、批准、看成果、验收、独立签署、查询回执。
+- tongban/src/live-social.js：双账号建群、群任务入口、可信任务系统记录；普通聊天文字不可冒充回执。
+- tongban/src/workbench-hub.js：共同目标与群协作作为主线，设备/云机协作仍保留。
+- tongban/src/app.js、app-navigation.js：群聊/协作任务深链、刷新及返回路径。
+- tongban/src/wallet.js：扩展现有自托管签名；锁定任务意图，公开哈希在本机保存并取得服务端登记确认后才广播。
+
+新增/调整测试：
+- yubenzhe-deploy/tests/group-proposal.test.mjs
+- yubenzhe-deploy/tests/group-workflow-migration.test.mjs
+- yubenzhe-deploy/tests/group-workflows.test.mjs
+- yubenzhe-deploy/tests/task-payment-verifier.test.mjs
+- yubenzhe-deploy/tests/social-service.test.mjs
+- tongban/tests/group-workflows.test.mjs
+- tongban/tests/task-payment-wallet.test.mjs
+- tongban/tests/app-navigation.test.mjs
+- tongban/tests/live-social.test.mjs
+- tongban/tests/workbench-hub.test.mjs
+- contracts/test/group-workflow-integration.test.mjs
+
+运行及接续：scripts/start-group-review.mjs、AGENTS.md、PROJECT_CONTEXT.md、README.md、本记录。
+新增配置示例见 yubenzhe-deploy/group-workflows.env.example。没有变更原生安装包、合约代码或依赖版本。页面版本保留0.14.0-dev.10，属于未发布工作副本，不冒充新发布。
+
+三、三个闭环各自状态
+
+AI＋社交：代码已连接真实双账号群、用户明确选中的群文字、独立模型方案、发起者批准、现有文件执行器、成果验收与群事件。自动联测用模型测试替身，显式标注；本机审核缺真实模型时显示阻塞。尚未验收真实模型生成的全流程。
+
+AI＋钱包：任务和成果摘要绑定到不可变付款意图；AI无批准或付款权限。只有发起者在本机另行核对地址、金额、网络、费用并输入钱包密码才签署。真实消费者钱包加密和签名已在本地chain97 EVM联测；未新增公网BSC测试网付款。
+
+社交＋区块链：服务端校验链上付款事实后一次性回群，显示实际费用与确认数；反复查询不重复记回执，重组或证据消失撤销当前成功标记。群成员及入群历史限制同样约束任务/成果访问。已通过本地EVM联测，公网测试网待用户签署及核验。
+
+本轮最小场景的准确证据：
+两个独立产品账号和真实HTTP会话 → 双账号群及实际群消息 → 明确标注的模拟模型方案 → 发起者批准 → 原文件工具真正CSV去重、生成可下载文件 → 成果哈希验收 → 消费者本机钱包实际签名 → 本地EVM挖出1笔chain97交易 → 3次确认 → 服务端核验回群 → 模拟链重组后撤销成功标记。
+这证明代码联通，不等于真实AI服务＋公网测试网闭环已完成，也不是两名真人参加验收。
+
+四、权限与安全实现
+
+复用内部账号UUID、会话、好友关系、群成员/历史起点、禁言和版本机制。普通群成员能读取获分享成果，只有发起者能批准、验收、创建付款和登记哈希。新增成员/退群后重入者不能通过任务入口读取旧历史。
+AI只接收明确的目标、工具计划及用户选择的文字片段，不读取个人AI聊天史或整个群史，不发送文件正文给模型。执行工具和输入由服务器限定，不将模型文案解释为任意命令。文件仍上传当前工作台服务真实处理。
+批准绑定方案摘要、输入哈希、工具范围与积分预算，成果验收绑定输出哈希。旧工作台接口改变任务范围后，不得沿用原群批准付款。
+POINT与tBNB分开；批准文件工具消耗测试积分，验收不付款。任务支付只支持BSC测试网97原生tBNB，最多1 tBNB；没有主网、托管账户、平台代签或自动付款。
+密钥/助记词/密码不传AI或后端；广播前回调只有公开交易事实，不包括签名原文。每意图唯一哈希、哈希全局唯一。登记成功响应丢失、广播超时或状态不明均保留原哈希，只能核验，不能换哈希重签。
+核验读取固定服务端配置的RPC，不接收用户RPC地址。严格校验from/to/value/data、签名链97、回执status、blockHash、规范区块及至少3次确认；旧格式交易从EIP-155的v推导链，拒绝无链保护签名。手续费取实际gasUsed×effectiveGasPrice，不捏造固定美元费。
+未签付款可以取消，已有txHash不允许取消后重建付款。当前没有未知交易自动解锁或替换交易功能；需要后续人工诊断流程，不能以超时直接认定未付。
+
+五、测试命令与结果
+
+使用Node v24.20.0和现有锁定依赖。在下列目录执行：
+
+1. yubenzhe-deploy：node --test tests/*.test.mjs
+   已运行全量336/336通过（包括20项群编排、4项模型桥接、12项付款核验、1项旧库迁移保全及既有后端回归）。取消任务释放未完成名额，但不绕过每小时配额。
+   迁移保全测试从003–019旧结构及合成业务数据升级020，核对旧表结构、数据、文件二进制摘要及迁移校验和不变；四张新表为空，重复打开及外键/完整性检查通过。没有拿真实用户库做试验。
+2. tongban：node --test tests/*.test.mjs
+   已运行全量470/470通过。
+3. tongban：node build.mjs
+   网页构建成功，仍为dev.10工作副本。
+4. contracts：node --test test/group-workflow-integration.test.mjs test/wallet-integration.test.mjs
+   2/2通过：新增真实HTTP/群任务/实际钱包付款链路，及既有钱包分发approve/fund/claim/refund回归。RPC全部拦截到本地EVM，不会联网广播。Ganache原生µWS模块不支持当前Node，自动退回Node实现，测试正常通过。
+5. 仓库根：node scripts/check-project.mjs --allow-changes
+   通过；没有缺失或删除源文件。该检查仍以dev.7历史MANIFEST作差异基线，不代表新增dev.10文件已发布或清单已重签。
+6. 仓库根：git diff --check
+   通过。
+
+最终后端336项及新增21项定向回归日志分别保存在工作区output/ybz-group-backend-final.txt、output/ybz-group-targeted-final.txt。本轮文件校验清单见下方备份目录final-files.json，列出32个实际修改文件（17个原文件、15个新增文件）及改前/改后SHA-256。
+
+实际浏览器：在独立localhost:18926用本机合成账号登录，检查工作台→群任务→配置阻塞详情→实际群聊天→可信系统记录→返回任务；深链可刷新。检查电脑视口及390×844手机视口，无上述页面布局溢出，配置不足不出现批准执行/签署按钮。没有用浏览器检查冒充真实模型成功或原生手机验收。
+
+六、启动方式与本机审核
+
+在上述源码根目录执行：
+  node tongban/build.mjs
+  node scripts/start-group-review.mjs
+
+打开 http://localhost:18926/#workbench 。仅监听127.0.0.1，不发布公网。
+脚本明确使用独立目录：
+  C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/work/ybz-group-review-20261012
+不会使用或替换原默认用户库。重复启动时先确认端口，已有审核进程不需要再启动。
+本机合成账号在上述目录review-accounts.json；不提交Git。已创建双账号群供查看。
+本机审核模式强制AI_PROVIDER=disabled、YBZ_GROUP_TESTNET_PAYMENTS=false，模拟邮件明确标注。因此该入口可审核页面、双账号社交及配置阻塞，不能声称已启用真实AI或公网付款。
+如要接真实模型/测试网，按既有start.mjs环境方式在新的隔离环境配置，不通过修改审核脚本偷偷启用、不覆盖现有运行库，也不自动部署。
+
+七、缺失配置名称与未完成项
+
+文件：YBZ-CODEX-HANDOFF-20261012.md原文件路径，待按其原文逐项核对验收。
+真实模型：AI_PROVIDER、AI_MODEL；选择免费自有Ollama还需OLLAMA_BASE_URL和OLLAMA_ALLOWED_HOSTS及已下载模型。现有适配限定qwen3:0.6b。本机11434未可达，未尝试采购模型或读取生产密钥。
+若选择已有云API适配：AI_PROVIDER=openai、AI_API_KEY或AI_API_KEY_FILE、AI_BASE_URL、AI_ALLOWED_HOSTS。当前适配只调用GET /models和POST /responses，并非通用/chat/completions适配；默认DeepSeek地址不代表其推理接口已兼容。实际供应商需独立验证，不因填入Key就视为可用。收费调用未获本轮授权。
+测试网：YBZ_GROUP_TESTNET_PAYMENTS=true（显式开关）；BSC_TESTNET_RPC_URLS为JSON形式的获准HTTPS RPC列表，默认地址不等于已验证可用。修改RPC列表时，前端构建与server/start启动必须使用同一配置并重建前端，否则钱包可能仍用旧地址并被服务端CSP拦截。需要用户自己的仅供测试钱包、免费tBNB及一次人工签署；平台不接收这些钱包秘密。
+群模块要求ROLE=frontend，且M0_SIMULATION=true（仅本机回环）或INTERNAL_PREVIEW=true（HTTPS、PUBLIC_FRONTEND=false、M0_SIMULATION=false）。单开付款开关不会启用群模块。隔离运行还需既有PUBLIC_ORIGIN、BIND_HOST、PORT、AUTH_CONFIG_FILE、EMAIL_OTP_SECRET、SOCIAL_DATABASE_PATH、AI_DATABASE_PATH、STATIC_ROOT及相应测试模式。公网内部预览依旧保留门禁和独立产品认证，不能借此开放生产。
+
+未完成：交接原文验收对齐；真实模型全程验收；公网BSC测试网人工签署及回执；原生Android/iOS/Windows新包和真机专项；通用云机执行/硬件钱包/跨链/主网/收费；独立合约/钱包安全审计。当前工具执行是文件去重、格式/清单等既有固定工具，AI建议不会转成任意系统执行。没有新任务支付合约，因为本场景使用原生tBNB直接转账加任务标记；不混用已结束的分发活动。
+
+八、回滚方式
+
+改前源文件快照：
+ C:/Users/Administrator/Documents/Codex/2026-10-09/git-2/output/ybz-loop-baseline-20261012/source
+同目录保存开始时status.txt、diff.patch、head.txt，以及交付时final-files.json。副本包含本轮前已存在的未提交dev.10工作，不应使用git reset --hard回到dev.7而丢掉这些改动。
+回滚只恢复本记录列出的既有文件到改前副本，并把本轮新增文件移到仓库外归档；不得整体覆盖目录或删除其他人同期新文件。执行前比较最终文件哈希，若交付后又有变动须先保留新副本并合并处理。
+先停止本轮localhost:18926审核进程，保留独立审核数据目录。新增020已应用到该独立库，旧代码不得连接它；切回旧代码须使用原未迁移的库或经过核验的匹配备份。不要删020表、伪造迁移校验和或删除账号来回滚。
+本轮没有迁移原用户库，没有改服务器；生产不需要回滚。若未来上线本增量，先按既有手册停frontend/admin双写入者、成套备份和隔离恢复演练。
+
+本轮未触及：公网部署、主网资金、收费资源采购、Git上传、原生安装；没有删除用户数据、旧入口业务数据或历史版本文档。

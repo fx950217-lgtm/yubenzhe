@@ -1,0 +1,286 @@
+===========================================================
+愚笨者 · 服务器全面转海外 + 云电脑功能 开发任务
+一次性给 Codex · 2026-10-11
+===========================================================
+
+【怎么用这份文档】
+把本文件从"任务书开始"到"任务书结束"的部分整段复制，
+一次性粘贴给 Codex，然后等它跑完，看最后的验证报告。
+中间不要打断它，不要一条一条发。有问题等它整个做完再说。
+
+===========================================================
+任务书开始
+===========================================================
+
+你是愚笨者（yubenzhe）项目的开发工程师。当前工作目录是 yubenzhe 仓库根目录。
+
+现在有一个方向性变更 + 一项新功能要落地。请按顺序完成，全部做完后输出验证报告。
+不要中途问我问题，遇到不确定的地方按下面的规则自己决策，并在报告里说明你的决策。
+
+-----------------------------------------------------------
+第一部分：把项目里所有"中国境内服务"的痕迹清理掉，改为海外优先
+-----------------------------------------------------------
+
+背景：产品确定不在中国境内上架、不在中国境内提供服务。
+所有服务端资源一律走海外，首选美国。阿里云、腾讯云、中国境内 CDN/域名等一律不再使用。
+
+1.1 请先做一次全面扫描，找出项目里所有涉及以下关键词的位置：
+    - 阿里云 / aliyun / aliyun.com / aliyuncs / 无影 / wuying
+    - 腾讯云 / tencentcloud / qcloud
+    - 华为云 / huaweicloud
+    - 中国境内域名后缀 .cn / .com.cn
+    - cn- 开头的 AWS 区域（如 cn-north-1, cn-northwest-1）
+    - 任何中国境内的备案要求、ICP 相关提示文案
+    - 任何写死的中国大陆手机号格式 +86 的校验
+    - 任何写死的支付宝 / 微信支付接入代码（如果存在）
+
+    输出一份清单：文件路径 + 行号 + 原内容。先只列出来，不要改。
+
+1.2 对于扫描结果，按以下规则处理：
+    - 如果是**纯注释或文档描述** → 更新文案，改为海外表述
+    - 如果是**真实代码逻辑**（如支付渠道、短信渠道）→ 不要删除代码，
+      而是把它变成"可选渠道"，并确保默认不启用（参考项目里 ai-provider.mjs
+      的 disabled 模式：未配置时返回明确错误码，而不是崩溃）
+    - 如果是**域名或区域硬编码** → 改为从环境变量读取，并给出默认值
+    - 如果是**"+86 手机号校验"** → 扩展为支持国际区号，默认不限制国家
+
+1.3 特别注意：检查以下环境变量的默认值是否指向中国境内资源
+    如果有，改为海外默认值或在文档中标注需要用户自行配置：
+    - AI 相关（应指向 DeepSeek 或海外 OpenAI 兼容端点）
+    - 邮件相关
+    - 区块链 RPC（应使用海外公共节点）
+    - 任何 CDN / 对象存储地址
+
+    要求：所有这些地址都必须支持通过环境变量覆盖，
+    不要把任何第三方服务的地址硬编码在代码里。
+
+1.4 检查项目里的区域/地区配置：
+    AWS 相关配置如果有区域字段，默认值应为 us-west-2（俄勒冈）。
+    绝对不要出现 cn-north-1 或 cn-northwest-1。
+
+验收标准：
+- `grep -rniE "aliyun|tencentcloud|qcloud|huaweicloud|无影|cn-north" --include="*.mjs" --include="*.js" --include="*.json" .`
+  在源代码目录（排除 docs/、node_modules/、.git/）中零命中
+- `node --test tests/*.test.mjs` 全绿
+- 所有第三方地址均可通过环境变量覆盖 —— 请逐个列出并证明
+
+-----------------------------------------------------------
+第二部分：新增「云电脑」数据模型与服务商适配层（只写代码，不接真实服务商）
+-----------------------------------------------------------
+
+背景：我们要做"客户在 App 里一键开通一台云端电脑"的功能。
+本次只做数据模型 + 适配层骨架 + 单元测试，**不要真的调用任何云服务商 API**。
+
+2.1 新建数据库表（放在 yubenzhe-deploy 现有的 SQLite 迁移体系里，
+    遵循项目现有的建表风格和命名习惯）
+
+    表 1：cloud_desktops
+      字段：
+        id TEXT PRIMARY KEY
+        user_id TEXT NOT NULL          -- 归属用户，外键指向现有用户表
+        provider TEXT NOT NULL         -- 'aws-workspaces' | 'other'
+        provider_desktop_id TEXT       -- 服务商侧 ID，异步回填
+        plan TEXT NOT NULL             -- 'basic' | 'standard' | 'power' | 'graphics'
+        region TEXT NOT NULL           -- 'us-west-2' 等
+        protocol TEXT                  -- 'DCV' | 'PCoIP'，默认 'DCV'
+        state TEXT NOT NULL            -- 'creating'|'available'|'stopped'|'error'|'terminated'
+        created_at INTEGER NOT NULL
+        available_at INTEGER
+        terminated_at INTEGER
+        cost_cents INTEGER             -- 我们支付的成本（分）
+        price_cents INTEGER            -- 我们向用户收的（分）
+        auto_stop_minutes INTEGER      -- 空闲自动关机，默认 60
+      索引：user_id、state
+
+    表 2：cloud_desktop_credentials
+      字段：
+        desktop_id TEXT PRIMARY KEY    -- 外键指向 cloud_desktops
+        registration_code TEXT         -- 注册码（AWS 用）
+        username TEXT NOT NULL
+        password_ciphertext BLOB NOT NULL
+        password_iv BLOB NOT NULL
+        password_tag BLOB NOT NULL
+        realm TEXT
+        created_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL
+
+      加密要求（重要）：
+        - 使用 AES-256-GCM
+        - 密钥来自环境变量 DESKTOP_CRED_KEY（32 字节）
+        - 如果 DESKTOP_CRED_KEY 未配置，**写入时必须抛错**，不允许明文落库
+        - 提供 decryptPassword(desktopId) 函数，供"用户点击查看密码"时调用
+
+    表 3：desktop_provision_jobs
+      字段：
+        id TEXT PRIMARY KEY
+        desktop_id TEXT NOT NULL
+        request_id TEXT NOT NULL UNIQUE   -- 幂等键
+        payload_hash TEXT NOT NULL        -- 请求内容哈希
+        status TEXT NOT NULL              -- 'queued'|'running'|'succeeded'|'failed'
+        attempts INTEGER NOT NULL DEFAULT 0
+        last_error TEXT
+        created_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL
+
+2.2 新建 yubenzhe-deploy/server/desktop-provider.mjs
+
+    导出以下函数（本次全部为骨架实现，不调真实 API）：
+
+      createDesktopProvider(config) → 返回 provider 对象
+        如果 config 中没有凭据 → 返回 disabled provider
+        所有方法调用时返回 { ok:false, code:'DESKTOP_UNCONFIGURED', message:'尚未配置真实云电脑服务商' }
+        （参考 workbench-service.mjs 里 DESKTOP_UNCONFIGURED 的现有处理方式，
+          也参考 ai-provider.mjs 的 createDisabledXXX 模式，保持风格一致）
+
+      provider.provision({ userId, plan, region, requestId }) → { jobId }
+        - 幂等：同 requestId 且 payload 一致 → 返回已有 jobId
+        - 同 requestId 但 payload 不同 → 返回 409 错误
+        - 参考 points-service.mjs 里已有的 requestId 幂等实现，保持一致
+
+      provider.getStatus(desktopId) → { state, raw }
+
+      provider.resetPassword(desktopId, newPassword) → { ok }
+        必须实现 —— 因为用户必须能自己改密码，不能只能找我们
+
+      provider.destroy(desktopId) → { ok }
+        必须实现 —— 用户必须能一键彻底注销云电脑
+
+    环境变量（全部可选，未配置时 disabled）：
+      DESKTOP_PROVIDER        'disabled' | 'aws-workspaces'
+      DESKTOP_REGION          默认 'us-west-2'
+      DESKTOP_CREDENTIALS_FILE  优先读文件（避免密钥进日志/进程列表）
+      DESKTOP_CRED_KEY        凭据加密密钥
+
+    绝对不要在代码里写死任何 AccessKey / SecretKey。
+
+2.3 提供 HTTP 接口（挂在现有后端路由体系里，遵循现有路由注册方式）
+
+    POST /api/desktop/provision
+      body: { plan, region?, requestId }
+      → 202 { jobId, desktopId }
+      → 503 DESKTOP_UNCONFIGURED（未配置时）
+
+    GET  /api/desktop/:desktopId
+      → 200 { state, plan, region, createdAt, availableAt, cost, price }
+      → 403 如果不是当前用户的机器（权限必须校验，不能越权看别人的）
+
+    GET  /api/desktop/:desktopId/credentials
+      → 200 { registrationCode, username, password, realm, clientDownloadUrls }
+      → 403 非本人
+      说明：clientDownloadUrls 要返回服务商官方客户端的下载地址
+            （Windows / macOS / iOS / Android / Web），
+            目的是让用户能脱离我们的 App 使用
+
+    POST /api/desktop/:desktopId/reset-password
+      → 200 { ok:true }
+
+    POST /api/desktop/:desktopId/terminate
+      → 200 { ok:true }
+
+    重要：以上所有接口在未配置服务商时，必须返回 503 + DESKTOP_UNCONFIGURED，
+    而不是 500 或崩溃。这是"功能存在但未接通"的标准状态。
+    同时 capabilities / 健康检查接口里要新增 desktop 字段描述这个状态。
+
+2.4 单元测试（新增 tests/desktop-provider.test.mjs）
+
+    必须覆盖：
+    - 未配置凭据时 provision 返回 DESKTOP_UNCONFIGURED
+    - 幂等：同 requestId + 同 payload 返回同一个 jobId
+    - 幂等冲突：同 requestId + 不同 payload 返回 409
+    - 凭据写入：DESKTOP_CRED_KEY 缺失时必须抛错
+    - 凭据加密解密：写入后能正确读回原文
+    - 权限：用户 A 无法读取用户 B 的云电脑
+    - state 流转：creating → available 的合法转换；非法转换被拒绝
+    - terminate 后 credentials 接口返回 410 Gone
+
+    测试必须真的跑通，不允许 skip，不允许 mock 掉断言。
+
+2.5 不要做的部分（明确禁止）：
+    - 不要引入 @aws-sdk 依赖（本次不需要，保持零新增依赖优先）
+    - 不要真的联网调用任何服务商
+    - 不要写前端 UI（这轮只做后端）
+    - 不要改 points-service.mjs / ai-provider.mjs / social-service.mjs
+    - 不要动 wallet.js 的任何链上逻辑
+
+-----------------------------------------------------------
+第三部分：区域与基础设施配置标准化
+-----------------------------------------------------------
+
+3.1 新增 docs/DEPLOY-REGIONS.md，内容要求：
+
+    列出我们支持的部署区域，表格形式：
+      | 区域代码 | 位置 | 角色 | 用途 |
+    必须包含：
+      - us-west-2  （俄勒冈） 主力 / 后端 + 云电脑主区
+      - us-east-1  （弗吉尼亚） 冗余
+      - ap-northeast-1（东京） 亚太
+      - ap-southeast-1（新加坡） 亚太
+      - eu-west-1  （爱尔兰） 欧洲
+
+    并在文档中明确写出：
+      - 产品不在中国境内上架、不向中国境内提供服务
+      - 所有服务端资源一律海外，首选美国
+      - 不使用任何 cn- 开头的 AWS 区域
+      - 云电脑统一使用 DCV 协议，不使用 PCoIP
+        （原因：PCoIP 的 WorkSpaces Personal 已于 2026-07-31 停止接纳新客户，
+          2027-10-31 停服）
+
+3.2 检查项目里是否有写死的部署区域/主机名/域名，
+    列出清单并全部改为环境变量驱动，给出默认值。
+
+3.3 如果项目里存在部署脚本（scripts/ 目录下），检查其中是否有区域硬编码，
+    改为从环境变量读取，默认 us-west-2。
+
+-----------------------------------------------------------
+第四部分：验证与报告（必须做，不许省略）
+-----------------------------------------------------------
+
+全部改完后，请运行并**原样贴出**以下命令的真实输出（不许概括为"通过"）：
+
+1. 扫描命令（证明中国境内服务痕迹已清理）：
+   grep -rniE "aliyun|tencentcloud|qcloud|huaweicloud|无影|cn-north" \
+     --include="*.mjs" --include="*.js" --include="*.json" \
+     --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=docs .
+   要求：源代码目录零命中（docs/ 里的历史文档不要求清理）
+
+2. 全量测试：
+   node --test tests/*.test.mjs
+   要求：全部通过，贴出通过的测试数量
+
+3. 项目完整性检查（按项目已有的方式）：
+   node scripts/check-project.mjs
+   如果因为代码改动需要更新 MANIFEST，请说明需要更新的文件清单，
+   但**不要直接覆盖基线**，让我们确认后再更新。
+
+4. 证据：用 curl 或 node 脚本实际请求一次
+   GET /api/desktop/xxx
+   证明未配置时返回 503 + DESKTOP_UNCONFIGURED（贴出原始响应）
+   注意：本地服务可能需要带 Host: localhost 请求头（项目有 Host 校验），
+         请自行处理，并把处理方式写进报告
+
+5. 列出本次新增/修改的文件完整清单，每个文件说明改了什么
+
+6. 明确回答这三个问题：
+   - 现在还有哪些第三方服务地址是硬编码的？（应该为零，如果有请列出）
+   - 云电脑功能在未配置服务商时的表现是什么？（应该返回明确的 503 错误码）
+   - 用户能否在脱离我们 App 的情况下拿到云电脑凭据？（应该能）
+
+【格式要求】
+- 报告用中文
+- 每个命令的输出用代码块原样贴出，不要改写
+- 如果某一步失败，不要隐瞒，贴出错误原文并说明你的处理
+
+【禁止事项】
+- 不要 commit（等我们看过报告再说）
+- 不要删除任何 docs/ 目录下的历史文档
+- 不要为了"让测试通过"而删掉测试断言
+- 不要在代码里写任何真实密钥
+
+===========================================================
+任务书结束
+===========================================================
+
+【跑完之后你要看的三件事】
+1. 第一节的扫描是否真的零命中（证明国内痕迹清干净了）
+2. 第二节的测试是否全绿（证明云电脑骨架没写崩）
+3. 报告里第 6 问的三个回答（证明关键设计意图被正确理解）

@@ -1,0 +1,254 @@
+================================================================================
+CODEX 施工指令：AI 供应商注册表（松绑写死的 DeepSeek）
+================================================================================
+目标版本：0.14.0-dev.10 之后的下一个 dev
+基准分支：codex/m0-local-test
+基准 commit：1a98e74
+
+设计文档：docs/MULTI-MODEL-ROUTING-PLAN-20261011.md
+本文件是执行版，冲突时以本文件为准。
+
+================================================================================
+【第一部分】先做这个：把未提交的改动 commit 掉
+================================================================================
+
+当前工作区有 110+ 个文件未提交（含敏感文件 device-bridge/device-state.json）。
+本任务的所有改动必须在干净的工作区上做。
+
+步骤：
+1. 先看 `git status`，把改动分组。
+2. 确认 device-bridge/device-state.json 是否已在 .gitignore 里；
+   如果不在，先加进 .gitignore，绝对不要提交这个文件。
+3. 分组成 3-5 个语义清晰的 commit（不要一次全提）：
+   - 文档类（docs/ 下的 md）
+   - 前端 UI（tongban/src/）
+   - 原生端（tongban-android/、yubenzhe-desktop/）
+   - 后端（yubenzhe-deploy/server/）
+4. commit message 用英文，一行标题 + 必要说明。
+5. 提交后 `git status` 必须是干净（除了被忽略的文件）。
+
+完成后回报：commit 数量和哈希。
+
+================================================================================
+【第二部分】本任务范围：只做改动 1 + 改动 2
+================================================================================
+
+！！！严格边界！！！
+
+✅ 允许改：
+   - yubenzhe-deploy/server/ai-provider.mjs    （只加注册表 + 改两处常量）
+   - yubenzhe-deploy/server/service-defaults.json（只加字段，不改现有值）
+   - yubenzhe-deploy/.env.example              （只加注释示例）
+   - yubenzhe-deploy/tests/ 下新增测试文件
+
+❌ 禁止改：
+   - ai-provider.mjs 里 createAiProvider() 的 run() 函数体  ← 一行都不能动
+   - ai-provider.mjs 里 createOllamaProvider() 整个函数      ← 一行都不能动
+   - deployment-config.mjs 的 .cn 拦截规则                  ← 待用户决定，本次不动
+   - 任何业务逻辑、任何额度限制、任何错误码
+   - PURPOSE_INSTRUCTIONS / BASE_INSTRUCTIONS 文案
+
+本次只做「搭架子」：让 AI_PROVIDER 能选中多家供应商，但实际调用路径
+（/responses）保持 DeepSeek 不变。
+
+================================================================================
+【改动 1】ai-provider.mjs 新增 PROVIDER_REGISTRY
+================================================================================
+
+在文件顶部，`const ENDPOINT=...` 之前，新增：
+
+```js
+// Provider registry. Hosts are compile-time constants and stay a hard allowlist;
+// no env value, prompt, or model output may widen them.
+export const PROVIDER_REGISTRY=Object.freeze({
+  openai:{
+    aliases:['openai','deepseek'],
+    endpoint:'https://api.deepseek.com/v1',
+    hosts:['api.deepseek.com'],
+    protocol:'responses',
+    keyEnv:['AI_API_KEY','AI_API_KEY_FILE'],
+    defaultModel:'deepseek-v4-flash',
+  },
+  nvidia_nim:{
+    aliases:['nvidia_nim','nim'],
+    endpoint:'https://integrate.api.nvidia.com/v1',
+    hosts:['integrate.api.nvidia.com'],
+    protocol:'chat_completions',
+    keyEnv:['NVIDIA_NIM_API_KEY'],
+    defaultModel:'z-ai/glm4.7',
+  },
+  openrouter:{
+    aliases:['openrouter','open_router'],
+    endpoint:'https://openrouter.ai/api/v1',
+    hosts:['openrouter.ai'],
+    protocol:'chat_completions',
+    keyEnv:['OPENROUTER_API_KEY'],
+    defaultModel:'deepseek/deepseek-r1',
+  },
+  zhipu:{
+    aliases:['zhipu','glm'],
+    endpoint:'https://open.bigmodel.cn/api/paas/v4',
+    hosts:['open.bigmodel.cn'],
+    protocol:'chat_completions',
+    keyEnv:['ZHIPU_API_KEY'],
+    defaultModel:'glm-4.7',
+    /** BLOCKED: deployment-config.mjs rejects .cn hosts. See 【待确认】 below. */
+    enabled:false,
+  },
+  moonshot:{
+    aliases:['moonshot','kimi'],
+    endpoint:'https://api.moonshot.cn/v1',
+    hosts:['api.moonshot.cn'],
+    protocol:'chat_completions',
+    keyEnv:['MOONSHOT_API_KEY'],
+    defaultModel:'kimi-k2.5',
+    /** BLOCKED: deployment-config.mjs rejects .cn hosts. See 【待确认】 below. */
+    enabled:false,
+  },
+});
+```
+
+注意：
+- `enabled:false` 的两家（zhipu / moonshot）本次**先注册但不允许选中**
+  （因为 deployment-config.mjs 会拦 .cn 域名）。选中它们时必须抛出清晰错误，
+  而不是静默失败。
+- `aliases` 是为了兼容旧的 `AI_PROVIDER=openai`（线上正在用，不能变）。
+
+================================================================================
+【改动 2】readAiProviderConfiguration() 改为查注册表
+================================================================================
+
+现在的实现（第 17-34 行）保持结构不变，只把「选择哪家」改成查注册表。
+
+要求：
+1. 保留 `disabled` 分支行为完全不变（返回的 message 一字不改）。
+2. 保留 `ollama` 分支行为完全不变。
+3. 保留现有 openai 分支的所有校验（model 正则、key 长度 16-8192、
+   禁换行、key file 检查、fingerprint 算法）。
+4. 新增：按 aliases 匹配注册表。匹配不到 → 走原有「未配置」路径
+   （不要 crash，服务要能起来）。
+5. `enabled:false` 的供应商被选中 → 抛带明确原因的配置错误
+   （提示 .cn 域名当前被拦截，请改用国际站或等待白名单放开）。
+6. fingerprint 必须把 providerKey 也算进去，保证换供应商后指纹变化。
+
+关键：调用方 `deployment-config.mjs` 依赖 configuration.type，
+现在 type 只有 'ollama' | 'openai'。本次保持 type 语义不变：
+- ollama → type:'ollama'
+- 其他所有 → type:'openai'（下游不用改）
+
+但要在返回对象上新增字段：`providerKey`（如 'nvidia_nim'）。
+
+================================================================================
+【改动 3】service-defaults.json 加字段（不改现有值）
+================================================================================
+
+在 JSON 里新增一层，现有 key 一个都不动：
+
+```json
+"aiProviders": {
+  "openai":     { "endpoint": "https://api.deepseek.com/v1",          "allowedHosts": ["api.deepseek.com"] },
+  "nvidia_nim": { "endpoint": "https://integrate.api.nvidia.com/v1",  "allowedHosts": ["integrate.api.nvidia.com"] },
+  "openrouter": { "endpoint": "https://openrouter.ai/api/v1",         "allowedHosts": ["openrouter.ai"] },
+  "zhipu":      { "endpoint": "https://open.bigmodel.cn/api/paas/v4", "allowedHosts": ["open.bigmodel.cn"] },
+  "moonshot":   { "endpoint": "https://api.moonshot.cn/v1",           "allowedHosts": ["api.moonshot.cn"] }
+}
+```
+
+注意：顶层现有的 `aiBaseUrl` / `aiAllowedHosts` 必须保留（deployment-config.mjs
+还在读它们）。不要把现有字段删掉或改名。
+
+================================================================================
+【改动 4】.env.example 加供应商选择说明
+================================================================================
+
+在现有第 11-16 行的 AI 区块下方追加（保持现有行的顺序和内容不动）：
+
+```env
+# ===== Provider selection =====
+# AI_PROVIDER accepts: disabled | openai(deepseek) | nvidia_nim | openrouter
+#   | ollama
+# zhipu and moonshot are registered but currently BLOCKED because
+#   deployment-config.mjs rejects *.cn hosts. See docs/MULTI-MODEL-ROUTING-PLAN-20261011.md
+#
+# Example: NVIDIA NIM free tier (40 req/min)
+#   AI_PROVIDER=nvidia_nim
+#   AI_MODEL=z-ai/glm4.7
+#   NVIDIA_NIM_API_KEY=nvapi-xxx
+#
+# Example: OpenRouter
+#   AI_PROVIDER=openrouter
+#   AI_MODEL=deepseek/deepseek-r1
+#   OPENROUTER_API_KEY=sk-or-xxx
+#
+# AI_BASE_URL / AI_ALLOWED_HOSTS below must stay consistent with the
+# selected provider; the registry in ai-provider.mjs remains authoritative.
+```
+
+================================================================================
+【改动 5】新增测试
+================================================================================
+
+新增 yubenzhe-deploy/tests/ai-provider-registry.test.mjs，必须覆盖：
+
+1. `AI_PROVIDER=disabled` → configuration.configured === false
+2. `AI_PROVIDER=openai` + 合法 model/key → type==='openai',
+   providerKey==='openai', configured===true
+3. `AI_PROVIDER=nvidia_nim` + NVIDIA_NIM_API_KEY → providerKey==='nvidia_nim'
+4. `AI_PROVIDER=deepseek`（alias）→ 与 openai 行为一致
+5. `AI_PROVIDER=zhipu` → 抛出错误，错误信息里含 '.cn'
+6. `AI_PROVIDER=不存在的东西` → 不 crash，configured===false
+7. fingerprint 在 providerKey 不同时不同
+8. 回归：原有 openai 校验全部仍然生效
+   （key 太短 / key 含换行 / model 非法字符 → configured===false）
+
+测试要能 `node --test tests/ai-provider-registry.test.mjs` 直接跑。
+
+================================================================================
+【验收标准】全部满足才算完成
+================================================================================
+
+1. `git status` 干净（提交后）
+2. `node --test tests/` 全部通过（含原有测试和新增测试）
+3. 服务在 `AI_PROVIDER=disabled` 下能正常启动
+4. 服务在 `AI_PROVIDER=openai` + 真实 DeepSeek key 下行为与改动前完全一致
+5. `git diff` 里 run() 函数体零改动（请自行核对）
+6. createOllamaProvider() 零改动
+
+================================================================================
+【回报格式】做完后按这个格式回报
+================================================================================
+
+1. commit 列表（哈希 + 标题）
+2. 改动文件清单 + 每个文件的改动行数
+3. 测试结果（通过数/总数）
+4. 明确声明：「run() 函数体未改动」「createOllamaProvider() 未改动」
+5. 遇到的任何偏差或不确定的地方（不要自行发挥）
+
+================================================================================
+【明确不要做的事】
+================================================================================
+
+❌ 不要动 run() 函数体（不改 /responses 的调用方式）
+❌ 不要新增 /chat/completions 调用路径（那是下一期）
+❌ 不要动 .cn 拦截规则
+❌ 不要让白名单可以从 env 动态扩展成任意值
+❌ 不要改任何错误码、额度限制、提示文案
+❌ 不要动前端、Android、桌面端任何文件
+❌ 不要顺手"重构"或"优化"周边代码
+
+================================================================================
+【待用户决定】（本次不执行，先记下来）
+================================================================================
+
+deployment-config.mjs:8 有：
+  if (url.hostname.endsWith('.cn')) throw Error('Invalid configured service URL.');
+
+这条会把 zhipu(open.bigmodel.cn) / moonshot(api.moonshot.cn) 直接拦掉。
+需要用户决定：
+  A) 加白名单例外，只对这两个域名放开（保留其他 .cn 拦截）
+  B) 不放开，改用国际站（z.ai / platform.moonshot.ai）
+  C) 保持现状，不支持中国模型
+
+用户确认后另开任务处理。
+
+================================================================================
