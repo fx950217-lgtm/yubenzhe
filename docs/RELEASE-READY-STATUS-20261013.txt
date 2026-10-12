@@ -1,0 +1,82 @@
+YBZ 正式可用版发布准备：A 阶段检查点
+日期：2026-10-13（北京时间）
+基线：CODEX-TASK-RELEASE-READY-20261013.md；TEST-CHANNEL 已作废。
+本报告是进度及待验清单，不是 A→D 完成报告。
+
+一、已落实代码
+1. yubenzhe-deploy/server/server.mjs：公开模式禁止 internal 目录；解码、路径归一化、目录别名及已通过共享认证的请求仍不可读取。
+2. yubenzhe-deploy/.dockerignore、Dockerfile：构建上下文排除 public/frontend/internal，镜像构建检查目录及符号链接均不存在。尚未实际构建镜像，不能把规则存在当成产物验证通过。
+3. yubenzhe-deploy/scripts/upgrade-verify.mjs：社交库四张积分退役白名单表，非空数据须在同一份 JSON＋SHA-256 归档内完整匹配；空表明确记录 empty。未知表丢失、保留记录改变、伪造或损坏归档仍拒绝。
+4. yubenzhe-deploy/scripts/release-rehearsal.mjs：只接受带 manifest 的完整三库套件，先恢复到新的隔离目录再运行迁移与核验。禁止写入备份目录或覆盖已有目录，保存 upgrade-verification.json。
+5. 新增 public-static、upgrade-verify、release-rehearsal 测试；补充 internal-preview 回归。
+6. AGENTS.md、README.md、PROJECT_CONTEXT.md 同步当前状态。无历史迁移改写，无新增SQL，无认证模式改变。
+
+二、实际验证
+node --test yubenzhe-deploy/tests/*.test.mjs
+  629/629 通过；随后补充“线上当前003至019迁移前缀”专项用例。
+node --test yubenzhe-deploy/tests/upgrade-verify.test.mjs yubenzhe-deploy/tests/release-rehearsal.test.mjs yubenzhe-deploy/tests/backup-suite.test.mjs
+  最终24/24通过，含新增的当前线上旧迁移前缀用例。
+node scripts/check-project.mjs --allow-changes
+  通过。
+原始日志在仓库外 output/ybz-release-ready-20261013/，没有把线上数据库、密钥或凭据写入报告。
+上述是合成数据自动测试，不是生产数据库升级演练，也不是真人或原生设备端到端验收。
+
+三、服务器只读核对
+仅连接获授权的 66.42.56.29，不连接其他四台服务器。
+主机 yubenzhe-sg-01；ops/current=/opt/yubenzhe/releases/0.14.0-dev.10-final。
+ops/image=yubenzhe-public:0.14.0-dev.10-final；frontend/admin 均使用该镜像，healthy。
+当前公网 healthz：0.14.0-dev.10 / internal-preview。
+三库实际共享路径：/opt/yubenzhe/shared/social-state、/opt/yubenzhe/ai-state、/opt/yubenzhe/state。
+social / ai / admin 的 integrity_check 均 ok、foreign_key_check 均0；迁移条数分别17/1/1。
+磁盘剩余约58GB、内存可用约3.1GB。备份与健康检查上次执行退出0。
+最近查见完整三库定时备份 manifest：snapshot-20261012T210427209Z-e4868c39。
+此在线定时备份不替代发布前的“两个写入者停止后成套备份”，本轮尚未做生产恢复演练。
+HTTPS 验证成功，证书 UTC 有效期 2026-10-12 15:46:28 至 2026-10-19 07:46:27。
+未停止服务、未迁移线上数据库、未修改线上配置、未发布新镜像，旧门禁继续生效。
+
+四、已报告且尚未决定的冲突
+1. 公开测试验证码不能作为独立账号认证。account-access.mjs 的模拟码由请求返回；finishEmailLogin 按邮箱签完整会话，设备权限随后仅看 ownerId。知道他人 .test 邮箱即可登录该账号，包括历史内部账号及其设备。限流、HTTPS 和 deviceId 不能修复身份归属。
+   已提供“公开注册＋个人密码”或“保留内部邀请门禁”供用户重选；尚未收到选择。因此未实现公开模拟 OTP、未关闭线上门禁。真实邮件接口继续保留，EMAIL_PROVIDER/EMAIL_ENDPOINT/EMAIL_API_KEY/EMAIL_FROM 的真实服务接入不在当前已定方案内。
+2. 安卓 applicationId 从 app.tongban.wallet.demo 改为 app.yubenzhe.mobile 后是另一款应用，原签名相同也不能覆盖旧包或自动继承沙箱数据。执行 C 时须保留原签名并明确迁移步骤；旧钱包备份验证前不得卸载旧应用。
+3. product-modules 的 testServices 当前仅由 simulation/internalPreview 开启；按任务书只新增 publicTest 并关闭前两项会同时关闭部分工作流。确定认证方案后必须核验真实能力开关，不能暗中扩大模拟模式。
+
+五、31项逐项状态（尚未完成发布验收）
+01 待部署：healthz 当前dev.10，未升新版本。
+02 待认证方案：尚未切换无门禁 capabilities。
+03 待认证方案：公开页面仍保留内部访问门禁。
+04 本地通过/线上待验：public internal 拦截与编码/别名回归通过；镜像尚未构建。
+05 当前基线通过/升级后待验：线上三库完整性及外键正常。
+06 待执行：已有定时套件manifest；本轮停写成套备份和生产副本恢复尚未执行。
+07 待部署：frontend/admin 均仍为dev.10镜像。
+08 当前基线通过/升级后复核：HTTPS和证书日期验证成功。
+09 待方案调整：a@example.test公开注册未启用。
+10 待方案调整：b@example.test独立注册未执行。
+11 待方案调整：新公开邮件作用域未实施；旧作用域回归保留。
+12 不启用当前方案：公开返回simulationCode会允许账号接管，需先确定安全认证。
+13 待D：五账号并发注册未执行。
+14 待D：发布版五账号设备隔离未执行。
+15 待D：公开环境高频注册429未执行。
+16 待方案调整：发布版已有账号再次登录未执行。
+17 待C/D：新Android APK未构建、未安装验证。
+18 待C/D：新Windows包未构建、未安装验证。
+19 待C：三端版本尚未统一升级。
+20 待C：本轮无新APK/EXE，不能提供它们的SHA-256。
+21 待C并修正文案：原签名待核验；改包名后不能覆盖旧包或自动保留其数据。
+22 待B/D：四步新手引导尚未实现/验收。
+23 待B/D：系统深色实时跟随尚未实现/验收。
+24 待B/D：四页骨架尚未实现/验收。
+25 待C：正式包名与旧包迁移提示尚未修改。
+26 待D：本轮原生电脑出码→手机认领未验收。
+27 待D：本轮原生任务派发→真实执行→返回未验收。
+28 待D：本轮群AI备注/头像单聊未验收。
+29 待D：多钱包已有本地实现，本轮发布包未验收资产切换。
+30 待D：红点已有本地实现，本轮发布包未验收。
+31 待D：五人并发与资源检查尚未执行。
+
+六、后续顺序与恢复方式
+继续 A 的认证决策与实现→停写备份/隔离恢复升级/部署核验→B四项功能→C两端打包→D真实与合成测试分别报告。
+停写必须同时覆盖 frontend/admin，并暂停本项目自动任务。用 SQLite backup API 取完整套件；先验证 manifest、哈希、外键、记录保全，再前端先启动迁移，验证后启动同版admin。不能让旧镜像读升级后的库。
+隔离演练工具：node yubenzhe-deploy/scripts/release-rehearsal.mjs <完整snapshot路径> <尚不存在的隔离目录>
+此命令只证明指定备份可恢复及升级，不证明备份时已停写；停写需另记操作证据。
+本轮线上没有变更，无线上回滚操作。代码若需撤回，仅撤销本批提交，不清理用户未提交文件或数据。
+将来线上切换失败：维持维护/拒绝入口，先另取当时三库完整备份，再恢复与目标旧镜像匹配且已验证的成套快照与配置；不得直接给旧镜像使用新库，不得建空库、删表或篡改校验和。

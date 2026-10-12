@@ -35,6 +35,10 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
   const auth = createAuthentication(authConfig, { role, origin: publicURL.origin });
   const staticBase = realpathSync.native(resolve(staticRoot));
   const insideStatic = file => {const path=relative(staticBase,file);return path!=='' && path!=='..' && !path.startsWith('..'+sep) && !isAbsolute(path);};
+  const publicStatic = role === 'frontend' && publicFrontend;
+  // Keep private release material inaccessible even if an operator accidentally
+  // copies it into a public image. Check resolved paths as well to cover aliases.
+  const internalStatic = file => relative(staticBase,file).split(sep)[0].replace(/[ .]+$/,'').toLowerCase() === 'internal';
   const checkOrigin = request => assertSameOrigin(new Request(`${publicURL.origin}/`, { headers: { origin: request.headers.origin || '', 'sec-fetch-site': request.headers['sec-fetch-site'] || '' } }));
   const server = createServer(async (request, response) => {
     response.setHeader('Cache-Control','no-store, private'); response.setHeader('X-Content-Type-Options','nosniff');
@@ -49,6 +53,10 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
         json(response,{ok:true,service:role,version:APP_VERSION,stage:internalPreview ? 'internal-preview' : role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance',...(socialService?.desktop?{desktop:{available:socialService.desktop.capabilities().available,code:socialService.desktop.capabilities().code}}:{})}); return;
       }
       if (request.headers.host !== publicURL.host || url.origin !== publicURL.origin) throw new AdminError(403,'HOST_DENIED','访问地址不匹配，请使用验收地址。');
+      if (publicStatic) {
+        let pathname;try { pathname=decodeURIComponent(url.pathname); } catch { throw new AdminError(404,'NOT_FOUND','页面不存在。'); }
+        if (internalStatic(resolve(staticBase,`.${pathname.replace(/\\/g,'/')}`))) throw new AdminError(404,'NOT_FOUND','页面不存在。');
+      }
       if(role==='frontend'&&(['/api/device-bridge/claim','/api/device-bridge/enroll','/api/device-bridge/poll','/api/device-bridge/ai/poll'].includes(url.pathname)||url.pathname.startsWith('/api/device-bridge/ai/files/'))){
         if(request.method!=='POST'||request.headers.origin||request.headers.referer||request.headers['sec-fetch-site']==='cross-site')throw new AdminError(403,'DEVICE_AGENT_ONLY','此接口仅接受设备连接器。');
         if(request.headers['content-type']?.split(';')[0]!=='application/json')throw new AdminError(415,'JSON_REQUIRED','操作仅接受 JSON。');
@@ -181,7 +189,7 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       const name = decodeURIComponent(url.pathname), file = resolve(staticBase, `.${name === '/' ? '/index.html' : name}`);
       if (!insideStatic(file) || name.split('/').some(part => part.startsWith('.')) || /[\\\0]/.test(name)) throw new AdminError(404,'NOT_FOUND','页面不存在。');
       let resolved, info; try { resolved = await realpath(file); info = await stat(resolved); } catch { throw new AdminError(404,'NOT_FOUND','页面不存在。'); }
-      if (!insideStatic(resolved) || !info.isFile() || !types[extname(file)]) throw new AdminError(404,'NOT_FOUND','页面不存在。');
+      if (!insideStatic(resolved) || !info.isFile() || !types[extname(file)] || publicStatic && internalStatic(resolved)) throw new AdminError(404,'NOT_FOUND','页面不存在。');
       if (['.exe','.apk','.zip','.deb'].includes(extname(file))) response.setHeader('Content-Disposition',`attachment; filename="${basename(file).replace(/[^a-zA-Z0-9._-]/g,'_')}"; filename*=UTF-8''${encodeURIComponent(basename(file)).replace(/['()*]/g,c=>`%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`);
       response.writeHead(200,{'Content-Type':types[extname(file)],'Content-Length':info.size});
       if (request.method === 'HEAD') response.end(); else createReadStream(resolved).on('error',() => response.destroy()).pipe(response);

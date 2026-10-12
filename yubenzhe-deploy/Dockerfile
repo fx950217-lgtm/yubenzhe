@@ -9,6 +9,7 @@ COPY --chown=node:node migrations ./migrations
 COPY --chown=node:node reports ./reports
 COPY --chown=node:node scripts ./scripts
 COPY --chown=node:node public ./public
-RUN test -s public/frontend/index.html && test -s public/admin/index.html
+RUN test -s public/frontend/index.html && test -s public/admin/index.html \
+    && test ! -e public/frontend/internal && test ! -L public/frontend/internal
 USER node
 CMD ["node","server/start.mjs"]

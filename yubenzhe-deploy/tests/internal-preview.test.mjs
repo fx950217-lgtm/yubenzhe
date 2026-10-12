@@ -167,11 +167,12 @@ test('PDF plans and text documents under internal directories require the outer 
  const f=await fixture(t),gate=await f.login();mkdirSync(join(f.dir,'internal'));
  const pdf=Buffer.from('%PDF-1.7\nSYNTHETIC_PRIVATE_PLAN\n%%EOF');
  writeFileSync(join(f.dir,'internal','plan.pdf'),pdf);writeFileSync(join(f.dir,'internal','plan.txt'),'SYNTHETIC_PRIVATE_PLAN');
- for(const path of ['/internal/plan.pdf','/internal/plan.txt','/internal/']){
+  for(const path of ['/internal/plan.pdf','/internal/plan.txt','/internal/','/%69nternal/plan.txt','/internal%2fplan.txt']){
   const r=await f.request(path);assert.match(r.headers.get('content-type'),/text\/html/);const text=await r.text();assert.match(text,/name="password"/);assert.doesNotMatch(text,/SYNTHETIC_PRIVATE_PLAN/);
  }
  const r=await f.request('/internal/plan.pdf',{headers:{Cookie:gate}});assert.equal(r.status,200);assert.equal(r.headers.get('content-type'),'application/pdf');assert.deepEqual(Buffer.from(await r.arrayBuffer()),pdf);
- assert.equal(await (await f.request('/internal/plan.txt',{headers:{Cookie:gate}})).text(),'SYNTHETIC_PRIVATE_PLAN');
+  assert.equal(await (await f.request('/internal/plan.txt',{headers:{Cookie:gate}})).text(),'SYNTHETIC_PRIVATE_PLAN');
+  assert.equal(await (await f.request('/%69nternal%2fplan.txt',{headers:{Cookie:gate}})).text(),'SYNTHETIC_PRIVATE_PLAN');
  assert.equal((await f.request('/internal/',{headers:{Cookie:gate}})).status,404);
 });
 test('internal preview disables legacy shared-acceptance AI routes while keeping their data untouched',async t=>{

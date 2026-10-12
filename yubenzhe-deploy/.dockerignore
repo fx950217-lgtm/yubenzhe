@@ -12,6 +12,7 @@ ui
 ops
 README.txt
 public/frontend/downloads
+public/frontend/internal
 
 ai-state
 ollama-state
