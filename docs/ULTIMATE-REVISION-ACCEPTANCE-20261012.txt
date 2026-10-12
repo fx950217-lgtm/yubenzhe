@@ -1,0 +1,39 @@
+YBZ 终极改版实施与验收 — 2026-10-12
+
+任务依据：MASTER-ULTIMATE-REVISION-20261012.md，按 P0→P7 执行。
+基线：ba4acfa，分支 codex/m0-local-test。前端508、后端414、电脑版51；AI通道62包含在后端414内，不重复累计。
+初始用户修改 AGENTS.md / tongban/src/install.html 已单独留存到仓库外证据目录，不覆盖。
+本轮不连接或修改任何服务器、不部署、不启用主网、不采购、不做真实 Gas 支出。
+状态：实施中。下面未标通过的项不可视为完成。
+
+P0 — 平台零收费与积分退役（代码及本地验证通过）
+删除清单已在执行前列出：tongban/src/points.js、points.css、tongban/tests/points.test.mjs、yubenzhe-deploy/server/points-service.mjs、yubenzhe-deploy/tests/points-service.test.mjs、v02-points-http.test.mjs、v02-points-query.test.mjs。
+任务书“8个全删”与保留014互相矛盾，按数据库铁律实际删除7个文件，014历史迁移不改。
+新增023退役4张积分表；任务书末尾“114张”按前文4张执行。
+旧积分数据先离线归档并校验；只在隔离测试库演练，现有真实用户库未升级。
+保留任务审批、权限、执行、成果、链上付款核验；历史任务列为兼容保留。
+本地真实浏览器（localhost:18934，独立新库）已完成模拟邮箱登录→工作台无积分卡→创建文件清单目标→明确批准→实际生成2个文件→预览真实Markdown。该文件是明确标注的本地规则模板，不冒充AI模型成果。浏览器发现的无效计划到期文案已删除，并重跑前端全量及构建通过。
+最终前端500/500、后端403/403、电脑版51/51，失败均0；构建通过；check-project --allow-changes通过；基线23份历史迁移/受保护合约SHA256全未变。前端508→500：删除积分专用8例，2例预算审批改为1例退役动作拒绝（-1），补历史预算暂停恢复（+1）。
+后端414→403：删除积分专用17例、管理积分对账1例；新增归档安全3例、旧群恢复/响应投影2例、旧任务暂停/投影2例。保留账号、社交、任务、付款核验和设备安全覆盖。
+命令：node --test tongban/tests/*.test.mjs；node --test yubenzhe-deploy/tests/*.test.mjs；node --test yubenzhe-desktop/tests/*.test.cjs；node tongban/build.mjs；node scripts/check-project.mjs --allow-changes。
+现有真实用户库仍保留原四张历史积分表，未在本轮运行迁移。新建/升级隔离fixture已确认四表删除、归档校验与故障回滚、其他行/BLOB/表定义保全。
+旧budget-paused需用户重新批准；旧群approving复用已有任务而不重建；历史plan/events/幂等响应只在读取时去掉旧计价字段，不改历史行。重启旧预览前必须按升级手册先备份，不能只刷新旧进程冒充新版服务。
+P0提交见git历史（Remove platform points and preserve task approvals）。
+
+P1 — 桌面向导五类官方软件清单：待执行。
+P2 — 多链钱包与DApp边界：待执行。
+P3 — 默认关闭的ERC-4337框架：待执行。
+P4 — AI注册表与024迁移：待执行。
+P5 — D1登录提醒：待执行。
+P6 — 动态AI入口：待执行。
+P7 — 群AI与并发、025迁移：待执行。
+
+审计时发现的必要决定（将按各批次验证）
+1. AI探测安装与可执行任务分开；没有安全适配器的程序不能借用Codex冒充执行。
+2. 主任务的按链隔离与TP参考的同一EVM身份兼容：保留旧加密密钥，隔离各链网络状态和交易预览，地址不能静默改变。
+3. AI正文不落库优先于群聊参考中的普通messages写入建议；只持久化元数据。
+4. 并发前需撤销021建立的单running唯一索引，025新增非唯一索引，不改历史021，也不删除任务记录。
+5. 商店主体/申报、独立安全审计及真实设备验收不能通过代码测试宣称已完成。
+
+回滚纪律
+各批次单独commit，可按相反顺序git revert。数据库回滚必须使用升级前成套备份，不能仅回退代码指向已DROP积分表的新库。离线积分归档用于核验/人工恢复，不提供新的运行时账本接口。此轮只在隔离测试与预览状态目录运行，原用户数据不作为缓存清理。

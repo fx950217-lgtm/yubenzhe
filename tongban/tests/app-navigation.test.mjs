@@ -13,7 +13,7 @@ test('bill return keeps the correct parent tab and unknown routes stay safe',()=
  for(const [id] of MAIN_NAV)assert.equal(viewFromHash(hashForView(id)),id);
 });
 
-test('points moves to workbench and existing Mine bookmarks remain usable',()=>{assert.equal(viewFromHash(''),'workbench');assert.equal(viewFromHash('#mine/points'),'points');assert.equal(viewFromHash('#workbench/points'),'points');assert.equal(hashForView('points'),'#workbench/points');assert.equal(activeNavView('points'),'workbench');});
+test('removed service-credit bookmarks fall back safely and cannot expose a retired page',()=>{assert.equal(viewFromHash(''),'workbench');assert.equal(viewFromHash('#mine/points'),'workbench');assert.equal(viewFromHash('#workbench/points'),'workbench');assert.equal(hashForView('points'),'#workbench');assert.equal(isAppView('points'),false);});
 test('business entry links and legacy discovery links resolve to the same workbench feature',()=>{
  for(const route of WORKBENCH_FEATURES){
   const target={view:'workbench',options:{route}};

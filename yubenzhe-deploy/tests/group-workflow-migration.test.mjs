@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {createHash} from 'node:crypto';
-import {mkdtempSync,readFileSync,readdirSync,realpathSync,rmSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,readFileSync,readdirSync,realpathSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {basename,dirname,join,resolve} from 'node:path';
 import {openSocialDatabase} from '../server/social-database.mjs';
+import {archiveRetiredServiceHistory,RETIRED_SERVICE_TABLES} from '../server/retire-points-history.mjs';
 
 const sha256=value=>createHash('sha256').update(value).digest('hex');
 const migrationsURL=new URL('../migrations/',import.meta.url);
@@ -68,7 +69,7 @@ function tableSnapshot(raw,names){
  }));
 }
 
-test('migrations020 through022 preserve old rows, columns, hashes, files and points; device metadata is additive after reopen',t=>{
+test('migrations020 through023 preserve nonretired history, archive retired tables and add device metadata',t=>{
  const parent=realpathSync(tmpdir()),directory=mkdtempSync(join(parent,'ybz-group-migration-')),filename=join(directory,'synthetic-social.sqlite');
  let raw=null,database=null;
  t.after(()=>{
@@ -82,7 +83,8 @@ test('migrations020 through022 preserve old rows, columns, hashes, files and poi
  });
  raw=new DatabaseSync(filename);installOldSchema(raw);seedExistingData(raw);
  const names=raw.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name<>'social_migrations' ORDER BY name").all().map(row=>row.name);
- const unchangedNames=names.filter(name=>name!=='personal_devices');
+ const unchangedNames=names.filter(name=>name!=='personal_devices'&&!RETIRED_SERVICE_TABLES.includes(name));
+ const retiredBefore=Object.fromEntries(RETIRED_SERVICE_TABLES.map(name=>[name,raw.prepare('SELECT * FROM '+name+' ORDER BY rowid').all().map(row=>({...row}))]));
  const before=tableSnapshot(raw,unchangedNames),oldMigrations=raw.prepare('SELECT * FROM social_migrations ORDER BY version').all();
  const oldColumns=raw.prepare('PRAGMA table_info(personal_devices)').all();
  const deviceProjection=oldColumns.map(c=>'"'+c.name+'"').join(',');
@@ -97,7 +99,7 @@ test('migrations020 through022 preserve old rows, columns, hashes, files and poi
   assert.deepEqual(columns.slice(oldColumns.length).map(c=>c.name),['source','capabilities','capabilities_at']);
   for(const d of database.raw.prepare('SELECT source,capabilities,capabilities_at FROM personal_devices').all())assert.deepEqual({...d},{source:'local',capabilities:'{}',capabilities_at:null});
   assert.deepEqual(database.raw.prepare('SELECT * FROM social_migrations WHERE version<=17 ORDER BY version').all(),oldMigrations);
-  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,20);
+  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,21);
   assert.equal(database.raw.prepare('SELECT checksum FROM social_migrations WHERE version=20').get().checksum,sha256(readFileSync(new URL('022-device-claims-capabilities.sql',migrationsURL),'utf8')));
   for(const table of ['device_pair_claims','device_pair_rates'])assert.equal(database.raw.prepare('SELECT count(*) n FROM '+table).get().n,0);
   const current=database.raw.prepare('SELECT checksum FROM social_migrations WHERE version=18').get();
@@ -105,8 +107,36 @@ test('migrations020 through022 preserve old rows, columns, hashes, files and poi
   for(const name of ['group_workflows','group_workflow_events','group_workflow_commands','group_workflow_payments'])assert.equal(database.raw.prepare('SELECT count(*) n FROM '+name).get().n,0);
   assert.deepEqual(database.raw.prepare('PRAGMA foreign_key_check').all(),[]);
   assert.equal(database.raw.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
-  assert.equal(database.raw.prepare('SELECT available,reserved FROM points_accounts WHERE owner_id=?').get(A).available,'970');
+  for(const name of RETIRED_SERVICE_TABLES)assert.equal(database.raw.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name),undefined);
+  const archives=readdirSync(join(directory,'retired-service-history')).filter(name=>name.endsWith('.json'));assert.equal(archives.length,1,'Reopening does not archive or mutate a second time.');
+  const archivePath=join(directory,'retired-service-history',archives[0]),bytes=readFileSync(archivePath);
+  assert.equal(sha256(bytes),readFileSync(archivePath+'.sha256','utf8').trim());
+  assert.deepEqual(JSON.parse(bytes).tables,retiredBefore,'Every retired historical value is preserved in the verified offline archive.');
+  assert.equal(database.raw.prepare('SELECT checksum FROM social_migrations WHERE version=21').get().checksum,sha256(readFileSync(new URL('023-drop-points.sql',migrationsURL),'utf8')));
   assert.equal(Buffer.from(database.raw.prepare('SELECT content FROM workbench_files WHERE id=?').get(O).content).toString(),'one\ntwo');
   database.close();database=null;
  }
+});
+
+test('retirement fails atomically when offline archive cannot be written',t=>{
+ const parent=realpathSync(tmpdir()),directory=mkdtempSync(join(parent,'ybz-retirement-failure-')),filename=join(directory,'synthetic.sqlite');
+ let raw=new DatabaseSync(filename);installOldSchema(raw);seedExistingData(raw);
+ const before=Object.fromEntries(RETIRED_SERVICE_TABLES.map(name=>[name,raw.prepare('SELECT * FROM '+name).all()]));raw.close();raw=null;
+ writeFileSync(join(directory,'retired-service-history'),'intentional archive directory blocker',{flag:'wx'});
+ t.after(()=>{raw?.close();const actual=realpathSync(directory);assert.equal(dirname(actual).toLowerCase(),parent.toLowerCase());assert.ok(basename(actual).startsWith('ybz-retirement-failure-'));rmSync(actual,{recursive:true,force:true});});
+ assert.throws(()=>openSocialDatabase(filename));
+ raw=new DatabaseSync(filename);
+ assert.equal(raw.prepare('SELECT count(*) n FROM social_migrations').get().n,17);
+ assert.equal(raw.prepare("SELECT name FROM sqlite_master WHERE name='group_workflows'").get(),undefined);
+ for(const name of RETIRED_SERVICE_TABLES)assert.deepEqual(raw.prepare('SELECT * FROM '+name).all(),before[name]);
+ assert.deepEqual(raw.prepare('PRAGMA foreign_key_check').all(),[]);
+});
+test('populated memory history is refused without an offline archive',()=>{
+ const raw=new DatabaseSync(':memory:');try{installOldSchema(raw);seedExistingData(raw);assert.throws(()=>archiveRetiredServiceHistory(raw,':memory:'),/on-disk archive/);assert.equal(raw.prepare('SELECT count(*) n FROM points_accounts').get().n,1);}finally{raw.close();}
+});
+test('fresh databases never create an archive and historical checksums are unchanged',()=>{
+ const db=openSocialDatabase(':memory:');try{for(const name of RETIRED_SERVICE_TABLES)assert.equal(db.raw.prepare("SELECT name FROM sqlite_master WHERE name=?").get(name),undefined);
+ for(const name of ['014-points.sql','015-retire-platform-assets.sql','021-ai-channel.sql']){const index=[...oldFiles,'020-group-workflows.sql','021-ai-channel.sql','022-device-claims-capabilities.sql','023-drop-points.sql'].indexOf(name)+1;assert.equal(db.raw.prepare('SELECT checksum FROM social_migrations WHERE version=?').get(index).checksum,sha256(readFileSync(new URL(name,migrationsURL))));}
+ assert.match(readFileSync(new URL('021-ai-channel.sql',migrationsURL),'utf8'),/lease_id/);
+ }finally{db.close();}
 });

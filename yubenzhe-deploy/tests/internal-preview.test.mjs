@@ -53,7 +53,7 @@ test('outer login protects every static file, download, product API and native p
  for(const path of ['/','/app.js','/app.zip','/nested/index.html','/nested/']){
   const r=await f.request(path);assert.match(r.headers.get('content-type'),/text\/html/);assert.equal(r.headers.get('content-disposition'),null);assert.match(await r.text(),/name="password"/);
  }
- const paths=['/api/social/access/capabilities','/api/social/state','/api/social/avatars/'+randomUUID(),'/api/social/workbench/files/'+randomUUID(),'/api/social/points/account','/api/social/notifications/status','/api/social/ai/capabilities','/api/ai/workspaces','/api/admin/bootstrap','/api/chain-preview/config'];
+ const paths=['/api/social/access/capabilities','/api/social/state','/api/social/avatars/'+randomUUID(),'/api/social/workbench/files/'+randomUUID(),'/api/social/workbench/capabilities','/api/social/notifications/status','/api/social/ai/capabilities','/api/ai/workspaces','/api/admin/bootstrap','/api/chain-preview/config'];
  for(const path of paths){const r=await f.request(path);assert.equal(r.status,401,path);assert.equal((await r.json()).code,'INTERNAL_PREVIEW_REQUIRED');}
  const forged={'x-internal-preview':'true','x-forwarded-for':'127.0.0.1','oai-authenticated-user-id':'owner',Authorization:'Bearer '+'x'.repeat(43),Cookie:'ybz_front_session=fake; ybz_admin_session=fake; ybz_social=fake'};
  for(const path of ['/api/social/access/email/request','/api/social/register','/api/social/security/recover']){
@@ -73,7 +73,7 @@ test('an authenticated remote preview session can test email registration but pr
  const verify=await f.post('/api/social/access/email/verify',{challengeId:challenge.challengeId,code:challenge.simulationCode,deviceId},gate,{'x-forwarded-for':'203.0.113.8'});assert.equal(verify.status,200);const account=await verify.json();assert.equal(account.created,true);assert.equal(account.token,undefined);
  const product=cookieOf(verify),both=gate+'; '+product;
  const state=await f.request('/api/social/state',{headers:{Cookie:both}});assert.equal(state.status,200);
- const points=await f.request('/api/social/points/account',{headers:{Cookie:both}});assert.equal(points.status,200);
+ const capability=await f.request('/api/social/workbench/capabilities',{headers:{Cookie:both}});assert.equal(capability.status,200);
  assert.equal((await f.request('/api/social/state',{headers:{Cookie:product}})).status,401);
  assert.equal(await (await f.request('/app.js',{headers:{Cookie:gate}})).text(),'PRIVATE_SCRIPT_MARKER');
  assert.match((await f.request('/app.zip',{headers:{Cookie:gate}})).headers.get('content-disposition'),/attachment/);
@@ -122,13 +122,13 @@ test('chain configuration is same-origin authenticated GET only, validates testn
 test('private remote rule tasks produce real downloadable output with product ownership and outer-gate checks',async t=>{
  const f=await fixture(t),gate=await f.login(),registration=await f.post('/api/social/register',{password:'284961',requestId:randomUUID()},gate);
  const cookie=gate+'; '+cookieOf(registration);
- const planned=await f.post('/api/social/workbench/plan',{requestId:randomUUID(),goal:'准备一份产品发布工作清单',fileIds:[],budgetPoints:'100'},cookie);
+ const planned=await f.post('/api/social/workbench/plan',{requestId:randomUUID(),goal:'准备一份产品发布工作清单',fileIds:[]},cookie);
  assert.equal(planned.status,200);let task=(await planned.json()).task;
- const confirmed=await f.post('/api/social/workbench/tasks/'+task.id+'/confirm',{requestId:randomUUID(),version:task.version,planVersion:task.planVersion,pointsPriceVersion:task.pointsPriceVersion,budgetPoints:'100',acceptPoints:true},cookie);
+ const confirmed=await f.post('/api/social/workbench/tasks/'+task.id+'/confirm',{requestId:randomUUID(),version:task.version,planVersion:task.planVersion,acceptExecution:true},cookie);
  assert.equal(confirmed.status,200);
  for(let i=0;i<4;i++)await f.modules.tick();
  task=(await (await f.request('/api/social/workbench/tasks/'+task.id,{headers:{Cookie:cookie}})).json()).task;
- assert.equal(task.status,'succeeded');assert.equal(task.spentPoints,'30');assert.ok(task.outputs[0]?.id);
+ assert.equal(task.status,'succeeded');assert.equal(task.step,3);assert.ok(task.outputs[0]?.id);
  const path='/api/social/workbench/files/'+task.outputs[0].id;
  const download=await f.request(path,{headers:{Cookie:cookie}});
  assert.equal(download.status,200);assert.match(download.headers.get('content-disposition'),/attachment/);assert.ok((await download.text()).length>0);

@@ -93,23 +93,18 @@ test('an invalid initial task route is ignored and cannot escape the task API pa
 });
 
 const primaryButtons=html=>[...html.matchAll(/<button\b[^>]*class="primary"[^>]*>[\s\S]*?<\/button>/g)].map(match=>match[0]);
-const budgetApproval=(id,overrides={})=>({id,status:'pending',action:'budget-increase',expiresAt:Date.now()+60000,parameters:{oldBudgetPoints:'100',newBudgetPoints:'200'},...overrides});
-const pointsTask=overrides=>task({billingUnit:'POINT',pointsPriceVersion:'points-v1',budgetPoints:'100',spentPoints:'10',reservedPoints:'20',remainingPoints:'90',releasedPoints:'0',...overrides});
 
 for(const status of ['awaiting-confirmation','queued','running','paused','awaiting-user','budget-paused','succeeded','failed','cancelled']){
  test('task '+status+' shows at most one primary action across tabs, approvals and file preview',async t=>{
-  const currentTask=pointsTask({status,approvals:[budgetApproval('first-budget'),budgetApproval('second-budget')]});
+  const currentTask=task({status});
   const h=harness(t,{initialScreen:'tasks',initialTaskId:currentTask.id,request:async(path,options,fallback)=>path==='workbench/tasks/'+currentTask.id?{task:currentTask}:path==='workbench/files/preview-file/details'?{file:{id:'preview-file',name:'任务成果.txt'},preview:{text:'真实预览文本',truncated:false}}:fallback(path,options)});
   await tick();
   for(const tab of ['overview','outputs','workspace']){
    await h.click('task-tab',undefined,{tab});
    assert.ok(primaryButtons(h.root.innerHTML).length<=1,status+' '+tab+' has competing primary actions');
-   if(tab==='overview'&&['paused','awaiting-user','budget-paused'].includes(status)){
-    assert.match(primaryButtons(h.root.innerHTML)[0],/data-action="approve"/);
-    assert.match(primaryButtons(h.root.innerHTML)[0],/data-id="first-budget"/);
-    assert.match(h.root.innerHTML,/<button[^>]*data-action="resume"[^>]*class=""/);
-    assert.match(h.root.innerHTML,/<button[^>]*data-id="second-budget"[^>]*class=""/);
-    assert.match(h.root.innerHTML,/<details class="wb-library" open><summary>调整最高积分预算/);
+   if(tab==='overview'&&['paused','awaiting-user'].includes(status)){
+    assert.match(primaryButtons(h.root.innerHTML)[0],/data-action="resume"/);
+    assert.doesNotMatch(h.root.innerHTML,/data-action="approve"|data-budget|积分/);
    }
    await h.click('preview','preview-file');
    const previewPrimary=primaryButtons(h.root.innerHTML);assert.equal(previewPrimary.length,1);
@@ -121,23 +116,8 @@ for(const status of ['awaiting-confirmation','queued','running','paused','awaiti
  });
 }
 
-test('expired approvals do not replace continue as the primary task action',async t=>{
- const currentTask=pointsTask({status:'paused',approvals:[budgetApproval('expired',{expiresAt:Date.now()-1000}),budgetApproval('already-confirmed',{status:'approved'})]});
- const h=harness(t,{initialTaskId:currentTask.id,request:async(path,options,fallback)=>path==='workbench/tasks/'+currentTask.id?{task:currentTask}:fallback(path,options)});
- await tick();assert.equal(primaryButtons(h.root.innerHTML).length,1);assert.match(primaryButtons(h.root.innerHTML)[0],/data-action="resume"/);
- assert.doesNotMatch(h.root.innerHTML,/data-action="approve"/);
-});
-
-test('secondary budget confirmation keeps the same explicit authorization payload',async t=>{
- const currentTask=pointsTask({status:'paused',approvals:[budgetApproval('first'),budgetApproval('second')]});
- const h=harness(t,{initialTaskId:currentTask.id,request:async(path,options,fallback)=>path.startsWith('workbench/tasks/'+currentTask.id)?{task:currentTask}:fallback(path,options)});
- await tick();assert.match(h.root.innerHTML,/<button[^>]*data-id="second"[^>]*class=""/);
- await h.click('approve','second');
- const writes=h.calls.filter(call=>call.options?.method==='POST');assert.equal(writes.length,1);
- assert.equal(writes[0].path,'workbench/tasks/'+currentTask.id+'/approve');
- assert.equal(writes[0].options.input.approvalId,'second');assert.equal(writes[0].options.input.approvalAction,'budget-increase');
- assert.equal(writes[0].options.input.version,currentTask.version);assert.equal(writes[0].options.input.budgetPoints,'200');assert.equal(writes[0].options.input.acceptPoints,true);
- assert.equal(typeof writes[0].options.input.requestId,'string');
+test('legacy authorization actions cannot write after the retired budget form was removed',async t=>{
+ const currentTask=task({status:'paused'});const h=harness(t,{initialTaskId:currentTask.id,request:async(path,options,fallback)=>path==='workbench/tasks/'+currentTask.id?{task:currentTask}:fallback(path,options)});await tick();assert.match(primaryButtons(h.root.innerHTML)[0],/data-action="resume"/);await h.click('approve','obsolete');assert.equal(h.calls.some(call=>call.options?.method==='POST'),false);assert.doesNotMatch(h.root.innerHTML,/data-action="approve"|data-budget/);
 });
 
 test('file preview temporarily takes primary action priority over the new-task composer',async t=>{

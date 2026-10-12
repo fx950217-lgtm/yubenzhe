@@ -13,8 +13,8 @@ async function fixture(t){
  const register=async()=>{const value=await command(null,'register',{password:'482715'});return {...value,id:modules.social.authenticate(value.token).id};};
  const a=await register(),b=await register();
  const friendship=await call(a,'POST','friends/request',{userId:b.profile.userId});await call(b,'POST','friends/respond',{requestId:friendship.requestId,accept:true});
- const planned=(await command(a,'workbench/plan',{goal:'为合成测试活动制作工作清单，包含准备事项和成果验收',fileIds:[],budgetPoints:'100'})).task;
- await command(a,'workbench/tasks/'+planned.id+'/confirm',{version:planned.version,planVersion:planned.planVersion,pointsPriceVersion:planned.pointsPriceVersion,budgetPoints:planned.budgetPoints,acceptPoints:true});
+ const planned=(await command(a,'workbench/plan',{goal:'为合成测试活动制作工作清单，包含准备事项和成果验收',fileIds:[]})).task;
+ await command(a,'workbench/tasks/'+planned.id+'/confirm',{version:planned.version,planVersion:planned.planVersion,acceptExecution:true});
  for(let i=0;i<4;i++){time+=1000;await modules.tick();}
  const task=(await call(a,'GET','workbench/tasks/'+planned.id)).task;assert.equal(task.status,'succeeded');
  const one=(sql,...args)=>database.raw.prepare(sql).get(...args),run=(sql,...args)=>database.raw.prepare(sql).run(...args);

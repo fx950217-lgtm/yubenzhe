@@ -37,41 +37,29 @@ test('real account views omit credentials, remove avatars with version checks an
  assert.throws(()=>admin('accounts/'+account.id+'/actions',{requestId:randomUUID(),revision:restored.item.revision,action:'restore',reason:'不能反复恢复正常账号'}),{code:'STATE_UNCHANGED'});
 });
 
-test('operator lists paginate all real records without creating POINT accounts or swallowing state filters',async t=>{
+test('operator lists paginate all real records without swallowing state filters',async t=>{
  const {database,modules,admin}=fixture(t);const a=await register(modules);const source=database.raw.prepare('SELECT * FROM accounts WHERE id=?').get(a.id);
  const keys=Object.keys(source),insert=database.raw.prepare('INSERT INTO accounts('+keys.join(',')+') VALUES('+keys.map(()=>'?').join(',')+')');
  for(let i=0;i<55;i++)insert.run(...keys.map(key=>key==='id'?randomUUID():key==='user_id'?'audit_user_'+i:source[key]));
  const first=admin('accounts');assert.equal(first.items.length,50);assert.ok(first.nextBefore);const second=admin('accounts',undefined,{before:first.nextBefore});assert.equal(second.items.length,6);assert.equal(new Set([...first.items,...second.items].map(row=>row.id)).size,56);
- assert.equal(admin('points').items.length,0);assert.equal(database.raw.prepare('SELECT count(*) n FROM points_accounts').get().n,0);
+ assert.throws(()=>admin('points'),{code:'PRODUCT_ADMIN_NOT_FOUND'});
  assert.throws(()=>admin('accounts',undefined,{before:'-1'}),{code:'INVALID_CURSOR'});assert.throws(()=>admin('accounts',undefined,{privateKey:'invalid'}),{code:'INVALID_FIELDS'});
  assert.equal(admin('accounts',undefined,{q:a.profile.userId}).items.length,1);
 });
 
-test('POINT view reconciles every integer entry, detects account drift and exposes no write path',async t=>{
- const {database,modules,admin}=fixture(t),a=await register(modules);modules.points.ensureTrial(a.id);
- const taskId=randomUUID();modules.points.reserve({owner:a.id,resourceId:taskId,amount:'30',requestId:randomUUID()});
- let result=admin('points/'+a.id);assert.equal(result.reconciliation.ok,true);assert.equal(result.item.available,'970');assert.equal(result.item.reserved,'30');
- modules.points.settle({owner:a.id,resourceId:taskId,spent:'20',requestId:randomUUID()});result=admin('points/'+a.id);assert.equal(result.reconciliation.ok,true);assert.equal(result.item.available,'980');assert.equal(result.item.reserved,'0');assert.equal(result.ledger.length,3);
- database.raw.prepare("UPDATE points_accounts SET available='981' WHERE owner_id=?").run(a.id);assert.equal(admin('points/'+a.id).reconciliation.ok,false);
- database.raw.prepare("UPDATE points_accounts SET available='980' WHERE owner_id=?").run(a.id);
- database.raw.prepare("UPDATE points_transactions SET delta='1001' WHERE owner_id=? AND reason='local-welcome'").run(a.id);
- const inconsistent=admin('points/'+a.id);assert.equal(inconsistent.reconciliation.journalsBalanced,true);assert.equal(inconsistent.reconciliation.journalsConsistent,false);assert.equal(inconsistent.reconciliation.ok,false);
- assert.throws(()=>admin('points/'+a.id,{amount:'9999'}),{code:'METHOD_NOT_ALLOWED'});
-});
 
-test('account restriction cancels queued, running and paused file work without extra POINT consumption',async t=>{
+test('account restriction cancels queued, running and paused file work without further execution',async t=>{
  for(const mode of ['queued','running','paused','quoted']){
   const {database,modules,admin}=fixture(t),a=await register(modules);
-  modules.points.ensureTrial(a.id);
   const call=(path,input)=>modules.handle({method:input?'POST':'GET',path,token:a.token,input:input?{requestId:randomUUID(),...input}:undefined});
-  let task=(await call('workbench/plan',{goal:'准备一份产品发布工作清单',fileIds:[],budgetPoints:'100'})).task;
-  if(mode!=='quoted')task=(await call('workbench/tasks/'+task.id+'/confirm',{version:task.version,planVersion:task.planVersion,pointsPriceVersion:task.pointsPriceVersion,budgetPoints:'100',acceptPoints:true})).task;
-  if(mode==='running'||mode==='paused'){await modules.tick();await modules.tick();assert.equal(database.raw.prepare('SELECT spent_points FROM workbench_tasks WHERE id=?').get(task.id).spent_points,'10');}
+  let task=(await call('workbench/plan',{goal:'准备一份产品发布工作清单',fileIds:[]})).task;
+  if(mode!=='quoted')task=(await call('workbench/tasks/'+task.id+'/confirm',{version:task.version,planVersion:task.planVersion,acceptExecution:true})).task;
+  if(mode==='running'||mode==='paused'){await modules.tick();await modules.tick();assert.equal(database.raw.prepare('SELECT step FROM workbench_tasks WHERE id=?').get(task.id).step,1);}
   if(mode==='paused')database.raw.prepare("UPDATE workbench_tasks SET status='paused' WHERE id=?").run(task.id);
   const item=admin('accounts/'+a.id).item;admin('accounts/'+a.id+'/actions',{requestId:randomUUID(),revision:item.revision,action:'mute',reason:'治理限制后停止自动执行'});
-  await modules.tick();await modules.tick();const stored=database.raw.prepare('SELECT status,spent_points,error_code FROM workbench_tasks WHERE id=?').get(task.id);
-  assert.equal(stored.status,'cancelled',mode);assert.equal(stored.error_code,'ACCOUNT_RESTRICTED');assert.equal(stored.spent_points,mode==='running'||mode==='paused'?'10':'0');
-  const points=admin('points/'+a.id);assert.equal(points.reconciliation.ok,true);assert.equal(points.item.reserved,'0');assert.equal(points.item.available,mode==='running'||mode==='paused'?'990':'1000');
+  await modules.tick();await modules.tick();const stored=database.raw.prepare('SELECT status,step,error_code FROM workbench_tasks WHERE id=?').get(task.id);
+  assert.equal(stored.status,'cancelled',mode);assert.equal(stored.error_code,'ACCOUNT_RESTRICTED');assert.equal(stored.step,mode==='running'||mode==='paused'?1:0);
+  assert.equal(database.raw.prepare('SELECT count(*) n FROM workbench_usage').get().n,0);
  }
 });
 

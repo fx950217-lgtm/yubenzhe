@@ -1,8 +1,5 @@
 import { createHash } from 'node:crypto';
 
-export const PRICE_VERSION='local-file-trial-2026-10-10';
-export const STEP_COST=7000n;
-export const MARGIN_BPS=3000n;
 export const FILE_LIMIT=256*1024;
 export const RETENTION_MS=30*24*60*60*1000;
 export const PLANNER_VERSION='local-rules-2026-10-10-v1';
@@ -13,17 +10,17 @@ const safeBase=value=>String(value).replace(/[\\/:*?"<>|\x00-\x1f]/g,' ').trim()
 export function localServiceCatalog(enabled=false){return {services:[
  {id:'local-rules',kind:'planner',label:'本地规则式计划器',status:enabled?'available':'unconfigured',version:PLANNER_VERSION,capabilities:['goal-classification','plan','estimate'],reason:enabled?'规则识别与模板，不是语言模型。':'本地执行模式未开启。'},
  {id:'local-documents',kind:'tool',label:'本地文档与文件工具',status:enabled?'available':'unconfigured',capabilities:[...LOCAL_OPERATIONS],reason:enabled?'在当前隔离服务处理选中的内容，不联网。':'本地执行模式未开启。'},
- {id:'cloud-model',kind:'model',label:'云端语言模型',status:'unconfigured',capabilities:[],reason:'尚未为本地 M0 配置供应商、模型、价格或调用凭据。'},
+ {id:'cloud-model',kind:'model',label:'云端语言模型',status:'unconfigured',capabilities:[],reason:'尚未为本地 M0 配置供应商、模型或调用凭据。'},
  {id:'cloud-desktop',kind:'workspace',label:'云端桌面',status:'unconfigured',capabilities:[],reason:'尚未配置云设备、桌面网关与工具执行权限。'}
 ]};}
 
 // Classification is intentionally conservative. Files are inert data, and no
 // text can grant networking, shell execution, payment or message permissions.
-export function planLocalGoal({goal,files=[],locale='zh-CN',priorCostMicro='0'}={}){
+export function planLocalGoal({goal,files=[],locale='zh-CN'}={}){
  if(typeof goal!=='string'||goal.trim().length<2||goal.length>4000)throw new Error('请用 2–4000 字说明任务目标。');
  if(!['zh-CN','en-US'].includes(locale))throw new Error('暂时支持简体中文和英语计划。');
  goal=goal.trim();
- const plan={status:'needs_information',planner:'local-rules',plannerVersion:PLANNER_VERSION,locale,goal,operation:null,summary:'',steps:[],artifacts:[],missingInformation:[],limitations:[bilingual(locale,'由本地规则生成计划与模板，未调用语言模型、联网服务或远程桌面。','A local rules engine creates this plan and templates. No language model, network service or remote desktop is used.')],estimatedMicro:'0',estimatedRange:{minMicro:'0',maxMicro:'0',currency:'USD'},estimatedSeconds:0,priceVersion:PRICE_VERSION,userChargeMicro:'0',payer:'platform-trial',externalActions:[]};
+ const plan={status:'needs_information',planner:'local-rules',plannerVersion:PLANNER_VERSION,locale,goal,operation:null,summary:'',steps:[],artifacts:[],missingInformation:[],limitations:[bilingual(locale,'由本地规则生成计划与模板，未调用语言模型、联网服务或远程桌面。','A local rules engine creates this plan and templates. No language model, network service or remote desktop is used.')],estimatedSeconds:0,externalActions:[]};
  // A specific prohibition does not itself request the prohibited operation.
  const intent=goal.replace(/(?:不|不要|无需|禁止)(?:实际|自动)?(?:发送邮件|发送消息|发送|联网|购买|下单|支付|发布|运行代码)[^，。；;\n]*/g,'').replace(/(?:do not|don't|without)\s+(?:send(?:ing)?|buy(?:ing)?|publish(?:ing)?|execut(?:e|ing))[^,;.\n]*/gi,'');
  if(/助记词|私钥|api[_ -]?key|密钥密码|(?:账号|账户|登录|邮箱|钱包)(?:的)?密码|password\s*[:=]|mnemonic|private[ _-]?key|-----BEGIN .*PRIVATE KEY/i.test(goal)){
@@ -33,7 +30,7 @@ export function planLocalGoal({goal,files=[],locale='zh-CN',priorCostMicro='0'}=
  }
  const external=/(?:发送|发给|群发|投递)(?:邮件|消息|短信|给)|(?:发送邮件|send\s+(?:an?\s+)?(?:email|message)|email\s+it|publish|发布到|自动发布|替我发布|帮我发布)|(?:购买|下单|付款|支付|转账|buy\b|purchase\b|transfer\s+money)|(?:联网|上网|浏览网页|搜索网页|查找网站|抓取|爬取|打开网站|打开浏览器|操作桌面|操控桌面|远程桌面|browse\b|search\s+(?:the\s+)?web|open\s+(?:a\s+)?browser)|(?:运行(?:代码|脚本|命令)|执行(?:代码|脚本|命令)|shell\b|execute\b|run\s+(?:code|script|command))|(?:生成(?:图片|视频)|翻译全文|实时(?:行情|天气)|image\s+generation)/i;
  if(external.test(intent)){
-  plan.status='needs_configuration';plan.summary=bilingual(locale,'该目标需要尚未接通的模型、联网工具或云端设备。','This goal needs an unconfigured model, network tool or cloud workspace.');plan.missingInformation=[bilingual(locale,'真实服务商、工具权限和费用尚未配置；当前不会执行或收费。可改为先整理清单或草稿。','The provider, tool permissions and pricing are not configured. Nothing will run or be charged. You can request a checklist or draft instead.')];return plan;
+  plan.status='needs_configuration';plan.summary=bilingual(locale,'该目标需要尚未接通的模型、联网工具或云端设备。','This goal needs an unconfigured model, network tool or cloud workspace.');plan.missingInformation=[bilingual(locale,'真实服务商和工具权限尚未配置；当前不会执行。可改为先整理清单或草稿。','The provider and tool permissions are not configured. Nothing will run. You can request a checklist or draft instead.')];return plan;
  }
  let operation;
  if(/清单|待办|检查表|checklist|to[ -]?do/i.test(intent))operation='checklist';
@@ -54,7 +51,7 @@ export function planLocalGoal({goal,files=[],locale='zh-CN',priorCostMicro='0'}=
  plan.artifacts=isDocument?[{name:safeBase(goal.split(/[，,。\n]/)[0])+'-'+(EN(locale)?operation:labels[operation][0])+'.md',mime:'text/markdown; charset=utf-8',description:bilingual(locale,'包含原目标、明确要点与待补充项的可编辑模板；不是模型生成的事实结论。','Editable template with the original goal, specified points and open questions; not model-generated factual conclusions.')}]:files.map(f=>({name:f.name.replace(/\.[^.]+$/,'')+(operation==='format-json'?'-格式化.json':/\.csv$/i.test(f.name)?'-整理.csv':/\.json$/i.test(f.name)?'-格式化.json':'-整理.txt'),mime:/\.json$/i.test(f.name)?'application/json; charset=utf-8':/\.csv$/i.test(f.name)?'text/csv; charset=utf-8':'text/plain; charset=utf-8',description:bilingual(locale,'实际处理后的文件副本，原附件保留。','A processed copy; the original attachment is retained.')}));
  plan.artifacts.push({name:EN(locale)?'processing-notes.txt':'处理说明.txt',mime:'text/plain; charset=utf-8',description:bilingual(locale,'列出已完成内容和当前能力限制。','Lists completed work and capability limits.')});
  if(isDocument)plan.limitations.push(bilingual(locale,'草稿不是已完成外部工作；其中待补充项和事实需由你核对。','A draft is not completed external work; verify open items and factual claims yourself.'));
- plan.estimatedMicro=priceMicro(BigInt(priorCostMicro)+STEP_COST*3n,{roundCent:true}).toString();plan.estimatedRange={minMicro:plan.estimatedMicro,maxMicro:plan.estimatedMicro,currency:'USD'};plan.estimatedSeconds=5;
+ plan.estimatedSeconds=5;
  return plan;
 }
 
@@ -91,11 +88,6 @@ function processGoalDocument(files,operation,{goal,locale='zh-CN',plan}={}){
  const name=plan?.artifacts?.[0]?.name||safeBase(text)+'-'+label+'.md';
  const report=[bilingual(locale,'已完成：读取目标和选择的附件，按明确规则生成可编辑模板。','Completed: read the goal and selected files and generated an editable template using explicit rules.'),bilingual(locale,'未完成：事实研究、外部执行、发送、发布、付款与远程桌面操作。','Not performed: factual research, external execution, sending, publishing, payments or remote desktop actions.'),bilingual(locale,'原始目标：','Original goal: ')+text,...(plan?.limitations||[])].join('\n');
  return [{name,mime:'text/markdown; charset=utf-8',content:Buffer.from(body.join('\n')+'\n')},{name:EN(locale)?'processing-notes.txt':'处理说明.txt',mime:'text/plain; charset=utf-8',content:Buffer.from(report)}];
-}
-export function priceMicro(cost,{roundCent=false}={}) {
- const value=BigInt(cost); if(value<0n)throw new Error('Negative cost');
- const priced=(value*10000n+(10000n-MARGIN_BPS)-1n)/(10000n-MARGIN_BPS);
- return roundCent&&priced>0n?((priced+9999n)/10000n)*10000n:priced;
 }
 export function parseCSV(text) {
  const rows=[];let row=[],field='',quoted=false,closed=false;

@@ -62,7 +62,7 @@ test('distribution entry mounts the real preview and an unconfigured deployment 
  let cleanup;
  const context=vm.createContext({showModal:(title,html,setup,dispose)=>{dialogs.push({title,html});setup({querySelector:selector=>{assert.equal(selector,'[data-distribution-root]');return root;}});cleanup=dispose;},mountDistributionPreview:(node,options)=>mountDistributionPreview(node,{...options,load:async()=>{configurationReads++;return {enabled:false,chainId:97,mode:'equal',reason:'链上内测活动尚未部署或未启用。'};}}),wallet:localWallet,beginWalletSetup:forbidden,unlockModal:forbidden,refreshBalance:forbidden});
  vm.runInContext(block('function openDistributionInfo()','function openWalletManagement()'),context);context.openDistributionInfo();await Promise.resolve();await Promise.resolve();
- assert.equal(dialogs[0].title,'链上等额内测');assert.match(dialogs[0].html,/data-distribution-root/);assert.match(root.innerHTML,/尚未部署/);assert.match(root.innerHTML,/不会签名、扣除积分或增加链上资产/);assert.doesNotMatch(root.innerHTML,/<form|<input|data-distribution-action|data-gift-composer/);assert.equal(configurationReads,1);
+ assert.equal(dialogs[0].title,'链上等额内测');assert.match(dialogs[0].html,/data-distribution-root/);assert.match(root.innerHTML,/尚未部署/);assert.match(root.innerHTML,/不会签名或增加链上资产/);assert.doesNotMatch(root.innerHTML,/<form|<input|data-distribution-action|data-gift-composer/);assert.equal(configurationReads,1);
  await refreshButton.onclick();assert.equal(configurationReads,2);assert.doesNotMatch(root.innerHTML,/data-distribution-action/);cleanup();assert.equal(localCancellations,1);
  assert.doesNotMatch(source,/mountPlatformAssets|mountGiftComposer|assets\/|gifts\/|autoBindCreatedWallet/);
 });

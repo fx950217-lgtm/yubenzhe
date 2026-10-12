@@ -13,7 +13,7 @@ export function archiveRetiredSimulation(raw,filename){
  const tables=Object.fromEntries(RETIRED_TABLES.filter(t=>present.has(t)).map(t=>[t,raw.prepare('SELECT * FROM '+t).all()]));
  if(!Object.values(tables).some(rows=>rows.length))return null;
  if(filename===':memory:')throw Error('Cannot retire populated SIM history without an on-disk archive.');
- const payload=JSON.stringify({format:'yubenzhe-v01-retired-simulation',version:1,createdAt:new Date().toISOString(),scope:'Offline history only; no automatic conversion to POINT or chain assets',tables});
+ const payload=JSON.stringify({format:'yubenzhe-v01-retired-simulation',version:1,createdAt:new Date().toISOString(),scope:'Offline history only; no automatic conversion to chain assets',tables});
  const digest=hash(payload),folder=join(dirname(resolve(filename)),'retired-v01'),path=join(folder,'simulation-'+randomUUID()+'.json');
  mkdirSync(folder,{recursive:true,mode:0o700});writeFileSync(path,payload,{flag:'wx',mode:0o600});chmodSync(path,0o600);
  if(hash(readFileSync(path))!==digest)throw Error('Retired SIM archive verification failed; migration aborted.');

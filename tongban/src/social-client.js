@@ -95,8 +95,6 @@ export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.prev
  }
  return {
   getProfile:()=>copy(current),
-  getPointsAccount:()=>request('points/account'),
-  getPointsLedger:({cursor}={})=>request('points/ledger'+(cursor?'?cursor='+encodeURIComponent(cursor):'')),
   authenticatedRequest:(path,options)=>request(path,options),
   publicRequest:(path,options)=>request(path,options),
   clearSession:()=>forget(),

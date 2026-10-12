@@ -2,6 +2,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {getAddress} from 'ethers';
 import {fail,fields,text} from './social-validation.mjs';
 import {planLocalGoal} from './workbench-adapters.mjs';
+import {currentTaskView} from './retired-task-view.mjs';
 import {buildTaskPaymentData} from './task-payment-verifier.mjs';
 
 const hash=value=>createHash('sha256').update(typeof value==='string'||Buffer.isBuffer(value)?value:JSON.stringify(value)).digest('hex');
@@ -43,14 +44,14 @@ export function createGroupWorkflows({database,socialService,workbenchService,pr
  }
  function view(row,account){
   const scope=JSON.parse(row.scope_json),artifacts=JSON.parse(row.artifacts_json),payment=paymentFor(row.id);
-  const task=row.workbench_task_id?one('SELECT id,status,version,spent_points,budget_points FROM workbench_tasks WHERE id=? AND owner_id=?',row.workbench_task_id,row.owner_id):null;
+  const task=row.workbench_task_id?one('SELECT id,status,version FROM workbench_tasks WHERE id=? AND owner_id=?',row.workbench_task_id,row.owner_id):null;
   return {id:row.id,conversationId:row.conversation_id,ownerId:one('SELECT user_id FROM accounts WHERE id=?',row.owner_id)?.user_id||'',isOwner:account.id===row.owner_id,goal:row.goal,status:row.status,version:row.version,error:row.error_code,createdAt:row.created_at,updatedAt:row.updated_at,
    sourceMessageIds:JSON.parse(row.source_json).map(x=>String(x.id)),
    proposal:{status:row.proposal_digest?'ready':row.status==='blocked'?'blocked':'pending',output:row.proposal_output,digest:row.proposal_digest,taskId:row.ai_task_id,error:row.error_code},
-   execution:{taskId:row.workbench_task_id,status:task?.status||null,kind:'local-file-parser',plan:scope.plan,estimatedPoints:'30',budgetPoints:task?.budget_points||'100',spentPoints:task?.spent_points||'0',pointsPriceVersion:'local-points-v1',files:scope.files.map(({id,name,sha256})=>({id,name,sha256}))},
+   execution:{taskId:row.workbench_task_id,status:task?.status||null,kind:'local-file-parser',plan:currentTaskView(scope.plan),files:scope.files.map(({id,name,sha256})=>({id,name,sha256}))},
    artifacts,artifactDigest:row.artifact_digest,acceptedAt:row.accepted_at,
    payment:payment?{id:payment.id,chainId:payment.chain_id,asset:'tBNB',from:payment.from_address,to:payment.to_address,valueWei:payment.value_wei,data:payment.data,acceptanceDigest:payment.acceptance_digest,state:payment.state,txHash:payment.tx_hash,receipt:payment.receipt_json?JSON.parse(payment.receipt_json):null,createdAt:payment.created_at}:null,
-   events:all('SELECT * FROM group_workflow_events WHERE workflow_id=? ORDER BY created_at,rowid',row.id).map(e=>({id:e.id,type:e.event_type,messageId:String(e.message_id),payload:JSON.parse(e.payload_json),createdAt:e.created_at}))};
+   events:all('SELECT * FROM group_workflow_events WHERE workflow_id=? ORDER BY created_at,rowid',row.id).map(e=>({id:e.id,type:e.event_type,messageId:String(e.message_id),payload:currentTaskView(JSON.parse(e.payload_json)),createdAt:e.created_at}))};
  }
  const result=(request,id)=>{const row=checked(request,id);return {workflow:view(row,actor(request))};};
  function version(row,value){if(!Number.isSafeInteger(value)||value!==row.version)fail(409,'WORKFLOW_CHANGED','任务已更新，请重新核对当前内容。');}
@@ -112,7 +113,7 @@ export function createGroupWorkflows({database,socialService,workbenchService,pr
   });
   return plan.status==='ready'?startProposal(request,id):result(request,id);
  }
- function executionMatches(row){const scope=JSON.parse(row.scope_json),task=one('SELECT * FROM workbench_tasks WHERE id=? AND owner_id=?',row.workbench_task_id,row.owner_id);return Boolean(task&&task.goal===row.goal&&task.operation===scope.plan.operation&&task.plan_version===1&&task.billing_unit==='POINT'&&JSON.stringify(JSON.parse(task.input_ids))===JSON.stringify(scope.files.map(f=>f.id)));}
+ function executionMatches(row){const scope=JSON.parse(row.scope_json),task=one('SELECT id,goal,operation,input_ids,plan_version,version,status FROM workbench_tasks WHERE id=? AND owner_id=?',row.workbench_task_id,row.owner_id);return Boolean(task&&task.goal===row.goal&&task.operation===scope.plan.operation&&task.plan_version===1&&JSON.stringify(JSON.parse(task.input_ids))===JSON.stringify(scope.files.map(f=>f.id)));}
  function artifactsFor(row){return all("SELECT id,name,mime,size,sha256,content,expires_at AS expiresAt FROM workbench_files WHERE task_id=? AND owner_id=? AND kind='output' ORDER BY id",row.workbench_task_id,row.owner_id);}
  function immutableArtifacts(row){if(!executionMatches(row))fail(409,'EXECUTION_SCOPE_CHANGED','实际执行范围与群内批准不一致，不能验收或付款。');const files=artifactsFor(row);if(!files.length||files.some(f=>f.expiresAt<=now()||hash(Buffer.from(f.content))!==f.sha256))fail(409,'ARTIFACT_UNAVAILABLE','成果已过期或校验不一致，不能验收或付款。');return files.map(({content,...f})=>f);}
  const artifactDigest=(row,files)=>hash({workflowId:row.id,proposalDigest:row.proposal_digest,taskId:row.workbench_task_id,artifacts:files});
@@ -144,18 +145,18 @@ export function createGroupWorkflows({database,socialService,workbenchService,pr
   return result(request,id);
  }
  async function approve(request,id){
-  const input=request.input||{};fields(input,['requestId','version','proposalDigest','acceptPoints','budgetPoints']);
+  const input=request.input||{};fields(input,['requestId','version','proposalDigest','acceptExecution']);
   let row=checked(request,id,{owner:true,write:true}),account=actor(request,{write:true});
   const operation=id+'/approve',{old,signature}=existingCommand(account,operation,input);
-  if(old?.response_json)return JSON.parse(old.response_json);
-  if(input.acceptPoints!==true||typeof input.budgetPoints!=='string'||!/^\d{1,4}$/.test(input.budgetPoints)||BigInt(input.budgetPoints)<30n||BigInt(input.budgetPoints)>1000n)fail(400,'POINTS_APPROVAL_REQUIRED','请明确批准 30–1000 积分的预算。');
+  if(old?.response_json)return currentTaskView(JSON.parse(old.response_json));
+  if(input.acceptExecution!==true)fail(400,'EXECUTION_APPROVAL_REQUIRED','请明确批准当前方案与执行范围。');
   if(!old){
    transaction(()=>{
     row=checked(request,id,{owner:true,write:true});version(row,input.version);
-    if(row.status!=='proposal-ready'||input.proposalDigest!==row.proposal_digest)fail(409,'PROPOSAL_CHANGED','请重新核对当前 AI 方案和执行范围。');
+    if(!['proposal-ready','approving'].includes(row.status)||input.proposalDigest!==row.proposal_digest)fail(409,'PROPOSAL_CHANGED','请重新核对当前 AI 方案和执行范围。');
     const scope=JSON.parse(row.scope_json),files=inputFiles(account.id,scope.files.map(f=>f.id));
     if(files.some((f,i)=>f.sha256!==scope.files[i].sha256||hash(Buffer.from(f.content))!==f.sha256))fail(409,'INPUT_CHANGED','原始文件已改变，不能批准旧方案。');
-    remember(account,row,operation,input,signature);run('UPDATE group_workflows SET approval_json=? WHERE id=?',JSON.stringify({requestId:input.requestId,proposalDigest:input.proposalDigest,budgetPoints:input.budgetPoints,approvedAt:now()}),id);changed(row,'approving');event(row,'approved','approved',{proposalDigest:row.proposal_digest,budgetPoints:input.budgetPoints},'发起者已批准文件工具与积分预算；没有授权付款。');
+    remember(account,row,operation,input,signature);run('UPDATE group_workflows SET approval_json=? WHERE id=?',JSON.stringify({requestId:input.requestId,proposalDigest:input.proposalDigest,approvedAt:now()}),id);changed(row,'approving');event(row,'approved','approved',{proposalDigest:row.proposal_digest},'发起者已批准文件工具与执行范围；没有授权付款。');
    });
   }
   return once('approve:'+id,async()=>{
@@ -164,19 +165,28 @@ export function createGroupWorkflows({database,socialService,workbenchService,pr
    const scope=JSON.parse(row.scope_json),call=(path,input)=>workbenchService.handle({method:'POST',path:'workbench/'+path,input,token:request.token});
    try{
     if(!row.workbench_task_id){
-     const planned=await call('plan',{requestId:stableId('group-plan:'+id),goal:row.goal,fileIds:scope.files.map(f=>f.id),locale:'zh-CN',budgetPoints:input.budgetPoints});
+     // A pre-retirement crash may have persisted the stable plan command before linking its task.
+     // Reuse that already-created task after verifying its scope; never replay an old financial request.
+     const prior=one('SELECT response FROM workbench_commands WHERE owner_id=? AND request_id=?',account.id,stableId('group-plan:'+id));
+     let planned;
+     if(prior){
+      let taskId;try{taskId=JSON.parse(prior.response)?.task?.id;}catch{}
+      const existing=uuid(taskId)?one('SELECT id,owner_id,goal,operation,plan_version,input_ids FROM workbench_tasks WHERE id=? AND owner_id=?',taskId,account.id):null;
+      if(!existing||existing.goal!==row.goal||existing.operation!==scope.plan.operation||existing.plan_version!==1||JSON.stringify(JSON.parse(existing.input_ids))!==JSON.stringify(scope.files.map(f=>f.id)))fail(409,'EXECUTION_SCOPE_CHANGED','原计划记录与群批准范围不一致，不能创建替代任务。');
+      planned={task:{id:existing.id,operation:existing.operation}};
+     }else planned=await call('plan',{requestId:stableId('group-plan:'+id),goal:row.goal,fileIds:scope.files.map(f=>f.id),locale:'zh-CN'});
      row=checked(request,id,{owner:true,write:true});
-     if(!planned.task||planned.task.operation!==scope.plan.operation||planned.task.billingUnit!=='POINT')fail(409,'EXECUTION_SCOPE_CHANGED','执行器范围发生变化，请勿继续旧批准。');
+     if(!planned.task||planned.task.operation!==scope.plan.operation)fail(409,'EXECUTION_SCOPE_CHANGED','执行器范围发生变化，请勿继续旧批准。');
      run('UPDATE group_workflows SET workbench_task_id=?,updated_at=? WHERE id=?',planned.task.id,now(),id);row=get(id);
     }
-    const task=one('SELECT * FROM workbench_tasks WHERE id=? AND owner_id=?',row.workbench_task_id,row.owner_id);
+    const task=one('SELECT id,goal,operation,input_ids,plan_version,version,status FROM workbench_tasks WHERE id=? AND owner_id=?',row.workbench_task_id,row.owner_id);
     row=checked(request,id,{owner:true,write:true});
     if(row.status!=='approving')fail(409,'WORKFLOW_CHANGED','任务状态已改变，不能继续旧批准。');
     if(!task||task.goal!==row.goal||task.operation!==scope.plan.operation||JSON.stringify(JSON.parse(task.input_ids))!==JSON.stringify(scope.files.map(f=>f.id))||task.plan_version!==1)fail(409,'EXECUTION_SCOPE_CHANGED','执行任务已改变，不能批准旧方案。');
     if(task.status==='awaiting-confirmation'){
      const files=inputFiles(account.id,scope.files.map(f=>f.id));
      if(files.some((f,i)=>f.sha256!==scope.files[i].sha256||hash(Buffer.from(f.content))!==f.sha256))fail(409,'INPUT_CHANGED','任务文件已改变，不能继续旧批准。');
-     await call('tasks/'+task.id+'/confirm',{requestId:stableId('group-confirm:'+id),version:task.version,planVersion:task.plan_version,pointsPriceVersion:task.points_price_version,budgetPoints:input.budgetPoints,acceptPoints:true});
+     await call('tasks/'+task.id+'/confirm',{requestId:stableId('group-confirm:'+id),version:task.version,planVersion:task.plan_version,acceptExecution:true});
     }
     else if(!['queued','running','succeeded','paused','budget-paused','awaiting-user'].includes(task.status))fail(409,'EXECUTION_UNAVAILABLE','原执行任务已结束，未创建或重复执行另一任务。');
     transaction(()=>{row=checked(request,id,{owner:true,write:true});if(row.status==='approving'){changed(row,'executing');event(row,'execution-started','executing',{taskId:row.workbench_task_id},'已提交获准文件工具，结果将回到本群任务。');}});
@@ -251,7 +261,7 @@ export function createGroupWorkflows({database,socialService,workbenchService,pr
   return once('cancel:'+id,async()=>{
    row=checked(request,id,{owner:true,write:true});
    if(row.workbench_task_id){
-    const task=one('SELECT * FROM workbench_tasks WHERE id=? AND owner_id=?',row.workbench_task_id,row.owner_id);
+    const task=one('SELECT id,goal,operation,input_ids,plan_version,version,status FROM workbench_tasks WHERE id=? AND owner_id=?',row.workbench_task_id,row.owner_id);
     if(task&&!['succeeded','failed','cancelled'].includes(task.status))await workbenchService.handle({method:'POST',path:'workbench/tasks/'+task.id+'/cancel',token:request.token,input:{requestId:stableId('group-cancel:'+id),version:task.version}});
    }
    return transaction(()=>{row=checked(request,id,{owner:true,write:true});if(paymentFor(id)?.tx_hash)fail(409,'PAYMENT_LOCKED','签名状态已改变，必须先核验。');changed(row,'cancelled');run("UPDATE group_workflow_payments SET state='cancelled',updated_at=? WHERE workflow_id=? AND tx_hash IS NULL",now(),id);event(row,'cancelled','cancelled',{},'发起者已取消未付款任务；没有签署或广播付款。');return finishCommand(account,input,result(request,id));});
@@ -277,6 +287,6 @@ export function createGroupWorkflows({database,socialService,workbenchService,pr
  }
  function getPendingObligations(ownerId){return all("SELECT id,status FROM group_workflows WHERE owner_id=? AND status IN ('planning','proposal-ready','approving','executing','awaiting-acceptance','accepted','awaiting-signature','payment-pending','payment-unknown','cancelling')",ownerId).map(row=>({type:'group-workflow',...row}));}
  function cleanupDeletedAccount(ownerId){if(getPendingObligations(ownerId).length)fail(409,'GROUP_WORKFLOWS_PENDING','请先处理未完成的群协作任务和付款状态。');/* Keep immutable group receipts; account deletion already leaves an anonymized UUID tombstone. */}
- function describeMessage(messageId){const e=one('SELECT e.*,w.status FROM group_workflow_events e JOIN group_workflows w ON w.id=e.workflow_id WHERE e.message_id=?',messageId);return e?{workflowId:e.workflow_id,eventId:e.id,type:e.event_type,serverVerified:true,payload:JSON.parse(e.payload_json),currentStatus:e.status}:null;}
+ function describeMessage(messageId){const e=one('SELECT e.*,w.status FROM group_workflow_events e JOIN group_workflows w ON w.id=e.workflow_id WHERE e.message_id=?',messageId);return e?{workflowId:e.workflow_id,eventId:e.id,type:e.event_type,serverVerified:true,payload:currentTaskView(JSON.parse(e.payload_json)),currentStatus:e.status}:null;}
  return {handle,capabilities:capability,getPendingObligations,cleanupDeletedAccount,describeMessage};
 }

@@ -410,7 +410,7 @@ h1{font-size:29px;font-weight:800;line-height:1.3}
 h2{font-weight:750}
 svg{stroke-width:2.2}
 .layout svg,.bottom-nav svg,dialog svg{stroke-width:2.2}
-code,time,.nav-count,.live-count,.bill-amount,.bill-row-amount,.token-value,.asset-total-number,.points-overview strong,.points-ledger>article>span,.orbit-id,.mine-profile-id{font-family:var(--font-number);font-variant-numeric:tabular-nums}
+code,time,.nav-count,.live-count,.bill-amount,.bill-row-amount,.token-value,.asset-total-number,.orbit-id,.mine-profile-id{font-family:var(--font-number);font-variant-numeric:tabular-nums}
 .layout{max-width:1440px;grid-template-columns:216px minmax(0,1fr);background:var(--bg)}
 .rail{background:var(--paper);padding:32px 20px;border-color:var(--line)}
 .rail .brand{padding:0 12px;gap:11px}
@@ -425,7 +425,7 @@ code,time,.nav-count,.live-count,.bill-amount,.bill-row-amount,.token-value,.ass
 .main-content{max-width:1000px;margin:0 auto}
 .workspace .topbar{margin-bottom:18px}
 .workspace .wallet-context-header{justify-content:flex-end}
-.section-head h2,.points-page>h3,.wh-section h2,.wb-recent h2{font-size:12.5px;font-weight:700;letter-spacing:.5px}
+.section-head h2,.wh-section h2,.wb-recent h2{font-size:12.5px;font-weight:700;letter-spacing:.5px}
 .card{border-radius:var(--radius-m);background:var(--paper);border-color:var(--line)}
 .primary,.small-primary,.mine-primary,.soc-root .soc-primary,.live-social .live-primary,.live-social .live-send,.wb .primary,.wh .wh-primary,.work-primary,.tk-primary,.moment-primary,.fv-primary,.community-primary{
  background:var(--primary-bg);color:#fff;border:0;border-radius:var(--radius-m);box-shadow:none;
@@ -442,11 +442,7 @@ input,textarea,select{accent-color:var(--accent)}
 .live-social .live-primary,.live-social .live-composer .live-send{background:var(--primary-bg);color:#fff}
 .live-social .live-contact-tools .live-contact-tool-icon{color:var(--accent)}
 .live-social .live-header h1,.disc-topbar h1{font-size:29px;font-weight:800}
-.disc-entry-icon,.disc-menu-item-icon,.mine-row-icon{color:var(--accent)}
-.points-overview{border-radius:var(--radius-l);background:var(--ink);color:#fff;padding:24px}
-.points-overview strong{color:#fff;font-size:34px}
-.points-rules,.wallet-custody-notice{font-size:11.5px;line-height:1.8;color:var(--text-2)}
-.points-page,.bill-page{color:var(--text)}
+.disc-entry-icon,.disc-menu-item-icon,.mine-row-icon{color:var(--accent)}.wallet-custody-notice{font-size:11.5px;line-height:1.8;color:var(--text-2)}.bill-page{color:var(--text)}
 #toast{background:var(--ink);color:#fff}
 @media(max-width:700px){
  .layout{display:block}
@@ -464,7 +460,6 @@ input,textarea,select{accent-color:var(--accent)}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
 
 :root{--hero-text:#fff;--hero-muted:#C6C1D8;--hero-secondary:#494355}
-.points-overview>span,.points-overview p{color:var(--hero-muted)}
 @media(max-width:700px){.workspace[data-view=workbench]:has(.wh){padding:0 0 calc(88px + env(safe-area-inset-bottom,0px))}.wh.wh-home{padding-bottom:24px}.wh:not(.wh-home){padding-bottom:24px}}
 
 /* Large dark labels keep both endpoints of the required gradient readable. */
@@ -475,8 +470,6 @@ input,textarea,select{accent-color:var(--accent)}
 }
 .tk-hero{background:var(--ink-2);color:var(--hero-text);border-color:var(--line)}
 .tk-hero h2,.tk-hero p,.tk-hero .tk-eyebrow{color:var(--hero-text)}
-.points-page{background:transparent}
-.points-overview{margin:18px 0 12px}
 
 .account-brand{display:block;font-size:24px;font-weight:800;letter-spacing:-.7px;color:var(--accent);margin:12px 0}.account-eyebrow{letter-spacing:.5px;font-size:12.5px;color:var(--text-2)}
 

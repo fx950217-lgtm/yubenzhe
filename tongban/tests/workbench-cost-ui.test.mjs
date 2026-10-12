@@ -35,81 +35,28 @@ async function harness(t,task){
  }};
 }
 
+
 test('task refresh stops propagation before awaiting so the app wallet refresh never runs',async t=>{
- const h=await harness(t,{...base,status:'running'}),before=h.calls.length;
- const event=await h.clickThroughApp('refresh');
- assert.equal(event.stopped,true);
- assert.equal(event.walletRefreshes,0);
- assert.deepEqual(h.calls.slice(before).map(call=>call.path),['workbench/capabilities','workbench/tasks/'+base.id]);
- assert.equal(h.calls.some(call=>call.options?.method==='POST'),false);
- assert.match(h.root.innerHTML,/data-task-cost/);
+ const h=await harness(t,{...base,status:'running'}),before=h.calls.length;const event=await h.clickThroughApp('refresh');assert.equal(event.stopped,true);assert.equal(event.walletRefreshes,0);assert.deepEqual(h.calls.slice(before).map(call=>call.path),['workbench/capabilities','workbench/tasks/'+base.id]);assert.equal(h.calls.some(call=>call.options?.method==='POST'),false);assert.match(h.root.innerHTML,/刷新进度/);
 });
-
-test('confirmation displays returned range, duration and locked price version without authorizing execution',async t=>{
- const h=await harness(t,{...base,pointsPriceVersion:'locked-<b>v1</b>'});
- assert.match(h.root.innerHTML,/预计积分区间/);
- assert.match(h.root.innerHTML,/21 POINT–39 POINT/);
- assert.match(h.root.innerHTML,/预计用时：约 5 秒/);
- assert.match(h.root.innerHTML,/费率版本：locked-&lt;b&gt;v1&lt;\/b&gt;/);
- assert.doesNotMatch(h.root.innerHTML,/new-current-rate|<b>v1<\/b>/);
- assert.equal(h.calls.some(call=>call.options?.method==='POST'),false);
+test('confirmation presents execution scope and estimated duration without authorizing automatically',async t=>{
+ const h=await harness(t,{...base,pointsPriceVersion:'locked-<b>v1</b>'});assert.match(h.root.innerHTML,/确认执行范围/);assert.match(h.root.innerHTML,/预计用时：约 5 秒/);assert.match(h.root.innerHTML,/确认计划，开始执行/);assert.doesNotMatch(h.root.innerHTML,/POINT|积分|预算|费率|locked-|new-current-rate/);assert.equal(h.calls.some(call=>call.options?.method==='POST'),false);
 });
-
-test('unavailable quote fields stay unavailable instead of inventing a range, duration or zero charge',async t=>{
- const h=await harness(t,{...base,pointsPriceVersion:undefined,plan:{steps:[],estimatedPointsRange:{min:'50',max:'10'},estimatedSeconds:0}});
- assert.match(h.root.innerHTML,/区间未提供（参考估算 30 POINT）/);
- assert.match(h.root.innerHTML,/预计用时：未提供/);
- assert.match(h.root.innerHTML,/费率版本：未提供/);
-
- assert.doesNotMatch(h.root.innerHTML,/约 0 秒|\$0\.05–\$0\.01/);
+test('unavailable duration stays unavailable rather than inventing a time promise',async t=>{
+ const h=await harness(t,{...base,plan:{steps:[],estimatedSeconds:0}});assert.match(h.root.innerHTML,/预计用时：未提供/);assert.doesNotMatch(h.root.innerHTML,/约 0 秒|POINT|预算/);
 });
-
-test('running progress preserves sub-cent recorded cost and does not use current provider pricing to invent remaining budget',async t=>{
- const h=await harness(t,{...base,status:'running',costMicro:'7001',spentPoints:'7',reservedPoints:'93',remainingPoints:'93'});
- const panel=h.root.innerHTML.match(/<section[^>]*data-task-cost>[\s\S]*?<\/section>/)?.[0];
- assert.ok(panel);
- assert.match(panel,/已使用积分<\/span><strong>7 POINT/);
- assert.match(panel,/最高积分预算<\/span><strong>100 POINT/);
- assert.match(panel,/剩余预算<\/span><strong>93 POINT/);
- assert.match(panel,/当前预留<\/span><strong>93 POINT/);
- assert.doesNotMatch(panel,/0\.092999|0\.03|0\.07/);
+test('running progress ignores obsolete metering fields and preserves control actions',async t=>{
+ const h=await harness(t,{...base,status:'running',costMicro:'7001',spentPoints:'7'});assert.match(h.root.innerHTML,/正在做什么/);assert.match(h.root.innerHTML,/暂停任务/);assert.doesNotMatch(h.root.innerHTML,/data-task-cost|POINT|积分|账单|预算|0.007001/);
 });
-
-test('bill uses actual recorded totals and step events without inventing a per-step fee or counting planned steps',async t=>{
- const h=await harness(t,{...base,billingUnit:'LEGACY_TRIAL',status:'cancelled',costMicro:'14000',settledMicro:'20000',releasedMicro:'80000',events:[
-  {event:'planned',createdAt:1700000000000,payload:{steps:[{}, {}, {}]}},
-  {event:'step-completed',createdAt:1700000000100,payload:{step:1,eventKey:'plan-1-local-step-0'}},
-  {event:'step-completed',createdAt:1700000000200,payload:{step:2,eventKey:'plan-1-local-step-1'}},
-  {event:'cancelled',createdAt:1700000000300,payload:{settledMicro:'20000'}}
- ]});
- await h.click('task-tab',{tab:'outputs'});
- assert.match(h.root.innerHTML,/已记录模拟成本<\/span><strong>\$0\.014/);
- assert.match(h.root.innerHTML,/已结算<\/span><strong>\$0\.02/);
- assert.match(h.root.innerHTML,/未使用已释放<\/span><strong>\$0\.08/);
- const panel=h.root.innerHTML.match(/<section[^>]*data-task-usage>[\s\S]*?<\/section>/)?.[0];
- assert.ok(panel);
- assert.equal((panel.match(/单步费用：未提供/g)||[]).length,2);
- assert.match(panel,/处理步骤 1/);assert.match(panel,/处理步骤 2/);
- assert.doesNotMatch(panel,/处理步骤 3|\$0\.007|\$0\.01/);
+test('results show only actual execution steps without converting planned steps to activity',async t=>{
+ const h=await harness(t,{...base,status:'cancelled',events:[{event:'planned',payload:{steps:[{},{},{}]}},{event:'step-completed',createdAt:1700000000100,payload:{step:1}},{event:'step-completed',createdAt:1700000000200,payload:{step:2}}]});await h.click('task-tab',{tab:'outputs'});assert.match(h.root.innerHTML,/处理步骤 1/);assert.match(h.root.innerHTML,/处理步骤 2/);assert.doesNotMatch(h.root.innerHTML,/处理步骤 3|POINT|积分|账单|预算|单步费用/);
 });
-
-test('missing or malformed recorded costs and usage do not become zero or expose untrusted step fields',async t=>{
- const h=await harness(t,{...base,billingUnit:'LEGACY_TRIAL',status:'failed',costMicro:undefined,settledMicro:'invalid',releasedMicro:undefined,userChargeMicro:null,events:[{event:'step-completed',createdAt:'<script>bad</script>',payload:{step:'<img src=x>'}}]});
- await h.click('task-tab',{tab:'outputs'});
- assert.match(h.root.innerHTML,/已记录模拟成本<\/span><strong>未提供/);
- assert.match(h.root.innerHTML,/已结算<\/span><strong>未提供/);
- assert.match(h.root.innerHTML,/未使用已释放<\/span><strong>未提供/);
- assert.match(h.root.innerHTML,/处理步骤（序号未提供）/);
- assert.match(h.root.innerHTML,/时间未提供/);
- assert.doesNotMatch(h.root.innerHTML,/<script>|<img src=x>|\$0\.00/);
- assert.doesNotMatch(h.root.innerHTML.match(/<section[^>]*data-task-usage>[\s\S]*?<\/section>/)[0],/Invalid Date/);
+test('malformed step metadata is not rendered as markup or an invented timestamp',async t=>{
+ const h=await harness(t,{...base,status:'failed',events:[{event:'step-completed',createdAt:'<script>bad</script>',payload:{step:'<img src=x>'}}]});await h.click('task-tab',{tab:'outputs'});assert.match(h.root.innerHTML,/处理步骤（序号未提供）/);assert.match(h.root.innerHTML,/时间未提供/);assert.doesNotMatch(h.root.innerHTML,/<script>|<img src=x>|Invalid Date/);
 });
-
-test('an empty execution log is not converted into three simulated usage rows',async t=>{
- const h=await harness(t,{...base,status:'succeeded',step:3,events:[]});
- await h.click('task-tab',{tab:'outputs'});
- assert.match(h.root.innerHTML,/暂无已记录的处理步骤/);
- assert.doesNotMatch(h.root.innerHTML,/单步费用：未提供/);
+test('an empty execution log never becomes fabricated step rows',async t=>{
+ const h=await harness(t,{...base,status:'succeeded',step:3,events:[]});await h.click('task-tab',{tab:'outputs'});assert.match(h.root.innerHTML,/暂无已记录的处理步骤/);assert.doesNotMatch(h.root.innerHTML,/处理步骤 1|处理步骤 2|处理步骤 3/);
 });
-
-test('POINT step usage displays only returned integer charges while keeping final refunds separate',async t=>{const h=await harness(t,{...base,status:'failed',spentPoints:'0',reservedPoints:'0',releasedPoints:'100',remainingPoints:'100',events:[{event:'step-completed',createdAt:1700000000100,payload:{step:1,points:'10'}},{event:'step-completed',createdAt:1700000000200,payload:{step:2,points:'<script>20</script>'}}]});await h.click('task-tab',{tab:'outputs'});assert.match(h.root.innerHTML,/单步积分：10 POINT/);assert.match(h.root.innerHTML,/单步积分：未提供/);assert.match(h.root.innerHTML,/已使用<\/span><strong>0 POINT/);assert.match(h.root.innerHTML,/未使用已退回<\/span><strong>100 POINT/);assert.match(h.root.innerHTML,/步骤用量不等于最终扣减/);assert.doesNotMatch(h.root.innerHTML,/<script>|\$0/);});
+test('legacy fee payloads remain inert while their real step numbers stay readable',async t=>{
+ const h=await harness(t,{...base,status:'failed',events:[{event:'step-completed',createdAt:1700000000100,payload:{step:1,points:'10'}},{event:'step-completed',createdAt:1700000000200,payload:{step:2,points:'<script>20</script>'}}]});await h.click('task-tab',{tab:'outputs'});assert.match(h.root.innerHTML,/处理步骤 1/);assert.match(h.root.innerHTML,/处理步骤 2/);assert.doesNotMatch(h.root.innerHTML,/<script>|POINT|积分|退回|预算/);
+});

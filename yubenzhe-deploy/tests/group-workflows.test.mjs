@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import {openSocialDatabase} from '../server/social-database.mjs';
 import {createProductModules} from '../server/product-modules.mjs';
 import {createGroupWorkflows} from '../server/group-workflows.mjs';
@@ -24,7 +24,7 @@ async function fixture(t,{configured=true,proposalStatus='succeeded',rpcConfigur
  const get=(id,user=a)=>call(user,'GET','group-workflows/'+id).then(r=>r.workflow);
  const post=(id,action,input,user=a)=>call(user,'POST','group-workflows/'+id+'/'+action,{requestId:randomUUID(),...input}).then(r=>r.workflow);
  const create=(extra={},user=a)=>call(user,'POST','group-workflows',{requestId:randomUUID(),conversationId,goal:'列工作清单，包括页面检查、用户反馈和成果验收',...extra}).then(r=>r.workflow);
- const approval=(w,extra={})=>({version:w.version,proposalDigest:w.proposal.digest,acceptPoints:true,budgetPoints:'100',...extra});
+ const approval=(w,extra={})=>({version:w.version,proposalDigest:w.proposal.digest,acceptExecution:true,...extra});
  const approve=(w,extra={})=>post(w.id,'approve',approval(w,extra));
  const run=async(w)=>{w=await approve(w);for(let n=0;n<4;n++){time+=1000;await modules.tick();}return get(w.id);};
  const accept=w=>post(w.id,'accept',{version:w.version,artifactDigest:w.artifactDigest});
@@ -41,9 +41,9 @@ test('two independent product accounts create a real group and complete proposal
  const data=await f.call(f.b,'GET','group-workflows/'+w.id+'/files/'+w.artifacts.find(x=>x.name.endsWith('.md')).id);
  assert.match(data.binary.toString(),/- \[ \] 页面检查/);assert.match(data.binary.toString(),/- \[ \] 用户反馈/);
  w=await f.accept(w);assert.equal(w.status,'accepted');assert.equal(w.payment,null);
- assert.equal(f.database.raw.prepare('SELECT count(*) n FROM workbench_usage').get().n,3);
- assert.equal(f.database.raw.prepare('SELECT count(*) n FROM workbench_invoices').get().n,1);
- assert.equal(f.database.raw.prepare('SELECT spent_points FROM workbench_tasks WHERE id=?').get(w.execution.taskId).spent_points,'30');
+ assert.equal(f.database.raw.prepare('SELECT count(*) n FROM workbench_usage').get().n,0);
+ assert.equal(f.database.raw.prepare('SELECT count(*) n FROM workbench_invoices').get().n,0);
+ assert.equal(f.database.raw.prepare('SELECT step FROM workbench_tasks WHERE id=?').get(w.execution.taskId).step,3);
 });
 
 test('create retries share one workflow, one model call and one initial group event; changed request conflicts',async t=>{
@@ -74,18 +74,18 @@ test('blocked creation has a per-owner rate limit too and stable retry does not 
  assert.equal(f.database.raw.prepare('SELECT count(*) n FROM group_workflows').get().n,20);
 });
 
-test('membership, author, version, digest and points consent are independent approval boundaries',async t=>{
+test('membership, author, version, digest and execution consent are independent approval boundaries',async t=>{
  const f=await fixture(t),w=await f.create(),stranger=await f.register();
  await assert.rejects(f.get(w.id,stranger),error('GROUP_NOT_FOUND'));
  await assert.rejects(f.post(w.id,'approve',f.approval(w),f.b),error('WORKFLOW_OWNER_REQUIRED'));
  await assert.rejects(f.approve(w,{version:w.version-1}),error('WORKFLOW_CHANGED'));
  await assert.rejects(f.approve(w,{proposalDigest:'0'.repeat(64)}),error('PROPOSAL_CHANGED'));
- await assert.rejects(f.approve(w,{acceptPoints:false}),error('POINTS_APPROVAL_REQUIRED'));
+ await assert.rejects(f.approve(w,{acceptExecution:false}),error('EXECUTION_APPROVAL_REQUIRED'));
  await assert.rejects(f.post(w.id,'payment',{version:w.version,from,to,valueWei:'1'}),error('PAYMENT_STATE'));
  assert.equal(f.database.raw.prepare('SELECT count(*) n FROM workbench_tasks').get().n,0);
 });
 
-test('concurrent approval and simulated post-confirm restart never create a second task or reserve twice',async t=>{
+test('concurrent approval and simulated post-confirm restart never create a second task or execute twice',async t=>{
  const f=await fixture(t),w=await f.create(),requestId=randomUUID(),input=f.approval(w,{requestId});
  const [a,b]=await Promise.all([f.post(w.id,'approve',input),f.post(w.id,'approve',input)]);assert.equal(a.execution.taskId,b.execution.taskId);
  f.database.raw.prepare("UPDATE group_workflows SET status='approving' WHERE id=?").run(w.id);f.database.raw.prepare('UPDATE group_workflow_commands SET response_json=NULL WHERE request_id=?').run(requestId);
@@ -161,9 +161,9 @@ test('untrusted chat text cannot forge trusted workflow event metadata',async t=
  const provenance=f.modules.groupWorkflows.describeMessage(Number(w.events[0].messageId));assert.equal(provenance.serverVerified,true);assert.equal(provenance.workflowId,w.id);assert.equal(provenance.type,'created');
 });
 
-test('unsent cancellation releases reserved points and blocks late model output; signed transactions cannot be cancelled',async t=>{
+test('unsent cancellation stops pending work and blocks late model output; signed transactions cannot be cancelled',async t=>{
  const f=await fixture(t);let w=await f.approve(await f.create());w=await f.post(w.id,'cancel',{version:w.version});assert.equal(w.status,'cancelled');
- assert.equal(f.database.raw.prepare('SELECT status,reserved_points FROM workbench_tasks WHERE id=?').get(w.execution.taskId).reserved_points,'0');
+ assert.equal(f.database.raw.prepare('SELECT status FROM workbench_tasks WHERE id=?').get(w.execution.taskId).status,'cancelled');
  const owner=f.modules.social.authenticate(f.a.token).id;assert.equal(f.modules.groupWorkflows.getPendingObligations(owner).length,0);
  const slow=await fixture(t,{proposalStatus:'running'});let pending=await slow.create();pending=await slow.post(pending.id,'cancel',{version:pending.version});slow.modelTasks.set(pending.proposal.taskId,{status:'succeeded',output:'late proposal'});pending=await slow.get(pending.id);assert.equal(pending.status,'cancelled');assert.equal(pending.proposal.output,'');
 });
@@ -194,4 +194,37 @@ test('disabled group service remains explicitly unavailable instead of offering 
  const f=await fixture(t),service=createGroupWorkflows({database:f.database,socialService:f.modules.social,workbenchService:f.modules.workbench,enabled:false});
  const cap=await service.handle({method:'GET',path:'group-workflows/capabilities',token:f.a.token});assert.equal(cap.enabled,false);
  await assert.rejects(service.handle({method:'GET',path:'group-workflows',token:f.a.token}),error('GROUP_WORKFLOWS_DISABLED'));
+});
+
+test('legacy approving crash resumes the same planned or queued task with a new execution consent',async t=>{
+ for(const queued of [false,true]){
+  const f=await fixture(t),w=await f.create(),hash=createHash('sha256').update('group-plan:'+w.id).digest('hex'),planRequest=hash.slice(0,8)+'-'+hash.slice(8,12)+'-4'+hash.slice(13,16)+'-a'+hash.slice(17,20)+'-'+hash.slice(20,32);
+  const created=await f.call(f.a,'POST','workbench/plan',{requestId:planRequest,goal:w.goal,fileIds:[],locale:'zh-CN'});const owner=f.modules.social.authenticate(f.a.token).id;
+  // Synthetic old response has the original task ID but a retired financial signature.
+  const legacy={task:{...created.task,billingUnit:'POINT',budgetPoints:'100',estimatedPoints:'30'}};
+  f.database.raw.prepare('UPDATE workbench_commands SET signature=?,response=? WHERE owner_id=? AND request_id=?').run('legacy-financial-signature',JSON.stringify(legacy),owner,planRequest);
+  if(queued)await f.call(f.a,'POST','workbench/tasks/'+created.task.id+'/confirm',{requestId:randomUUID(),version:created.task.version,planVersion:created.task.planVersion,acceptExecution:true});
+  f.database.raw.prepare("UPDATE group_workflows SET status='approving',approval_json=? WHERE id=?").run(JSON.stringify({proposalDigest:w.proposal.digest,budgetPoints:'100'}),w.id);
+  const current=await f.get(w.id);
+  await assert.rejects(f.approve(current,{acceptExecution:false}),error('EXECUTION_APPROVAL_REQUIRED'));
+  await assert.rejects(f.post(w.id,'approve',f.approval(current),f.b),error('WORKFLOW_OWNER_REQUIRED'));
+  const resumed=await f.approve(current);
+  assert.equal(resumed.status,'executing');assert.equal(resumed.execution.taskId,created.task.id);
+  assert.equal(f.database.raw.prepare('SELECT count(*) n FROM workbench_tasks').get().n,1);
+  for(let i=0;i<4;i++)await f.modules.tick();
+  const done=await f.get(w.id);assert.equal(done.status,'awaiting-acceptance');assert.equal(done.artifacts.length,2);
+  assert.equal(f.database.raw.prepare("SELECT count(*) n FROM workbench_events WHERE event='step-completed'").get().n,3);
+ }
+});
+test('legacy workflow views and command retries omit retired metadata without rewriting historical JSON',async t=>{
+ const f=await fixture(t),requestId=randomUUID(),w=await f.create(),input=f.approval(w,{requestId});
+ const approved=await f.post(w.id,'approve',input);
+ const row=f.database.raw.prepare('SELECT scope_json FROM group_workflows WHERE id=?').get(w.id),scope=JSON.parse(row.scope_json);
+ scope.plan.estimatedMicro='30000';scope.plan.estimatedPoints='30';scope.plan.billingUnit='POINT';
+ const oldScope=JSON.stringify(scope);f.database.raw.prepare('UPDATE group_workflows SET scope_json=? WHERE id=?').run(oldScope,w.id);
+ const oldResponse=JSON.stringify({workflow:{...approved,execution:{...approved.execution,plan:scope.plan,budgetPoints:'100'}}});
+ f.database.raw.prepare('UPDATE group_workflow_commands SET response_json=? WHERE request_id=?').run(oldResponse,requestId);
+ for(const result of [await f.get(w.id),await f.post(w.id,'approve',input)])assert.doesNotMatch(JSON.stringify(result),/estimatedMicro|estimatedPoints|billingUnit|budgetPoints/);
+ assert.equal(f.database.raw.prepare('SELECT scope_json FROM group_workflows WHERE id=?').get(w.id).scope_json,oldScope);
+ assert.equal(f.database.raw.prepare('SELECT response_json FROM group_workflow_commands WHERE request_id=?').get(requestId).response_json,oldResponse);
 });

@@ -25,7 +25,7 @@ test('cancelling wallet setup rejects the pending action only once',()=>{
  let cancelled=0;const context={walletIntent:null,walletSetupContext:null,walletStart:()=>{},wallet:{cancelCreation:()=>{}}};vm.createContext(context);vm.runInContext(intentSource,context);context.beginWalletSetup(()=>assert.fail('resumed'),{onCancel:()=>cancelled++});context.cancelWalletSetup();context.cancelWalletSetup();assert.equal(cancelled,1);
 });
 
-test('background chain balance refresh does not redraw independent points or workbench pages',async()=>{
+test('background chain balance refresh does not redraw independent message or workbench pages',async()=>{
  const refreshSource=source.slice(source.indexOf('async function refreshBalance('),source.indexOf('function showModal('));let finish;const done=new Promise(resolve=>finish=resolve);let renders=0;const context={state:()=>({exists:true}),loadingBalance:false,balance:null,balanceError:'',currentView:'points',wallet:{getBalance:()=>done},renderWallet:()=>renders++,document:{querySelector:()=>({})},toast:()=>{},walletProblem:()=>{}};vm.createContext(context);vm.runInContext(refreshSource,context);const pending=context.refreshBalance();assert.equal(renders,0);finish('1.0');await pending;assert.equal(renders,0);assert.equal(context.balance,'1.0');
  context.currentView='wallet';await context.refreshBalance();assert.equal(renders,2);
 });

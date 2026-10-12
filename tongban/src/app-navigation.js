@@ -5,7 +5,7 @@ export const WORKBENCH_FEATURES = Object.freeze(['bounty','provider','rank','tok
 const routeId=value=>typeof value==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(value)?value:null;
 const discoveryRoutes = new Set(['hub','moments','people','favorites','drafts',...WORKBENCH_FEATURES]);
 const hubScreens = new Set(['home','workflows','detail','devices','connections','creator','tasks','chat-cloud','chat-local']);
-export const isAppView = view => MAIN_NAV.some(item=>item[0]===view)||view==='contacts'||view==='bills'||view==='points';
+export const isAppView = view => MAIN_NAV.some(item=>item[0]===view)||view==='contacts'||view==='bills';
 export function normalizedHubState(value={}) {
  const mode=value?.mode==='chat'?'chat':'work';
  const candidate=hubScreens.has(value?.screen)?value.screen:'home';
@@ -27,7 +27,6 @@ export function hashForView(view,options={}) {
  if(view==='messages'&&routeId(options.conversationId))return '#messages/'+options.conversationId;
  if(view==='workbench'&&options.route==='cooperation')return '#workbench/cooperation'+(routeId(options.conversationId)?'/'+options.conversationId:'')+(routeId(options.workflowId)?'/'+options.workflowId:'');
  if(view==='wallet')return '#wallet';
- if(view==='points')return '#workbench/points';
  if(view==='discover') {
   if(WORKBENCH_FEATURES.includes(options.route))return '#workbench/'+options.route;
   const route=discoveryRoutes.has(options.route)?options.route:'hub';
@@ -44,7 +43,6 @@ export function hashForView(view,options={}) {
 export function navigationFromHash(hash) {
  const value=String(hash||'').replace(/^#/,'');
  if(value==='mine/assets')return {view:'wallet',options:{}};
- if(['mine/points','workbench/points'].includes(value))return {view:'points',options:{}};
  if(['mine/favorites','mine/drafts'].includes(value))return {view:'discover',options:{route:value.split('/')[1],origin:'mine'}};
  const parts=value.split('/');
  if(parts.length===4&&parts[0]==='workbench'&&parts[1]==='devices'&&parts[3]==='chat')return normalizeNavigation('workbench',{route:'ai-channel',deviceId:parts[2]});
@@ -62,7 +60,6 @@ export const viewFromHash=hash=>navigationFromHash(hash).view;
 export function activeNavView(view,billOrigin='mine',options={}) {
  const parent=view==='bills'?billOrigin:view;
  if(parent==='contacts')return 'messages';
- if(parent==='points')return 'workbench';
  if(parent==='discover'&&options.origin==='mine')return 'mine';
  return MAIN_NAV.some(item=>item[0]===parent)?parent:'mine';
 }
