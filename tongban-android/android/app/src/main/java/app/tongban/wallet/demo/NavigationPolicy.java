@@ -10,6 +10,7 @@ public final class NavigationPolicy {
     private static final Set<String> RPC_URLS = new HashSet<>(Arrays.asList(DeploymentConfig.RPC_URLS));
     // Exact system-browser destination. It is not an allowed WebView or RPC host.
     private static final String EXTERNAL_DAPP_ROOT = "https://app.remix.live/";
+    private static final String EXTERNAL_INSTALL_PAGE = DeploymentConfig.PREVIEW_ORIGIN + "/install.html";
     private NavigationPolicy() {}
 
     private static URI secureUri(String raw) {
@@ -26,7 +27,7 @@ public final class NavigationPolicy {
     public static boolean mayOpenExternal(String raw, boolean userGesture) {
         URI uri = secureUri(raw);
         if (!userGesture || uri == null) return false;
-        return EXTERNAL_DAPP_ROOT.equals(raw) || EXTERNAL_HOSTS.contains(uri.getHost()) || (DeploymentConfig.DOWNLOAD_URL.equals(raw) && uri.getQuery() == null);
+        return EXTERNAL_DAPP_ROOT.equals(raw) || EXTERNAL_INSTALL_PAGE.equals(raw) || EXTERNAL_HOSTS.contains(uri.getHost()) || (DeploymentConfig.DOWNLOAD_URL.equals(raw) && uri.getQuery() == null);
     }
     public static boolean isTestnetRpc(String raw) {
         URI uri = secureUri(raw);

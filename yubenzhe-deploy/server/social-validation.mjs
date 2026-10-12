@@ -6,6 +6,16 @@ export function text(value,max,label,min=0){if(typeof value!=='string')fail(400,
 export function reservedId(id){if(/^(admin|administrator|root|system|support|official|yubenzhe|security|service|moderator|wallet|客服|官方)(_|$)/i.test(id))return true;if(/(\d)\1{3,}/.test(id)||/^(\d{2,3})\1+$/.test(id))return true;if(id.length>=6){const steps=Array.from(id.slice(1),(v,i)=>Number(v)-Number(id[i]));if(steps.every(s=>s===1)||steps.every(s=>s===-1))return true;}return ['100000','100001','100100','520520','521521','1314520','5201314'].includes(id);}
 export function userId(value,allowReserved=false){if(typeof value!=='string')fail(400,'INVALID_ID','账户 ID 需要 5–24 位英文字母、数字或下划线。');const id=value.trim().toLowerCase();if(!/^[a-z0-9_]{5,24}$/.test(id))fail(400,'INVALID_ID','账户 ID 需要 5–24 位英文字母、数字或下划线。');if(!allowReserved&&reservedId(id))fail(409,'ID_RESERVED','这个 ID 为系统保留，请换一个。');return id;}
 export function password(value){if(typeof value!=='string'||!/^\d{6}$/.test(value))fail(400,'INVALID_PASSWORD','账号密码需要 6 位数字。');return value;}
+export function accountPasswordPolicy(publicRegistration=false){
+ const metadata=Object.freeze({min:publicRegistration?12:6,max:publicRegistration?128:6,legacyPinLogin:true});
+ const validate=(value,{existing=false}={})=>{
+  if(!publicRegistration)return password(value);
+  if(existing&&typeof value==='string'&&/^\d{6}$/.test(value))return value;
+  if(typeof value!=='string'||value.length<12||value.length>128||!value.trim()||/[\u0000-\u001f\u007f]/.test(value))fail(400,'INVALID_PASSWORD',existing?'请输入 12–128 位账号密码；旧账号仍可使用原 6 位数字密码。':'账号密码需要 12–128 个字符，不能包含控制字符。');
+  return value;
+ };
+ return {metadata,validateNew:value=>validate(value),validateExisting:value=>validate(value,{existing:true})};
+}
 export function imageData(src,max=512*1024){
  if(typeof src!=='string'||src.length>Math.ceil(max/3)*4+40)fail(400,'INVALID_IMAGE','图片过大或格式无效。');
  const m=/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(src);if(!m)fail(400,'INVALID_IMAGE','仅支持 JPG、PNG、WebP 图片。');

@@ -24,10 +24,19 @@ public final class InternalPreviewSession {
         }
     }
     private final Exchange exchange;
+    private final String accessMode;
     private final Map<String,String> cookies = new LinkedHashMap<>();
     private long generation = 0;
     private long expiresAt = 0;
-    public InternalPreviewSession(Exchange exchange) { this.exchange = exchange; }
+    public InternalPreviewSession(Exchange exchange) { this(exchange, DeploymentConfig.ACCESS_MODE); }
+    InternalPreviewSession(Exchange exchange, String accessMode) {
+        if (!"internal-preview".equals(accessMode) && !"public".equals(accessMode)) throw new IllegalArgumentException("客户端访问模式无效。");
+        java.net.URI origin = java.net.URI.create(InternalPreviewPolicy.REMOTE);
+        if (!"https".equals(origin.getScheme()) || origin.getHost() == null || origin.getUserInfo() != null || origin.getRawQuery() != null || origin.getRawFragment() != null || (origin.getRawPath() != null && !origin.getRawPath().isEmpty())) throw new IllegalArgumentException("客户端服务地址必须是明确的 HTTPS 源。");
+        this.exchange = exchange; this.accessMode = accessMode;
+    }
+    public String accessMode() { return accessMode; }
+    private boolean publicAccess() { return "public".equals(accessMode); }
     public synchronized boolean authenticated() {
         if (System.currentTimeMillis() >= expiresAt) { cookies.clear(); expiresAt=0; }
         return cookies.containsKey("ybz_front_session");
@@ -38,7 +47,7 @@ public final class InternalPreviewSession {
         StringBuilder result=new StringBuilder();for(String part:parts){if(result.length()>0)result.append("; ");result.append(part);}return result.toString();
     }
     private void acceptCookies(List<String> values) {
-        if(values==null)return;
+        if(publicAccess()||values==null)return;
         for(String value:values) {
             if(value==null)continue;
             String[] parts=value.split(";");String pair=parts[0].trim();int at=pair.indexOf('=');if(at<0)continue;
@@ -57,6 +66,7 @@ public final class InternalPreviewSession {
         if(!cookie.isEmpty())result.put("Cookie",cookie);return result;
     }
     public boolean login(String username,String password) throws IOException {
+        if(publicAccess())throw new IllegalArgumentException("此版本无需内部访问凭证，请使用自己的产品账号登录。");
         InternalPreviewPolicy.validateLogin(username,password);
         final long revision; synchronized(this){clear();revision=generation;}
         Map<String,String> headers=headers("/login","");headers.put("Content-Type","application/x-www-form-urlencoded");
@@ -73,7 +83,7 @@ public final class InternalPreviewSession {
     public Result request(String path,String method,String body,Map<String,String> inputHeaders) throws IOException {
         Map<String,String> safe=InternalPreviewPolicy.validateRequest(path,method,body,inputHeaders);
         final long revision;final String cookie;
-        synchronized(this){if(!authenticated())return unauthorized();revision=generation;cookie=cookieHeader();}
+        synchronized(this){if(!publicAccess()&&!authenticated())return unauthorized();revision=generation;cookie=publicAccess()?"":cookieHeader();}
         Map<String,String> headers=headers(path,cookie);headers.putAll(safe);
         Result result=exchange.send(path,method,headers,body==null?null:body.getBytes(StandardCharsets.UTF_8));
         if(result.status>=300&&result.status<400&&result.status!=304)throw new IOException("产品接口返回了不允许的跳转。");
@@ -85,6 +95,8 @@ public final class InternalPreviewSession {
         return result;
     }
     public boolean status() throws IOException {
+        // This is transport readiness, not product-account authentication.
+        if(publicAccess())return true;
         synchronized(this){if(!authenticated())return false;}
         Result result=request("/api/chain-preview/config","GET",null,Collections.emptyMap());
         if(result.status==401)return false;
@@ -93,7 +105,7 @@ public final class InternalPreviewSession {
     }
     public void logout() {
         final String cookie; synchronized(this){cookie=cookieHeader();clear();}
-        if(cookie.isEmpty())return;
+        if(publicAccess()||cookie.isEmpty())return;
         try {exchange.send("/logout","POST",headers("/logout",cookie),new byte[0]);}catch(IOException ignored){ /* Local revocation remains effective while offline. */ }
     }
     private static Result unauthorized(){return new Result(401,"{\"code\":\"INTERNAL_PREVIEW_REQUIRED\",\"error\":\"请先登录内部预览。\"}".getBytes(StandardCharsets.UTF_8),Collections.singletonMap("content-type","application/json; charset=utf-8"),Collections.emptyList(),null);}

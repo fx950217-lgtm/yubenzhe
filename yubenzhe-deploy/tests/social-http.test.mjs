@@ -56,10 +56,10 @@ test('public social routes do not authenticate anonymous requests to legacy AI o
  assert.equal((await f.request('/healthz')).status, 200);
  for (const path of ['/api/ai/workspaces', '/api/admin/bootstrap', '/api/admin/ai/workspaces']) {
    const response = await f.request(path, { headers: { 'oai-authenticated-user-id': 'forged-user' } });
-   assert.equal(response.status, 401); assert.equal(response.json().code, 'SIGN_IN_REQUIRED');
+   assert.equal(response.status, path.startsWith('/api/ai/')?404:401); assert.equal(response.json().code, path.startsWith('/api/ai/')?'NOT_FOUND':'SIGN_IN_REQUIRED');
  }
  const account = await f.register(NATIVE_SOCIAL_ORIGINS[0]);
- for (const path of ['/api/ai/workspaces', '/api/admin/bootstrap']) assert.equal((await f.request(path, { headers: { ...nativeHeaders(account.token), Cookie: account.cookie } })).status, 401);
+ for (const path of ['/api/ai/workspaces', '/api/admin/bootstrap']) assert.equal((await f.request(path, { headers: { ...nativeHeaders(account.token), Cookie: account.cookie } })).status, path.startsWith('/api/ai/')?404:401);
  assert.equal(f.db.raw.prepare('SELECT count(*) n FROM accounts').get().n, 1);
 });
 

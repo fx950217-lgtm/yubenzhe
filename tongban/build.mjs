@@ -16,13 +16,14 @@ await removeGenerated(stage);await mkdir(stage,{recursive:true});
 try{
  const publicConfig=publicDeploymentFromEnvironment(process.env);
  await build({define:{__YBZ_PUBLIC_CONFIG__:JSON.stringify(publicConfig)},absWorkingDir:root,entryPoints:['src/app.js'],bundle:true,minify:true,outdir:stage,entryNames:'app',target:['es2022','safari15.4'],format:'esm',legalComments:'eof'});
- for(const name of ['sw.js','privacy.html','terms.html','icon.png','icon.svg','apple-touch-icon.png','manifest.webmanifest','install.html'])await copyFile(resolve(root,'src',name),resolve(stage,name));
+  for(const name of ['sw.js','privacy.html','terms.html','icon.png','icon.svg','apple-touch-icon.png','manifest.webmanifest','install.html'])await copyFile(resolve(root,'src',name),resolve(stage,name));
+  await writeFile(resolve(stage,'install.html'),(await readFile(resolve(stage,'install.html'),'utf8')).replaceAll('__YBZ_VERSION__',version));
  const csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: "+publicConfig.previewOrigin+"/api/social/avatars/; media-src 'self' blob:; connect-src 'self' "+publicConfig.previewOrigin+"/api/social/ "+publicConfig.rpcUrls.map(v=>new URL(v).origin).join(' ')+"; object-src 'none'; base-uri 'none'; form-action 'self'";
  await writeFile(resolve(stage,'public-deployment.json'),JSON.stringify(publicConfig,null,2)+'\n');
  await writeFile(resolve(stage,'app-policy.txt'),csp);
  const index=(await readFile(resolve(root,'src/index.html'),'utf8')).replace(/(<meta http-equiv="Content-Security-Policy" content=")[^"]*/,(_m,prefix)=>prefix+csp).replace('./app.js','./app.js?v='+version).replace('./app.css','./app.css?v='+version);
  await writeFile(resolve(stage,'index.html'),index);
- await writeFile(resolve(stage,'build-info.json'),JSON.stringify({version,builtAt:new Date().toISOString(),requirements:'V0.2',channel:'local-development'},null,2)+'\n');
+  await writeFile(resolve(stage,'build-info.json'),JSON.stringify({version,builtAt:new Date().toISOString(),requirements:'V0.2',channel:publicConfig.accessMode==='public'?'public-release':'local-development'},null,2)+'\n');
  await writeFile(resolve(stage,'_headers'),'/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Permissions-Policy: camera=(self), microphone=(), geolocation=()\n  Cache-Control: no-store\n');
  await removeGenerated(dist);await rename(stage,dist);
  console.log('Built Yubenzhe '+version);

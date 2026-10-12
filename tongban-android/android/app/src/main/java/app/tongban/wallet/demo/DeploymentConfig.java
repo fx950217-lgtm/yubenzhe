@@ -4,6 +4,7 @@ package app.tongban.wallet.demo;
 public final class DeploymentConfig {
     private DeploymentConfig() {}
     public static final String PREVIEW_ORIGIN = "https://66.42.56.29";
+    public static final String ACCESS_MODE = "public";
     public static final String DOWNLOAD_URL = "https://ollama.com/download";
     public static final String PREVIEW_HOST = "66.42.56.29";
     public static final String[] RPC_URLS = {"https://bsc-testnet-dataseed.bnbchain.org", "https://bsc-testnet.bnbchain.org"};

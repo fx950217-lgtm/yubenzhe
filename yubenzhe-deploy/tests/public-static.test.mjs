@@ -12,14 +12,16 @@ const origin='https://public.example.test',password='Synthetic-public-static-ONL
 const auth=await passwordRecord('preview',password);
 const privateMarker='SYNTHETIC_PRIVATE_RELEASE_MATERIAL';
 
-async function fixture(t){
+async function fixture(t,{chainConfig}={}){
   const dir=mkdtempSync(join(tmpdir(),'ybz-public-static-'));
   writeFileSync(join(dir,'index.html'),'PUBLIC_PRODUCT');
   mkdirSync(join(dir,'internal'));writeFileSync(join(dir,'internal','plan.txt'),privateMarker);
   writeFileSync(join(dir,'internal','index.html'),privateMarker);
   mkdirSync(join(dir,'internal-backup'));writeFileSync(join(dir,'internal-backup','index.html'),'UNRELATED_PUBLIC_DIRECTORY');
   mkdirSync(join(dir,'downloads'));writeFileSync(join(dir,'downloads','ybz.apk'),'SYNTHETIC_PUBLIC_DOWNLOAD');
-  const server=createAcceptanceServer({role:'frontend',origin,authConfig:auth,publicFrontend:true,staticRoot:dir});
+  let chainPreviewConfigFile;
+  if(chainConfig){chainPreviewConfigFile=join(dir,'chain-config.private');writeFileSync(chainPreviewConfigFile,JSON.stringify(chainConfig));}
+  const server=createAcceptanceServer({role:'frontend',origin,authConfig:auth,publicFrontend:true,staticRoot:dir,chainPreviewConfigFile});
   server.listen(0,'127.0.0.1');await once(server,'listening');
   const request=(path,{method='GET',headers={},body}={})=>new Promise((resolve,reject)=>{
     const req=httpRequest({hostname:'127.0.0.1',port:server.address().port,path,method,headers:{Host:new URL(origin).host,...headers}},res=>{
@@ -69,4 +71,15 @@ test('public product files and installer downloads stay available without a shar
   }
   assert.match((await f.request('/downloads/ybz.apk')).headers['content-disposition'],/^attachment;/);
   const malformed=await f.request('/%broken');assert.equal(malformed.status,404);assert.doesNotMatch(malformed.text,new RegExp(privateMarker));
+});
+
+test('public wallet configuration exposes only testnet fields and the legacy shared AI API stays closed',async t=>{
+  const allowed={enabled:true,chainId:97,mode:'equal',distributionAddress:'0x'+'1'.repeat(40),tokenAddress:'0x'+'2'.repeat(40),campaignId:'0x'+'3'.repeat(64)};
+  const f=await fixture(t,{chainConfig:{...allowed,privateKey:'SYNTHETIC_SECRET_SHOULD_NOT_BE_RETURNED',rpcSecret:'SYNTHETIC_RPC_SECRET'}});
+  const result=await f.request('/api/chain-preview/config');assert.equal(result.status,200);assert.deepEqual(JSON.parse(result.text),allowed);
+  assert.equal((await f.request('/api/chain-preview/config',{method:'POST'})).status,405);
+  assert.equal((await f.request('/api/chain-preview/config',{headers:{Origin:'https://untrusted.example.test'}})).status,403);
+  assert.equal((await f.request('/api/ai/workspaces')).status,404);
+  const cookie=await f.login();
+  assert.equal((await f.request('/api/ai/workspaces',{headers:{Cookie:cookie}})).status,404);
 });

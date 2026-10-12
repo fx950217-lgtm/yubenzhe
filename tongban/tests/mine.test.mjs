@@ -8,8 +8,10 @@ const { version: packageVersion } = JSON.parse(await readFile(new URL('../packag
 
 const source = (await readFile(new URL('../src/mine.js', import.meta.url), 'utf8'))
   .replace("import './mine.css';", '')
+  .replace("from '../package.json'", `from '${new URL('../package.json', import.meta.url).href}'`)
   .replace("from './profile-store.js'", `from '${new URL('../src/profile-store.js', import.meta.url).href}'`)
-  .replace("from './profile-photo.js'", `from '${new URL('../src/profile-photo.js', import.meta.url).href}'`);
+  .replace("from './profile-photo.js'", `from '${new URL('../src/profile-photo.js', import.meta.url).href}'`)
+  .replace("from './account-password.js'", `from '${new URL('../src/account-password.js', import.meta.url).href}'`);
 const { mountMine } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 
 // Minimal event surface: tests exercise the component's public event flows and real
@@ -264,7 +266,7 @@ test('cloud profile ID edits require current password and await authoritative sa
   assert.match(app.container.innerHTML, /ID 25973186/); assert.match(app.container.innerHTML, /Lv. 3/); assert.doesNotMatch(app.container.innerHTML, /官方认证/);
   app.click('account');assert.match(app.container.innerHTML,/data-mine-action="account-settings"/);
   app.click('account-settings'); assert.deepEqual(app.calls, [['action', 'account-settings']]); app.click('home');app.click('edit');
-  const invalid = app.submit('新的名字', '', '27495381'); await invalid.pending; assert.match(invalid.error.textContent, /当前 6 位/); assert.equal(submitted.length, 0);
+  const invalid = app.submit('新的名字', '', '27495381'); await invalid.pending; assert.match(invalid.error.textContent, /当前账号密码/); assert.equal(submitted.length, 0);
   const valid = app.submit('新的名字', '新签名', '27495381', '248635'); assert.equal(app.save.disabled, true); assert.equal(app.messages.length, 0); assert.equal(submitted.length, 1); assert.equal(submitted[0].revision, 7); assert.equal(submitted[0].currentPassword, '248635'); assert.equal(submitted[0].level, undefined); assert.equal(submitted[0].official, undefined);
   finish(); await valid.pending; assert.equal(app.messages.at(-1), '个人资料已保存'); assert.match(app.container.innerHTML, /ID 27495381/); app.cleanup();
 });
@@ -277,6 +279,13 @@ test('cloud conflicts stay editable and ordinary saves omit passwords; late resp
 });
 
 function themeFixture(initial='light',persistent=true){let current=initial;const selected=[];return{selected,service:{getTheme:()=>current,setTheme:id=>{current=id;selected.push(id)},isPersistent:()=>persistent}};}
+test('public password accounts can authorize an ID edit with a long password without storing it in the profile',async()=>{
+  const calls=[],profile={...cloudProfile(),authMode:'password'};
+  const app=harness({profileService:{getProfile:()=>profile,saveProfile:async input=>{calls.push(input);const {currentPassword,...fields}=input;return {...profile,...fields,revision:8};}}});
+  app.click('edit');assert.match(app.container.innerHTML,/name="currentPassword"[^>]+maxlength="128"/);assert.doesNotMatch(app.container.innerHTML,/placeholder="6 位登录密码"/);
+  const result=app.submit('新的名字','','27495381','A synthetic account password');await result.pending;
+  assert.equal(calls[0].currentPassword,'A synthetic account password');assert.equal(app.messages.at(-1),'个人资料已保存');assert.doesNotMatch(app.container.innerHTML,/A synthetic account password/);app.cleanup();
+});
 const deviceSettle=()=>new Promise(resolve=>setImmediate(resolve));
 const personalProfile=userId=>({identityScope:'server',userId,nickname:'本人',avatar:'愚',level:1,official:false,bio:'',revision:1});
 test('personal device counter uses real owner metadata and excludes revoked devices',async()=>{

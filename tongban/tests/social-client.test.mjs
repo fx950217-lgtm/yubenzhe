@@ -16,6 +16,20 @@ function harness(handler,{native=true,store=storage()}={}){
 }
 function blobURLs(t){let count=0;const created=[],revoked=[];t.mock.method(URL,'createObjectURL',()=>{const url='blob:synthetic/'+(++count);created.push(url);return url;});t.mock.method(URL,'revokeObjectURL',url=>revoked.push(url));return {created,revoked};}
 
+test('public registration keeps random ID, password auth mode and created metadata without caching account secrets',async()=>{
+ let created=true;const password=' Synthetic long account phrase ',requestId='8bf27e6b-e1a8-4da2-9369-9e681b72428d';
+ const h=harness(path=>path==='access/capabilities'?response({passwordRegistration:true,passwordPolicy:{min:12,max:128,legacyPinLogin:true}}):response({profile:{...A,authMode:'password'},token:TOKEN,created}));
+ assert.equal((await h.client.getAccountCapabilities()).passwordRegistration,true);
+ const result=await h.client.register(password,requestId);assert.equal(result.userId,A.userId);assert.equal(h.client.getLastAuthCreated(),true);assert.equal(JSON.parse(h.store.getItem(PROFILE_KEY)).authMode,'password');assert.deepEqual(h.calls.at(-1).input,{password,requestId,native:true});assert.doesNotMatch(JSON.stringify([...h.store.data]),/Synthetic long account phrase/);
+ created=false;await h.client.register(password,requestId);assert.equal(h.client.getLastAuthCreated(),false);await h.client.login(A.userId,password);assert.equal(h.client.getLastAuthCreated(),false);assert.equal(h.calls.at(-1).input.password,password);h.client.clearSession();assert.equal(h.client.getLastAuthCreated(),false);h.client.dispose();
+});
+
+test('email password initialization replaces native session and clears old-account caches without persisting passwords',async()=>{
+ const h=harness(path=>path==='access/password/initialize'?response({profile:{...A,authMode:'password',revision:2},token:NEXT_TOKEN,initialized:true}):response({profile:{...A,authMode:'email'},token:TOKEN}));
+ await h.client.login(A.userId,'482615');const input={newPassword:'Synthetic initialized password',proof:'synthetic-proof'};
+ const profile=await h.client.initializePassword(input);assert.equal(profile.authMode,'password');assert.equal(profile.revision,2);assert.equal(h.store.getItem(TOKEN_KEY),NEXT_TOKEN);assert.equal(h.calls.at(-1).headers.Authorization,'Bearer '+TOKEN);assert.deepEqual(h.calls.at(-1).input,input);assert.doesNotMatch(JSON.stringify([...h.store.data]),/Synthetic initialized password|synthetic-proof/);h.client.dispose();
+});
+
 test('notification observers reuse successful state reads without new requests and receive detached snapshots',async()=>{
  const calls=[],seen=[];const client=createSocialClient({baseURL:BASE,native:false,storage:storage(),fetcher:async url=>{calls.push(url);return response({...snapshot(),moments:{latestVisibleId:'7'},conversations:[{id:ID,type:'group',unread:2}]});},onState:state=>{seen.push(state);state.conversations[0].unread=999;}});
  const result=await client.getState();assert.equal(result.conversations[0].unread,2);assert.equal(seen.length,1);assert.equal(calls.length,1);client.dispose();

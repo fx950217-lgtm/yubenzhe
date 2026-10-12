@@ -1,5 +1,4 @@
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { password } from './social-validation.mjs';
 import { deleteAccountMoments } from './social-moments.mjs';
 const VERIFY_AGE=5*60*1000;
 const recoveryDigest=(hash,id,code)=>hash('yubenzhe:account-recovery:v1:'+id+':'+code);
@@ -9,24 +8,24 @@ function deviceAgent(value){return typeof value==='string'?value.replace(/[\x00-
 function ipHint(value){if(typeof value!=='string')return '';const v=value.replace(/^::ffff:/,'');if(/^\d{1,3}(\.\d{1,3}){3}$/.test(v))return v.split('.').slice(0,2).join('.')+'.*.*';if(/^[a-f0-9:]+$/i.test(v)&&v.includes(':'))return v.split(':').slice(0,3).join(':')+'::*';return '';}
 function deviceName(ua){const platform=/Android/i.test(ua)?'Android':/iPhone|iPad/i.test(ua)?'iPhone / iPad':/Windows/i.test(ua)?'Windows':/Macintosh|Mac OS/i.test(ua)?'Mac':/Linux/i.test(ua)?'Linux':'设备';const browser=ua.includes('Edg/')?'Edge':ua.includes('Chrome/')?'Chrome':ua.includes('Firefox/')?'Firefox':ua.includes('Safari/')?'Safari':'';return [platform,browser].filter(Boolean).join(' · ');}
 export function createAccountSecurity(ctx){
- const {db,now,one,all,run,transaction,fail,fields,userId,accountById,accountByUserId,authenticate,verify,derive,limit,hash}=ctx;
+ const {db,now,one,all,run,transaction,fail,fields,userId,passwordPolicy,accountById,accountByUserId,authenticate,verify,derive,limit,hash}=ctx;
  const exists=name=>!!one("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",name);
  const passwordDigest=a=>hash(a.password_salt+':'+a.password_hash);
  function assertActive(a){if(!a||a.deleted_at)fail(401,'ACCOUNT_REQUIRED','账号已注销，请使用其他账号。');}
  function onSession(tokenHash,{userAgent='',ip=''}={}){run('UPDATE social_sessions SET session_id=?,user_agent=?,ip_hint=?,last_seen_at=? WHERE token_hash=?',randomUUID(),deviceAgent(userAgent),ipHint(ip),now(),tokenHash);}
  function touchSession(tokenHash){run('UPDATE social_sessions SET last_seen_at=? WHERE token_hash=? AND last_seen_at<?',now(),tokenHash,now()-60000);}
- async function checkPassword(a,token,value){password(value);limit('login:'+a.user_id,8,900000);if(!await verify(a,value))fail(401,'BAD_PASSWORD','账号密码不正确。');const current=authenticate(token,{allowRestricted:true});if(current.id!==a.id||passwordDigest(current)!==passwordDigest(a))fail(409,'ACCOUNT_CHANGED','账号安全状态已变化，请重新验证。');return current;}
+ async function checkPassword(a,token,value){passwordPolicy.validateExisting(value);limit('login:'+a.user_id,8,900000);if(!await verify(a,value))fail(401,'BAD_PASSWORD','账号密码不正确。');const current=authenticate(token,{allowRestricted:true});if(current.id!==a.id||passwordDigest(current)!==passwordDigest(a))fail(409,'ACCOUNT_CHANGED','账号安全状态已变化，请重新验证。');return current;}
  function proof(a,token,value){if(typeof value!=='string'||!/^[-_A-Za-z0-9]{43}$/.test(value))fail(403,'VERIFICATION_REQUIRED','请重新验证账号密码。');const row=one('SELECT * FROM account_verifications WHERE token_hash=?',hash(value));if(!row||row.account_id!==a.id||row.session_hash!==hash(token)||row.expires_at<=now()||row.password_digest!==passwordDigest(accountById(a.id)))fail(403,'VERIFICATION_REQUIRED','身份验证已失效，请重新验证。');return row.token_hash;}
  function consume(a,token,value){run('DELETE FROM account_verifications WHERE token_hash=?',proof(a,token,value));}
  function sessions(a,token){return all('SELECT session_id,user_agent,ip_hint,created_at,last_seen_at,expires_at,token_hash FROM social_sessions WHERE account_id=? AND expires_at>? ORDER BY created_at DESC,rowid DESC',a.id,now()).map(s=>({id:s.session_id,device:deviceName(s.user_agent),ipHint:s.ip_hint,createdAt:s.created_at,lastSeenAt:s.last_seen_at,expiresAt:s.expires_at,current:equal(s.token_hash,hash(token))}));}
  async function handlePublic({method,path,input={},ip='unknown'}){
   if(method!=='POST'||path!=='security/recover')return undefined;
-  fields(input,['userId','recoveryCode','newPassword']);const id=userId(input.userId);password(input.newPassword);limit('recovery-ip:'+hash(ip),20,900000);limit('recovery-id:'+id,8,900000);
+  fields(input,['userId','recoveryCode','newPassword']);const id=userId(input.userId);passwordPolicy.validateNew(input.newPassword);limit('recovery-ip:'+hash(ip),20,900000);limit('recovery-id:'+id,8,900000);
   const account=accountByUserId(id),code=normalizeCode(input.recoveryCode),old=account&&one('SELECT * FROM account_recovery WHERE account_id=?',account.id);
   if(!account||account.deleted_at||!code||!old||!equal(old.code_hash,recoveryDigest(hash,account.id,code)))fail(401,'INVALID_RECOVERY','ID 或恢复码不正确，或恢复码已失效。');
   const salt=randomBytes(16).toString('hex'),nextHash=(await derive(input.newPassword,salt)).toString('hex');let accessRecovery={};
   transaction(()=>{const current=accountById(account.id),latest=one('SELECT * FROM account_recovery WHERE account_id=?',account.id);if(!current||current.deleted_at||!latest||!equal(latest.code_hash,old.code_hash)||passwordDigest(current)!==passwordDigest(account))fail(409,'RECOVERY_CHANGED','恢复码已使用或账号已变化，请重新确认。');
-   accessRecovery=ctx.getAccountAccess?.().onRecovery(account)||{};run('DELETE FROM account_recovery WHERE account_id=?',account.id);run('UPDATE accounts SET password_salt=?,password_hash=?,revision=revision+1 WHERE id=?',salt,nextHash,account.id);run('DELETE FROM social_sessions WHERE account_id=?',account.id);run('DELETE FROM account_verifications WHERE account_id=?',account.id);
+   accessRecovery=ctx.getAccountAccess?.().onRecovery(account)||{};run('DELETE FROM account_recovery WHERE account_id=?',account.id);run('UPDATE accounts SET password_salt=?,password_hash=?,auth_mode=?,revision=revision+1 WHERE id=?',salt,nextHash,passwordPolicy.metadata.min===12?'password':account.auth_mode,account.id);run('DELETE FROM social_sessions WHERE account_id=?',account.id);run('DELETE FROM account_verifications WHERE account_id=?',account.id);
   });return {recovered:true,requiresLogin:true,...accessRecovery};
  }
  async function handle({method,path,input={},token,account:a}){

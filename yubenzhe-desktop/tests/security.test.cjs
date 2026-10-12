@@ -25,6 +25,13 @@ test('DApp opens only the exact Remix root and never becomes a renderer network 
   assert.doesNotMatch(CSP, /app\.remix\.live/);
   assert.match(CSP, /frame-src 'none'/);
 });
+test('public installation page opens in the system browser without granting the host other paths or embedded access',()=>{
+  const origin=require('../src/deployment.cjs').previewOrigin,page=origin+'/install.html';
+  assert.equal(isExternalUrl(page),true);
+  for(const url of [origin,origin+'/',origin+'/downloads/app.exe',origin+'/api/social/me',origin+'/internal/',origin+'/x/../install.html',page+'?from=app',page+'#download',page+'/',origin.replace('https:','http:')+'/install.html',origin.replace('://','://user@')+'/install.html',origin+'.evil.test/install.html'])assert.equal(isExternalUrl(url),false,url);
+  for(const type of ['mainFrame','subFrame','script','stylesheet','image','xhr','fetch'])assert.equal(isAllowedRequest(page,type),false,type);
+  assert.equal(localAsset('yubenzhe://app/install.html'),null);
+});
 test('desktop external link IPC is reachable only from a real clicked anchor', () => {
   const vm = require('node:vm'), fs = require('node:fs');
   const sends = [], handlers = new Map(), exposed = {};

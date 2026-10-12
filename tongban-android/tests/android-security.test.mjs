@@ -8,11 +8,14 @@ import { fileURLToPath } from 'node:url';
 
 const project = fileURLToPath(new URL('../', import.meta.url));
 const read = name => readFileSync(path.join(project, name), 'utf8');
-test('fixed stable native versions, local bundled origin, debugging and cleartext off', () => {
+test('consistent release version, increasing Android code, local bundled origin, debugging and cleartext off', () => {
   const pkg = JSON.parse(read('package.json'));
-  assert.equal(pkg.version, '0.14.0-dev.8');
-  assert.match(read('android/app/build.gradle'), /versionCode 17/);
-  assert.match(read('android/app/build.gradle'), /versionName "0\.14\.0-dev\.8"/);
+  const consumer = JSON.parse(readFileSync(path.resolve(project, '../tongban/package.json'), 'utf8'));
+  const gradle = read('android/app/build.gradle');
+  assert.equal(pkg.version, consumer.version);
+  assert.equal(gradle.match(/\bversionName\s+"([^"]+)"/)?.[1], pkg.version);
+  const versionCode = Number(gradle.match(/\bversionCode\s+(\d+)/)?.[1]);
+  assert.ok(Number.isSafeInteger(versionCode) && versionCode > 17, 'Release code must exceed the prior Android release code 17');
   assert.equal(pkg.dependencies['@capacitor/core'], '8.5.3');
   assert.equal(pkg.dependencies['@capacitor/android'], '8.5.3');
   assert.equal(pkg.devDependencies['@capacitor/cli'], '8.5.3');

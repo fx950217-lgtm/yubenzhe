@@ -39,7 +39,7 @@ public class InternalPreviewSessionTest {
         reject(()->InternalPreviewPolicy.validateRequest("/api/social/me","POST","{}",Collections.singletonMap("Content-Type","text/html")),"only JSON product body");
         reject(()->InternalPreviewPolicy.validateLogin("a","short"),"strict credential bounds");
         reject(()->InternalPreviewPolicy.validateLogin("tester","x".repeat(257)),"password maximum");
-        Fake wire=new Fake();InternalPreviewSession session=new InternalPreviewSession(wire);
+        Fake wire=new Fake();InternalPreviewSession session=new InternalPreviewSession(wire,"internal-preview");
         check(!session.status(),"initial status needs no network");
         InternalPreviewSession.Result unauthorized=session.request("/api/social/me","GET",null,null);
         check(unauthorized.status==401&&new String(unauthorized.body,StandardCharsets.UTF_8).contains("INTERNAL_PREVIEW_REQUIRED"),"no unauthenticated product transport");check(wire.calls==0,"unauthed request remains blocked");
@@ -59,6 +59,28 @@ public class InternalPreviewSessionTest {
         wire.next=result(303,"",Arrays.asList(FRONT_COOKIE),"/");session.login("tester","Synthetic-test-only-2026!");wire.next=result(200,"{}",Collections.emptyList(),null);wire.whileSending=session::clear;reject(()->session.request("/api/social/me","GET",null,null),"late result from prior session rejected");wire.whileSending=null;
         wire.next=result(303,"",Arrays.asList(FRONT_COOKIE),"/");session.login("tester","Synthetic-test-only-2026!");session.logout();check(!session.authenticated(),"logout clears local session");check(wire.path.equals("/logout")&&InternalPreviewPolicy.REMOTE.equals(wire.headers.get("Origin")),"logout uses fixed endpoint");
         wire.next=result(303,"",Arrays.asList(FRONT_COOKIE.replace("Max-Age=3600","Max-Age=0")),"/");reject(()->session.login("tester","Synthetic-test-only-2026!"),"expired cookie rejected");
+        Fake publicWire=new Fake();InternalPreviewSession publicSession=new InternalPreviewSession(publicWire,"public");
+        check(publicSession.status()&&!publicSession.authenticated(),"public transport readiness is not an outer login or product identity");
+        check("public".equals(publicSession.accessMode())&&publicWire.calls==0,"explicit mode needs no outer gate request");
+        reject(()->publicSession.login("tester","Synthetic-test-only-2026!"),"public mode never transmits reviewer credentials");check(publicWire.calls==0,"no public outer login request");
+        publicWire.next=result(401,"{\"code\":\"AUTH_REQUIRED\"}",Collections.emptyList(),null);
+        check(publicSession.request("/api/social/me","GET",null,null).status==401,"server still authenticates the product account");
+        check(!publicWire.headers.containsKey("Cookie")&&!publicWire.headers.containsKey("authorization"),"anonymous public request has no stored identity");
+        publicWire.next=result(200,"{}",Arrays.asList(FRONT_COOKIE,PRODUCT_COOKIE),null);
+        publicSession.request("/api/social/me","GET",null,Collections.singletonMap("Authorization","Bearer "+PRODUCT));
+        check(("Bearer "+PRODUCT).equals(publicWire.headers.get("authorization")),"public identity comes from the caller Bearer token");
+        check(InternalPreviewPolicy.LOCAL.equals(publicWire.headers.get("Origin")),"public mode preserves native Origin");
+        publicSession.request("/api/social/me","GET",null,null);
+        check(!publicWire.headers.containsKey("Cookie")&&!publicWire.headers.containsKey("authorization"),"public mode ignores both outer and product response cookies");
+        publicSession.request("/api/chain-preview/config","GET",null,null);check(InternalPreviewPolicy.REMOTE.equals(publicWire.headers.get("Origin")),"public chain config retains same-origin policy");
+        int publicCalls=publicWire.calls;
+        for(String path:new String[]{"https://evil.test/api/social/me","/api/admin/users","//evil.test/api/social/me"})reject(()->publicSession.request(path,"GET",null,null),"public mode does not broaden paths or hosts");
+        reject(()->publicSession.request("/api/social/me","GET",null,Collections.singletonMap("Cookie","injected")),"public mode forbids injected Cookie");
+        check(publicWire.calls==publicCalls,"invalid public calls do not reach the network");
+        publicWire.next=result(302,"",Collections.emptyList(),"https://evil.test/");reject(()->publicSession.request("/api/social/me","GET",null,null),"public mode rejects cross-host redirect");
+        publicWire.next=result(200,"{}",Collections.emptyList(),null);publicWire.whileSending=publicSession::clear;reject(()->publicSession.request("/api/social/me","GET",null,null),"public mode rejects late results after revocation");publicWire.whileSending=null;
+        publicCalls=publicWire.calls;publicSession.logout();check(publicWire.calls==publicCalls&&publicSession.status(),"public logout clears memory without calling an outer endpoint");
+        reject(()->new InternalPreviewSession(new Fake(),"PUBLIC"),"unknown access mode fails closed");
         System.out.println(checks+" internal preview policy/session assertions passed");
     }
 }

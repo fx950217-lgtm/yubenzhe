@@ -24,7 +24,7 @@ async function body(request,limit=16384) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-export function createAcceptanceServer({ role, origin, authConfig, database, aiService = null, socialService = null, publicFrontend = false, internalPreview = false, chainPreviewConfigFile, rpcUrls=readDeploymentConfiguration({}).rpcUrls, staticRoot, reportFile = new URL('../reports/thousand-users.json', import.meta.url) }) {
+export function createAcceptanceServer({ role, origin, authConfig, database, aiService = null, socialService = null, publicFrontend = false, internalPreview = false, trustedProxyIPs, chainPreviewConfigFile, rpcUrls=readDeploymentConfiguration({}).rpcUrls, staticRoot, reportFile = new URL('../reports/thousand-users.json', import.meta.url) }) {
   if (!['admin','frontend'].includes(role)) throw new Error('ROLE must be admin or frontend.');
   validateInternalPreview({internalPreview,role,origin,publicFrontend});
   const publicURL = new URL(origin);
@@ -56,6 +56,14 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       if (publicStatic) {
         let pathname;try { pathname=decodeURIComponent(url.pathname); } catch { throw new AdminError(404,'NOT_FOUND','页面不存在。'); }
         if (internalStatic(resolve(staticBase,`.${pathname.replace(/\\/g,'/')}`))) throw new AdminError(404,'NOT_FOUND','页面不存在。');
+        if(url.pathname.startsWith('/api/ai/'))throw new AdminError(404,'NOT_FOUND','请使用产品账号工作台入口。');
+        if(url.pathname==='/api/chain-preview/config') {
+          if(request.method!=='GET')throw new AdminError(405,'METHOD_NOT_ALLOWED','配置接口仅支持读取。');
+          if(request.headers.origin&&request.headers.origin!==publicURL.origin||request.headers['sec-fetch-site']==='cross-site')throw new AdminError(403,'ORIGIN_DENIED','配置仅限当前应用读取。');
+          // This reader exposes only the fixed testnet/address whitelist, never
+          // credentials or signing material. Wallet keys stay on the client.
+          json(response,await readChainPreviewConfig(chainPreviewConfigFile));return;
+        }
       }
       if(role==='frontend'&&(['/api/device-bridge/claim','/api/device-bridge/enroll','/api/device-bridge/poll','/api/device-bridge/ai/poll'].includes(url.pathname)||url.pathname.startsWith('/api/device-bridge/ai/files/'))){
         if(request.method!=='POST'||request.headers.origin||request.headers.referer||request.headers['sec-fetch-site']==='cross-site')throw new AdminError(403,'DEVICE_AGENT_ONLY','此接口仅接受设备连接器。');
@@ -68,13 +76,13 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
         json(response,value);return;
       }
       if (!internalPreview && role === 'frontend' && url.pathname.startsWith('/api/ai-channel/')) {
-        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,pathPrefix:'/api/ai-channel/',pathBase:'ai-channel/'}); return;
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,trustedProxyIPs,pathPrefix:'/api/ai-channel/',pathBase:'ai-channel/'}); return;
       }
       if (!internalPreview && role === 'frontend' && (url.pathname==='/api/desktop'||url.pathname.startsWith('/api/desktop/'))) {
-        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,pathPrefix:'/api/desktop',pathBase:'desktop'}); return;
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,trustedProxyIPs,pathPrefix:'/api/desktop',pathBase:'desktop'}); return;
       }
       if (!internalPreview && role === 'frontend' && url.pathname.startsWith('/api/social/')) {
-        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body}); return;
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,trustedProxyIPs}); return;
       }
       if (url.pathname === '/login' && request.method === 'POST') {
         checkOrigin(request);
@@ -93,13 +101,13 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
         }
       }
       if (internalPreview && role === 'frontend' && url.pathname.startsWith('/api/social/')) {
-        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,internalPreviewUser:user}); return;
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,trustedProxyIPs,internalPreviewUser:user}); return;
       }
       if (internalPreview && role === 'frontend' && url.pathname.startsWith('/api/ai-channel/')) {
-        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,internalPreviewUser:user,pathPrefix:'/api/ai-channel/',pathBase:'ai-channel/'}); return;
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,trustedProxyIPs,internalPreviewUser:user,pathPrefix:'/api/ai-channel/',pathBase:'ai-channel/'}); return;
       }
       if (internalPreview && role === 'frontend' && (url.pathname==='/api/desktop'||url.pathname.startsWith('/api/desktop/'))) {
-        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,internalPreviewUser:user,pathPrefix:'/api/desktop',pathBase:'desktop'}); return;
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,trustedProxyIPs,internalPreviewUser:user,pathPrefix:'/api/desktop',pathBase:'desktop'}); return;
       }
       if (internalPreview && url.pathname.startsWith('/api/ai/'))throw new AdminError(404,'NOT_FOUND','请使用产品账号工作台入口。');
       if (internalPreview && url.pathname === '/api/chain-preview/config') {

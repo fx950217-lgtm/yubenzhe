@@ -50,7 +50,7 @@ function normalized(input, remote = false) {
   const userId = validateUserId(input.userId, { allowReserved: true });
   if (!Number.isSafeInteger(input.revision) || input.revision < 1) throw new Error('资料版本无效。');
   if (remote && (!Number.isSafeInteger(input.level) || input.level < 1 || input.level > 1000 || typeof input.official !== 'boolean')) throw new Error('账号标识无效。');
-  return { version: 2, ...fields(input), userId, localId: userId, level: remote ? input.level : 1, official: remote ? input.official : false, identityScope: remote ? 'server' : 'local', revision: input.revision, ...(remote && ['email','pin'].includes(input.authMode) ? {authMode: input.authMode} : {}) };
+  return { version: 2, ...fields(input), userId, localId: userId, level: remote ? input.level : 1, official: remote ? input.official : false, identityScope: remote ? 'server' : 'local', revision: input.revision, ...(remote && ['email','pin','password'].includes(input.authMode) ? {authMode: input.authMode} : {}) };
 }
 export function getLocalProfile(storage = globalThis.localStorage) {
   let raw;

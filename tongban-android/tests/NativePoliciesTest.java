@@ -41,6 +41,11 @@ public class NativePoliciesTest {
         check(NavigationPolicy.mayOpenExternal("https://docs.ollama.com/quickstart", true), "Clicked official model documentation");
         for (String unsafe : new String[] {"https://ollama.com/", "https://ollama.com/download?redirect=evil", "https://ollama.com/download/windows", "https://ollama.com.evil.test/download", "https://ollama.com@evil.test/download", "http://ollama.com/download"}) check(!NavigationPolicy.mayOpenExternal(unsafe, true), "Model download URL must be exact");
         check(!NavigationPolicy.mayOpenExternal("https://ollama.com/download", false), "No automatic model download");
+        String install = DeploymentConfig.PREVIEW_ORIGIN + "/install.html";
+        check(NavigationPolicy.mayOpenExternal(install, true), "Clicked exact product installation page");
+        check(!NavigationPolicy.mayOpenExternal(install, false), "No automatic installation page launch");
+        for(String unsafe : new String[]{DeploymentConfig.PREVIEW_ORIGIN+"/",DeploymentConfig.PREVIEW_ORIGIN+"/downloads/app.apk",DeploymentConfig.PREVIEW_ORIGIN+"/internal/",DeploymentConfig.PREVIEW_ORIGIN+"/x/../install.html",install+"?from=app",install+"#download",install+"/",install.replace("https:","http:"),install.replace("://","://user@"),DeploymentConfig.PREVIEW_ORIGIN+".evil.test/install.html"})check(!NavigationPolicy.mayOpenExternal(unsafe,true),"Installation page must be exact");
+        check(!NavigationPolicy.isLocal(install)&&!NavigationPolicy.isSocialApi(install)&&!NavigationPolicy.isSocialAvatar(install)&&!NavigationPolicy.isTestnetRpc(install),"Installation page never becomes embedded app content or RPC/API access");
         for (String unsafe : new String[] {"https://bscscan.com/", "https://testnet.bscscan.com.evil.test/", "https://testnet.bscscan.com@evil.test/", "https://user@testnet.bscscan.com/", "http://testnet.bscscan.com/", "intent://testnet.bscscan.com", "https://testnet.bscscan.com:88/"}) check(!NavigationPolicy.mayOpenExternal(unsafe, true), "External whitelist must be exact");
         check(NavigationPolicy.isTestnetRpc("https://bsc-testnet.bnbchain.org/"), "Approved testnet RPC");
         check(!NavigationPolicy.isTestnetRpc("https://bsc-dataseed.bnbchain.org"), "No mainnet RPC");

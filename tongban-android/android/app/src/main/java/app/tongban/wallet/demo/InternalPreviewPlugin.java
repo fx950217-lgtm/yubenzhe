@@ -36,7 +36,7 @@ public class InternalPreviewPlugin extends Plugin {
             });
         });
     }
-    @PluginMethod public void status(PluginCall call) { trusted(call, () -> call.resolve(new JSObject().put("authenticated",session.status()))); }
+    @PluginMethod public void status(PluginCall call) { trusted(call, () -> call.resolve(new JSObject().put("mode",session.accessMode()).put("authenticated",session.status()))); }
     @PluginMethod public void login(PluginCall call) {
         trusted(call, () -> {
             if(!loginPending.compareAndSet(false,true)){call.reject("正在验证内部访问，请稍候。","LOGIN_PENDING");return;}
@@ -44,7 +44,7 @@ public class InternalPreviewPlugin extends Plugin {
             finally {loginPending.set(false);}
         });
     }
-    @PluginMethod public void logout(PluginCall call) { trusted(call, () -> {session.logout();call.resolve(new JSObject().put("authenticated",false));}); }
+    @PluginMethod public void logout(PluginCall call) { trusted(call, () -> {session.logout();call.resolve(new JSObject().put("mode",session.accessMode()).put("authenticated","public".equals(session.accessMode())));}); }
     @PluginMethod public void request(PluginCall call) {
         trusted(call, () -> {
             JSObject supplied=call.getObject("headers",new JSObject());Map<String,String> headers=new LinkedHashMap<>();

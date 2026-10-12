@@ -3,7 +3,8 @@ import {createPersonalDevices} from './personal-devices.mjs';
 import {createDesktopService} from './desktop-service.mjs';
 import {createDesktopProvider} from './desktop-provider.mjs';
 import {createSocialService} from './social-service.mjs';
-import {createSimulationMailAdapter,createInternalPreviewMailAdapter,createMailAdapterFromEnvironment} from './account-mail.mjs';
+import {createDisabledMailAdapter,createSimulationMailAdapter,createInternalPreviewMailAdapter,createMailAdapterFromEnvironment} from './account-mail.mjs';
+import {validatePublicAccountMode} from './public-account-mode.mjs';
 import {requireInternalPreviewSession,validateInternalPreview} from './internal-preview.mjs';
 import {createCommunityService} from './community-service.mjs';
 import {createWorkbenchService} from './workbench-service.mjs';
@@ -12,15 +13,16 @@ import {createProductAdmin} from './product-admin.mjs';
 import {createGroupWorkflows} from './group-workflows.mjs';
 import {createAIChannel} from './ai-channel.mjs';
 import {createAIChannelFiles} from './ai-channel-files.mjs';
-export function createProductModules({database,origin,simulation=false,internalPreview=false,now=Date.now,mailAdapter,otpSecret,mailEnv=process.env,desktopProvider,proposalService,paymentVerifier}={}){
+export function createProductModules({database,origin,simulation=false,internalPreview=false,publicFrontend=false,publicPasswordRegistration=false,workbenchRulesEnabled=false,groupWorkflowsEnabled=false,now=Date.now,mailAdapter,otpSecret,mailEnv=process.env,desktopProvider,proposalService,paymentVerifier}={}){
  const url=new URL(origin);
+ validatePublicAccountMode({role:'frontend',origin,simulation,internalPreview,publicFrontend,publicPasswordRegistration,workbenchRulesEnabled,groupWorkflowsEnabled});
  validateInternalPreview({internalPreview,role:'frontend',origin,simulation});
  const testServices=simulation||internalPreview;
  if(simulation&&!['localhost','127.0.0.1','[::1]'].includes(url.hostname))throw Error('M0 simulation must use a loopback origin.');
  let community,workbench,desktop,devices,groupWorkflows,aiChannel,aiChannelFiles,groupDeviceAI;
- const mail=mailAdapter||(internalPreview?createInternalPreviewMailAdapter({origin}):simulation?createSimulationMailAdapter({origin}):createMailAdapterFromEnvironment({env:mailEnv}));
+ const mail=mailAdapter||(publicPasswordRegistration?createDisabledMailAdapter():internalPreview?createInternalPreviewMailAdapter({origin}):simulation?createSimulationMailAdapter({origin}):createMailAdapterFromEnvironment({env:mailEnv}));
  const social=createSocialService({database,now,
-  accessConfig:{origin,mailAdapter:mail,otpSecret:otpSecret??mailEnv.EMAIL_OTP_SECRET,hasFinancialExposure:()=>false},
+  accessConfig:{origin,publicFrontend:publicFrontend&&!testServices,publicPasswordRegistration,mailAdapter:mail,otpSecret:otpSecret??mailEnv.EMAIL_OTP_SECRET,hasFinancialExposure:()=>false},
   profileExtras:id=>community?.profileExtras(id)||{},
   deviceAIMessage:(id,options)=>groupDeviceAI?.describeMessage(id,options)||null,
   deviceAIRoster:(id,viewerId)=>groupDeviceAI?.rosterForConversation(id,viewerId)||{members:[],version:0},
@@ -40,8 +42,8 @@ export function createProductModules({database,origin,simulation=false,internalP
  groupDeviceAI=createGroupDeviceAI({database,socialService:social,devices,aiChannel,now});
  community=createCommunityService({database,socialService:social,now});
  desktop=createDesktopService({database,socialService:social,provider:desktopProvider||createDesktopProvider({database}),now});
- workbench=createWorkbenchService({database,socialService:social,now,enabled:testServices,desktopCapabilities:desktop.capabilities});
- groupWorkflows=createGroupWorkflows({database,socialService:social,workbenchService:workbench,proposalService,paymentVerifier,enabled:testServices,now});
+ workbench=createWorkbenchService({database,socialService:social,now,enabled:testServices||workbenchRulesEnabled,simulation:!workbenchRulesEnabled,desktopCapabilities:desktop.capabilities});
+ groupWorkflows=createGroupWorkflows({database,socialService:social,workbenchService:workbench,proposalService,paymentVerifier,enabled:testServices||groupWorkflowsEnabled,now});
  function handle(request){
   if(internalPreview)requireInternalPreviewSession(request);
   const path=request.path;
@@ -60,6 +62,6 @@ export function createProductModules({database,origin,simulation=false,internalP
   return social.handle(request);
  }
  let tickInFlight;
- function tick(){if(tickInFlight)return tickInFlight;tickInFlight=Promise.resolve().then(async()=>{devices.maintain();aiChannel.maintain();groupDeviceAI.maintain();if(testServices)workbench.tick();await social.accountAccess.flushNotifications();}).finally(()=>{tickInFlight=null;});return tickInFlight;}
+ function tick(){if(tickInFlight)return tickInFlight;tickInFlight=Promise.resolve().then(async()=>{devices.maintain();aiChannel.maintain();groupDeviceAI.maintain();if(testServices||workbenchRulesEnabled)workbench.tick();await social.accountAccess.flushNotifications();}).finally(()=>{tickInFlight=null;});return tickInFlight;}
  return {groupDeviceAI,social,community,workbench,desktop,devices,groupWorkflows,aiChannel,aiChannelFiles,operations:createProductAdmin({database,community,now}),mail,handle,tick};
 }

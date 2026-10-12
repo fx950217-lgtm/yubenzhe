@@ -5,7 +5,7 @@ const TOKEN_KEY='yubenzhe.account.session.v1',PROFILE_KEY='tongban.profile.v1';
 const copy=value=>value===null?null:JSON.parse(JSON.stringify(value));
 const clientError=(message,code)=>Object.assign(new Error(message),{code});
 export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.previewOrigin:location.origin,native=isNativeApp(),fetcher=globalThis.fetch.bind(globalThis),storage,onChange=()=>{},onState=()=>{},onMomentsSeen=()=>{}}={}){
- let accessRecoveryToken='';
+  let accessRecoveryToken='',lastAuthCreated=false;
  let current=null,token='',generation=0,cacheVersion=0,readSequence=0,storageWarning='',disposed=false;
  const cache=new Map(),media=new Map(),groupRequests=new Map(),pendingMedia=new Map(),reads=new Map(),controllers=new Set();
  try{storage??=globalThis.localStorage;}catch{}
@@ -14,7 +14,7 @@ export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.prev
  function clearMedia(){for(const value of media.values())URL.revokeObjectURL(value);media.clear();pendingMedia.clear();}
  function invalidate(){generation++;cacheVersion++;cache.clear();reads.clear();clearMedia();groupRequests.clear();for(const controller of controllers)controller.abort();}
  function forget(){
-  invalidate();token='';current=null;accessRecoveryToken='';
+   invalidate();token='';current=null;accessRecoveryToken='';lastAuthCreated=false;
   for(const key of [TOKEN_KEY,PROFILE_KEY])try{storage.removeItem(key);}catch{storageWarning='登录已退出，但本机缓存未能清理，请检查存储权限。';}
   onChange(null);
  }
@@ -69,7 +69,7 @@ export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.prev
  function acceptSession(value,revision){
   assertCurrent(revision);applyRemoteProfile(value.profile,{setItem(){}});
   if(native&&(typeof value.token!=='string'||!/^[-_A-Za-z0-9]{43}$/.test(value.token)))throw new Error('服务器未返回有效的原生登录凭证。');
-  invalidate();storageWarning='';
+   invalidate();storageWarning='';lastAuthCreated=value.created===true;
   if(native){token=value.token;try{storage.setItem(TOKEN_KEY,token);}catch{storageWarning='本机无法保留登录状态，请保存你的 ID 和密码，下次打开需重新登录。';}}
   return remember(value.profile);
  }
@@ -94,7 +94,9 @@ export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.prev
   assertCurrent(revision);return {...message,image:{...image,src}};
  }
  return {
-  getProfile:()=>copy(current),
+   getProfile:()=>copy(current),
+   getAccountCapabilities:()=>request('access/capabilities'),
+   getLastAuthCreated:()=>lastAuthCreated,
   authenticatedRequest:(path,options)=>request(path,options),
   publicRequest:(path,options)=>request(path,options),
   clearSession:()=>forget(),
@@ -120,7 +122,8 @@ export function createSocialClient({baseURL=isNativeApp()?PUBLIC_DEPLOYMENT.prev
   async register(password,requestId){const revision=generation;return acceptSession(await post('register',{password,requestId,native}),revision);},
   async login(userId,password){const revision=generation;return acceptSession(await post('login',{userId,password,native}),revision);},
   async logout(){const revision=generation;try{await post('logout');}catch(error){if(error.code==='ACCOUNT_REQUIRED')return;throw error;}assertCurrent(revision);forget();},
-  async changePassword(currentPassword,newPassword){const revision=generation;return acceptSession(await post('password',{currentPassword,newPassword}),revision);},
+   async changePassword(currentPassword,newPassword){const revision=generation;return acceptSession(await post('password',{currentPassword,newPassword}),revision);},
+   async initializePassword(input){const revision=generation;return acceptSession(await post('access/password/initialize',input),revision);},
   async saveProfile(input){const initial=current,revision=generation;const result=await post('profile',input);assertCurrent(revision);if(current!==initial)throw new Error('账号资料已更新，请重新打开后修改。');return remember(result.profile);},
   async getState(){const revision=generation,result=await request('state');assertCurrent(revision);if(!current||current.userId!==result.profile.userId||current.revision!==result.profile.revision)remember(result.profile);assertCurrent(revision);onState(copy(result));return result;},
   markMomentsSeen(latestId,expectedOwner){if(!disposed&&current?.userId===expectedOwner)onMomentsSeen(latestId,expectedOwner);},

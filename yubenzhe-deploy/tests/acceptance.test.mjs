@@ -94,7 +94,7 @@ test('public frontend serves pages and downloads without granting a private iden
   const page=await f.request('/');assert.equal(page.status,200);assert.equal(await page.text(),'<h1>受限验收</h1>');
   writeFileSync(join(f.dir,'app.apk'),Buffer.from([1,2,3]));
   const download=await f.request('/app.apk');assert.equal(download.status,200);assert.match(download.headers.get('content-disposition'),/attachment/);
-  for(const path of ['/api/ai/workspaces','/api/admin/bootstrap']) assert.equal((await f.request(path)).status,401);
+   for(const path of ['/api/ai/workspaces','/api/admin/bootstrap']) assert.equal((await f.request(path)).status,path.startsWith('/api/ai/')?404:401);
   for(const path of ['/.env','/%2e%2e%2fserver%2fstart.mjs']) assert.equal((await f.request(path)).status,404);
   assert.equal((await f.request('/',{method:'POST'})).status,405);
   assert.equal((await f.request('/',{headers:{Host:'attacker.example'}})).status,403);

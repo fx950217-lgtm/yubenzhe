@@ -19,6 +19,7 @@ import { mountDistributionPreview } from './distribution-preview.js';
 import { mountLiveSocial } from './live-social.js';
 import { createSocialClient } from './social-client.js';
 import { mountAccountGate, accountSettingsHTML, mountAccountSecurity } from './account-ui.js';
+import {validateNewAccountPassword} from './account-password.js';
 import { mountNotificationSettings } from './notification-settings.js';
 import { mountWalletImport, mountWatchWallets } from './wallet-import-ui.js';
 import QRCode from 'qrcode';
@@ -211,14 +212,16 @@ function androidBack(){
 }
 installAndroidControls({onBackground:lockForBackground,onBack:androidBack,onError:toast});
 
-function accountSettings(){
+async function accountSettings(){
  const profile=socialClient.getProfile();if(!profile){navigate('mine');return;}
- showModal('账号设置',accountSettingsHTML(profile),el=>{
-  modalCleanup=mountAccountSecurity(el.querySelector('[data-account-security]'),{client:socialClient,onDeleted:()=>{wallet.lock();closeModal();navigate('messages');toast('账号已注销，本机钱包保留并已锁定。')},onRefresh:()=>{updateRailProfile()}});
+ const revision=viewRevision;let capabilities;try{capabilities=await socialClient.getAccountCapabilities();}catch(error){if(viewRevision===revision)toast(error.message);return;}
+ if(viewRevision!==revision||socialClient.getProfile()?.userId!==profile.userId)return;
+ showModal('账号设置',accountSettingsHTML(profile,capabilities),el=>{
+  modalCleanup=mountAccountSecurity(el.querySelector('[data-account-security]'),{client:socialClient,onDeleted:()=>{wallet.lock();closeModal();navigate('messages');toast('账号已注销，本机钱包保留并已锁定。')},onRefresh:result=>{updateRailProfile();if(result?.passwordInitialized){closeModal();accountSettings();}}});
   el.querySelector('#account-notifications').onclick=()=>showModal('任务关键通知','<div id="notification-settings"></div>',body=>{modalCleanup=mountNotificationSettings(body.querySelector('#notification-settings'),{client:socialClient})});
   el.querySelector('#account-copy-id').onclick=async()=>{try{await navigator.clipboard.writeText(profile.userId);toast('用户 ID 已复制')}catch{toast('复制权限不可用，请长按 ID 复制')}};
   el.querySelector('#account-qr').onclick=myFriendQr;
-  el.querySelector('form').onsubmit=event=>{event.preventDefault();const form=event.target;busyForm(form,async()=>{if(form.elements.newPassword.value!==form.elements.repeat.value)throw new Error('两次输入的新密码不一致。');if(!/^\d{6}$/.test(form.elements.newPassword.value))throw new Error('新密码需要 6 位数字。');await socialClient.changePassword(form.elements.currentPassword.value,form.elements.newPassword.value);form.reset();if(form.isConnected&&dialog.open)closeModal();toast('账号密码已更新，其他设备需重新登录。')})};
+  el.querySelector('form').onsubmit=event=>{event.preventDefault();const form=event.target;busyForm(form,async()=>{if(form.elements.newPassword.value!==form.elements.repeat.value)throw new Error('两次输入的新密码不一致。');validateNewAccountPassword(form.elements.newPassword.value,capabilities);await socialClient.changePassword(form.elements.currentPassword.value,form.elements.newPassword.value);form.reset();if(form.isConnected&&dialog.open)closeModal();toast('账号密码已更新，其他设备需重新登录。')})};
   el.querySelector('#account-logout').onclick=()=>showModal('退出账号','<p class="modal-copy">退出后，可用 ID 和密码重新登录。服务器聊天记录和本机钱包都会保留；钱包会自动锁定。</p><p class="form-error" role="alert"></p><button class="primary" id="confirm-account-logout">确认退出</button>',confirm=>{confirm.querySelector('button#confirm-account-logout').onclick=async event=>{event.target.disabled=true;try{await socialClient.logout();wallet.lock();closeModal();navigate('messages')}catch(error){formError(error);event.target.disabled=false}}});
  });
 }

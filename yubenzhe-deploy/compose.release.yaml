@@ -1,0 +1,32 @@
+# Merge only with compose.yaml. Keep the existing Caddy and Ollama containers.
+# Data/secrets symlinks must resolve to the inspected existing production mounts.
+services:
+  frontend:
+    image: yubenzhe-public:${RELEASE_TAG:?Set RELEASE_TAG}
+    mem_limit: 384m
+    env_file: [./secrets/internal.env]
+    environment:
+      PUBLIC_ORIGIN: ${FRONT_ORIGIN:?Set FRONT_ORIGIN}
+      PUBLIC_FRONTEND: "true"
+      INTERNAL_PREVIEW: "false"
+      M0_SIMULATION: "false"
+      PUBLIC_TEST_MAIL: "false"
+      PUBLIC_PASSWORD_REGISTRATION: "true"
+      WORKBENCH_RULES_ENABLED: "true"
+      GROUP_WORKFLOWS_ENABLED: "true"
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:?Set exact inspected reverse-proxy peer IP}
+      CHAIN_PREVIEW_CONFIG_FILE: /run/ybz-chain/config.json
+      PUSH_CONFIG_FILE: /run/ybz-secrets/push.json
+    volumes:
+      - ./secrets/push.json:/run/ybz-secrets/push.json:ro
+      - ./chain-preview:/run/ybz-chain:ro
+  admin:
+    image: yubenzhe-public:${RELEASE_TAG:?Set RELEASE_TAG}
+    environment:
+      PUBLIC_FRONTEND: "false"
+      INTERNAL_PREVIEW: "false"
+      M0_SIMULATION: "false"
+      PUBLIC_TEST_MAIL: "false"
+      PUBLIC_PASSWORD_REGISTRATION: "false"
+      WORKBENCH_RULES_ENABLED: "false"
+      GROUP_WORKFLOWS_ENABLED: "false"

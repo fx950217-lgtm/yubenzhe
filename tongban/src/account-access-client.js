@@ -6,7 +6,7 @@ export function createAccountAccessClient(client,{register=startRegistration,aut
  const check=()=>{if(!isCurrent())throw Error('操作已取消。');};
  const post=async(path,input={})=>{check();const result=await client.authenticatedRequest('access/'+path,{method:'POST',input});check();return result;};
  async function strongProof(purpose){if(!supported())throw Error('此设备暂不支持通行密钥，请使用支持的 HTTPS 浏览器。');const challenge=await post('passkeys/options',{purpose});let response;try{response=await authenticate({optionsJSON:challenge.options});}catch(e){throw error(e);}return (await post('passkeys/verify',{challengeId:challenge.challengeId,response})).proof;}
- return {deviceId,capabilities:()=>client.publicRequest('access/capabilities'),state:()=>client.authenticatedRequest('access/security-state'),strongProof,
+  return {deviceId,capabilities:()=>client.getAccountCapabilities?.()??client.publicRequest('access/capabilities'),state:()=>client.authenticatedRequest('access/security-state'),strongProof,
  requestEmail:(email,requestId=crypto.randomUUID())=>client.publicRequest('access/email/request',{method:'POST',input:{email,requestId,deviceId,locale:globalThis.document?.documentElement?.lang?.startsWith('en')?'en':'zh-CN'}}),
  verifyEmail:(challengeId,code)=>client.verifyEmail({challengeId,code,deviceId}),
  async loginPasskey(){if(!supported())throw Error('此设备暂不支持通行密钥。');const c=await client.publicRequest('access/passkeys/login/options',{method:'POST',input:{deviceId}});let response;try{response=await authenticate({optionsJSON:c.options});}catch(e){throw error(e);}return client.verifyPasskeyLogin({challengeId:c.challengeId,response,deviceId});},
