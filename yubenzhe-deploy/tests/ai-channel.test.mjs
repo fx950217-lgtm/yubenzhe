@@ -111,11 +111,12 @@ test('disabled or deleted product owners cannot use device credentials despite a
  }
 });
 
-test('offline, login-required and quota status are distinct and requests never supply cwd, shell, provider or account keys',async t=>{
+test('offline, login-required and quota status are distinct and requests never supply cwd, shell or account keys',async t=>{
  const f=await fixture(t);f.poll({status:{...f.status,code:'login-required'}});assert.throws(()=>f.send(),error('AI_LOGIN_REQUIRED'));
  f.poll({status:{...f.status,code:'quota'}});assert.throws(()=>f.send(),error('AI_QUOTA'));
  f.poll();f.advance(20001);assert.throws(()=>f.send(),error('AI_DEVICE_OFFLINE'));f.poll();
- for(const field of ['cwd','shell','provider','apiKey','ownerId'])assert.throws(()=>f.send('请求',{[field]:'forbidden'}),error('INVALID_FIELDS'));
+ for(const field of ['cwd','shell','apiKey','ownerId','model','url','executable'])assert.throws(()=>f.send('请求',{[field]:'forbidden'}),error('INVALID_FIELDS'));
+ assert.throws(()=>f.send('请求',{provider:'forbidden'}),error('AI_PROVIDER_INVALID'));
  assert.throws(()=>f.send('x'.repeat(8001)),error('INVALID_TEXT'));
  assert.throws(()=>f.poll({status:{...f.status,workspaceLabel:'C:/private'}}),error('INVALID_AI_STATUS'));
 });

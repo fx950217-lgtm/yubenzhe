@@ -95,3 +95,20 @@ test('HTTP event codes are allowlisted by kind rather than accepting arbitrary o
  await f.request('/api/ai-channel/tasks/'+task.id+'/cancel',{requestId:randomUUID()},ownerHeaders);
  const terminal=await f.request('/api/device-bridge/ai/poll',{...poll,taskId:task.id,leaseId:task.leaseId,events:[{seq:1,kind:'completed',code:'AI_COMPLETED',text:'late'}]},agentHeaders);assert.equal(terminal.status,200);assert.equal(terminal.body.cancelTaskId,task.id);assert.equal(terminal.body.ack,0);
 });
+
+test('modern registry and selected Ollama task traverse real HTTP while content and file rights remain isolated',async t=>{
+ const f=await fixture(t),agentHeaders={Authorization:'Bearer '+f.device.token},ownerHeaders={Origin:f.origin,Authorization:'Bearer '+f.user.token};
+ const providers=[{id:'codex',name:'Codex',installed:true,loggedIn:false,version:'1.2.3',reason:'private@example.test',executionSupported:false,executionMode:'disabled'},{id:'ollama',name:'Ollama',installed:true,loggedIn:null,version:'1.2.3',reason:'',executionSupported:true,executionMode:'chat-only'}];
+ const poll={connectorId:randomUUID(),status:{code:'ready',workspaceLabel:'多模型工作目录',providers,scannedAt:Date.now()}};
+ assert.equal((await f.request('/api/device-bridge/ai/poll',poll,agentHeaders)).status,200);
+ const state=await f.request('/api/ai-channel/devices/'+f.device.deviceId,undefined,ownerHeaders);assert.equal(state.body.device.providers.length,2);assert.equal(state.body.device.aiStatus,'ready');assert.equal(JSON.stringify(state.body).includes('private@example.test'),false);
+ const input={deviceId:f.device.deviceId,prompt:'HTTP-OLLAMA-PRIVATE',provider:'ollama',requestId:randomUUID()};
+ const rejected=await f.request('/api/ai-channel/send',{...input,attachments:[randomUUID()]},ownerHeaders);assert.equal(rejected.status,409);assert.equal(rejected.body.code,'AI_PROVIDER_FILES_UNSUPPORTED');
+ const created=await f.request('/api/ai-channel/send',input,ownerHeaders);assert.equal(created.status,200);assert.equal(created.body.task.provider,'ollama');const dispatched=await f.request('/api/device-bridge/ai/poll',poll,agentHeaders),task=dispatched.body.task;assert.equal(task.provider,'ollama');assert.equal(task.executionMode,'chat-only');
+ const files=await f.request('/api/device-bridge/ai/files/init',{taskId:task.id,leaseId:task.leaseId,requestId:randomUUID(),envelope:{}},agentHeaders);assert.equal(files.status,409);assert.equal(files.body.code,'AI_PROVIDER_FILES_UNSUPPORTED');
+ const reply=await f.request('/api/device-bridge/ai/poll',{...poll,taskId:task.id,leaseId:task.leaseId,events:[{seq:1,kind:'message',itemId:'ollama-reply',text:'HTTP-OLLAMA-OUTPUT-PRIVATE'},{seq:2,kind:'completed',code:'AI_COMPLETED'}]},agentHeaders);assert.equal(reply.status,200);assert.equal(reply.body.ack,2);
+ const detail=await f.request('/api/ai-channel/tasks/'+task.id,undefined,ownerHeaders);assert.equal(detail.body.task.status,'succeeded');assert.match(detail.body.task.sourceLabel,/Ollama$/);
+ const other=await f.modules.handle({method:'POST',path:'register',input:{password:'482193',requestId:randomUUID()},ip:'127.0.0.2'}),otherHeaders={Origin:f.origin,Authorization:'Bearer '+other.token};
+ for(const path of ['/api/ai-channel/devices/'+f.device.deviceId,'/api/ai-channel/tasks/'+task.id])assert.equal((await f.request(path,undefined,otherHeaders)).status,404);
+ for(const name of ['ai_channel_tasks','ai_channel_devices','ai_channel_event_hashes']){const rows=JSON.stringify(f.database.raw.prepare('SELECT * FROM '+name).all());assert.equal(rows.includes('HTTP-OLLAMA-PRIVATE'),false);assert.equal(rows.includes('HTTP-OLLAMA-OUTPUT-PRIVATE'),false);}
+});

@@ -43,7 +43,7 @@
       "package.json"
     ],
     "extraResources": [
-      {"from":"../yubenzhe-deploy/device-bridge","to":"device-bridge","filter":["agent.mjs","desktop.ps1","ai-channel.mjs","codex-runner.mjs","ai-channel-files.mjs","protocol.mjs","capabilities.mjs","capability-probe.ps1","desktop-worker.mjs"]},
+      {"from":"../yubenzhe-deploy/device-bridge","to":"device-bridge","filter":["agent.mjs","desktop.ps1","ai-channel.mjs","codex-runner.mjs","ai-channel-files.mjs","protocol.mjs","capabilities.mjs","capability-probe.ps1","desktop-worker.mjs","probe-process.mjs","ai-registry.mjs","provider-runner.mjs","ollama-runner.mjs"]},
       {"from":"build/icon.ico","to":"device-icon.ico"}
     ],
     "win": {

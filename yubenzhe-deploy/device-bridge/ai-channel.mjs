@@ -2,7 +2,8 @@ import {readFile,writeFile,mkdir,realpath,stat,open,rename,unlink} from 'node:fs
 import {createHash,randomUUID} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {createCodexRunner,safeCodexMessage,redactAIChannelText} from './codex-runner.mjs';
+import {safeCodexMessage,redactAIChannelText} from './codex-runner.mjs';
+import {createProviderRunner} from './provider-runner.mjs';
 export {redactAIChannelText} from './codex-runner.mjs';
 import {localDeadline} from './protocol.mjs';
 import {createAIChannelFiles} from './ai-channel-files.mjs';
@@ -51,6 +52,20 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
  const journal=await openAIChannelJournal({runtimeDir,workspace:cwd,maxStarted});
  const label=String(workspaceLabel||path.basename(cwd)).slice(0,80);
  let active=null,stopped=false,polling=false,statusCode='error',lastLoginCheck=-Infinity;
+ let providers=[],scannedAt=0;
+ const overallStatus=()=>providers.some(provider=>provider.executionSupported)?'ready':providers.some(provider=>provider.installed&&provider.loggedIn===false)?'login-required':'error';
+ function recordStatus(login){
+  if(Array.isArray(login.providers)){
+   providers=login.providers.map(({id,name,installed,loggedIn,version,reason,executionSupported,executionMode})=>({id,name,installed,loggedIn,version,reason,executionSupported,executionMode}));scannedAt=login.scannedAt;
+   statusCode=overallStatus();
+  }else{
+   // A pre-registry runner is explicitly Codex-only. Missing provider metadata
+   // never makes an unrelated AI available or routes its prompt to Codex.
+   const ready=login.code==='ready';
+   providers=[{id:'codex',name:'Codex',installed:true,loggedIn:ready?true:login.code==='login-required'?false:null,version:null,reason:ready?'旧版 Codex 连接器已登录；仅支持 Codex。':'旧版 Codex 连接器尚未就绪。',executionSupported:ready,executionMode:ready?'tools':'disabled'}];
+   scannedAt=Date.now();statusCode=['ready','login-required','quota','error'].includes(login.code)?login.code:'error';
+  }
+ }
  async function call(route,input,{signal}={}){
   const response=await fetchImpl(origin.origin+'/api/device-bridge/'+route,{method:'POST',redirect:'error',credentials:'omit',referrerPolicy:'no-referrer',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(10000)]):AbortSignal.timeout(10000),headers:{'Content-Type':'application/json',...(config.token?{Authorization:'Bearer '+config.token}:{})},body:JSON.stringify(input)});
   if(!response.ok){await response.body?.cancel();throw Object.assign(fail('AI_RELAY_UNAVAILABLE','连接器请求未完成。'),{status:response.status});}return boundedJSON(response,route.startsWith('ai/files/')?300000:262144);
@@ -61,10 +76,16 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
   const terminal=['completed','failed'].includes(event.kind);
   if(task.events.length>=100&&!terminal){task.job?.cancel('AI_OUTPUT_LIMIT');return;}
   const clean={seq:++task.seq,kind:event.kind,...(event.itemId?{itemId:String(event.itemId).slice(0,100)}:{}),...(event.text?{text:redactAIChannelText(event.text).slice(0,2000)}:{}),...(event.code?{code:String(event.code).slice(0,80)}:{})};
-  task.events.push(clean);if(terminal){task.terminal=true;if(event.code==='AI_LOGIN_REQUIRED')statusCode='login-required';if(event.code==='AI_QUOTA')statusCode='quota';if(event.code==='AI_TOOL_UNAVAILABLE')statusCode='error';}
+  task.events.push(clean);if(terminal){
+   task.terminal=true;
+   if(['AI_LOGIN_REQUIRED','AI_QUOTA','AI_TOOL_UNAVAILABLE','AI_EXECUTION_FAILED','AI_OLLAMA_UNAVAILABLE','AI_OLLAMA_MODEL_REQUIRED','AI_OLLAMA_MODEL_UNVERIFIED'].includes(event.code)){
+    providers=providers.map(provider=>provider.id!==task.provider?provider:{...provider,executionSupported:false,executionMode:'disabled',...(event.code==='AI_LOGIN_REQUIRED'?{loggedIn:false}:{}),reason:event.code==='AI_LOGIN_REQUIRED'?'需要登录，请在这台电脑由本人完成。':event.code==='AI_QUOTA'?'该 AI 当前额度不足，请在电脑检查。':'该 AI 的安全执行环境尚未就绪，请在电脑检查。'});
+    statusCode=overallStatus();
+   }
+  }
   log({taskId:task.id,kind:clean.kind,chars:clean.text?.length||0});
  }
- function stopTask(code){if(!active||active.terminal)return;active.controller.abort();if(active.job&&!active.jobFinished)active.job.cancel(code);else emit(active,{kind:'failed',code,text:safeCodexMessage(code)});}
+ function stopTask(code){if(!active||active.terminal)return;const current=active;if(current.job&&!current.jobFinished)current.job.cancel(code);else emit(current,{kind:'failed',code,text:safeCodexMessage(code)});current.controller.abort();}
  async function retireServerTerminal(task){
   // cancelTaskId is authoritative server termination, not an acknowledgement
   // of queued events. Drop them only after the actual process has exited.
@@ -78,13 +99,15 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
  async function enroll(){if(config.token)return;const value=await call('enroll',{pairToken:config.pairToken});if(!/^[A-Za-z0-9_-]{43}$/.test(value.token||'')||!id(value.deviceId))throw fail('AI_STATE_INVALID','设备配对响应无效。');config.token=value.token;config.deviceId=value.deviceId;delete config.pairToken;await writeFile(stateFile,JSON.stringify(config),{mode:0o600});}
  async function acceptTask(task,reply,sentAt,receivedAt){
   if(active)throw fail('AI_RELAY_RESPONSE','服务端尝试同时分配多个任务。');
-  if(!task||!id(task.id)||!id(task.leaseId)||typeof task.prompt!=='string'||!task.prompt.trim()||task.prompt.length>8000||!Number.isFinite(task.expiresAt))throw fail('AI_TASK_INVALID','任务内容或范围无效。');
+  if(!task||!id(task.id)||!id(task.leaseId)||typeof task.prompt!=='string'||!task.prompt.trim()||task.prompt.length>8000||!Number.isFinite(task.expiresAt)||task.provider!==undefined&&!['codex','claude','workb','ollama'].includes(task.provider))throw fail('AI_TASK_INVALID','任务内容或范围无效。');
+  const providerId=task.provider??'codex',provider=providers.find(item=>item.id===providerId);
   const hardUntil=localDeadline({expiresAt:task.expiresAt,serverTime:reply.serverNow,receivedAt,roundTrip:receivedAt-sentAt});
   const leaseUntil=Math.min(receivedAt+heartbeatMs,localDeadline({expiresAt:reply.expiresAt,serverTime:reply.serverNow,receivedAt,roundTrip:receivedAt-sentAt}));
-  active={id:task.id,leaseId:task.leaseId,events:[],seq:0,acked:0,terminal:false,hardUntil,leaseUntil,job:null,jobFinished:false,controller:new AbortController()};const current=active;
+  active={id:task.id,provider:providerId,executionMode:provider?.executionMode,leaseId:task.leaseId,events:[],seq:0,acked:0,terminal:false,hardUntil,leaseUntil,job:null,jobFinished:false,controller:new AbortController()};const current=active;
   if(hardUntil<=receivedAt||leaseUntil<=receivedAt){emit(current,{kind:'failed',code:'AI_LEASE_EXPIRED',text:safeCodexMessage('AI_LEASE_EXPIRED')});return;}
   if(journal.has(task.id)){emit(current,{kind:'failed',code:'AI_EXECUTION_INTERRUPTED',text:'此任务已有启动记录，不会在重启后自动重复执行。'});return;}
-  if(statusCode!=='ready'){emit(current,{kind:'failed',code:statusCode==='login-required'?'AI_LOGIN_REQUIRED':statusCode==='quota'?'AI_QUOTA':'AI_EXECUTION_FAILED',text:statusCode==='login-required'?safeCodexMessage('AI_LOGIN_REQUIRED'):safeCodexMessage('AI_EXECUTION_FAILED')});return;}
+  if(provider?.executionSupported!==true||!['codex','ollama'].includes(providerId)){emit(current,{kind:'failed',code:provider?.loggedIn===false?'AI_LOGIN_REQUIRED':'AI_PROVIDER_UNAVAILABLE',text:provider?.loggedIn===false?'所选 AI 需要由本人在这台电脑完成登录。':'所选 AI 没有可用的安全执行适配，本次没有执行。'});return;}
+  if(provider.executionMode==='chat-only'&&task.attachments!==undefined&&(!Array.isArray(task.attachments)||task.attachments.length)){emit(current,{kind:'failed',code:'AI_PROVIDER_FILES_UNSUPPORTED',text:'所选本地模型仅支持文字对话，不能读取附件或执行文件。'});return;}
   try{
    await journal.markStarted(task.id);
    // Optional file transport remains separate; it must keep state outside cwd,
@@ -93,14 +116,14 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
    void startTask();
   }catch(error){emit(current,{kind:'failed',code:error.code==='AI_JOURNAL_FULL'?'AI_JOURNAL_FULL':'AI_EXECUTION_FAILED',text:error.code==='AI_JOURNAL_FULL'?'去重记录已满，连接器已停止接受新任务。':safeCodexMessage('AI_EXECUTION_FAILED')});}
   async function startTask(){try{
-   const prepared=fileHooks?.prepareTask?await fileHooks.prepareTask(task,{signal:current.controller.signal}):null;
+   const prepared=current.executionMode==='tools'&&fileHooks?.prepareTask?await fileHooks.prepareTask(task,{signal:current.controller.signal}):null;
    if(active!==current||current.terminal||stopped)return;
    enforceLease();if(current.terminal)return;
    const promptSuffix=prepared?.promptSuffix||'';
    if(typeof promptSuffix!=='string'||promptSuffix.length>2000)throw fail('AI_TASK_INVALID','本机文件指引超过独立上限。');
-   current.job=runner.run({taskId:task.id,prompt:task.prompt,promptSuffix,timeoutMs:Math.max(1,current.hardUntil-clock()),onEvent:event=>{
+   current.job=runner.run({provider:providerId,taskId:task.id,prompt:task.prompt,promptSuffix,signal:current.controller.signal,timeoutMs:Math.max(1,current.hardUntil-clock()),onEvent:event=>{
     if(['completed','failed'].includes(event.kind))current.jobFinished=true;
-    if(event.kind==='completed'&&fileHooks?.collectTask){void Promise.resolve().then(()=>fileHooks.collectTask(task,{signal:current.controller.signal})).then(()=>{enforceLease();if(!current.controller.signal.aborted)emit(current,event);},()=>emit(current,{kind:'failed',code:'AI_FILE_TRANSFER_FAILED',text:'任务执行结束，但成果文件传回未完成，请保留电脑上的原文件。'}));}else emit(current,event);
+    if(event.kind==='completed'&&current.executionMode==='tools'&&fileHooks?.collectTask){void Promise.resolve().then(()=>fileHooks.collectTask(task,{signal:current.controller.signal})).then(()=>{enforceLease();if(!current.controller.signal.aborted)emit(current,event);},()=>emit(current,{kind:'failed',code:'AI_FILE_TRANSFER_FAILED',text:'任务执行结束，但成果文件传回未完成，请保留电脑上的原文件。'}));}else emit(current,event);
    }});
   }catch{emit(current,{kind:'failed',code:'AI_EXECUTION_FAILED',text:safeCodexMessage('AI_EXECUTION_FAILED')});}}
  }
@@ -108,9 +131,18 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
   if(stopped||polling)return;polling=true;
   try{
    await enroll();enforceLease();
-   if(!active&&clock()-lastLoginCheck>=60000){const login=await runner.loginStatus();statusCode=['ready','login-required','quota','error'].includes(login.code)?login.code:'error';lastLoginCheck=clock();}
+   if(!active?.terminal&&clock()-lastLoginCheck>=60000){
+    // The relay accepts a registry scan for five minutes. Long executions must
+    // renew facts, not manufacture a new timestamp from cached login state.
+    try{recordStatus(await runner.loginStatus());}catch{
+     providers=providers.map(provider=>({...provider,executionSupported:false,executionMode:'disabled',reason:'本机检测未完成，请在电脑刷新后再试。'}));
+     scannedAt=Date.now();statusCode='error';
+    }
+    lastLoginCheck=clock();
+    if(active&&!providers.some(provider=>provider.id===active.provider&&provider.executionSupported))stopTask('AI_PROVIDER_UNAVAILABLE');
+   }
    if(journal.full)statusCode='error';
-   const current=active,input={connectorId:journal.connectorId,...(current?{taskId:current.id,leaseId:current.leaseId}:{}),events:current?current.events.slice(0,20):[],status:{code:statusCode,workspaceLabel:label,provider:'Codex',...(fileHooks?.publicKey?{filePublicKey:fileHooks.publicKey}:{}),...(capabilities?{capabilities}:{}),...(source?{source}:{})}};
+   const current=active,input={connectorId:journal.connectorId,...(current?{taskId:current.id,leaseId:current.leaseId}:{}),events:current?current.events.slice(0,20):[],status:{code:statusCode,workspaceLabel:label,providers,scannedAt,...(fileHooks?.publicKey?{filePublicKey:fileHooks.publicKey}:{}),...(capabilities?{capabilities}:{}),...(source?{source}:{})}};
    const sentAt=clock(),reply=await call('ai/poll',input),receivedAt=clock();
    if(!Number.isFinite(reply.serverNow)||!Number.isFinite(reply.expiresAt)||!Number.isSafeInteger(reply.ack)||reply.ack<0)throw fail('AI_RELAY_RESPONSE','授权租约响应无效。');
    if(stopped)return;
@@ -134,14 +166,14 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
 }
 
 export function parseAIChannelArguments(args){
- const values={};const allowed=new Set(['codex','workspace','state','runtime-dir','label']);
- for(let i=0;i<args.length;i+=2){const key=args[i]?.replace(/^--/,'');if(!args[i]?.startsWith('--')||!allowed.has(key)||values[key]!==undefined||typeof args[i+1]!=='string'||args[i+1].startsWith('--'))throw fail('AI_ARGUMENTS','参数仅允许 --codex --workspace --state --runtime-dir --label。');values[key]=args[i+1];}
- if(['codex','workspace','state','runtime-dir'].some(k=>!values[k]))throw fail('AI_ARGUMENTS','需要 --codex、--workspace、--state 和 --runtime-dir。');
- return {executable:values.codex,workspace:values.workspace,statePath:values.state,runtimeDir:values['runtime-dir'],workspaceLabel:values.label};
+ const values={};const allowed=new Set(['codex','workspace','state','runtime-dir','label','ollama-model']);
+ for(let i=0;i<args.length;i+=2){const key=args[i]?.replace(/^--/,'');if(!args[i]?.startsWith('--')||!allowed.has(key)||values[key]!==undefined||typeof args[i+1]!=='string'||args[i+1].startsWith('--'))throw fail('AI_ARGUMENTS','参数仅允许本机 Codex、模型、工作区和连接状态设置。');values[key]=args[i+1];}
+ if(['workspace','state','runtime-dir'].some(k=>!values[k]))throw fail('AI_ARGUMENTS','需要 --workspace、--state 和 --runtime-dir。');
+ return {executable:values.codex,ollamaModel:values['ollama-model']||null,workspace:values.workspace,statePath:values.state,runtimeDir:values['runtime-dir'],workspaceLabel:values.label};
 }
 
 async function main(){
- const options=parseAIChannelArguments(process.argv.slice(2));const runner=await createCodexRunner(options);
+ const options=parseAIChannelArguments(process.argv.slice(2));const runner=await createProviderRunner(options);
  const channel=await createAIChannel({...options,runner,fileHooksFactory:createAIChannelFiles,log:entry=>console.log(JSON.stringify(entry))});
  const controller=new AbortController(),stop=()=>controller.abort();process.once('SIGINT',stop);process.once('SIGTERM',stop);
  try{await channel.run({signal:controller.signal});}finally{await channel.close();}

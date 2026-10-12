@@ -107,3 +107,41 @@ test('Windows restores elevated native isolation when ignoring global config wit
 test('observed read-only sandbox rejection on stderr cannot report successful execution after exit 0',async t=>{
  const f=await fixture(t);let p;const runner=await createCodexRunner({executable:process.execPath,workspace:f.workspace,spawnImpl:()=>p=child()});const job=runner.run({taskId:'blocked',prompt:'create the approved local file'});p.stderr.write('ERROR codex_core::tools::router: error=patch rejected: writing is blocked by read-only sandbox; rejected by user approval settings');p.stdout.write('{"type":"turn.completed"}\n');p.emit('close',0);assert.equal((await job.done).code,'AI_TOOL_UNAVAILABLE');
 });
+
+const registryProvider=(id,ready=true)=>({id,name:id,installed:true,loggedIn:id==='ollama'?null:true,version:'1.2.3',reason:'fixture metadata',executionSupported:ready,executionMode:ready?(id==='ollama'?'chat-only':'tools'):'disabled'});
+test('modern connector dispatches the selected provider, projects public metadata and skips chat-only file hooks',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[];let sent=false;
+ runner.loginStatus=async()=>({providers:[{...registryProvider('ollama'),executable:'private-path',authOutput:'private-output'}],scannedAt:123,executables:{ollama:'private-path'}});
+ const channel=await createAIChannel({...f,runner,clock:()=>0,fileHooks:{prepareTask:()=>assert.fail('chat model cannot read files'),collectTask:()=>assert.fail('chat model cannot write files')},fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);return response(reply(input,sent?{}:(sent=true,{task:{...task,provider:'ollama',attachments:[]}})));}});t.after(()=>channel.close());
+ await channel.pollOnce();await tick();assert.equal(runner.runs.length,1);assert.equal(runner.runs[0].provider,'ollama');runner.runs[0].complete();await channel.pollOnce();assert.equal(channel.activeTaskId,null);assert.equal(inputs[0].status.scannedAt,123);assert.doesNotMatch(JSON.stringify(inputs),/private-path|private-output|executables|authOutput/);assert.equal(inputs[1].events.at(-1).kind,'completed');
+});
+test('chat-only attachments are rejected before journal or execution, without a Codex fallback',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[];let sent=false;
+ runner.loginStatus=async()=>({providers:[registryProvider('codex'),registryProvider('ollama')],scannedAt:123});
+ const channel=await createAIChannel({...f,runner,clock:()=>0,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);return response(reply(input,sent?{}:(sent=true,{task:{...task,provider:'ollama',attachments:[{id:'file_1'}]}})));}});t.after(()=>channel.close());
+ await channel.pollOnce();await tick();await channel.pollOnce();assert.equal(runner.runs.length,0);assert.equal(inputs[1].events[0].code,'AI_PROVIDER_FILES_UNSUPPORTED');assert.deepEqual(JSON.parse(await readFile(path.join(f.runtimeDir,'ai-channel-state.json'),'utf8')).started,[]);
+});
+test('legacy runner readiness never implies another provider is available',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[];let sent=false;
+ const channel=await createAIChannel({...f,runner,clock:()=>0,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);return response(reply(input,sent?{}:(sent=true,{task:{...task,provider:'claude'}})));}});t.after(()=>channel.close());
+ await channel.pollOnce();await tick();await channel.pollOnce();assert.equal(runner.runs.length,0);assert.equal(inputs[1].events[0].code,'AI_PROVIDER_UNAVAILABLE');assert.deepEqual(inputs[0].status.providers.map(p=>p.id),['codex']);
+});
+test('quota failure disables only its selected provider and leaves another provider available',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[];let sent=false;
+ runner.loginStatus=async()=>({providers:[registryProvider('codex'),registryProvider('ollama')],scannedAt:123});
+ const channel=await createAIChannel({...f,runner,clock:()=>0,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);return response(reply(input,sent?{}:(sent=true,{task:{...task,provider:'codex'}})));}});t.after(()=>channel.close());
+ await channel.pollOnce();await tick();runner.runs[0].onEvent({kind:'failed',code:'AI_QUOTA',text:'不可用'});await channel.pollOnce();assert.equal(inputs[1].status.code,'ready');assert.equal(inputs[1].status.providers[0].executionSupported,false);assert.equal(inputs[1].status.providers[1].executionSupported,true);assert.equal(inputs[1].events[0].code,'AI_QUOTA');
+});
+test('running tasks refresh real registry facts each minute and stop when their own provider disappears',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[];let now=0,scans=0,sent=false;
+ runner.loginStatus=async()=>({providers:[registryProvider('codex',++scans<3),registryProvider('ollama')],scannedAt:10000+now});
+ const channel=await createAIChannel({...f,runner,clock:()=>now,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);return response(reply(input,{serverNow:10000+now,expiresAt:25000+now,...(!sent?(sent=true,{task:{...task,provider:'codex'}}):{})}));}});t.after(()=>channel.close());
+ await channel.pollOnce();await tick();for(now=10000;now<=110000;now+=10000)await channel.pollOnce();assert.equal(scans,2);assert.equal(runner.cancelled.length,0);assert.equal(inputs.at(-1).status.scannedAt,70000);
+ await channel.pollOnce();assert.equal(scans,3);assert.deepEqual(runner.cancelled,['AI_PROVIDER_UNAVAILABLE']);assert.equal(inputs.at(-1).status.code,'ready');assert.equal(inputs.at(-1).events.at(-1).code,'AI_PROVIDER_UNAVAILABLE');assert.equal(runner.runs.length,1);
+});
+test('failed refresh disables the last ready snapshot instead of renewing cached login facts',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[];let now=0,scans=0;
+ runner.loginStatus=async()=>{if(scans++)throw Error('secret local diagnostic');return {providers:[registryProvider('codex')],scannedAt:123};};
+ const channel=await createAIChannel({...f,runner,clock:()=>now,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);return response(reply(input));}});t.after(()=>channel.close());
+ await channel.pollOnce();now=60000;await channel.pollOnce();assert.equal(inputs[1].status.code,'error');assert.equal(inputs[1].status.providers[0].executionSupported,false);assert.doesNotMatch(JSON.stringify(inputs),/secret local diagnostic/);
+});
