@@ -1,2 +1,13 @@
 .ac-chat{max-width:860px;margin:auto}.ac-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.ac-header h2{flex:1;margin:0}.ac-online{color:var(--text-2)}.ac-online.is-online{color:var(--green,#00c48c)}.ac-status{font-size:var(--fs-b);font-weight:600}.ac-authorization{border:1px solid var(--line,#e8e8ee);padding:14px;border-radius:14px;background:var(--surface,#fff)}.ac-source{color:var(--accent,#6c5ce7);font-size:var(--fs-s);font-weight:600;margin-top:16px}.ac-task-status{font-size:var(--fs-s);color:var(--text-2)}.ac-answer{white-space:pre-wrap;overflow-wrap:anywhere}.ac-chat textarea{resize:vertical;min-height:110px}.ac-chat [disabled]{opacity:.6}.ac-chat button{min-height:40px}.ac-chat .rw-message{overflow-wrap:anywhere}@media(max-width:600px){.ac-chat{padding:12px}.ac-header h2{font-size:var(--fs-l)}.ac-header{gap:8px}.ac-chat .wh-primary{width:100%}}
 .ac-files{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.ac-file-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;overflow-wrap:anywhere;border:1px solid var(--line,#e8e8ee);border-radius:8px;padding:4px 10px}.ac-file-chip button{border:0;background:transparent;min-width:28px}.ac-file-picker{font-size:var(--fs-b)}.ac-file-picker input{max-width:100%}
+.workspace .ac-chat{padding:var(--sp-4);color:var(--t1)}
+.ac-header{flex-wrap:nowrap;gap:var(--sp-2);border-bottom:1px solid var(--border);padding-bottom:var(--sp-2)}
+.ac-header h2{min-width:0;font-size:var(--fs-m);font-weight:600;line-height:calc(1em + 8px);overflow-wrap:anywhere}
+.ac-header [data-ac=back]{min-width:44px;border:0;background:transparent;font-size:var(--fs-xl)}
+.ac-online{font-size:var(--fs-s);white-space:nowrap;color:var(--t2)}
+.ac-online.is-online{color:var(--success-text)}
+.ac-private-heading{margin:var(--sp-2) 0;color:var(--t2);font-size:var(--fs-s)}
+.ac-execution-details{font-size:var(--fs-s);color:var(--t2);margin-bottom:var(--sp-4)}
+.ac-execution-details summary{display:flex;align-items:center;min-height:44px;cursor:pointer}
+.ac-execution-details .ac-authorization{padding:var(--sp-3);border-radius:var(--r-m)}
+.workspace .ac-selected-task{outline:2px solid var(--brand);outline-offset:2px}

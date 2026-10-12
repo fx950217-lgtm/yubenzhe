@@ -56,3 +56,10 @@ test('computer Codex chat has a refreshable device route and preserves the exist
  assert.notEqual(navigationFromHash('#workbench/devices/../chat').options.route,'ai-channel');
  assert.notEqual(navigationFromHash('#workbench/devices/'+deviceId+'/chat/unexpected').options.route,'ai-channel');
 });
+
+test('private AI chat has its own message route while regular conversation bookmarks remain unchanged',()=>{
+ const deviceId='11111111-1111-4111-8111-111111111111';
+ for(const provider of [undefined,'codex','ollama']){const options={route:'ai-channel',deviceId,...(provider?{provider}:{})};assert.deepEqual(navigationFromHash(hashForView('messages',options)),{view:'messages',options});assert.equal(activeNavView('messages'),'messages');}
+ assert.notEqual(navigationFromHash('#messages/devices/../chat').options.route,'ai-channel');
+ assert.equal(navigationFromHash('#messages/'+deviceId).options.conversationId,deviceId);
+});

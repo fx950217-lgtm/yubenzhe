@@ -1,6 +1,13 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {fileURLToPath} from 'node:url';import {createSocialClient} from '../src/social-client.js';
 const built=await build({entryPoints:[fileURLToPath(new URL('../src/ai-channel-chat.js',import.meta.url))],bundle:true,write:false,format:'esm',platform:'node',loader:{'.css':'empty'},logLevel:'silent'});const {mountAIChannelChat,mergeAIChannelEvents,aiChannelStatus}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
 const did='11111111-1111-4111-8111-111111111111',tid='22222222-2222-4222-8222-222222222222';const tick=()=>new Promise(resolve=>setImmediate(resolve));const task=extra=>({id:tid,deviceId:did,status:'running',prompt:'测试目标',createdAt:1,latestSeq:0,outputAvailable:true,...extra});
+test('opening a workbench draft only pre-fills, private header and back preserve the entry point',async t=>{
+ let backs=0;const h=harness(t,{initialDraft:'<draft>先核对再执行',backLabel:'返回消息',onBack:()=>backs++});await tick();assert.match(h.root.innerHTML,/Codex · 只有你能看到这台设备/);assert.match(h.root.innerHTML,/aria-label="返回消息"/);assert.match(h.root.innerHTML,/&lt;draft&gt;先核对再执行/);assert.equal(h.calls.some(c=>c.options.method==='POST'),false);assert.equal(h.store.size,0);await h.click('back');assert.equal(backs,1);await h.submit();assert.equal(h.calls.filter(c=>c.path==='ai-channel/send').length,1);
+});
+test('recent task selection can only highlight a task returned for this device',async t=>{
+ const h=harness(t,{tasks:[task()],initialTaskId:tid});await tick();assert.match(h.root.innerHTML,/ac-selected-task/);assert.equal(h.calls.some(c=>c.options.method==='POST'),false);
+ const forged=harness(t,{tasks:[task()],initialTaskId:'" onclick="evil'});await tick();assert.doesNotMatch(forged.root.innerHTML,/ac-selected-task|onclick="evil/);
+});
 test('explicitly unsupported AI and files cannot be invoked through a stale ready status or public key',async t=>{
  let uploads=0;const h=harness(t,{fileTransfer:{upload:async()=>{uploads++;}},request:async(path,options,fallback)=>path.includes('/devices/')?{device:{id:did,name:'云端电脑',online:true,aiStatus:'ready',filePublicKey:{ready:true},capabilities:{ai:{state:'unsupported',reason:'未安装 Codex'},files:{state:'unsupported',reason:'目录不可写'}}},tasks:[]}:fallback(path,options)});await tick();
  assert.match(h.root.innerHTML,/AI 任务不支持：未安装 Codex/);assert.match(h.root.innerHTML,/文件收发不支持：目录不可写/);h.input('不能发送');await h.submit();await h.file({name:'file.txt',size:1});assert.equal(uploads,0);assert.equal(h.calls.some(call=>call.options.method==='POST'),false);

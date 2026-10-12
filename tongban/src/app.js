@@ -45,6 +45,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const short=a=>a?`${a.slice(0,6)}…${a.slice(-4)}`:'尚未创建钱包';
 let chainSection='assets';
 let currentView='messages',socialCleanup=null,hideBalance=true,balance=null,balanceError='',loadingBalance=false,modalCleanup=null,backupPhrase='',toastTimer,viewRevision=0;
+let deviceChatDraft=null;
 let routeOptions={},billReturn={view:'mine',options:{}},walletIntent=null,walletSetupContext=null;
 const pageScroll=new Map();
 const app=document.querySelector('#app'),dialog=document.querySelector('#modal');
@@ -75,12 +76,12 @@ function layout(){
   const page=document.querySelector('#page');
   if(['messages','contacts','mine','workbench'].includes(currentView)&&!socialClient.getProfile())socialCleanup=mountAccountGate(page,{client:socialClient,onReady:accountReady,onWallet:()=>navigate('wallet'),onRetry:initializeAccount,error:accountError,loading:accountLoading});
   else if(currentView==='wallet')renderWallet(page);
-  else if(currentView==='workbench'&&routeOptions.route==='ai-channel')socialCleanup=mountAIChannelChat(page,{client:socialClient,fileTransfer:createAIChannelFiles({client:socialClient,ownerKey:socialClient.getProfile().userId}),deviceId:routeOptions.deviceId,provider:routeOptions.provider,onBack:()=>navigate('workbench',{hub:{mode:'work',screen:'devices'}})});
+  else if(['workbench','messages'].includes(currentView)&&routeOptions.route==='ai-channel')socialCleanup=mountAIChannelChat(page,{client:socialClient,fileTransfer:createAIChannelFiles({client:socialClient,ownerKey:socialClient.getProfile().userId}),deviceId:routeOptions.deviceId,provider:routeOptions.provider,...takeDeviceDraft(routeOptions.deviceId),backLabel:currentView==='messages'?'返回消息':'返回工作台',onBack:()=>currentView==='messages'?navigate('messages'):navigate('workbench',{hub:{mode:'work',screen:'devices'}})});
   else if(currentView==='workbench'&&routeOptions.route==='cooperation')socialCleanup=mountGroupWorkflows(page,{client:socialClient,wallet,toast,conversationId:routeOptions.conversationId,initialWorkflowId:routeOptions.workflowId,onBack:()=>navigate('workbench'),onGroup:conversationId=>navigate('messages',{conversationId}),onWallet:()=>navigate('wallet'),onUnlock:()=>unlockModal(()=>toast('钱包已解锁，请再次查看付款详情')),onWorkflowChange:({conversationId,workflowId})=>{if(currentView==='workbench'&&routeOptions.route==='cooperation'){routeOptions={route:'cooperation',conversationId,workflowId};history.replaceState({view:currentView,options:routeOptions},'',hashForView(currentView,routeOptions));}}});
   else if(currentView==='workbench'&&WORKBENCH_FEATURES.includes(routeOptions.route))socialCleanup=mountDiscoveryPage(page,'workbench');
   else if(currentView==='workbench'){
     let initializing=true;
-    socialCleanup=mountWorkbenchHub(page,{client:socialClient,toast,onDeviceChat:(deviceId,provider)=>navigate('workbench',{route:'ai-channel',deviceId,provider}),onCollaborate:()=>navigate('workbench',{route:'cooperation'}),onShare:file=>navigate('discover',{route:'moments',shareArtifact:file}),onAccount:()=>navigate('mine'),onLegacy:()=>navigate('workbench',{route:'ai'}),onOpenFeature:route=>navigate('workbench',{route}),initialMode:routeOptions.hub?.mode,initialScreen:routeOptions.hub?.screen,initialSelected:routeOptions.hub?.selected,onScreenChange:hub=>{
+    socialCleanup=mountWorkbenchHub(page,{client:socialClient,toast,onDeviceChat:(deviceId,provider,options)=>openDeviceChat(deviceId,provider,options),onCollaborate:()=>navigate('workbench',{route:'cooperation'}),onShare:file=>navigate('discover',{route:'moments',shareArtifact:file}),onAccount:()=>navigate('mine'),onLegacy:()=>navigate('workbench',{route:'ai'}),onOpenFeature:route=>navigate('workbench',{route}),initialMode:routeOptions.hub?.mode,initialScreen:routeOptions.hub?.screen,initialSelected:routeOptions.hub?.selected,onScreenChange:hub=>{
       const previous=hashForView(currentView,routeOptions);routeOptions={hub};const next=hashForView(currentView,routeOptions);
       if(initializing||previous===next)history.replaceState({view:currentView,options:routeOptions},'',next);
       else{history.pushState({view:currentView,options:routeOptions},'',next);window.scrollTo({top:0,behavior:'instant'});}
@@ -196,8 +197,7 @@ function androidBack(){
   if(dialog.open){closeModal();return true}
   if(socialCleanup?.back?.())return true;
   if(currentView==='bills'){navigate(billReturn.view,billReturn.options);return true}
-  if(currentView==='wallet'){navigate('workbench');return true}
-  if(currentView!=='workbench'){navigate('workbench');return true}
+  if(currentView!=='messages'){navigate('messages');return true}
   return false;
 }
 installAndroidControls({onBackground:lockForBackground,onBack:androidBack,onError:toast});
@@ -263,3 +263,10 @@ function walletMore(){
 }
 
 function myFriendQr(){const profile=socialClient.getProfile();if(!profile){navigate('messages');return;}showModal('我的好友码','<canvas id="my-friend-qr" class="receive-qr" aria-label="我的好友二维码"></canvas><div class="address">ID '+esc(profile.userId)+'</div><p class="modal-copy">对方使用“扫一扫”，或输入这个 ID 添加你为好友。修改 ID 后请使用新的好友码。</p>',qr=>QRCode.toCanvas(qr.querySelector('canvas'),'tongban://friend/'+profile.userId,{width:220,margin:2,color:{dark:'#8053BA',light:'#ffffff'}},error=>{if(error)toast('二维码生成失败，请使用 ID 添加好友')}));}
+
+function openDeviceChat(deviceId,provider,options={}){
+ const owner=socialClient.getProfile()?.userId;
+ deviceChatDraft=owner?{owner,deviceId,draft:typeof options.draft==='string'?options.draft.slice(0,8000):'',taskId:/^[a-f0-9-]{36}$/i.test(options.taskId||'')?options.taskId:null}:null;
+ navigate('workbench',{route:'ai-channel',deviceId,provider});
+}
+function takeDeviceDraft(deviceId){const pending=deviceChatDraft;deviceChatDraft=null;return pending&&pending.owner===socialClient.getProfile()?.userId&&pending.deviceId===deviceId?{initialDraft:pending.draft,initialTaskId:pending.taskId}:{};}
