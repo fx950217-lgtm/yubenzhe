@@ -1,4 +1,5 @@
 import './live-social.css';
+import {rosterCandidates,rosterKey,rosterFields,validateRosterSelection,saveRosterDraft,createDiscussionDraft} from './group-ai-roster.js';
 import { EMOJI_GROUPS, STICKERS, getSticker, readChatImages, isSafeChatImage } from './chat-media.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -47,7 +48,7 @@ export function validateGroup(name, memberIds, friendIds) { const cleanName = St
 export function privateDeviceEntries(value){return Array.isArray(value)?value.filter(item=>item?.kind==='device'&&typeof item.deviceId==='string'&&/^[a-f0-9-]{36}$/i.test(item.deviceId)&&item.id==='device:'+item.deviceId&&typeof item.name==='string'):[];}
 
 export function groupAIEntries(item) {
-  return item?.type === 'group' && Array.isArray(item.aiMembers) ? item.aiMembers.filter(row => row?.kind === 'ai' && typeof row.id === 'string' && typeof row.alias === 'string' && row.alias.trim()).slice(0,3).map(row => ({...row,alias:row.alias.slice(0,24),canChat:row.canChat === true && typeof row.deviceId === 'string' && /^[a-f0-9-]{36}$/i.test(row.deviceId)})) : [];
+  return item?.type === 'group' && Array.isArray(item.aiMembers) ? item.aiMembers.filter(row => row?.kind === 'ai' && typeof row.id === 'string' && typeof row.alias === 'string' && row.alias.trim()).slice(0,3).map(row => ({...row,alias:row.alias.slice(0,40),canChat:row.canChat === true && typeof row.deviceId === 'string' && /^[a-f0-9-]{36}$/i.test(row.deviceId)})) : [];
 }
 
 export async function prepareChatPhoto(file) {
@@ -182,9 +183,38 @@ export function mountLiveSocial(container, options = {}) {
   function renderDetails() {
     const item = conversation(page.id); if (!item) return header('聊天详情') + empty('聊天已不可用', '请返回消息列表。');
     const group = item.type === 'group';
-    return header('聊天详情') + (group&&options.onGroupAI?'<button class="live-setting" data-action="group-ai">设备 AI 讨论<span>›</span></button>':'')+(group&&options.onGroupTask?'<button class="live-setting" data-action="group-task">协作任务与回执<span>›</span></button>':'') + '<section class="live-profile-card">' + avatar(peer(item), group) + '<h2>' + esc(title(item)) + '</h2><p>' + (group ? item.members.length + ' 位成员' : 'ID：' + esc(peer(item)?.userId)) + '</p></section>' + (group ? '<div class="live-section-title">群成员</div><div class="live-members">' + item.members.map(person => '<button data-action="profile" data-id="' + esc(person.userId) + '">' + avatar(person) + '<strong>' + esc(nameOf(person)) + '</strong><small>' + (person.userId === item.ownerId ? '群主' : person.role === 'admin' ? '管理员' : person.userId === selfId() ? '我' : '成员') + '</small></button>').join('') + '</div><button class="live-setting" data-action="invite-members">邀请好友进群<span>›</span></button>' + (isManager(item) ? '<button class="live-setting" data-action="edit-group">群名与公告<span>编辑 ›</span></button><button class="live-setting" data-action="manage-members">管理群成员<span>›</span></button><button class="live-setting" data-action="join-requests">入群审批<span>'+ (item.joinRequests?.length||0)+' ›</span></button>' : '')+(isOwner(item)?'<button class="live-setting" data-action="toggle-approval" role="switch" aria-checked="'+!!item.joinApproval+'">成员邀请需审批<span>'+(item.joinApproval?'已开启':'已关闭')+'</span></button><button class="live-setting" data-action="transfer-owner">转让群主<span>›</span></button>':'') : personRow(peer(item), 'profile')) + '<button class="live-setting" data-action="search-chat">查找聊天内容<span>›</span></button>' + [['pinned', '置顶聊天'], ['muted', '消息免打扰']].map(([key, label]) => '<button class="live-setting" data-action="toggle" data-key="' + key + '" role="switch" aria-checked="' + !!item[key] + '">' + label + '<span class="live-switch' + (item[key] ? ' is-on' : '') + '"></span></button>').join('') + (group ? '<button class="live-setting" data-action="report-group" data-id="' + esc(item.id) + '">举报群聊<span>›</span></button>' : safetyButtons(peer(item))) + '<p class="live-note">普通聊天消息由服务器保存；设备 AI 回复仅临时中转。新加入或重新入群只能查看本次入群后的消息。普通聊天尚未提供端到端加密。钱包转账与分发以测试网配置及真实回执为准，不提供托管资产。</p><button class="live-danger live-full" data-action="' + (group ? 'leave-group' : 'remove-friend') + '">' + (group ? '退出群聊' : '删除好友') + '</button>';
+    return header('聊天详情') + (group?'<button class="live-setting" data-action="edit-ai-roster">AI 名单与备注<span>›</span></button>':'')+(group&&options.onGroupAI?'<button class="live-setting" data-action="group-ai">设备 AI 讨论<span>›</span></button>':'')+(group&&options.onGroupTask?'<button class="live-setting" data-action="group-task">协作任务与回执<span>›</span></button>':'') + '<section class="live-profile-card">' + avatar(peer(item), group) + '<h2>' + esc(title(item)) + '</h2><p>' + (group ? item.members.length + ' 位成员' : 'ID：' + esc(peer(item)?.userId)) + '</p></section>' + (group ? '<div class="live-section-title">群成员</div><div class="live-members">' + item.members.map(person => '<button data-action="profile" data-id="' + esc(person.userId) + '">' + avatar(person) + '<strong>' + esc(nameOf(person)) + '</strong><small>' + (person.userId === item.ownerId ? '群主' : person.role === 'admin' ? '管理员' : person.userId === selfId() ? '我' : '成员') + '</small></button>').join('') + '</div><button class="live-setting" data-action="invite-members">邀请好友进群<span>›</span></button>' + (isManager(item) ? '<button class="live-setting" data-action="edit-group">群名与公告<span>编辑 ›</span></button><button class="live-setting" data-action="manage-members">管理群成员<span>›</span></button><button class="live-setting" data-action="join-requests">入群审批<span>'+ (item.joinRequests?.length||0)+' ›</span></button>' : '')+(isOwner(item)?'<button class="live-setting" data-action="toggle-approval" role="switch" aria-checked="'+!!item.joinApproval+'">成员邀请需审批<span>'+(item.joinApproval?'已开启':'已关闭')+'</span></button><button class="live-setting" data-action="transfer-owner">转让群主<span>›</span></button>':'') : personRow(peer(item), 'profile')) + '<button class="live-setting" data-action="search-chat">查找聊天内容<span>›</span></button>' + [['pinned', '置顶聊天'], ['muted', '消息免打扰']].map(([key, label]) => '<button class="live-setting" data-action="toggle" data-key="' + key + '" role="switch" aria-checked="' + !!item[key] + '">' + label + '<span class="live-switch' + (item[key] ? ' is-on' : '') + '"></span></button>').join('') + (group ? '<button class="live-setting" data-action="report-group" data-id="' + esc(item.id) + '">举报群聊<span>›</span></button>' : safetyButtons(peer(item))) + '<p class="live-note">普通聊天消息由服务器保存；设备 AI 回复仅临时中转。新加入或重新入群只能查看本次入群后的消息。普通聊天尚未提供端到端加密。钱包转账与分发以测试网配置及真实回执为准，不提供托管资产。</p><button class="live-danger live-full" data-action="' + (group ? 'leave-group' : 'remove-friend') + '">' + (group ? '退出群聊' : '删除好友') + '</button>';
   }
   function openModal(type, values = {}) { menu = false; modal = { type, ...values }; renderMenu(); renderModal(); }
+  const rosterCurrent=target=>!disposed&&modal===target&&selfId()===target.ownerId&&(!service.getProfile||service.getProfile()?.userId===target.ownerId);
+  async function loadRosterEditor(target){
+    if(!rosterCurrent(target)||target.busy||target.aiLoading)return;
+    target.aiLoading=true;target.aiError='';renderModal();
+    try{
+      const reads=await Promise.allSettled([service.authenticatedRequest('devices',{method:'GET'}),target.conversationId?service.authenticatedRequest('group-device-ai/groups/'+encodeURIComponent(target.conversationId)+'/roster',{method:'GET'}):Promise.resolve({version:0,canManage:true,members:[]})]);
+      if(!rosterCurrent(target))return;
+      if(reads[1].status!=='fulfilled')throw reads[1].reason;
+      const roster=reads[1].value;if(!Number.isSafeInteger(roster?.version)||!Array.isArray(roster.members))throw Error('AI 名单读取结果无效');
+      target.aiVersion=roster.version;target.aiCanManage=roster.canManage===true;
+      if(target.conversationId)target.aiMembers=roster.members.map(row=>({...row}));
+      target.aiCandidates=reads[0].status==='fulfilled'?rosterCandidates(reads[0].value?.devices):[];
+      target.rosterCommand=null;
+      if(reads[0].status==='rejected'&&target.aiCanManage)throw Error('我的电脑暂不可用，可重新读取；不能确认新增 AI');
+    }catch(error){if(rosterCurrent(target)&&!staleResponse(error))target.aiError=error.message||'AI 名单暂不可用';}
+    finally{if(rosterCurrent(target)){target.aiLoading=false;renderModal();}}
+  }
+  function openRosterEditor(type,values={}){openModal(type,{ownerId:selfId(),aiMembers:[],aiCandidates:[],aiVersion:0,aiCanManage:true,...values});void loadRosterEditor(modal);}
+  async function submitDiscussion(target,input){
+    if(!rosterCurrent(target)||target.busy)return;
+    target.busy=true;target.error='';renderModal();
+    try{
+      const result=target.type==='group'?await createDiscussionDraft(service,target,input,()=>rosterCurrent(target)):await saveRosterDraft(service,target,()=>rosterCurrent(target));
+      if(!rosterCurrent(target))return;
+      await refresh(true);if(!rosterCurrent(target))return;
+      const id=target.conversationId||result.conversationId;modal=null;render();if(target.type==='group')openChat(id);toast(target.type==='group'?(target.aiMembers?.length?'讨论组已创建，AI 名单已保存；尚未开始执行':'讨论组已创建'):'AI 名单已保存');
+    }catch(error){if(rosterCurrent(target)&&!staleResponse(error)){target.error=error.message||'保存未确认，请重试';if(error.status===409)target.aiError='名单已发生变化，请重新读取后确认。';}}
+    finally{target.busy=false;if(rosterCurrent(target))renderModal();}
+  }
   function renderModal() {
     const host = root.querySelector('[data-modal-host]'); if (!host) return; if (!modal) { host.innerHTML = ''; return; }
     const item = conversation(modal.conversationId), selected = modal.selected || [], disabled = modal.busy ? 'disabled' : '';
@@ -195,7 +225,10 @@ export function mountLiveSocial(container, options = {}) {
       label = modal.type === 'group' ? '发起讨论组' : '邀请好友进群';
       const available = state.friends.filter(person => !blocked(person.userId)).filter(person => modal.type === 'group' || !item?.members.some(member => member.userId === person.userId));
       const filtered = available.filter(person => (nameOf(person) + ' ' + person.userId).toLowerCase().includes(String(modal.query || '').toLowerCase()));
-      content = available.length ? '<form data-form="' + modal.type + '">' + (modal.type === 'group' ? '<label class="live-field">群聊名称<input name="groupName" maxlength="24" value="' + esc(modal.name || '') + '" required placeholder="给群聊起个名字"/></label>' : '') + '<label class="live-field">选择好友<input name="memberQuery" type="search" value="' + esc(modal.query || '') + '" placeholder="搜索好友"/></label><p class="live-note" data-selection-count>已选择 ' + selected.length + ' 位' + (modal.type === 'group' ? '，至少选择 1 位好友' : '') + '</p><div class="live-select-members">' + (filtered.length ? filtered.map(person => '<label>' + avatar(person) + '<span><strong>' + esc(nameOf(person)) + '</strong><small>ID：' + esc(person.userId) + '</small></span><input type="checkbox" name="memberIds" value="' + esc(person.userId) + '" ' + (selected.includes(person.userId) ? 'checked ' : '') + disabled + '/></label>').join('') : '<p class="live-note">没有匹配的好友。</p>') + '</div>' + (modal.type==='group'&&options.onGroupAI?'<label class="live-field"><span><input type="checkbox" name="setupGroupAI" '+(modal.setupGroupAI?'checked ':'')+disabled+'/>建群后选择我的设备与 AI</span><small>分步设置；建群本身不会开启 AI 或派发任务。</small></label>':'') + errorBox(modal.error) + '<button class="live-primary live-full" type="submit" ' + disabled + '>' + (modal.busy ? '正在保存…' : label) + '</button></form>' : empty(modal.type === 'group' ? '需要先添加好友' : '好友都在群里了', modal.type === 'group' ? '添加一位好友，即可创建群聊。' : '添加新的好友后再邀请。', '<button class="live-primary" data-action="add-friend">添加好友</button>');
+      const locked=modal.busy||modal.groupCreated?'disabled':'';
+      content = available.length||modal.groupCreated ? '<form data-form="' + modal.type + '">' + (modal.type === 'group' ? '<label class="live-field">群聊名称<input name="groupName" maxlength="24" value="' + esc(modal.name || '') + '" required placeholder="给群聊起个名字" '+locked+'/></label>' : '') + (!modal.groupCreated?'<label class="live-field">选择好友<input name="memberQuery" type="search" value="' + esc(modal.query || '') + '" placeholder="搜索好友"/></label><p class="live-note" data-selection-count>已选择 ' + selected.length + ' 位' + (modal.type === 'group' ? '，至少选择 1 位好友' : '') + '</p><div class="live-select-members">' + (filtered.length ? filtered.map(person => '<label>' + avatar(person) + '<span><strong>' + esc(nameOf(person)) + '</strong><small>ID：' + esc(person.userId) + '</small></span><input type="checkbox" name="memberIds" value="' + esc(person.userId) + '" ' + (selected.includes(person.userId) ? 'checked ' : '') + disabled + '/></label>').join('') : '<p class="live-note">没有匹配的好友。</p>') + '</div>':'<p class="live-note" role="status">讨论组已经创建；这里重试只保存 AI 名单，不会重复建群。</p>') + (modal.type==='group'?rosterFields(modal,disabled):'') + errorBox(modal.error) + '<button class="live-primary live-full" type="submit" ' + disabled + '>' + (modal.busy ? '正在保存…' : modal.groupCreated?'重试保存 AI 名单':label) + '</button>'+(modal.groupCreated?'<button type="button" class="live-setting" data-action="open-created-group" '+disabled+'>进入已创建的讨论组</button>':'')+'</form>' : empty(modal.type === 'group' ? '需要先添加好友' : '好友都在群里了', modal.type === 'group' ? '添加一位好友，即可创建群聊。' : '添加新的好友后再邀请。', '<button class="live-primary" data-action="add-friend">添加好友</button>');
+    } else if(modal.type==='ai-roster'){
+      label='AI 名单与备注';content='<form data-form="ai-roster">'+rosterFields(modal,disabled)+errorBox(modal.error)+(modal.aiCanManage?'<button class="live-primary live-full" type="submit" '+(modal.busy||modal.aiLoading?'disabled':'')+'>保存名单</button>':'')+'</form>';
     } else if (modal.type === 'edit-group') {
       label = '群名与公告'; content = '<form data-form="group-details"><label class="live-field">群聊名称<input name="groupName" maxlength="24" required value="' + esc(modal.name) + '"/></label><label class="live-field">群公告<textarea name="groupNote" maxlength="300" rows="4">' + esc(modal.note) + '</textarea></label>' + errorBox(modal.error) + '<button class="live-primary live-full" type="submit" ' + disabled + '>保存</button></form>';
     } else if (modal.type === 'members') {
@@ -351,7 +384,11 @@ export function mountLiveSocial(container, options = {}) {
     } else if (action === 'accept' || action === 'reject') {
       const destination = page;
       void perform('request:' + id, () => service.respondFriend(id, action === 'accept'), () => { if (page === destination && destination.result) destination.result.relationship = action === 'accept' ? 'friend' : 'none'; toast(action === 'accept' ? '已成为好友，可以聊天了' : '已忽略这条申请'); }, { page: destination });
-    } else if (action === 'create-group') openModal('group', { selected: [], name: '' });
+    } else if (action === 'create-group') openRosterEditor('group', { selected: [], name: '' });
+    else if(action==='edit-ai-roster'&&conversation(page.id)?.type==='group')openRosterEditor('ai-roster',{conversationId:page.id,aiCanManage:isOwner(conversation(page.id))});
+    else if(action==='reload-ai-roster'&&modal&&!modal.busy)void loadRosterEditor(modal);
+    else if(action==='remove-roster-ai'&&modal?.aiCanManage&&!modal.busy){const index=Number(target.dataset.index);if(Number.isSafeInteger(index)&&index>=0&&index<modal.aiMembers.length){modal.aiMembers.splice(index,1);modal.rosterCommand=null;renderModal();}}
+    else if(action==='open-created-group'&&modal?.groupCreated&&!modal.busy){const id=modal.conversationId;modal=null;void refresh(true).then(()=>{if(!disposed)openChat(id);});}
     else if (action === 'details' && conversation(page.id)) navigate({ type: 'details', id: page.id });
     else if (action === 'invite-members') openModal('invite', { conversationId: page.id, selected: [] });
     else if (action === 'edit-group') { const item = conversation(page.id); if (isManager(item)) openModal('edit-group', { conversationId: item.id, name: item.name, note: item.note || '' }); }
@@ -397,16 +434,17 @@ export function mountLiveSocial(container, options = {}) {
     else if (name === 'listQuery' && page.type === 'list') { page.query = value; render(); }
     else if (name === 'chatQuery' && page.type === 'chat') { page.query = value; render(); }
     else if (name === 'friendId' && page.type === 'lookup') { page.userId = value; const stale = page.result || page.error || busy.has('lookup'); page.result = null; page.error = ''; lookupSequence++; busy.delete('lookup'); if (stale) render(); }
-    else if (name === 'groupName' && modal) modal.name = value;
+    else if (name === 'groupName' && modal&&!modal.groupCreated&&!modal.busy) modal.name = value;
+    else if(name?.startsWith('rosterAlias')&&modal?.aiCanManage&&!modal.busy){const index=Number(event.target.dataset?.rosterIndex);if(Number.isSafeInteger(index)&&modal.aiMembers[index]){modal.aiMembers[index].alias=value.slice(0,40);modal.rosterCommand=null;}}
     else if (name === 'groupNote' && modal) modal.note = value;
     else if (name === 'reportDetail' && modal) modal.detail = value;
     else if (name === 'memberQuery' && modal) { modal.query = value; const selection = event.target.selectionStart; renderModal(); const input = root.querySelector('[name="memberQuery"]'); input?.focus(); input?.setSelectionRange(selection, selection); }
   }
   function onChange(event) {
-    if(event.target.name==='setupGroupAI'&&modal?.type==='group'&&!modal.busy)modal.setupGroupAI=event.target.checked===true;
+    if(event.target.name==='rosterChoice'&&modal?.aiCanManage&&!modal.busy&&!modal.aiLoading){const candidate=modal.aiCandidates.find(row=>rosterKey(row)===event.target.value);if(!candidate)return;if(event.target.checked){if(modal.aiMembers.some(row=>rosterKey(row)===rosterKey(candidate)))return;if(modal.aiMembers.length>=3){modal.error='AI 名单最多 3 个';renderModal();return;}modal.aiMembers.push({deviceId:candidate.deviceId,provider:candidate.provider,alias:''});}else modal.aiMembers=modal.aiMembers.filter(row=>rosterKey(row)!==rosterKey(candidate));modal.rosterCommand=null;renderModal();}
     else if (event.target.name === 'reportReason' && modal) modal.reason = event.target.value;
     else if (event.target.matches('[data-chat-photo]')) { void choosePhoto(event.target.files?.[0]); event.target.value = ''; }
-    else if (event.target.name === 'memberIds' && modal && !modal.busy) { const ids = new Set(modal.selected || []); if (event.target.checked) ids.add(event.target.value); else ids.delete(event.target.value); modal.selected = [...ids]; const count = root.querySelector('[data-selection-count]'); if (count) count.textContent = '已选择 ' + ids.size + ' 位' + (modal.type === 'group' ? '，至少选择 1 位好友' : ''); }
+    else if (event.target.name === 'memberIds' && modal && !modal.busy&&!modal.groupCreated) { const ids = new Set(modal.selected || []); if (event.target.checked) ids.add(event.target.value); else ids.delete(event.target.value); modal.selected = [...ids]; const count = root.querySelector('[data-selection-count]'); if (count) count.textContent = '已选择 ' + ids.size + ' 位' + (modal.type === 'group' ? '，至少选择 1 位好友' : ''); }
   }
   function onSubmit(event) {
     const form = event.target.closest('[data-form]'); if (!form || !root.contains(form)) return; event.preventDefault();
@@ -414,10 +452,11 @@ export function mountLiveSocial(container, options = {}) {
     if (type === 'report' && modal?.type === 'report') { const target = modal; target.reason = String(values.get('reportReason')); target.detail = String(values.get('reportDetail') || ''); const fingerprint = JSON.stringify([target.reason,target.detail]); if (target.submittedFingerprint && target.submittedFingerprint !== fingerprint) target.requestId = uid(); target.submittedFingerprint = fingerprint; void perform('report', () => service.submitReport({ targetType: target.targetType, targetId: target.targetId, reason: target.reason, detail: target.detail, requestId: target.requestId }), () => { if (modal === target) modal = null; toast('举报已提交，可在我的举报查看进度'); }, { modal: target }); }
     else if (type === 'lookup') void lookup(values.get('friendId'));
     else if (type === 'message' && page.type === 'chat') { const text = String(values.get('message') || '').trim(); if (text && text.length <= 2000) void send(page.id, { type: 'text', text }); }
+    else if(type==='ai-roster'&&modal?.type==='ai-roster'&&modal.aiCanManage){void submitDiscussion(modal);}
     else if (type === 'group' && modal?.type === 'group') {
       const target = modal; let input;
-      try { input = validateGroup(values.get('groupName'), target.selected || [], state.friends.map(person => person.userId)); } catch (error) { target.error = error.message; renderModal(); return; }
-      void perform('create-group', () => service.createGroup(input), result => { if (modal === target) { modal = null; if (result?.conversationId) {if(target.setupGroupAI&&options.onGroupAI)options.onGroupAI(result.conversationId);else openChat(result.conversationId);} } toast('群聊已创建'); }, { modal: target });
+      try { input = target.groupCreated?null:validateGroup(values.get('groupName'), target.selected || [], state.friends.map(person => person.userId));validateRosterSelection(target.aiMembers||[],target.aiCandidates||[]); } catch (error) { target.error = error.message; renderModal(); return; }
+      void submitDiscussion(target,input);
     } else if (type === 'invite' && modal?.type === 'invite') {
       const target = modal; if (!target.selected?.length) { target.error = '请至少选择一位好友'; renderModal(); return; }
       void perform('invite-members', () => service.inviteMembers(target.conversationId, { memberIds: target.selected }), result => { if (modal === target) modal = null; toast(result.pendingApproval?'邀请已提交，等待群主或管理员审批':'好友已加入群聊'); }, { modal: target });

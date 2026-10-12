@@ -7,7 +7,7 @@ async function fixture(t){let time=Date.UTC(2026,9,12);const database=openSocial
  const pair=call(a,'POST','devices/pair',{name:'本机夹具'}),device=modules.devices.enroll({pairToken:pair.pairToken}),connectorId=randomUUID();
  const providers=['codex','ollama'].map(id=>({id,name:id,installed:true,loggedIn:id==='codex'?true:null,version:'1.2.3',reason:'',executionSupported:true,executionMode:id==='codex'?'tools':'chat-only'}));
  const poll=(extra={})=>modules.aiChannel.poll(device.token,{connectorId,capacity:3,status:{code:'ready',workspaceLabel:'fixture',providers,scannedAt:time},...extra});poll();
- const enable=()=>call(a,'POST','group-device-ai/groups/'+conversationId,{allowDeviceAI:true});
+ const enable=()=>{const result=call(a,'POST','group-device-ai/groups/'+conversationId,{allowDeviceAI:true});const roster=call(a,'GET','group-device-ai/groups/'+conversationId+'/roster');if(!roster.members.length)call(a,'POST','group-device-ai/groups/'+conversationId+'/roster',{version:roster.version,requestId:randomUUID(),members:providers.map(p=>({deviceId:device.deviceId,provider:p.id,alias:p.name}))});return result;};
  const create=(extra={},user=a)=>call(user,'POST','group-device-ai',{conversationId,deviceId:device.deviceId,providers:['codex','ollama'],goal:'PRIVATE-GOAL-XYZ',requestId:randomUUID(),approveSharing:true,...extra}).session;
  const get=(id,user=a)=>call(user,'GET','group-device-ai/'+id).session,next=(s,extra={},user=a)=>call(user,'POST','group-device-ai/'+s.id+'/next',{requestId:randomUUID(),round:s.round,approveExecution:true,...extra}).session;
  const complete=(task,body)=>poll({taskId:task.id,leaseId:task.leaseId,events:[{seq:1,kind:'message',itemId:'reply',text:body},{seq:2,kind:'completed'}]});

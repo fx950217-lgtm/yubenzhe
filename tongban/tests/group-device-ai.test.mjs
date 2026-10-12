@@ -21,6 +21,7 @@ function harness(t,{sessions=[],request}={}){
  const root={innerHTML:'',querySelector:()=>null,addEventListener:(key,fn)=>handlers.set(key,fn),removeEventListener:(key,fn)=>{if(handlers.get(key)===fn)handlers.delete(key);}};
  const defaults=async(path,options)=>{
   if(path==='devices')return {devices:[{id:did,name:'电脑',online:true,providers:[{id:'ollama',installed:true,loggedIn:null,executionSupported:true,executionMode:'chat-only'},{id:'claude',installed:false}]}]};
+  if(path.endsWith('/roster'))return {version:1,canManage:true,members:[{id:'roster-ollama',kind:'ai',alias:'方案顾问',deviceId:did,provider:'ollama',canChat:true}]};
   if(path.includes('/groups/'))return {canManage:true,allowDeviceAI:true};
   if(path.includes('?'))return {sessions:current};
   const id=path.split('/')[1];
@@ -41,12 +42,20 @@ function harness(t,{sessions=[],request}={}){
   async poll(){for(const fn of timers.values())fn();await tick();},
  };
 }
-function prepare(h){h.input('device',did);h.input('provider','ollama',true);h.input('goal','fixture discussion');h.input('share','',true);}
+function prepare(h){h.input('device',did);h.input('provider','roster-ollama',true);h.input('goal','fixture discussion');h.input('share','',true);}
 const count=(h,suffix)=>h.calls.filter(call=>call.path.endsWith(suffix));
+
+test('installed providers outside the roster cannot start a discussion, including forged legacy selections',async t=>{
+ const h=harness(t,{request:(path,options,defaults)=>path.endsWith('/roster')?{version:0,canManage:true,members:[]}:defaults(path,options)});await tick();prepare(h);h.input('provider','ollama',true);await h.submit();assert.equal(count(h,'group-device-ai').length,0);assert.match(h.root.innerHTML,/仅可使用本群 AI 名单/);
+});
+test('roster entries from another owner never become executable through an available local provider',async t=>{
+ const h=harness(t,{request:(path,options,defaults)=>path.endsWith('/roster')?{version:1,canManage:false,members:[{id:'roster-ollama',kind:'ai',alias:'别人的顾问',provider:'ollama',canChat:false}]}:defaults(path,options)});await tick();prepare(h);await h.submit();assert.equal(count(h,'group-device-ai').length,0);
+});
 
 test('explicit sharing creates a discussion, and only a manual round approval starts work',async t=>{
  const h=harness(t);await tick();prepare(h);h.input('share','',false);await h.submit();assert.equal(count(h,'group-device-ai').length,0);
  h.input('share','',true);await h.submit();await tick();assert.equal(count(h,'group-device-ai').length,1);assert.match(h.root.innerHTML,/第 0 \/ 10 轮/);
+ assert.deepEqual(count(h,'group-device-ai')[0].input.rosterIds,['roster-ollama']);assert.equal('deviceId' in count(h,'group-device-ai')[0].input,false);assert.equal('providers' in count(h,'group-device-ai')[0].input,false);
  await h.poll();await h.poll();assert.equal(count(h,'/next').length,0);
  await h.click('next',sid);await tick();assert.equal(count(h,'/next').length,1);assert.equal(count(h,'/next')[0].input.approveExecution,true);assert.match(h.root.innerHTML,/执行中/);
  await h.poll();assert.equal(count(h,'/next').length,1);

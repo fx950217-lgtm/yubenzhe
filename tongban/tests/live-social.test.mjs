@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 const dataURL = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 const stripCSS = source => source.replace(/import '\.\/[^']+\.css';\n/g, '');
 const mediaURL = dataURL(stripCSS(await readFile(new URL('../src/chat-media.js', import.meta.url), 'utf8')));
-const source = stripCSS(await readFile(new URL('../src/live-social.js', import.meta.url), 'utf8')).replace("'./chat-media.js'", JSON.stringify(mediaURL));
+const rosterURL=dataURL(await readFile(new URL('../src/group-ai-roster.js',import.meta.url),'utf8'));
+const source = stripCSS(await readFile(new URL('../src/live-social.js', import.meta.url), 'utf8')).replace("'./chat-media.js'", JSON.stringify(mediaURL)).replace("'./group-ai-roster.js'",JSON.stringify(rosterURL));
 const { mountLiveSocial, groupAIEntries, validateFriendId, validateGroup, mergeMessages, safeProfilePhoto, invalidatedConversationIds, catchUpMessages, trustedGroupWorkflow } = await import(dataURL(source));
 
 test('copied success text cannot become a verified task event or wallet receipt',()=>{
@@ -139,10 +140,10 @@ function groupUIFixture(t,initialConversationId){
  return {root,modal,handlers,calls,routes,click,group};
 }
 test('creating a group can continue to device/AI selection but never enables sharing or execution implicitly',async t=>{
- const f=groupUIFixture(t);await new Promise(setImmediate);f.click('create-group');assert.match(f.modal.innerHTML,/建群后选择我的设备与 AI/);
+ const f=groupUIFixture(t);await new Promise(setImmediate);f.click('create-group');assert.match(f.modal.innerHTML,/AI 名单/);
  f.handlers.get('change')({target:{name:'memberIds',value:'friend_1',checked:true,matches:()=>false}});f.handlers.get('change')({target:{name:'setupGroupAI',checked:true,matches:()=>false}});
  const form={dataset:{form:'group'},values:{groupName:'讨论'},closest(){return this;}};f.handlers.get('submit')({target:form,preventDefault(){}});await new Promise(setImmediate);
- assert.deepEqual(f.routes,['group_1']);assert.deepEqual(f.calls,[{kind:'group',input:{name:'讨论',memberIds:['friend_1']}}]);
+ assert.deepEqual(f.routes,[]);assert.deepEqual(f.calls,[{kind:'group',input:{name:'讨论',memberIds:['friend_1']}}]);
 });
 test('group AI attribution is escaped and its transient body is excluded from chat search',async t=>{
  const f=groupUIFixture(t,'group_1');await new Promise(setImmediate);assert.match(f.root.innerHTML,/&lt;选品顾问&gt; · AI/);assert.match(f.root.innerHTML,/AI-ONLY-MARKER &lt;script&gt;/);assert.doesNotMatch(f.root.innerHTML,/<script>/);

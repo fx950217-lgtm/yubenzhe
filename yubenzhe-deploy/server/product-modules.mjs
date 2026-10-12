@@ -23,6 +23,7 @@ export function createProductModules({database,origin,simulation=false,internalP
   accessConfig:{origin,mailAdapter:mail,otpSecret:otpSecret??mailEnv.EMAIL_OTP_SECRET,hasFinancialExposure:()=>false},
   profileExtras:id=>community?.profileExtras(id)||{},
   deviceAIMessage:(id,options)=>groupDeviceAI?.describeMessage(id,options)||null,
+  deviceAIRoster:(id,viewerId)=>groupDeviceAI?.rosterForConversation(id,viewerId)||{members:[],version:0},
   workflowMessage:id=>groupWorkflows?.describeMessage(id)||null,
   beforeDeleteAccount:account=>{
    if(groupWorkflows?.getPendingObligations?.(account.id).length)fail(409,'GROUP_WORKFLOWS_PENDING','请先处理群协作任务与待核验付款。');
