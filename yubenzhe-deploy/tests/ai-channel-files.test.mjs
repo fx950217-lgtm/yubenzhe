@@ -27,14 +27,23 @@ function relayFixture(){
  const bind=ids=>relay.bindTask({ownerId,deviceId,taskId,fileIds:ids});
  return {relay,owner,agent,init,upload,bind,ownerId,otherOwnerId,deviceId,otherDeviceId,taskId,leaseId,ownerToken,otherToken,agentToken,calls,advance(ms){time+=ms;},revoke(){revoked=true;},authorizationCount:()=>authorizations};
 }
-function fixture(t){
+function fixture(t,isolatedTasks=false){
  const parent=resolve(tmpdir()),base=mkdtempSync(join(parent,'ybz-ai-files-test-')),workspace=join(base,'workspace'),runtimeDir=join(base,'runtime');mkdirSync(workspace);mkdirSync(runtimeDir);
  t.after(()=>{const actual=resolve(base),rel=relative(parent,actual);assert.ok(basename(actual).startsWith('ybz-ai-files-test-')&&rel&&!rel.startsWith('..')&&!isAbsolute(rel));rmSync(actual,{recursive:true,force:true});});
  const f=relayFixture();let hook;
- const bridge=createBridge({workspace,runtimeDir,call:async(path,input)=>{hook?.(path,input);return f.agent(path.replace(/^files\//,''),input);}});
+ const bridge=createBridge({workspace,runtimeDir,isolatedTasks,call:async(path,input)=>{hook?.(path,input);return f.agent(path.replace(/^files\//,''),input);}});
  const task={id:f.taskId,leaseId:f.leaseId,replyPublicKey:pub.toString('base64'),attachments:[]};
  return {...f,workspace,runtimeDir,base,bridge,task,hook(value){hook=value;}};
 }
+
+test('isolated task working directory resolves encrypted inbox and outbox without touching a sibling task',async t=>{
+ const f=fixture(t,true),plain=Buffer.from('isolated-file-content'),pack=encrypted(plain,f.bridge.publicKey,'input.txt'),ready=f.upload(pack);
+ f.task.attachments=f.bind([ready.id]);const prepared=await f.bridge.prepareTask(f.task),cwd=join(f.workspace,'.ybz-ai-channel',f.task.id);
+ assert.equal(prepared.outbox,'outbox');assert.match(prepared.inbox[0],/^inbox[\\/]1-input\.txt$/);assert.deepEqual(readFileSync(resolve(cwd,prepared.inbox[0])),plain);
+ const sibling=join(f.workspace,'.ybz-ai-channel',randomUUID(),'outbox');mkdirSync(sibling,{recursive:true});writeFileSync(join(sibling,'sibling.txt'),'sibling-secret');
+ writeFileSync(resolve(cwd,prepared.outbox,'deliverable.txt'),'only-this-task');const sent=await f.bridge.collectTask(f.task);assert.equal(sent.length,1);assert.equal(sent[0].envelope.name,'deliverable.txt');
+ const cipher=Buffer.concat(Array.from({length:sent[0].chunkCount},(_,n)=>Buffer.from(f.owner(sent[0].id+'/chunks/'+n,{},'GET').data,'base64')));assert.equal(decrypt(sent[0].envelope,cipher).toString(),'only-this-task');assert.equal(readFileSync(join(sibling,'sibling.txt'),'utf8'),'sibling-secret');
+});
 
 test('real RSA-OAEP + AES-GCM ciphertext makes owner → relay → workspace → relay → owner round trip',async t=>{
  const f=fixture(t),secret='UNIQUE-PLAINTEXT-MARKER-NEVER-IN-RELAY',input=Buffer.from(secret.repeat(12000)),pack=encrypted(input,f.bridge.publicKey,'../../用户资料.txt'),ready=f.upload(pack);

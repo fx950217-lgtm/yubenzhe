@@ -1,7 +1,7 @@
 {
   "name": "yubenzhe-desktop",
   "productName": "愚笨者",
-  "version": "0.14.0-dev.11",
+  "version": "0.14.0-dev.12",
   "description": "愚笨者桌面客户端，钱包与熟人社交",
   "private": true,
   "main": "src/main.cjs",
@@ -43,8 +43,30 @@
       "package.json"
     ],
     "extraResources": [
-      {"from":"../yubenzhe-deploy/device-bridge","to":"device-bridge","filter":["agent.mjs","desktop.ps1","ai-channel.mjs","codex-runner.mjs","ai-channel-files.mjs","protocol.mjs","capabilities.mjs","capability-probe.ps1","desktop-worker.mjs","probe-process.mjs","ai-registry.mjs","provider-runner.mjs","ollama-runner.mjs"]},
-      {"from":"build/icon.ico","to":"device-icon.ico"}
+      {
+        "from": "../yubenzhe-deploy/device-bridge",
+        "to": "device-bridge",
+        "filter": [
+          "agent.mjs",
+          "desktop.ps1",
+          "ai-channel.mjs",
+          "codex-runner.mjs",
+          "ai-channel-files.mjs",
+          "protocol.mjs",
+          "capabilities.mjs",
+          "capability-probe.ps1",
+          "desktop-worker.mjs",
+          "probe-process.mjs",
+          "ai-registry.mjs",
+          "provider-runner.mjs",
+          "ollama-runner.mjs",
+          "task-pool.mjs"
+        ]
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "device-icon.ico"
+      }
     ],
     "win": {
       "target": [

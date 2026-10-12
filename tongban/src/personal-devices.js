@@ -14,7 +14,7 @@ export function mountPersonalDevices(root,{client,onAccount=()=>{},onChat=()=>{}
  function cloudCard(d){const state=({creating:'开通中',available:'资源可用',stopped:'已停止',error:'资源异常',terminating:'注销中',terminated:'已注销'})[d.state]||'状态待核实';return '<article class="rw-card rw-device-card" data-cloud-resource="'+esc(d.id)+'"><div class="rw-device-heading"><h3>'+esc(d.name||'云电脑 · '+(d.region||'区域待确认'))+'</h3><span class="rw-source">云端</span></div><p class="rw-state">'+state+' · 尚未配对</p>'+capabilities({})+'<p class="rw-muted">保留原云资源记录。请先在云电脑安装连接器，再输入它显示的机器码；资源可用不代表远控、AI 或文件通道已就绪。</p><button data-device="connect" '+(['terminating','terminated'].includes(d.state)?'disabled':'')+'>输入这台电脑的机器码</button></article>';}
  function render(){
   if(!valid())return;const d=devices.find(x=>x.id===selected);
-  root.innerHTML='<section class="rw"><h2>我的设备</h2><p class="rw-audience">手机、电脑与云机，同一个入口协作。</p><p class="rw-muted">来源只用于区分设备；是否能远控、运行 AI 或传文件，以这台电脑实际检测结果为准。设备聊天仅你可见，不是好友，也不会进入群聊或朋友圈。</p>'+
+  root.innerHTML='<section class="rw"><h2>我的设备</h2><p class="rw-audience">手机、电脑与云机，同一个入口协作。</p><p class="rw-muted">来源只用于区分设备；是否能远控、运行 AI 或传文件，以这台电脑实际检测结果为准。设备入口和操作仅你可见，设备不是好友。群内 AI 回复须经群主开启并由设备主人逐轮批准分享。</p>'+
   (owner?'<button type="button" data-device="connect" '+(!showPair?'class="wh-primary"':'')+'>添加设备 · 输入机器码</button>':'')+
   (error?'<p role="alert" class="rw-error">'+esc(error)+'</p>':'')+
   (notice?'<p role="status" class="rw-notice">'+esc(notice)+'</p>':'')+

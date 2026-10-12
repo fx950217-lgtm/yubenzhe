@@ -137,7 +137,7 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
   }
  }
  function poll(token,input={}){
-  fields(input,['connectorId','taskId','leaseId','events','status']);if(!uuid(input.connectorId))fail(400,'INVALID_CONNECTOR_ID','连接器编号无效。');
+  fields(input,['connectorId','taskId','leaseId','events','status','capacity']);if(input.capacity!==undefined&&(!Number.isInteger(input.capacity)||input.capacity<0||input.capacity>3))fail(400,'INVALID_AI_CAPACITY','设备并发能力无效。');if(!uuid(input.connectorId))fail(400,'INVALID_CONNECTOR_ID','连接器编号无效。');
   const state=checkedStatus(input.status);if(input.taskId!==undefined&&!uuid(input.taskId)||input.leaseId!==undefined&&!uuid(input.leaseId))fail(400,'INVALID_AI_LEASE','执行租约无效。');
   if(Boolean(input.taskId)!==Boolean(input.leaseId))fail(400,'INVALID_AI_LEASE','任务与执行租约须同时提供。');
   if(!Array.isArray(input.events??[])||(input.events||[]).length>50||!input.taskId&&(input.events||[]).length)fail(400,'INVALID_AI_EVENT','事件批次无效。');
@@ -145,7 +145,7 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
   return transaction(()=>{
    devices.authenticateAgent(token);
    devices.updateMetadata(device,state);
-   const active=one("SELECT * FROM ai_channel_tasks WHERE device_id=? AND status='running'",device.id);
+   const activeRows=all("SELECT * FROM ai_channel_tasks WHERE device_id=? AND status='running'",device.id),active=activeRows[0];
    if(active&&active.connector_id!==input.connectorId)fail(409,'AI_CONNECTOR_BUSY','另一连接器正在执行任务。');
    const previousState=one('SELECT * FROM ai_channel_devices WHERE device_id=?',device.id);
    if(previousState?.connector_id===input.connectorId&&state.scannedAt>0&&state.scannedAt<previousState.scanned_at)fail(409,'AI_PROVIDER_SCAN_REPLAY','AI 探测时间不能倒退，请在电脑重新刷新。');
@@ -169,7 +169,7 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
     const until=Math.min(task.hard_until,now()+AI_CHANNEL_LIMITS.leaseMs);run('UPDATE ai_channel_tasks SET lease_until=? WHERE id=?',until,task.id);
     return {serverNow:now(),expiresAt:until,task:null,ack:task.last_seq};
    }
-   if(active)return {serverNow:now(),expiresAt:now(),task:null,ack:0};
+   if(activeRows.length>=(input.capacity??1))return {serverNow:now(),expiresAt:now(),task:null,ack:0};
    task=null;
    for(const queued of all("SELECT * FROM ai_channel_tasks WHERE device_id=? AND status='queued' ORDER BY created_at,rowid",device.id)){
     const unavailable=providerProblem(queued.provider||'codex',report);
@@ -186,5 +186,5 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
  function authorizeOwner(token,deviceId){const account=socialService.assertAIAccess(token,{write:true}),device=devices.ownedDevice(account,deviceId);if(device.revoked_at||!device.token_hash)fail(403,'AI_DEVICE_REVOKED','设备已撤销或尚未配对。');if(readDeviceCapabilities(device).files.state==='unsupported')fail(409,'AI_FILES_UNAVAILABLE','这台设备的文件通道不可用。');return {ownerId:account.id,deviceId:device.id};}
  function authorizeAgent(token,{taskId,leaseId}={}){const device=devices.authenticateAgent(token);maintain();const task=row(taskId);if(!task||task.device_id!==device.id||task.status!=='running'||task.lease_id!==leaseId||task.lease_until<=now()||task.hard_until<=now())fail(403,'AI_LEASE_DENIED','AI 执行租约已失效。');if(task.provider==='ollama')fail(409,'AI_PROVIDER_FILES_UNSUPPORTED','本地模型只支持文字聊天，没有任务文件访问权限。');return {ownerId:task.owner_id,deviceId:device.id,taskId:task.id};}
  function handleAgentFiles(token,path,input){if(!filesService)fail(503,'AI_FILES_UNAVAILABLE','加密文件中转尚未配置。');devices.authenticateAgent(token);return filesService.handleAgent(token,path,input);}
- return {handle,poll,maintain,restart,revokeDevice,authorizeOwner,authorizeAgent,handleAgentFiles,setFilesService(value){filesService=value;},limits:AI_CHANNEL_LIMITS};
+ return {handle,poll,maintain,restart,revokeDevice,readInternalTask:id=>{const t=row(id);return t?{task:taskView(t),events:memory.get(id)?.events||[]}:null;},cancelInternalTask:(id,ownerId)=>{const t=row(id);if(t?.owner_id===ownerId)terminal(t,'cancelled','AI_CANCELLED');},authorizeOwner,authorizeAgent,handleAgentFiles,setFilesService(value){filesService=value;},limits:AI_CHANNEL_LIMITS};
 }

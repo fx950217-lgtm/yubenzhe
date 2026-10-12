@@ -10,7 +10,7 @@ node ai-channel.mjs --codex "C:\Tools\Codex\codex.exe" --workspace "C:\YBZ\Work"
 
 `--codex` 必须指向实际 `.exe`，Windows 不接受 `.cmd`、`.bat`。Codex 所需 helper 必须来自与 CLI 匹配的正式安装；工具环境缺失时先修复安装，不得关闭沙箱。固定工作区必须存在且不是磁盘根目录。配对文件、运行状态目录必须在该工作区之外；配对文件沿用现有设备桥接的 `origin` 与 `token`，或者尚未使用且未过期的 `pairToken`。不要将这些文件放进 Git、发给 AI 或贴入聊天。`origin` 只能为可信 HTTPS 来源，不支持 HTTP 例外或关闭 TLS 校验。
 
-启动后从 YBZ「消息 → AI」选择这台电脑并发送任务。代码固定使用 `codex -a on-request exec --json --ignore-user-config --ephemeral --sandbox workspace-write`，提示词通过 stdin 输入；手机不能指定可执行文件、工作目录、shell 或命令参数。每台连接器并发 1 个任务，最长十分钟，服务端授权心跳最长十五秒。取消、撤销或心跳超时会停止进程树；连接器只重发尚未确认的相同事件，不重新运行旧任务。系统睡眠或断网会令任务失败，需要用户核对已有成果后发起新任务。
+启动后从 YBZ「工作台 → 我的设备」选择具体 AI 并发送任务；消息列表保留本人设备入口。群内使用「设备 AI 讨论」：群主先明确开启，发起者选择本人设备/工具并同意分享，每轮手动批准，最多10轮/30分钟；离开页面停止，不授权自动付款。代码固定使用 `codex -a on-request exec --json --ignore-user-config --ephemeral --sandbox workspace-write`，提示词通过 stdin 输入；手机不能指定可执行文件、工作目录、shell 或命令参数。dev.12 每台连接器默认最多 3 个任务，`--max-concurrent 1` 至 `3` 可在电脑上配置；旧连接器未报告容量时仍按 1。多余任务排队，资源压力时暂停派发，单任务最长十分钟，服务端授权心跳最长十五秒。取消、撤销或心跳超时会停止进程树；连接器只重发尚未确认的相同事件，不重新运行旧任务。系统睡眠或断网会令任务失败，需要用户核对已有成果后发起新任务。
 
 每次运行忽略用户 `config.toml`，保留本人原有登录及执行规则，不传 `--ignore-rules`，不自动批准操作；同次调用明确禁用插件、应用连接、hooks、浏览器、电脑控制、远程插件及 skill 自动安装 MCP。这些 feature 名称已由本机 CLI `features list` 确认。固定工作区或祖先存在额外 `.codex/config.toml`、或者检测到已知系统/托管配置文件时拒绝启动任务；忽略全局配置不会修改原文件。企业从云端下发的托管工具策略仍需单独核验，不能用此连接器宣称完整操作系统隔离或允许未知 MCP 自动运行。原生工具不能执行时报告失败，不改用用户全局 MCP 绕过。
 
@@ -19,6 +19,8 @@ Windows 还固定传入 `-c windows.sandbox="elevated"`，恢复本机已经使�
 官方参数依据：[开发者命令](https://learn.chatgpt.com/docs/developer-commands?surface=cli)、[托管配置](https://learn.chatgpt.com/docs/enterprise/managed-configuration)。不同 CLI 版本不支持这些参数时会失败，请使用已核对的正式版本，不删除限制参数。
 
 工作区写入限制沿用 Codex 的 `workspace-write` 沙箱，这不是禁止读取系统全部文件的独立操作系统隔离环境。请仅选择用于 AI 工作的目录；不要把钱包私钥、助记词、账号凭据作为任务或附件。输出仅解析已经实测的 `agent_message.text`，不转发工具命令、工具输出、原始错误或 stderr。文本包含常见凭据模式时会遮盖，但不将模式过滤宣称为完整的数据防泄漏系统。
+
+每个新任务在固定工作区的 `.ybz-ai-channel/<任务 UUID>` 独立子目录运行；不是同机恶意用户之间的操作系统隔离。CPU采样超过92%或空闲内存低于256MiB/总量8%时暂缓新派发，不自动杀死其他程序。
 
 文件功能默认启用：附件由终端加密、服务端中转密文，电脑在 `.ybz-ai-channel/<任务 UUID>/inbox` 解密，只收集该任务 `outbox` 中的常规文件。每任务最多三个附件和三个成果，每个最多 20 MB。私有解密密钥只保存在 `--runtime-dir`；不搜索整个工作区，也不跟随符号链接。收到文件及本地产物不会自动删除，用户自行整理。取消后的文件请求会中止，不再报告成功。
 

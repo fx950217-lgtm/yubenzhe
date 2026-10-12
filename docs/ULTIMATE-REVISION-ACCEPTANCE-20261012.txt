@@ -4,7 +4,7 @@ YBZ 终极改版实施与验收 — 2026-10-12
 基线：ba4acfa，分支 codex/m0-local-test。前端508、后端414、电脑版51；AI通道62包含在后端414内，不重复累计。
 初始用户修改 AGENTS.md / tongban/src/install.html 已单独留存到仓库外证据目录，不覆盖。
 本轮不连接或修改任何服务器、不部署、不启用主网、不采购、不做真实 Gas 支出。
-状态：实施中。下面未标通过的项不可视为完成。
+状态：P0→P7 代码与本机验收已完成，dev.12；外部接入和真实设备/模型验收仍有未完成项，见末尾。本报告不代表生产已发布或商业上线就绪。
 
 P0 — 平台零收费与积分退役（代码及本地验证通过）
 删除清单已在执行前列出：tongban/src/points.js、points.css、tongban/tests/points.test.mjs、yubenzhe-deploy/server/points-service.mjs、yubenzhe-deploy/tests/points-service.test.mjs、v02-points-http.test.mjs、v02-points-query.test.mjs。
@@ -69,7 +69,19 @@ P6 — 手机动态AI入口：代码与本地验证通过。
 前端全量562/562（P2后553 + P5新增3 + P6新增6）、后端495/495（P4后493 + P5新增1 + P6新增1）通过，网页构建和diff检查通过。覆盖工具列表与开关真实mount、正确路由/请求、未知工具拒绝、身份切换/迟到结果、文件边界与另一账号404。未删除旧配对、聊天或文件测试。
 本地浏览器已检查localhost:18934设备页与隐藏开关、保留远控/配对入口；当前合成审阅账号没有已连接设备，多个provider卡片由DOM fixture验收，不宣称实机工具或云机已接通。只重启本轮自己启动的18934预览，旧预览与服务器未动。
 命令：node --test tongban/tests/*.test.mjs；node --test yubenzhe-deploy/tests/*.test.mjs；node tongban/build.mjs。
-P7 — 群AI与并发、025迁移：待执行。
+P6 commit：7fd9991（Render mobile AI entries from owned device capabilities）。
+
+P7 — 群AI与并发、025迁移：代码、本机真实页面、隔离协议测试通过。
+025新增消息归属(provider/device_id)、群开关及讨论/轮次/批准元数据；撤销原单running唯一索引，保留历史021。AI没有accounts/friendship/member记录，sender始终是设备主人；服务端不保存prompt/回复/文件明文。原单AI路由、旧连接器串行与机器码/旧配对保留。
+群主默认关闭，设备主人选1–3种可用AI并明确分享，创建讨论不执行；每轮另行批准，不自动next或重新派单。总10轮/30分钟、viewer15秒、重复回复停止、一键停止、禁言/封禁/退群/设备撤销/重启失忆停止；重新入群不能执行旧目标或读取旧上下文。普通社交查询只读有权限的临时正文，摘要固定，不进入搜索/朋友圈/好友推荐；被移除的回复在讨论接口亦被遮盖，并从下一轮上下文撤除。
+同机任务Map和池默认3、可调1–3，满额排队；CPU/内存压力暂缓派发，每任务独立cwd/seq/lease/ack/文件目录。旧底层Codex runner仍专管单进程，provider层为每个并发任务新建runner；不会因此放宽workspace-write、stdin、固定执行路径或本人登录规则。并发隔离不是独立OS读取边界。
+复核实际修复：串行网络/慢扫描/等待进程退出阻塞兄弟续约；单任务坏ack/409/lease403误停全机；close/回调异常泄漏任务槽；用户快速离页回页在stop丢包时错误续期；切账号迟到请求；群历史边界/删帖绕过；讨论/回复发布SQL中途失败。事务提交后才更新RAM去重/回复，部分派单失败取消已提交任务，未知结果不自动重跑。
+前端新增19项：group-device-ai 17、live-social入口/归属/搜索2；581=562+19。后端新增35项：群讨论15、任务池13、connector6、独立任务目录加密文件1；530=495+35。原provider-runner串行测试按新池结构改为隔离并发，未删其登录/伪造工具/安全约束覆盖。024/020迁移验收扩展为保全旧列、旧行/BLOB及新增默认字段，未删除数据保护断言。
+最终全量：前端581/581、后端530/530、桌面78/78、合约40/40、实际消费者钱包本地EVM1/1，总1230项（各专项是这些总数的子集，不重复累计）；失败/跳过均0。Ganache原生uWS不可用使用JS回退，仍在本地内存链完成4笔消费者钱包签名，不访问公网RPC。
+初次终测暴露两项时序/资源问题：桌面版本升级但web快照未同步，构建当前web后重测通过；注册表跨层fixture固定setImmediate次数不足且继承全机CPU保护，改为明确合成资源状态及5秒有界等待真实终态后全量通过。未放松生产限额或删除业务断言。
+真实浏览器在独立18934合成库完成好友申请/通过→建群→勾选建群后选择设备AI→默认关闭的讨论页，刷新路由正确。截图修正checkbox全宽/贴边布局，复查桌面及390px；390px clientWidth/scrollWidth均390、表单350，无横向溢出。当前合成账号没有配对设备，创建/停止按钮按状态禁用；多provider/执行/离页停止由自动DOM和服务fixture验证，不伪造浏览器实机执行成功。
+P7 commit：本批提交（英文消息：Add owner-approved group AI discussions and bounded device concurrency）。完整hash在Git与仓库外final-diff.txt，避免报告自引用commit哈希。
+
 
 审计时发现的必要决定（将按各批次验证）
 1. AI探测安装与可执行任务分开；没有安全适配器的程序不能借用Codex冒充执行。
@@ -80,3 +92,55 @@ P7 — 群AI与并发、025迁移：待执行。
 
 回滚纪律
 各批次单独commit，可按相反顺序git revert。数据库回滚必须使用升级前成套备份，不能仅回退代码指向已DROP积分表的新库。离线积分归档用于核验/人工恢复，不提供新的运行时账本接口。此轮只在隔离测试与预览状态目录运行，原用户数据不作为缓存清理。
+
+
+最终交付与三个闭环
+版本：网页、后端及Windows源码为0.14.0-dev.12。Windows NSIS安装器与zip已构建，脚本核对app.asar每项网页hash、原生桥、完整连接器资源白名单、64位PE与安全fuses通过；无签名，未运行安装器/未覆盖用户已安装dev.11，也未上传公网。Android/iOS没有本轮新包或真机结果。旧原生包未删除，避免尚未安装验收就丢失回退来源。
+AI＋社交：逐轮批准的设备讨论、本人来源与群内临时回复，本机协议/多账号测试通过；真实多工具及云机未验收。
+AI＋钱包：原方案→批准→执行→验收→本人签名流程和task-payment-verifier保留，本轮全量回归通过；模型为测试替身、钱包联测为本地EVM，不能称真实AI+公网链全闭环完成。
+社交＋区块链：既有群付款/回执的权限、幂等与未知不重付机制保留；独立18934仍YBZ_GROUP_TESTNET_PAYMENTS=false，无新公网交易。设备AI讨论的next不授权钱包付款。
+
+终测命令（仓库根目录；contracts两项在contracts目录）
+node --test tongban/tests/*.test.mjs
+node --test yubenzhe-deploy/tests/*.test.mjs
+node --test yubenzhe-desktop/tests/*.test.cjs
+npm test（contracts）
+node --test test/wallet-integration.test.mjs（contracts）
+node yubenzhe-desktop/scripts/prepare-web.mjs（同时构建tongban当前源）
+node node_modules/electron-builder/cli.js --win nsis zip --x64 --publish never（yubenzhe-desktop）
+node yubenzhe-desktop/scripts/verify-release.cjs
+node scripts/check-project.mjs --allow-changes
+git diff --check
+另核对23份历史迁移/受保护文件SHA256不变，workbench-adapters/task-payment-verifier存在。未改写MANIFEST.json掩盖差异。
+
+可复核证据（仓库外，含合成验收数据，不提交运行库）
+../../output/ybz-ultimate-20261012/final-frontend-tests.log
+../../output/ybz-ultimate-20261012/final-backend-tests-recheck.log
+../../output/ybz-ultimate-20261012/final-desktop-tests.log
+../../output/ybz-ultimate-20261012/final-contract-tests.log 与 final-wallet-evm.log
+../../output/ybz-ultimate-20261012/final-desktop-package.log 与 final-desktop-verification.log
+../../output/ybz-ultimate-20261012/final-project-check.log 与 final-diff.txt
+逐文件增删及行数见 ULTIMATE-REVISION-FILE-CHANGES-20261012.txt；最终准确行数也可 git diff --numstat ba4acfa HEAD。
+
+启动与审核
+cd C:\Users\Administrator\Documents\Codex\2026-10-09\git-2\work\yubenzhe
+node tongban/build.mjs
+node scripts/start-ultimate-review.mjs
+http://localhost:18934/；仅监听127.0.0.1，合成测试邮箱，不代表公网认证。状态目录 ../ybz-ultimate-review-20261012；升级025前已用SQLite backup API备份social/ai两库到仓库外pre025-preview-backup。没有迁移旧18930/18926或任何真实服务器数据库。
+Windows包：yubenzhe-desktop/dist/yubenzhe-0.14.0-dev.12-windows-x64-setup.exe 和同版windows-x64.zip；hash见同目录SHA256SUMS.txt、yubenzhe-desktop/release-verification.json。原生客户端现有公网入口未升级；本机包构建不代表连接后的公网服务具备本轮接口。
+
+配置缺口与未完成项
+DEVICE_RELAY_HTTPS_ORIGIN / 本人设备配对：需兼容dev.12的可信HTTPS中转；本轮禁止部署服务器，HTTP本机审核不能当正式设备桥。
+CODEX_LOCAL_EXECUTABLE / CODEX_USER_LOGIN / CODEX_WINDOWS_SANDBOX：本机真实CLI及本人登录/环境验收，非服务端采集凭据的环境变量；主机45.77.247.167登录由用户延后，本轮未连接。
+OLLAMA_LOCAL_MODEL：本人电脑已安装并指定的本地模型；真实输出/并发/文件往返未重验。Claude/WorkB只有安装状态探测，安全执行适配未实现。最多3任务不等于已支持3种不同AI供应商。
+WALLETCONNECT_PROJECT_ID + SDK/transport、硬件钱包连接适配未接通。多链主网配置全部禁用，当前不是TP完整产品等价实现；行情/NFT/跨链/多币种支持未完成。
+真实模型+物理手机/云机+公网BSC测试网群闭环、商店资质/申报、独立安全审计均待完成。P3缺口见上方明确清单；代付框架不能凭填写一个环境变量直接启用。
+
+补充实现决定
+1. 建群采用两步：在建群表单勾选“建群后选择我的设备与AI”，再进入设备选择和独立分享批准。建群不自动开启群AI，更不会执行；现有群也能从群头入口进入。
+2. 将跨provider并发放在provider-runner/task-pool，而不是削弱底层Codex单进程保护；每个任务独立runner和目录，覆盖资源、取消与文件隔离测试。
+3. 为一次性批准、幂等/重启拒重跑与群历史边界，025增加3张元数据表；正文只在有界内存30分钟。批准内容hash不是可恢复正文。
+4. 在P7统一dev.12版本并构建安装器，修实际页面布局和明确旧聊天说明，不改变三皮肤或五Tab顺序。
+
+回滚方式
+当前分支按P7→P0逆序逐个git revert，保留他人未提交文档，不reset --hard、不改主线、不push。停止本轮自己启动的18934进程后再回退；旧镜像不得直接连023/024/025新schema。正式数据回退必须先停止frontend/admin两写入者并恢复升级前配套备份；本轮预览可在全新隔离目录从对应提交启动，或用pre025整套备份恢复到P6代码。023的归档不是可直接由旧代码读取的账本；原真实库本轮未改，无需回退。

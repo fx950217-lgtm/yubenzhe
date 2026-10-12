@@ -14,7 +14,6 @@ import {createAIChannel} from '../device-bridge/ai-channel.mjs';
 import {createProviderRunner} from '../device-bridge/provider-runner.mjs';
 import {probeAIRegistry} from '../device-bridge/ai-registry.mjs';
 const json=value=>new Response(JSON.stringify(value),{status:200});
-const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
 test('real registry through connector and relay preserves selected local model, metadata privacy, ownership and durable no-content storage',async t=>{
  const base=await mkdtemp(path.join(os.tmpdir(),'ybz-registry-integration-')),workspace=path.join(base,'workspace'),runtimeDir=path.join(base,'private'),statePath=path.join(base,'pair.json');await mkdir(workspace);
@@ -33,14 +32,19 @@ test('real registry through connector and relay preserves selected local model, 
   assert.ok(url.endsWith('/api/generate'));return json({model,done:true,response:'INTEGRATION-OUTPUT-PRIVATE'});
  };
  const fsImpl={lstat:async()=>({isFile:()=>true,isSymbolicLink:()=>false}),realpath:async file=>file,stat:async()=>({isFile:()=>true})};
- const runner=await createProviderRunner({workspace,ollamaModel:model,fetchImpl,codexFactory:()=>assert.fail('logged-out Codex never receives another model prompt'),registryProbe:options=>probeAIRegistry({...options,platform:'win32',home:base,fsImpl,run:async(_file,args)=>({code:args.includes('--version')?0:1,output:args.includes('--version')?'tool 1.2.3':'not logged in private@example.test'})})});
+ // Host CPU pressure is separately exercised in task-pool.test.mjs. This
+ // transport fixture controls admission so parallel suites cannot defer it.
+ const runner=await createProviderRunner({workspace,ollamaModel:model,fetchImpl,resourceReady:()=>true,codexFactory:()=>assert.fail('logged-out Codex never receives another model prompt'),registryProbe:options=>probeAIRegistry({...options,platform:'win32',home:base,fsImpl,run:async(_file,args)=>({code:args.includes('--version')?0:1,output:args.includes('--version')?'tool 1.2.3':'not logged in private@example.test'})})});
  channel=await createAIChannel({statePath,runtimeDir,runner,fetchImpl:async(url,options)=>{
   assert.equal(url,'https://relay.example/api/device-bridge/ai/poll');assert.equal(options.headers.Authorization,'Bearer '+device.token);const input=JSON.parse(options.body);polls.push(input);return json(relay.poll(device.token,input));
  }});
  await channel.pollOnce();const deviceView=call('GET','devices/'+device.deviceId).device;
  assert.deepEqual(deviceView.providers.filter(p=>p.executionSupported).map(p=>p.id),['ollama']);assert.equal(deviceView.providers[0].loggedIn,false);
  const created=call('POST','send',{deviceId:device.deviceId,provider:'ollama',prompt:'INTEGRATION-PROMPT-PRIVATE',requestId:randomUUID()}).task;
- await channel.pollOnce();for(let n=0;n<10&&call('GET','tasks/'+created.id).task.status!=='succeeded';n++){await tick();await channel.pollOnce();}
+ await channel.pollOnce();const deadline=performance.now()+5000;
+ // Task-directory I/O and runner cleanup are asynchronous. Wait for the real
+ // terminal state with a wall-time bound, not a fixed number of event turns.
+ while(!['succeeded','failed','cancelled'].includes(call('GET','tasks/'+created.id).task.status)&&performance.now()<deadline){await new Promise(resolve=>setTimeout(resolve,10));await channel.pollOnce();}
  const result=call('GET','tasks/'+created.id);assert.equal(result.task.status,'succeeded');assert.equal(result.task.provider,'ollama');assert.equal(result.events.some(event=>event.text==='INTEGRATION-OUTPUT-PRIVATE'),true);
  assert.equal(localRequests.filter(item=>item.url.endsWith('/api/generate')).length,1);const generated=localRequests.find(item=>item.url.endsWith('/api/generate')).body;assert.equal(generated.model,model);assert.equal(generated.prompt,'INTEGRATION-PROMPT-PRIVATE');assert.equal(generated.tools,undefined);
  assert.throws(()=>call('GET','tasks/'+created.id,{},other),error=>error.code==='AI_TASK_NOT_FOUND');

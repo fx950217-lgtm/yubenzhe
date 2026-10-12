@@ -127,3 +127,24 @@ test('successful friend lookup moves the primary action to the matched person an
    assert.deepEqual(primaryButtons(),['查找好友']);
  }
 });
+
+function groupUIFixture(t,initialConversationId){
+ const saved={document:globalThis.document,window:globalThis.window,FormData:globalThis.FormData},handlers=new Map(),menu={innerHTML:''},modal={innerHTML:''},calls=[],routes=[];
+ const root={innerHTML:'',classList:{toggle(){}},setAttribute(){},contains:()=>true,remove(){},querySelectorAll:()=>[],querySelector:s=>s==='[data-menu]'?menu:s==='[data-modal-host]'?modal:null,addEventListener:(e,h)=>handlers.set(e,h),removeEventListener:e=>handlers.delete(e)};
+ globalThis.document={activeElement:null,createElement:()=>root,addEventListener(){},removeEventListener(){}};globalThis.window={};globalThis.FormData=class{constructor(f){this.values=f.values;}get(n){return this.values[n];}};
+ const owner={userId:'owner_1',nickname:'我'},friend={userId:'friend_1',nickname:'好友'},group={id:'group_1',type:'group',name:'讨论',ownerId:owner.userId,members:[owner,friend]},state={profile:owner,friends:[friend],requests:[],outgoingRequests:[],conversations:initialConversationId?[group]:[]};
+ const service={async getState(){return state;},async createGroup(input){calls.push({kind:'group',input});state.conversations=[group];return {conversationId:group.id};},async getMessages(){return {messages:[{id:'1',type:'text',text:'AI-ONLY-MARKER <script>',senderId:owner.userId,createdAt:1,deviceAI:{provider:'codex',deviceName:'<电脑>',serverVerified:true}},{id:'2',type:'text',text:'人的判断',senderId:friend.userId,createdAt:2}]};},async markRead(){},async authenticatedRequest(){throw Error('Group creation cannot invoke device AI');}};
+ const cleanup=mountLiveSocial({append(){}},{service,initialConversationId,onGroupAI:id=>routes.push(id)});t.after(()=>{cleanup();Object.assign(globalThis,saved);});
+ const click=action=>handlers.get('click')({target:{matches:()=>false,closest:()=>({dataset:{action}})}});
+ return {root,modal,handlers,calls,routes,click};
+}
+test('creating a group can continue to device/AI selection but never enables sharing or execution implicitly',async t=>{
+ const f=groupUIFixture(t);await new Promise(setImmediate);f.click('create-group');assert.match(f.modal.innerHTML,/建群后选择我的设备与 AI/);
+ f.handlers.get('change')({target:{name:'memberIds',value:'friend_1',checked:true,matches:()=>false}});f.handlers.get('change')({target:{name:'setupGroupAI',checked:true,matches:()=>false}});
+ const form={dataset:{form:'group'},values:{groupName:'讨论'},closest(){return this;}};f.handlers.get('submit')({target:form,preventDefault(){}});await new Promise(setImmediate);
+ assert.deepEqual(f.routes,['group_1']);assert.deepEqual(f.calls,[{kind:'group',input:{name:'讨论',memberIds:['friend_1']}}]);
+});
+test('group AI attribution is escaped and its transient body is excluded from chat search',async t=>{
+ const f=groupUIFixture(t,'group_1');await new Promise(setImmediate);assert.match(f.root.innerHTML,/我 · codex · &lt;电脑&gt;/);assert.match(f.root.innerHTML,/AI-ONLY-MARKER &lt;script&gt;/);assert.doesNotMatch(f.root.innerHTML,/<script>/);
+ f.click('group-ai');assert.deepEqual(f.routes,['group_1']);f.handlers.get('input')({target:{name:'chatQuery',value:'AI-ONLY-MARKER'}});assert.doesNotMatch(f.root.innerHTML,/AI-ONLY-MARKER &lt;script&gt;/);assert.match(f.root.innerHTML,/没有找到相关消息/);
+});

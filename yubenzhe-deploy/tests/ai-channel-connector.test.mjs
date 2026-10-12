@@ -137,11 +137,49 @@ test('running tasks refresh real registry facts each minute and stop when their 
  runner.loginStatus=async()=>({providers:[registryProvider('codex',++scans<3),registryProvider('ollama')],scannedAt:10000+now});
  const channel=await createAIChannel({...f,runner,clock:()=>now,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);return response(reply(input,{serverNow:10000+now,expiresAt:25000+now,...(!sent?(sent=true,{task:{...task,provider:'codex'}}):{})}));}});t.after(()=>channel.close());
  await channel.pollOnce();await tick();for(now=10000;now<=110000;now+=10000)await channel.pollOnce();assert.equal(scans,2);assert.equal(runner.cancelled.length,0);assert.equal(inputs.at(-1).status.scannedAt,70000);
- await channel.pollOnce();assert.equal(scans,3);assert.deepEqual(runner.cancelled,['AI_PROVIDER_UNAVAILABLE']);assert.equal(inputs.at(-1).status.code,'ready');assert.equal(inputs.at(-1).events.at(-1).code,'AI_PROVIDER_UNAVAILABLE');assert.equal(runner.runs.length,1);
+ await channel.pollOnce();assert.equal(scans,3);assert.deepEqual(runner.cancelled,['AI_PROVIDER_UNAVAILABLE']);await channel.pollOnce();assert.equal(inputs.at(-1).status.code,'ready');assert.equal(inputs.at(-1).events.at(-1).code,'AI_PROVIDER_UNAVAILABLE');assert.equal(runner.runs.length,1);
 });
 test('failed refresh disables the last ready snapshot instead of renewing cached login facts',async t=>{
  const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[];let now=0,scans=0;
  runner.loginStatus=async()=>{if(scans++)throw Error('secret local diagnostic');return {providers:[registryProvider('codex')],scannedAt:123};};
  const channel=await createAIChannel({...f,runner,clock:()=>now,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);return response(reply(input));}});t.after(()=>channel.close());
  await channel.pollOnce();now=60000;await channel.pollOnce();assert.equal(inputs[1].status.code,'error');assert.equal(inputs[1].status.providers[0].executionSupported,false);assert.doesNotMatch(JSON.stringify(inputs),/secret local diagnostic/);
+});
+
+test('multi-task connector sends task-local sequence/lease/ack and queues the fourth without mixing events',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[],acks=new Map();runner.configuration.maxConcurrent=3;let issued=0;const channel=await createAIChannel({...f,runner,clock:()=>0,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);if(input.taskId)acks.set(input.taskId,input.events.at(-1)?.seq??acks.get(input.taskId)??0);return response({...reply(input,!input.taskId&&issued<4?{task:{...task,id:'multi_'+(++issued),leaseId:'lease_'+issued}}:{}),ack:acks.get(input.taskId)||0});}});t.after(()=>channel.close());for(let i=0;i<3;i++)await channel.pollOnce();await tick();assert.equal(runner.runs.length,3);for(const r of runner.runs)r.onEvent({kind:'message',itemId:'same-item',text:r.taskId});await channel.pollOnce();assert.equal(runner.runs.length,3);const batches=inputs.filter(x=>x.events.length);assert.equal(batches.length,3);for(const b of batches){assert.equal(b.events[0].seq,1);assert.equal(b.events[0].text,b.taskId);assert.equal(b.leaseId,'lease_'+b.taskId.split('_')[1]);}runner.runs[1].complete();await channel.pollOnce();await channel.pollOnce();await tick();assert.equal(runner.runs.length,4);assert.equal(channel.activeTaskIds.length,3);
+});
+test('concurrent journal writes are durable and do not race a shared temporary filename',async t=>{const f=await fixture(t),j=await openAIChannelJournal(f);await Promise.all(Array.from({length:30},(_,i)=>j.markStarted('task_'+i)));await j.close();const r=await openAIChannelJournal(f);for(let i=0;i<30;i++)assert.equal(r.has('task_'+i),true);assert.equal(JSON.parse(await readFile(path.join(f.runtimeDir,'ai-channel-state.json'),'utf8')).started.length,30);await r.close();});
+
+test('three slow heartbeat requests run concurrently so one request cannot consume sibling leases',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace);runner.configuration.maxConcurrent=3;let now=0,created=0,slow=false;const waiting=[];
+ const channel=await createAIChannel({...f,runner,clock:()=>now,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body),body=()=>reply(input,{serverNow:10000+now,expiresAt:25000+now,...(!input.taskId&&created<3?{task:{...task,id:'task_'+created,leaseId:'lease_'+created++}}:{})});if(slow&&input.taskId)return new Promise(resolve=>waiting.push(()=>resolve(response(body()))));return response(body());}});t.after(()=>channel.close());
+ for(let n=0;n<3;n++){await channel.pollOnce();await tick();}assert.equal(runner.runs.length,3);slow=true;const poll=channel.pollOnce();await tick();
+ try{assert.equal(waiting.length,3,'all task requests must start before any slow response returns');now=10000;}finally{slow=false;for(const release of waiting)release();await poll;}
+ now=14000;await channel.pollOnce();assert.equal(runner.cancelled.length,0);assert.equal(channel.activeTaskIds.length,3);
+});
+
+test('one task invalid ack, event conflict or denied lease cannot stop sibling tasks',async t=>{
+ for(const failure of ['ack','conflict','lease']){
+  const f=await fixture(t),runner=fakeRunner(f.workspace);runner.configuration.maxConcurrent=3;let created=0,armed=false;const inputs=[];
+  const channel=await createAIChannel({...f,runner,clock:()=>0,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);if(armed&&input.taskId==='task_0'){armed=false;return failure==='ack'?response(reply(input,{ack:999})):new Response(JSON.stringify({code:failure==='lease'?'AI_LEASE_DENIED':'AI_EVENT_CONFLICT'}),{status:failure==='lease'?403:409});}return response(reply(input,!input.taskId&&created<3?{task:{...task,id:'task_'+created,leaseId:'lease_'+created++}}:{}));}});t.after(()=>channel.close());
+  for(let n=0;n<3;n++){await channel.pollOnce();await tick();}armed=true;await channel.pollOnce();await tick();assert.equal(channel.stopped,false);assert.deepEqual(runner.cancelled,['AI_LEASE_EXPIRED']);assert.deepEqual(channel.activeTaskIds,['task_1','task_2']);
+  runner.runs[1].complete();runner.runs[2].complete();await channel.pollOnce();assert.equal(channel.activeTaskIds.length,0);assert.equal(inputs.filter(input=>['task_1','task_2'].includes(input.taskId)&&input.events.some(e=>e.kind==='completed')).length,2);
+ }
+});
+
+test('a slow child shutdown holds only its own slot while sibling authorization continues',async t=>{
+ const f=await fixture(t),runs=[],cancelled=[],releases=[];let created=0,cancelFirst=false;const seen=[];
+ const runner={configuration:{workspace:f.workspace,maxConcurrent:3},loginStatus:async()=>({code:'ready'}),run(input){runs.push(input);let finish;const done=new Promise(resolve=>finish=resolve);releases.push(finish);return {done,cancel(code){cancelled.push({id:input.taskId,code});}};},close:async()=>releases.forEach(resolve=>resolve())};
+ const channel=await createAIChannel({...f,runner,clock:()=>0,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);seen.push(input.taskId);return response(reply(input,cancelFirst&&input.taskId==='task_0'?{cancelTaskId:input.taskId}:!input.taskId&&created<3?{task:{...task,id:'task_'+created,leaseId:'lease_'+created++}}:{}));}});t.after(()=>channel.close());
+ for(let n=0;n<3;n++){await channel.pollOnce();await tick();}cancelFirst=true;await channel.pollOnce();assert.deepEqual(cancelled,[{id:'task_0',code:'AI_CANCELLED'}]);assert.equal(channel.activeTaskIds.length,3,'shutdown still owns its slot');seen.length=0;await channel.pollOnce();assert.deepEqual(seen,['task_1','task_2']);releases[0]();await tick();assert.deepEqual(channel.activeTaskIds,['task_1','task_2']);
+});
+
+test('active registry refresh cannot delay task heartbeats and its failure still stops unavailable tasks',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace);let now=0,scans=0,created=false,release;const inputs=[];
+ runner.loginStatus=async()=>{if(scans++)return new Promise(resolve=>release=resolve);return {providers:[registryProvider('codex')],scannedAt:123};};
+ const channel=await createAIChannel({...f,runner,clock:()=>now,fetchImpl:async(_url,options)=>{const input=JSON.parse(options.body);inputs.push(input);return response(reply(input,{serverNow:10000+now,expiresAt:25000+now,...(!created?(created=true,{task}):{})}));}});t.after(()=>channel.close());
+ await channel.pollOnce();await tick();for(now=10000;now<60000;now+=10000)await channel.pollOnce();const before=inputs.length,poll=channel.pollOnce();await tick();
+ try{assert.equal(scans,2);assert.equal(inputs.length,before+1,'lease poll proceeds before scan resolves');assert.equal(runner.cancelled.length,0);}finally{release({providers:[registryProvider('codex',false)],scannedAt:60123});await poll;await tick();}
+ assert.deepEqual(runner.cancelled,['AI_PROVIDER_UNAVAILABLE']);
 });
