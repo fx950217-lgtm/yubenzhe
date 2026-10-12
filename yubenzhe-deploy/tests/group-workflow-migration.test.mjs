@@ -84,7 +84,7 @@ test('migration020 preserves every old business table byte-for-byte, old migrati
   database=openSocialDatabase(filename);
   assert.deepEqual(tableSnapshot(database.raw,names),before,'Pre-existing rows, BLOB bytes and table definitions must be unchanged.');
   assert.deepEqual(database.raw.prepare('SELECT * FROM social_migrations WHERE version<=17 ORDER BY version').all(),oldMigrations);
-  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,18);
+  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,19);
   const current=database.raw.prepare('SELECT checksum FROM social_migrations WHERE version=18').get();
   assert.equal(current.checksum,sha256(readFileSync(new URL('020-group-workflows.sql',migrationsURL),'utf8')));
   for(const name of ['group_workflows','group_workflow_events','group_workflow_commands','group_workflow_payments'])assert.equal(database.raw.prepare('SELECT count(*) n FROM '+name).get().n,0);

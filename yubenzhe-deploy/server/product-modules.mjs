@@ -10,12 +10,14 @@ import {createWorkbenchService} from './workbench-service.mjs';
 import {fail} from './social-validation.mjs';
 import {createProductAdmin} from './product-admin.mjs';
 import {createGroupWorkflows} from './group-workflows.mjs';
+import {createAIChannel} from './ai-channel.mjs';
+import {createAIChannelFiles} from './ai-channel-files.mjs';
 export function createProductModules({database,origin,simulation=false,internalPreview=false,now=Date.now,mailAdapter,otpSecret,mailEnv=process.env,desktopProvider,proposalService,paymentVerifier}={}){
  const url=new URL(origin);
  validateInternalPreview({internalPreview,role:'frontend',origin,simulation});
  const testServices=simulation||internalPreview;
  if(simulation&&!['localhost','127.0.0.1','[::1]'].includes(url.hostname))throw Error('M0 simulation must use a loopback origin.');
- let points,community,workbench,desktop,devices,groupWorkflows;
+ let points,community,workbench,desktop,devices,groupWorkflows,aiChannel,aiChannelFiles;
  const mail=mailAdapter||(internalPreview?createInternalPreviewMailAdapter({origin}):simulation?createSimulationMailAdapter({origin}):createMailAdapterFromEnvironment({env:mailEnv}));
  const social=createSocialService({database,now,
   accessConfig:{origin,mailAdapter:mail,otpSecret:otpSecret??mailEnv.EMAIL_OTP_SECRET,hasFinancialExposure:()=>false},
@@ -28,9 +30,12 @@ export function createProductModules({database,origin,simulation=false,internalP
    if(points.hasReservations?.(account.id))fail(409,'POINTS_PENDING','请先结束仍占用积分的服务订单。');
    if(community.getPendingObligations(account.id).bounties)fail(409,'COMMUNITY_PENDING','请先结束或取消赏金合作。');
   },
-  deleteAccountData:account=>{groupWorkflows?.cleanupDeletedAccount?.(account.id);devices?.cleanup(account.id);desktop?.cleanup(account.id);community.deleteAccount(account.id);workbench.cleanupDeletedAccount(account.id,{withinTransaction:true});points.closeAccount?.(account.id,{withinTransaction:true});}
+  deleteAccountData:account=>{groupWorkflows?.cleanupDeletedAccount?.(account.id);aiChannelFiles?.cleanupOwner(account.id);devices?.cleanup(account.id);desktop?.cleanup(account.id);community.deleteAccount(account.id);workbench.cleanupDeletedAccount(account.id,{withinTransaction:true});points.closeAccount?.(account.id,{withinTransaction:true});}
  });
- devices=createPersonalDevices({database,socialService:social,now});
+ devices=createPersonalDevices({database,socialService:social,now,onDeviceRevoked:id=>aiChannel?.revokeDevice(id)});
+ aiChannel=createAIChannel({database,socialService:social,devices,now});
+ aiChannelFiles=createAIChannelFiles({authorizeOwner:aiChannel.authorizeOwner,authorizeAgent:aiChannel.authorizeAgent,now});
+ aiChannel.setFilesService(aiChannelFiles);
  points=createPointsService({database,socialService:social,enabled:testServices,now});
  community=createCommunityService({database,socialService:social,now});
  desktop=createDesktopService({database,socialService:social,provider:desktopProvider||createDesktopProvider({database}),now});
@@ -39,6 +44,7 @@ export function createProductModules({database,origin,simulation=false,internalP
  function handle(request){
   if(internalPreview)requireInternalPreviewSession(request);
   const path=request.path;
+  if(path==='ai-channel'||path.startsWith('ai-channel/'))return aiChannel.handle(request);
   if(path==='group-workflows'||path.startsWith('group-workflows/'))return groupWorkflows.handle(request);
   if(path==='devices'||path.startsWith('devices/'))return devices.handle(request);
   if(path==='assets'||path.startsWith('assets/')||path==='gifts'||path.startsWith('gifts/')||path==='access/funds/activate'){
@@ -53,6 +59,6 @@ export function createProductModules({database,origin,simulation=false,internalP
   return social.handle(request);
  }
  let tickInFlight;
- function tick(){if(tickInFlight)return tickInFlight;tickInFlight=Promise.resolve().then(async()=>{devices.maintain();if(testServices)workbench.tick();await social.accountAccess.flushNotifications();}).finally(()=>{tickInFlight=null;});return tickInFlight;}
- return {social,points,community,workbench,desktop,devices,groupWorkflows,operations:createProductAdmin({database,community,now}),mail,handle,tick};
+ function tick(){if(tickInFlight)return tickInFlight;tickInFlight=Promise.resolve().then(async()=>{devices.maintain();aiChannel.maintain();if(testServices)workbench.tick();await social.accountAccess.flushNotifications();}).finally(()=>{tickInFlight=null;});return tickInFlight;}
+ return {social,points,community,workbench,desktop,devices,groupWorkflows,aiChannel,aiChannelFiles,operations:createProductAdmin({database,community,now}),mail,handle,tick};
 }

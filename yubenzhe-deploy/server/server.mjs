@@ -49,14 +49,18 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
         json(response,{ok:true,service:role,version:APP_VERSION,stage:internalPreview ? 'internal-preview' : role === 'frontend' && publicFrontend ? 'public-preview' : 'private-acceptance',...(socialService?.desktop?{desktop:{available:socialService.desktop.capabilities().available,code:socialService.desktop.capabilities().code}}:{})}); return;
       }
       if (request.headers.host !== publicURL.host || url.origin !== publicURL.origin) throw new AdminError(403,'HOST_DENIED','访问地址不匹配，请使用验收地址。');
-      if(role==='frontend'&&['/api/device-bridge/enroll','/api/device-bridge/poll'].includes(url.pathname)){
+      if(role==='frontend'&&(['/api/device-bridge/enroll','/api/device-bridge/poll','/api/device-bridge/ai/poll'].includes(url.pathname)||url.pathname.startsWith('/api/device-bridge/ai/files/'))){
         if(request.method!=='POST'||request.headers.origin)throw new AdminError(403,'DEVICE_AGENT_ONLY','此接口仅接受设备连接器。');
         if(request.headers['content-type']?.split(';')[0]!=='application/json')throw new AdminError(415,'JSON_REQUIRED','操作仅接受 JSON。');
         if(!socialService?.devices)throw new AdminError(503,'DEVICE_UNAVAILABLE','设备服务未启用。');
         let input;try{input=JSON.parse(await body(request,650*1024));}catch(e){if(e.status)throw e;throw new AdminError(400,'INVALID_JSON','请求内容无效。');}
         const token=/^Bearer ([-_A-Za-z0-9]{43})$/.exec(request.headers.authorization||'')?.[1];
-        const value=url.pathname.endsWith('/enroll')?socialService.devices.enroll(input):socialService.devices.poll(token,input);
+        if(url.pathname.startsWith('/api/device-bridge/ai/')&&!socialService.aiChannel)throw new AdminError(503,'AI_CHANNEL_UNAVAILABLE','AI 设备通道未启用。');
+        const value=url.pathname==='/api/device-bridge/ai/poll'?socialService.aiChannel.poll(token,input):url.pathname.startsWith('/api/device-bridge/ai/files/')?socialService.aiChannel.handleAgentFiles(token,url.pathname.slice('/api/device-bridge/ai/files/'.length),input):url.pathname.endsWith('/enroll')?socialService.devices.enroll(input):socialService.devices.poll(token,input);
         json(response,value);return;
+      }
+      if (!internalPreview && role === 'frontend' && url.pathname.startsWith('/api/ai-channel/')) {
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,pathPrefix:'/api/ai-channel/',pathBase:'ai-channel/'}); return;
       }
       if (!internalPreview && role === 'frontend' && (url.pathname==='/api/desktop'||url.pathname.startsWith('/api/desktop/'))) {
         await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,pathPrefix:'/api/desktop',pathBase:'desktop'}); return;
@@ -82,6 +86,9 @@ export function createAcceptanceServer({ role, origin, authConfig, database, aiS
       }
       if (internalPreview && role === 'frontend' && url.pathname.startsWith('/api/social/')) {
         await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,internalPreviewUser:user}); return;
+      }
+      if (internalPreview && role === 'frontend' && url.pathname.startsWith('/api/ai-channel/')) {
+        await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,internalPreviewUser:user,pathPrefix:'/api/ai-channel/',pathBase:'ai-channel/'}); return;
       }
       if (internalPreview && role === 'frontend' && (url.pathname==='/api/desktop'||url.pathname.startsWith('/api/desktop/'))) {
         await handleSocialHTTP({request,response,url,publicURL,service:socialService,readBody:body,internalPreviewUser:user,pathPrefix:'/api/desktop',pathBase:'desktop'}); return;

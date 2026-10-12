@@ -4,7 +4,7 @@ import {fail,fields,text,imageData} from './social-validation.mjs';
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const secret=()=>randomBytes(32).toString('base64url');
 const keys=new Set(['Enter','Backspace','Tab','Escape','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','Delete','Home','End','PageUp','PageDown','Ctrl+C','Ctrl+V','Ctrl+A','Ctrl+Z']);
-export function createPersonalDevices({database,socialService,now=Date.now}){
+export function createPersonalDevices({database,socialService,now=Date.now,onDeviceRevoked=()=>{}}){
  const db=database.raw,frames=new Map(),payloads=new Map();
  const one=(sql,...args)=>db.prepare(sql).get(...args),run=(sql,...args)=>db.prepare(sql).run(...args);
  function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const r=fn();db.exec('COMMIT');return r;}catch(e){db.exec('ROLLBACK');throw e;}}
@@ -16,7 +16,7 @@ export function createPersonalDevices({database,socialService,now=Date.now}){
  function agent(token){
   if(typeof token!=='string'||token.length!==43)fail(401,'DEVICE_AUTH_REQUIRED','设备凭据无效。');
   const r=one('SELECT * FROM personal_devices WHERE token_hash=? AND revoked_at IS NULL',hash(token));
-  if(!r||!one('SELECT 1 FROM accounts WHERE id=?',r.owner_id))fail(401,'DEVICE_AUTH_REQUIRED','设备已撤销或凭据无效。');
+  if(!r||!one('SELECT 1 FROM accounts WHERE id=? AND deleted_at=0',r.owner_id)||one("SELECT 1 FROM account_restrictions WHERE account_id=? AND state<>'active'",r.owner_id))fail(401,'DEVICE_AUTH_REQUIRED','设备已撤销或账号不可用。');
   return r;
  }
  function command(input){
@@ -32,9 +32,11 @@ export function createPersonalDevices({database,socialService,now=Date.now}){
   fail(400,'INVALID_COMMAND','不支持这个操作。');
  }
  return {
+  authenticateAgent:agent,
+  ownedDevice:owned,
   maintain(){for(const [id,f]of frames)if(f.time<now()-10000)frames.delete(id);for(const [id,p]of payloads)if(p.expiresAt<=now())payloads.delete(id);run("UPDATE personal_device_commands SET status='expired' WHERE status IN('queued','sent') AND expires_at<=?",now());},
   resetSessions(){for(const r of db.prepare('SELECT id FROM personal_devices WHERE session_id IS NOT NULL').all())stop(r.id);},
-  cleanup(owner){for(const r of db.prepare('SELECT id FROM personal_devices WHERE owner_id=?').all(owner))stop(r.id);run('DELETE FROM personal_device_commands WHERE device_id IN(SELECT id FROM personal_devices WHERE owner_id=?)',owner);run('DELETE FROM personal_devices WHERE owner_id=?',owner);},
+  cleanup(owner){for(const r of db.prepare('SELECT id FROM personal_devices WHERE owner_id=?').all(owner)){stop(r.id);onDeviceRevoked(r.id);}run('DELETE FROM personal_device_commands WHERE device_id IN(SELECT id FROM personal_devices WHERE owner_id=?)',owner);run('DELETE FROM personal_devices WHERE owner_id=?',owner);},
   handle({method,path,input={},query={},token}){
    const account=socialService.assertAIAccess(token,{write:method==='POST'});
    const parts=path.split('/'),id=parts[1],action=parts[2];
@@ -64,7 +66,7 @@ export function createPersonalDevices({database,socialService,now=Date.now}){
    }
    if(method==='POST'&&action==='heartbeat'){fields(input,['sessionId']);active(r,input.sessionId);run('UPDATE personal_devices SET viewer_until=? WHERE id=?',Math.min(r.session_until,now()+15000),id);return {alive:true};}
    if(method==='POST'&&action==='stop'){fields(input,[]);stop(id);return {stopped:true};}
-   if(method==='POST'&&action==='revoke'){fields(input,[]);stop(id);run('UPDATE personal_devices SET revoked_at=?,token_hash=NULL,pair_hash=NULL WHERE id=?',now(),id);return {revoked:true};}
+   if(method==='POST'&&action==='revoke'){fields(input,[]);stop(id);run('UPDATE personal_devices SET revoked_at=?,token_hash=NULL,pair_hash=NULL WHERE id=?',now(),id);onDeviceRevoked(id);return {revoked:true};}
    if(method==='POST'&&action==='input'){
     active(r,input.sessionId);const payload=JSON.stringify(command(input));
     return transaction(()=>{
