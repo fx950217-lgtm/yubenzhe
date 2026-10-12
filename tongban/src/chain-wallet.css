@@ -1,49 +1,49 @@
 
 /* YBZ self-custody wallet. One primary action; actual fees remain explicit. */
 .wallet-page .asset-page-head{display:flex;justify-content:space-between;align-items:center;margin:0 0 22px;gap:12px}
-.wallet-page .asset-page-head h1{font-size:29px;font-weight:800;color:var(--text);letter-spacing:.5px}
-.asset-page-head p{color:var(--text-2);font-size:12.5px;margin-top:8px;line-height:1.6}
+.wallet-page .asset-page-head h1{font-size:var(--fs-2xl);font-weight:600;color:var(--text);letter-spacing:.5px}
+.asset-page-head p{color:var(--text-2);font-size:var(--fs-s);margin-top:8px;line-height:calc(1em + 8px)}
 .asset-page-head>button{white-space:nowrap}
 .chain-wallet{padding:0;background:transparent;min-width:0}
 .wallet-page .chain-wallet .asset-overview{padding:24px;border:0;border-radius:var(--radius-l);background:var(--hero-bg);box-shadow:none;text-align:left;color:var(--hero-text)}
-.chain-wallet .asset-overview-label{display:flex;align-items:center;justify-content:space-between;color:var(--hero-muted);font-size:11.5px;line-height:1.6;letter-spacing:.5px;margin:0 0 14px}
+.chain-wallet .asset-overview-label{display:flex;align-items:center;justify-content:space-between;color:var(--hero-muted);font-size:var(--fs-s);line-height:calc(1em + 8px);letter-spacing:.5px;margin:0 0 14px}
 .chain-wallet .asset-overview-label .eye{color:var(--hero-muted);background:transparent;border:0;display:inline-flex;padding:4px}
-.chain-wallet .asset-total-number{display:inline-block;max-width:100%;font-size:34px;font-weight:800;line-height:1.3;font-family:var(--font-number);font-variant-numeric:tabular-nums;letter-spacing:-1px;color:var(--hero-text);overflow-wrap:anywhere}
-.chain-wallet .asset-overview-unit{color:var(--hero-muted);font-size:14px;margin-left:8px}
+.chain-wallet .asset-total-number{display:inline-block;max-width:100%;font-size:var(--fs-num);font-weight:600;line-height:calc(1em + 8px);font-family:var(--font-number);font-variant-numeric:tabular-nums;letter-spacing:-1px;color:var(--hero-text);overflow-wrap:anywhere}
+.chain-wallet .asset-overview-unit{color:var(--hero-muted);font-size:var(--fs-b);margin-left:8px}
 .asset-overview-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
-.chain-wallet .asset-address-copy{display:inline-flex;align-items:center;gap:7px;padding:0;border:0;background:none;color:var(--hero-muted);font-size:12px;font-family:var(--font-number)}
+.chain-wallet .asset-address-copy{display:inline-flex;align-items:center;gap:7px;padding:0;border:0;background:none;color:var(--hero-muted);font-size:var(--fs-s);font-family:var(--font-number)}
 .asset-address-copy svg{width:15px;height:15px}
-.asset-address-empty{font-size:12px;color:var(--hero-muted)}
-.chain-wallet .asset-overview-note{font-size:11.5px;line-height:1.7;color:var(--hero-muted);margin-top:9px}
+.asset-address-empty{font-size:var(--fs-s);color:var(--hero-muted)}
+.chain-wallet .asset-overview-note{font-size:var(--fs-s);line-height:calc(1em + 8px);color:var(--hero-muted);margin-top:9px}
 .wallet-hero-actions{display:flex;gap:10px;margin-top:22px}
-.wallet-hero-actions>button{flex:1;min-width:0;padding:12px 10px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:650;border-radius:var(--radius-s)}
+.wallet-hero-actions>button{flex:1;min-width:0;padding:12px 10px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:var(--fs-b);font-weight:600;border-radius:var(--radius-s)}
 .wallet-secondary{background:var(--hero-secondary);color:var(--hero-text)}
 .wallet-hero-actions svg{width:18px;height:18px}
-.wallet-custody-notice{padding:14px 0 0;margin:0;line-height:1.8}
+.wallet-custody-notice{padding:14px 0 0;margin:0;line-height:calc(1em + 8px)}
 .asset-segments{display:flex;gap:8px;margin:26px 0 20px;border-bottom:1px solid var(--line)}
-.chain-wallet .asset-segment{position:relative;border:0;background:none;color:var(--text-2);font-size:13px;padding:0 18px 12px;font-weight:600}
-.chain-wallet .asset-segment.active{color:var(--accent)}
+.chain-wallet .asset-segment{position:relative;border:0;background:none;color:var(--text-2);font-size:var(--fs-b);padding:0 18px 12px;font-weight:600}
+.chain-wallet .asset-segment.active{color:var(--brand-text)}
 .asset-segment.active:after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--accent)}
-.wallet-page .section-head h2{font-size:12.5px;letter-spacing:.5px}
+.wallet-page .section-head h2{font-size:var(--fs-s);letter-spacing:.5px}
 .wallet-page .token-card{margin-bottom:18px;padding:4px 16px;border-radius:14px}
 .wallet-page .token-logo{background:var(--paper-2);color:var(--text-2)}
-.wallet-page .token-meta p{font-size:11.5px}
+.wallet-page .token-meta p{font-size:var(--fs-s)}
 .wallet-tools{display:flex;gap:10px 18px;flex-wrap:wrap;margin-top:22px}
-.wallet-tools .subtle-button{font-size:12px;color:var(--accent)}
-.wallet-fee-example{margin-top:26px;border-top:1px solid var(--line);padding-top:16px;color:var(--text-2);font-size:11.5px;line-height:1.8}
+.wallet-tools .subtle-button{font-size:var(--fs-s);color:var(--brand-text)}
+.wallet-fee-example{margin-top:26px;border-top:1px solid var(--line);padding-top:16px;color:var(--text-2);font-size:var(--fs-s);line-height:calc(1em + 8px)}
 .wallet-fee-example summary{cursor:pointer;min-height:28px}
 .wallet-fee-example p{margin-top:8px}
 .wallet-fee-example strong,.wallet-example-label{display:block}
 .wallet-example-label{color:var(--text-2)}
-.wallet-fee-example strong,.tx-fee,.bill-fee{font-family:var(--font-number);font-variant-numeric:tabular-nums;font-size:11px;overflow-wrap:anywhere}
+.wallet-fee-example strong,.tx-fee,.bill-fee{font-family:var(--font-number);font-variant-numeric:tabular-nums;font-size:var(--fs-s);overflow-wrap:anywhere}
 .wallet-page .tx-list{padding:0}
 .wallet-page .tx-item{gap:10px}
 .wallet-page .tx-sum{max-width:52%}
-.wallet-page .tx-sum .tx-fee{color:var(--text-2);font-size:10.5px}
+.wallet-page .tx-sum .tx-fee{color:var(--text-2);font-size:var(--fs-s)}
 .asset-gift-targets{display:grid;gap:10px;margin-top:16px}
-@media(max-width:380px){.wallet-page .chain-wallet .asset-overview{padding:20px}.chain-wallet .asset-total-number{font-size:31px}}
+@media(max-width:380px){.wallet-page .chain-wallet .asset-overview{padding:20px}.chain-wallet .asset-total-number{font-size:var(--fs-num)}}
 
-.chain-public-address{font-family:var(--font-number);font-size:11px;overflow-wrap:anywhere;max-width:72%}
+.chain-public-address{font-family:var(--font-number);font-size:var(--fs-s);overflow-wrap:anywhere;max-width:72%}
 [data-distribution-root] .transfer-detail{gap:12px}
 [data-distribution-root] .transfer-detail b{text-align:right;overflow-wrap:anywhere}
 /* Network metadata never presents an activation action for disabled mainnets. */
