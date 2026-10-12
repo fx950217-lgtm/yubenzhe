@@ -27,6 +27,8 @@ import org.junit.runner.RunWith;
 public class ReleaseWebViewActionsTest {
     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
     private WebView webView;
+    private boolean sendTaskAction=false;
+    private String submissionStage="not-submitted";
 
     private Object js(String script) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
@@ -63,10 +65,21 @@ public class ReleaseWebViewActionsTest {
     }
 
     @Test public void runExplicitReleaseUIAction() throws Exception {
+        try{performExplicitReleaseUIAction();}
+        finally{
+            if(sendTaskAction){
+                Bundle status=new Bundle();
+                status.putString("stream","\nYBZ_RELEASE_UI_SUBMISSION "+new JSONObject().put("stage",submissionStage).put("terminal",true).toString()+"\n");
+                instrumentation.sendStatus(0,status);
+            }
+        }
+    }
+    private void performExplicitReleaseUIAction() throws Exception {
         String encoded=InstrumentationRegistry.getArguments().getString("ybzPrivateInput");
         org.junit.Assume.assumeTrue("Explicit private test input required",encoded!=null&&!encoded.isEmpty());
         JSONObject input=new JSONObject(new String(Base64.decode(encoded,Base64.NO_WRAP),StandardCharsets.UTF_8));
         String action=input.optString("action"),owner=input.optString("userId");
+        sendTaskAction=action.equals("send-task");
         assertTrue("Unsupported test action",action.matches("login|login-pair|pair|device-session|send-task|task-result"));
         assertTrue("Expected public account ID required",owner.matches("[A-Za-z0-9_]{5,24}"));
         String pkg=instrumentation.getTargetContext().getPackageName();
@@ -131,15 +144,20 @@ public class ReleaseWebViewActionsTest {
             if(action.equals("send-task")){
                 String prompt=input.optString("prompt"),expected=input.optString("expectedText");
                 assertTrue("Explicit task prompt and unique expected marker required",prompt.length()>0&&prompt.length()<=8000&&expected.length()>0&&expected.length()<200&&prompt.contains(expected));
+                until("(()=>{const f=document.querySelector('.ac-chat [data-ac-form]'),e=f?.querySelector('textarea[name=prompt]');return document.querySelector('.ac-online.is-online')&&e&&!e.disabled&&!e.readOnly})()","Task editor is not ready; no request was sent",30);
                 assertTrue("Existing drafts or uncertain requests must be reviewed, never overwritten",yes("(()=>{const f=document.querySelector('[data-ac-form]');return f?.querySelector('textarea[name=prompt]')?.value===''&&!f?.querySelector('button[type=submit]')?.textContent.includes('重试')})()"));
                 String previous=(String)js("JSON.stringify([...document.querySelectorAll('.ac-task[data-task-id]')].map(e=>e.dataset.taskId))");
                 fill("[data-ac-form] textarea[name=prompt]",prompt);
                 until("document.querySelector('[data-ac-form] button[type=submit]')?.disabled===false","Task submit is unavailable; no request was sent",20);
+                // From this point onward any exception is an uncertain send, even
+                // when JS evaluation dies before returning. Never auto-resubmit.
+                submissionStage="submit-attempted";
                 submit("[data-ac-form]");
                 String newTask="(()=>{const previous="+previous+";return [...document.querySelectorAll('.ac-task[data-task-id]')].find(e=>!previous.includes(e.dataset.taskId)&&e.querySelector('strong + p')?.textContent==="+JSONObject.quote(prompt.trim())+")})()";
                 until(newTask,"Task submission result unknown; do not submit again",45);
                 Object taskId=js("("+newTask+")?.dataset.taskId");
                 assertTrue("Server task ID was not confirmed",taskId instanceof String&&((String)taskId).matches("[a-fA-F0-9-]{36}"));
+                submissionStage="confirmed";
                 result.put("taskId",taskId).put("submittedFromAndroidUI",true).put("sendCount",1).put("replyVerified",false).put("noDecisionApproved",true);
             }
             if(action.equals("task-result")){
