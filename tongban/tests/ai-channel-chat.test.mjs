@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {fileURLToPath} from 'node:url';
+import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {fileURLToPath} from 'node:url';import {createSocialClient} from '../src/social-client.js';
 const built=await build({entryPoints:[fileURLToPath(new URL('../src/ai-channel-chat.js',import.meta.url))],bundle:true,write:false,format:'esm',platform:'node',loader:{'.css':'empty'},logLevel:'silent'});const {mountAIChannelChat,mergeAIChannelEvents,aiChannelStatus}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
 const did='11111111-1111-4111-8111-111111111111',tid='22222222-2222-4222-8222-222222222222';const tick=()=>new Promise(resolve=>setImmediate(resolve));const task=extra=>({id:tid,deviceId:did,status:'running',prompt:'测试目标',createdAt:1,latestSeq:0,outputAvailable:true,...extra});
 function harness(t,{online=true,aiStatus='ready',tasks=[],request,storage:existing,...options}={}){let profile={userId:'owner'};const calls=[],handlers=new Map(),store=new Map();const storage=existing||{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)};const root={innerHTML:'',contains:()=>true,querySelector:()=>null,addEventListener:(n,h)=>handlers.set(n,h),removeEventListener:n=>handlers.delete(n)};const defaultRequest=async(path,options)=>path==='ai-channel/devices/'+did?{device:{id:did,name:'我的电脑',online,aiStatus,workspaceLabel:'已授权的工作区'},tasks}:path.startsWith('ai-channel/tasks/')?{task:task(),events:[],latestSeq:0}:{task:task({status:'queued'})};const client={getProfile:()=>profile,authenticatedRequest:async(path,options)=>{calls.push({path,options});return request?request(path,options,defaultRequest):defaultRequest(path,options);}};const cleanup=mountAIChannelChat(root,{client,deviceId:did,storage,pollMs:60000,...options});t.after(cleanup);return {root,calls,storage,store,cleanup,account:p=>profile=p,input:prompt=>handlers.get('input')({target:{name:'prompt',value:prompt}}),submit:()=>handlers.get('submit')({target:{matches:()=>true},preventDefault(){}}),click:(action,id,taskId)=>handlers.get('click')({target:{closest:()=>({dataset:{ac:action,id,taskId}})}}),file:file=>handlers.get('change')({target:{matches:()=>true,files:[file]}})};}
@@ -46,4 +46,30 @@ test('equal createdAt values use task ID as a stable tie-breaker across numeric 
  const low=task({id:'55555555-5555-4555-8555-555555555555',status:'succeeded',createdAt:1791763200000}),high=task({id:'66666666-6666-4666-8666-666666666666',status:'succeeded',createdAt:new Date(low.createdAt).toISOString()});let reverse=false;
  const h=harness(t,{request:async(path,options,fallback)=>{if(path.includes('/devices/'))return {device:{id:did,online:true,aiStatus:'ready'},tasks:(reverse=!reverse)?[high,low]:[low,high]};if(path.includes('/tasks/'))return {task:path.includes(low.id)?low:high,events:[],latestSeq:0};return fallback(path,options);}});
  await tick();const first=h.root.innerHTML;assert.ok(first.indexOf('data-task-id="'+low.id+'"')<first.indexOf('data-task-id="'+high.id+'"'));await h.click('refresh');assert.equal(h.root.innerHTML,first);
+});
+test('real social-client cache invalidation discards stale device or task reads without reporting execution failure or resending',async t=>{
+ for(const delayedPath of ['device','task']){
+  const calls=[],handlers=new Map(),stored=new Map(),storage={getItem:key=>stored.get(key)||null,setItem:(key,value)=>stored.set(key,value),removeItem:key=>stored.delete(key)};
+  const profile={userId:'427918',nickname:'测试甲',bio:'',avatar:'🌱',avatarImage:'',level:1,official:false,identityScope:'server',revision:1},current=task({status:'succeeded',latestSeq:1});
+  let release,started;const pending=new Promise(resolve=>release=resolve),began=new Promise(resolve=>started=resolve);let delay=true;
+  const deviceValue={device:{id:did,name:'我的电脑',online:true,aiStatus:'ready'},tasks:[current]},taskValue={task:current,events:[{seq:1,kind:'message',itemId:'reply',text:'fresh confirmed reply'}],latestSeq:1};
+  const client=createSocialClient({baseURL:'https://social.test.invalid',native:false,storage,fetcher:async(url,options)=>{
+   const path=url.split('/api/social/')[1];calls.push({path,method:options.method});const value=path==='me'?{profile}:path.startsWith('ai-channel/devices/')?deviceValue:path.startsWith('ai-channel/tasks/')?taskValue:{ok:true};
+   const held=delay&&(delayedPath==='device'?path.startsWith('ai-channel/devices/'):path.startsWith('ai-channel/tasks/'));
+   if(held)delay=false;
+   return {status:200,ok:true,headers:{get:()=>null},json:async()=>{if(held){started();await pending;}return value;}};
+  }});
+  await client.initialize();const root={innerHTML:'',contains:()=>true,querySelector:()=>null,addEventListener:(name,handler)=>handlers.set(name,handler),removeEventListener:name=>handlers.delete(name)};
+  const cleanup=mountAIChannelChat(root,{client,deviceId:did,storage,pollMs:60000});t.after(()=>{cleanup();client.dispose();});await began;
+  await client.markRead(tid);release();await tick();assert.doesNotMatch(root.innerHTML,/role="alert"|本次操作未完成/);assert.equal(client.getProfile().userId,profile.userId);
+  await handlers.get('click')({target:{closest:()=>({dataset:{ac:'refresh'}})}});assert.match(root.innerHTML,/fresh confirmed reply/);assert.doesNotMatch(root.innerHTML,/role="alert"|本次操作未完成/);assert.deepEqual(calls.filter(call=>call.method==='POST').map(call=>call.path),['conversations/'+tid+'/read']);cleanup();client.dispose();
+ }
+});
+test('successful reads clear only read failures and preserve failed send or download messages without automatic retry',async t=>{
+ let readFails=true;const h=harness(t,{request:async(path,options,fallback)=>{if(path.includes('/devices/')&&readFails)throw Error('temporary read failure');if(path==='ai-channel/send')throw Error('send outcome unknown');return fallback(path,options);}});
+ await tick();assert.match(h.root.innerHTML,/temporary read failure/);readFails=false;await h.click('refresh');assert.doesNotMatch(h.root.innerHTML,/temporary read failure/);
+ h.input('explicit user task');await h.submit();await tick();assert.match(h.root.innerHTML,/send outcome unknown/);await h.click('refresh');assert.match(h.root.innerHTML,/send outcome unknown/);assert.equal(h.calls.filter(call=>call.path==='ai-channel/send').length,1);
+ const file={id:'out-file',name:'manual.txt',size:109},complete=task({status:'succeeded',files:{outputFiles:[file]}});let downloads=0;
+ const d=harness(t,{tasks:[complete],fileTransfer:{download:async()=>{downloads++;throw Error('download canceled by browser');}},request:async(path,options,fallback)=>path.includes('/tasks/')?{task:complete,events:[],latestSeq:0}:fallback(path,options)});
+ await tick();await d.click('download',file.id,tid);await d.click('refresh');assert.match(d.root.innerHTML,/download canceled by browser/);assert.equal(downloads,1);
 });
