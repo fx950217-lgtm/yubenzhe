@@ -1,0 +1,3 @@
+Bundled Node.js v24.19.0 (unmodified Windows executable).
+License source: https://raw.githubusercontent.com/nodejs/node/v24.19.0/LICENSE
+The complete upstream license and dependency notices are in NODE-LICENSE.txt.
