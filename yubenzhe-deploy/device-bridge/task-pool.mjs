@@ -27,13 +27,13 @@ export function createTaskPool({workspace,factory,maxConcurrent=3,resourceReady=
  async function execute(task){
   let runner;
   try{
-   const cwd=isolated?await isolatedTaskDirectory(workspace,task.id):workspace;if(task.cancelled||closed)return;
+   const cwd=isolated?await isolatedTaskDirectory(workspace,task.input.workspaceTaskId||task.id):workspace;if(task.cancelled||closed)return;
    runner=await factory(cwd);task.runner=runner;if(task.cancelled||closed)return;
-   task.child=runner.run({...task.input,timeoutMs:Math.max(1,task.until-Date.now()),onEvent:event=>{if(!task.finished&&!task.cancelled){if(['completed','failed'].includes(event.kind))task.terminal=event;else notify(task,event);}}});
+   task.child=runner.run({...task.input,timeoutMs:Math.max(1,task.until-Date.now()),onEvent:event=>{if(!task.finished&&!task.cancelled){if(['completed','failed','decision'].includes(event.kind))task.terminal=event;else notify(task,event);}}});
    // run() may synchronously emit before returning its handle. Deliver any
    // cancellation requested by that callback once the child becomes available.
    if(task.cancelled)cancelChild(task);
-   const result=await task.child.done;if(!task.terminal&&['completed','failed'].includes(result?.kind))task.terminal=result;
+   const result=await task.child.done;if(!task.terminal&&['completed','failed','decision'].includes(result?.kind))task.terminal=result;
   }catch(e){task.terminal={...incomplete(),code:e.code||'AI_EXECUTION_FAILED'};}
   finally{
    try{await runner?.close();}catch{task.terminal=incomplete();}
@@ -44,7 +44,7 @@ export function createTaskPool({workspace,factory,maxConcurrent=3,resourceReady=
   }
  }
  function pump(){if(pumping||closed)return;pumping=true;try{while(pending.length&&active.size<maxConcurrent&&resources()){
-  const task=pending.shift();if(task.finished)continue;active.set(task.id,task);
+  const at=pending.findIndex(t=>![...active.values()].some(a=>(a.input.workspaceTaskId||a.id)===(t.input.workspaceTaskId||t.id)));if(at<0)break;const [task]=pending.splice(at,1);if(task.finished)continue;active.set(task.id,task);
   void execute(task);
  }}finally{pumping=false;}}
  function finish(task,event){if(task.finished)return;task.finished=true;clearTimeout(task.timer);task.input.signal?.removeEventListener('abort',task.abort);jobs.delete(task.id);notify(task,event);task.resolve(event);}
@@ -52,7 +52,7 @@ export function createTaskPool({workspace,factory,maxConcurrent=3,resourceReady=
  function cancel(task,code='AI_CANCELLED'){if(task.finished||task.cancelled)return;task.cancelled=code;cancelChild(task);if(!active.has(task.id)){const index=pending.indexOf(task);if(index>=0)pending.splice(index,1);finish(task,{kind:'failed',code,text:'排队任务已取消，没有执行。'});}}
  function run(input={}){
   if(closed)throw fail('AI_REVOKED','连接器已停止。');if(typeof input.taskId!=='string'||input.taskId.trim()!==input.taskId||!/^[A-Za-z0-9_-]{1,100}$/.test(input.taskId)||typeof input.prompt!=='string'||!input.prompt.trim()||input.prompt.length>8000)throw fail('AI_TASK_INVALID','任务无效。');if(jobs.has(input.taskId))throw fail('AI_TASK_DUPLICATE','该任务已经排队或执行。');if(pending.filter(t=>!t.finished).length>=maxQueued)throw fail('AI_QUEUE_FULL','本机队列已满。');
-  const timeout=input.timeoutMs??600000;if(!Number.isFinite(timeout)||timeout<=0||timeout>600000)throw fail('AI_TASK_INVALID','任务时限无效。');if(input.signal?.aborted)throw fail('AI_CANCELLED','任务已取消。');
+  const timeout=input.timeoutMs??600000;if(!Number.isFinite(timeout)||timeout<=0||timeout>600000)throw fail('AI_TASK_INVALID','任务时限无效。');if(input.workspaceTaskId!==undefined&&!/^[a-f0-9-]{36}$/i.test(input.workspaceTaskId))throw fail('AI_TASK_INVALID','续任务工作区无效。');if(input.signal?.aborted)throw fail('AI_CANCELLED','任务已取消。');
   let resolve;const done=new Promise(r=>resolve=r),task={id:input.taskId,input,until:Date.now()+timeout,resolve,done};task.abort=()=>cancel(task);task.timer=setTimeout(()=>cancel(task,'AI_TIMEOUT'),timeout);task.timer.unref?.();input.signal?.addEventListener('abort',task.abort,{once:true});jobs.set(task.id,task);pending.push(task);pump();return {taskId:task.id,done,cancel:code=>cancel(task,code)};
  }
  const timer=setInterval(()=>void pump(),1000);timer.unref?.();

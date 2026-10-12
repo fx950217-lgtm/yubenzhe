@@ -1,3 +1,4 @@
+import {parseDecisionMessage,DECISION_GUIDANCE} from './decision-protocol.mjs';
 import http from 'node:http';
 import {Readable} from 'node:stream';
 import {realpath,stat} from 'node:fs/promises';
@@ -56,7 +57,7 @@ export async function createOllamaRunner({workspace,model,fetchImpl=loopbackOlla
   if(signal?.aborted)throw fail('AI_CANCELLED',message('AI_CANCELLED'));
   const controller=new AbortController();let terminal=false,resolveDone,timer;
   const done=new Promise(resolve=>resolveDone=resolve);
-  const finish=(kind,code,text)=>{if(terminal)return;terminal=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);if(active===job)active=null;const event={kind,code,text};onEvent(event);resolveDone(event);};
+  const finish=(kind,code,text,extra={})=>{if(terminal)return;terminal=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);if(active===job)active=null;const event={kind,code,text,...extra};onEvent(event);resolveDone(event);};
   const cancel=code=>{if(terminal)return;controller.abort();const reason=messages[code]?code:'AI_CANCELLED';finish('failed',reason,message(reason));};
   const abort=()=>cancel('AI_CANCELLED');
   const job={taskId,done,cancel};active=job;signal?.addEventListener('abort',abort,{once:true});timer=setTimeout(()=>cancel('AI_TIMEOUT'),Math.min(timeoutMs,maxTaskMs));timer.unref?.();
@@ -64,9 +65,10 @@ export async function createOllamaRunner({workspace,model,fetchImpl=loopbackOlla
    try{
     await inspectOllama({model,fetchImpl,signal:controller.signal});if(terminal)return;
     onEvent({kind:'progress',code:'AI_RUNNING',text:'电脑上的本地模型正在生成文字建议，不执行文件或命令。'});
-    const result=await json(fetchImpl,'/api/generate',{body:{model,prompt,stream:false,think:false,keep_alive:'1m',options:{num_predict:1024,num_ctx:4096}},signal:controller.signal,max:256*1024});
+    const result=await json(fetchImpl,'/api/generate',{body:{model,prompt:prompt+'\n\n'+DECISION_GUIDANCE,stream:false,think:false,keep_alive:'1m',options:{num_predict:1024,num_ctx:4096}},signal:controller.signal,max:256*1024});
     if(terminal)return;
     if(result.done!==true||result.model!==model||typeof result.response!=='string'||!result.response.trim()||result.response.length>48000||remoteMetadata(result))throw fail('AI_EXECUTION_FAILED',message('AI_EXECUTION_FAILED'));
+    const proposal=parseDecisionMessage(result.response,{redact:redactAIChannelText});if(proposal){finish('decision','AI_DECISION_PAUSE','已停止，等待用户决定。',proposal);return;}
     const text=redactAIChannelText(result.response);
     for(let offset=0;offset<text.length;offset+=2000){if(terminal)return;onEvent({kind:'message',itemId:'ollama_'+offset,text:text.slice(offset,offset+2000)});}
     finish('completed','AI_COMPLETED','本地模型已回复，仅提供文字建议，未执行文件或命令。');

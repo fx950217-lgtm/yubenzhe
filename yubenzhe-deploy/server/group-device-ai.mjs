@@ -6,7 +6,7 @@ const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex
 const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
 const finished=new Set(['succeeded','failed','cancelled']);
 const secrets=/(?:助记词|私钥|api[_ -]?key|密钥密码|(?:账号|账户|登录|邮箱|钱包)(?:的)?密码|seed\s*phrase|private[ _-]?key|mnemonic|password\s*[:=]|-----BEGIN .*PRIVATE KEY|\b(?:sk-|ghp_|github_pat_)[A-Za-z0-9_-]{12,})/i;
-const live=new Set(['ready','running','starting']);
+const live=new Set(['ready','running','starting','awaiting-decision']);
 const stable=value=>{const h=hash(value);return h.slice(0,8)+'-'+h.slice(8,12)+'-4'+h.slice(13,16)+'-a'+h.slice(17,20)+'-'+h.slice(20,32);};
 export function createGroupDeviceAI({database,socialService,devices,aiChannel,now=Date.now}={}){
  const db=database.raw,memory=new Map(),replies=new Map();
@@ -26,17 +26,19 @@ export function createGroupDeviceAI({database,socialService,devices,aiChannel,no
   const m=memory.get(s.id);if(m){m.reason=reason;m.goal='';m.context=[];}
  }
  // Lost memory never reconstructs or repeats an approved AI round after restart.
- for(const s of all("SELECT * FROM device_ai_sessions WHERE status IN('ready','running','starting')"))stop(s,'服务已重启，旧轮次不会自动继续。');
+ for(const s of all("SELECT * FROM device_ai_sessions WHERE status IN('ready','running','starting','awaiting-decision')"))stop(s,'服务已重启，旧轮次不会自动继续。');
  function maintain(){
   aiChannel.maintain();
-  for(const s of all("SELECT * FROM device_ai_sessions WHERE status IN('ready','running','starting')")){
+  for(const s of all("SELECT * FROM device_ai_sessions WHERE status IN('ready','running','starting','awaiting-decision')")){
    try{allowed(s);}catch{stop(s,'群或设备权限已改变。');continue;}
-   if(!memory.has(s.id)||s.viewer_until<=now()||s.expires_at<=now()){stop(s,s.expires_at<=now()?'已达到 30 分钟上限。':'页面心跳中断，已停止。');continue;}
+   const round=all('SELECT * FROM device_ai_rounds WHERE session_id=? AND round=?',s.id,s.round),values=round.map(r=>aiChannel.readInternalTask(r.task_id)),waiting=values.some(value=>value?.task.status==='awaiting-decision')&&values.every(value=>value&&(['awaiting-decision',...finished].includes(value.task.status)));
+   if(waiting&&s.status==='running')run("UPDATE device_ai_sessions SET status='awaiting-decision' WHERE id=?",s.id);
+   if(!memory.has(s.id)||!waiting&&s.viewer_until<=now()||s.expires_at<=now()){stop(s,s.expires_at<=now()?'已达到 30 分钟上限。':'页面心跳中断，已停止。');continue;}
    const removed=all('SELECT r.message_id FROM device_ai_rounds r JOIN message_moderation m ON m.message_id=r.message_id WHERE r.session_id=?',s.id);
    if(removed.length){for(const r of removed)replies.delete(r.message_id);stop(s,'讨论回复已被移除，请重新发起讨论。');continue;}
-   if(s.status!=='running')continue;const m=memory.get(s.id),round=all('SELECT * FROM device_ai_rounds WHERE session_id=? AND round=?',s.id,s.round);let done=true;
+   if(!['running','awaiting-decision'].includes(s.status))continue;const m=memory.get(s.id);let done=true;
    for(const r of round){
-    const value=aiChannel.readInternalTask(r.task_id);if(!value||!finished.has(value.task.status)){done=false;continue;}
+    const value=aiChannel.readInternalTask(r.task_id);if(value?.task.status==='suspended'){stop(s,'决策已挂起，不会自动执行。');done=false;break;}if(!value||!finished.has(value.task.status)){done=false;continue;}
     if(r.message_id)continue;
     const output=value.task.status==='succeeded'?value.events.filter(e=>e.kind==='message').map(e=>e.text).join('\n').slice(0,12000):'';
     if(!output||secrets.test(output)){stop(s,'有 AI 未完成回复、回复过期或含敏感内容，未继续分享。');done=false;break;}
@@ -52,12 +54,19 @@ export function createGroupDeviceAI({database,socialService,devices,aiChannel,no
     m.seen.add(digest);
     replies.set(messageId,{sessionId:s.id,text:output,expiresAt:s.expires_at});m.context.push({provider:r.provider,text:output.slice(0,1800)});m.context=m.context.slice(-3);
    }
-   if(done&&session(s.id).status==='running')run("UPDATE device_ai_sessions SET status=? WHERE id=?",s.round>=s.max_rounds?'finished':'ready',s.id);
+   if(done&&['running','awaiting-decision'].includes(session(s.id).status))run("UPDATE device_ai_sessions SET status=? WHERE id=?",s.round>=s.max_rounds?'finished':'ready',s.id);
   }
   for(const [id,r]of replies)if(r.expiresAt<=now())replies.delete(id);
   for(const [id]of memory){const s=session(id);if(!s||s.expires_at<=now())memory.delete(id);}
  }
- function view(s,accountId){const c=member(s.conversation_id,accountId);if(s.anchor_id<=c.history_start_id)fail(404,'GROUP_AI_NOT_FOUND','此会话不在你可见的群历史中。');return {id:s.id,conversationId:s.conversation_id,deviceId:s.owner_id===accountId?s.device_id:null,owner:s.owner_id===accountId,providers:JSON.parse(s.providers),status:s.status,round:s.round,maxRounds:s.max_rounds,expiresAt:s.expires_at,reason:memory.get(s.id)?.reason||'',replies:all('SELECT provider,id AS message_id,ai_alias AS alias_snapshot FROM messages WHERE ai_session_id=? ORDER BY id',s.id).map(r=>({provider:r.provider,alias:r.alias_snapshot||AI_PROVIDER_CATALOG[r.provider]?.name||'AI',text:one('SELECT 1 FROM message_moderation WHERE message_id=?',r.message_id)?'此消息已被移除':(s.expires_at>now()?replies.get(r.message_id)?.text:null)||'回复已过期；正文不保存在服务器。'}))};}
+ function decisionCards(s,accountId){return all('SELECT * FROM device_ai_rounds WHERE session_id=? AND round=?',s.id,s.round).flatMap(r=>{const value=aiChannel.readInternalTask(r.task_id),d=value?.task.decision;if(!d)return [];const owner=s.owner_id===accountId,shared=live.has(s.status)&&s.expires_at>now(),canDecide=owner&&shared&&d.status==='pending'&&d.available,projected={...d,...(!owner?{continuationTaskId:null}:{})};if(!shared){delete projected.question;delete projected.options;projected.available=false;}return [{...(owner?{taskId:value.task.id}:{}),provider:r.provider,alias:r.alias_snapshot||AI_PROVIDER_CATALOG[r.provider]?.name||'AI',decision:projected,canDecide}];});}
+ function guardDecision(task){
+  const root=task.workspace_task_id||task.id,r=one('SELECT s.* FROM device_ai_sessions s JOIN device_ai_rounds r ON r.session_id=s.id WHERE r.task_id=?',root);if(!r)return;
+  allowed(r);if(!live.has(r.status)||!memory.has(r.id)||r.expires_at<=now()||one('SELECT 1 FROM device_ai_rounds r JOIN message_moderation m ON m.message_id=r.message_id WHERE r.session_id=?',r.id))fail(409,'GROUP_AI_DECISION_UNAVAILABLE','群讨论已停止、过期或上下文已移除，不能继续旧决策。');
+  run("UPDATE device_ai_sessions SET status='running',viewer_until=? WHERE id=?",Math.min(r.expires_at,now()+15000),r.id);
+ }
+ aiChannel.setDecisionGuard(guardDecision);
+ function view(s,accountId){const c=member(s.conversation_id,accountId);if(s.anchor_id<=c.history_start_id)fail(404,'GROUP_AI_NOT_FOUND','此会话不在你可见的群历史中。');return {id:s.id,conversationId:s.conversation_id,deviceId:s.owner_id===accountId?s.device_id:null,owner:s.owner_id===accountId,providers:JSON.parse(s.providers),status:s.status,decisions:decisionCards(s,accountId),round:s.round,maxRounds:s.max_rounds,expiresAt:s.expires_at,reason:memory.get(s.id)?.reason||'',replies:all('SELECT provider,id AS message_id,ai_alias AS alias_snapshot FROM messages WHERE ai_session_id=? ORDER BY id',s.id).map(r=>({provider:r.provider,alias:r.alias_snapshot||AI_PROVIDER_CATALOG[r.provider]?.name||'AI',text:one('SELECT 1 FROM message_moderation WHERE message_id=?',r.message_id)?'此消息已被移除':(s.expires_at>now()?replies.get(r.message_id)?.text:null)||'回复已过期；正文不保存在服务器。'}))};}
  function checked(request,id,{owner=false}={}){const a=socialService.assertAIAccess(request.token,{write:request.method==='POST'}),s=session(id);if(!s)fail(404,'GROUP_AI_NOT_FOUND','设备 AI 讨论不存在。');const c=member(s.conversation_id,a.id);if(s.anchor_id<=c.history_start_id)fail(404,'GROUP_AI_NOT_FOUND','此讨论属于加入前的群历史。');if(owner&&s.owner_id!==a.id)fail(404,'GROUP_AI_NOT_FOUND','只有发起者能操作自己的设备。');return {a,s};}
  function create(request,a){
   const input=request.input||{};fields(input,['conversationId','deviceId','providers','rosterIds','goal','requestId','approveSharing','maxRounds']);if(!uuid(input.requestId)||!uuid(input.conversationId)||input.approveSharing!==true)fail(400,'GROUP_AI_APPROVAL','请明确同意把所选 AI 的回复分享给本群。');
@@ -67,7 +76,7 @@ export function createGroupDeviceAI({database,socialService,devices,aiChannel,no
   const c=member(input.conversationId,a.id,{write:true});if(c.owner_id!==a.id)fail(403,'GROUP_OWNER_REQUIRED','只有群主能发起自己设备的 AI 讨论。');if(!c.allow_device_ai)fail(403,'GROUP_AI_DISABLED','请先由群主明确开启设备 AI 发言。');const chosen=roster.selected(c.id,a.id,input),deviceId=chosen[0].device_id,providers=chosen.map(row=>row.provider);
   const d=aiChannel.handle({method:'GET',path:'ai-channel/devices/'+deviceId,token:request.token}).device;
   if(!d.online||d.providersStale||providers.some(id=>!d.providers.some(p=>p.id===id&&p.executionSupported)))fail(409,'GROUP_AI_PROVIDER_UNAVAILABLE','所选 AI 当前不可执行。');
-  if(memory.size>=100||one("SELECT count(*) n FROM device_ai_sessions WHERE owner_id=? AND status IN('ready','running','starting')",a.id).n>=3)fail(429,'GROUP_AI_LIMIT','讨论数量已达上限，请先停止其他讨论。');
+  if(memory.size>=100||one("SELECT count(*) n FROM device_ai_sessions WHERE owner_id=? AND status IN('ready','running','starting','awaiting-decision')",a.id).n>=3)fail(429,'GROUP_AI_LIMIT','讨论数量已达上限，请先停止其他讨论。');
   const id=randomUUID();transaction(()=>{const anchor=Number(run("INSERT INTO messages(conversation_id,sender,client_id,type,text,created_at) VALUES(?,?,?,'text','已创建本人设备 AI 讨论；每轮由发起者明确批准，回复仅临时中转。',?)",c.id,a.id,'device-ai-session:'+id,now()).lastInsertRowid);
   run("INSERT INTO device_ai_sessions(id,conversation_id,owner_id,device_id,providers,status,max_rounds,created_at,expires_at,viewer_until,anchor_id,request_id,request_hash,roster_ids,owner_revision) VALUES(?,?,?,?,?,'ready',?,?,?,?,?,?,?,?,?)",id,c.id,a.id,deviceId,JSON.stringify(providers),maxRounds,now(),now()+1800000,now()+15000,anchor,input.requestId,digest,JSON.stringify(chosen.map(row=>row.id)),c.ai_owner_revision);
   run('UPDATE conversations SET updated_at=? WHERE id=?',now(),c.id);});memory.set(id,{goal,context:[],seen:new Set(),reason:''});return {session:view(session(id),a.id)};

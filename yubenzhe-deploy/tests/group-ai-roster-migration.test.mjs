@@ -42,7 +42,7 @@ test('migration026 preserves every pre025 business field and migration checksum 
    assert.deepEqual(table.name==='social_migrations'?rows.slice(0,23):rows,table.rows,table.name+' legacy values remain byte-for-byte intact');
    assert.deepEqual(database.raw.prepare('PRAGMA table_info('+table.name+')').all().slice(0,table.columns.length),table.columns);
   }
-  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,24);
+  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,25);
   assert.equal(database.raw.prepare('SELECT checksum FROM social_migrations WHERE version=24').get().checksum,sha(readFileSync(new URL('026-group-ai-roster.sql',migrations),'utf8')));
   assert.equal(database.raw.prepare('SELECT ai_session_id FROM messages WHERE id=?').get(seeded.reply).ai_session_id,seeded.session);
   assert.equal(database.raw.prepare("SELECT ai_session_id FROM messages WHERE client_id='old-anchor'").get().ai_session_id,null);

@@ -1,3 +1,4 @@
+import {decisionProposal} from './decision-protocol.mjs';
 import {readFile,writeFile,mkdir,realpath,stat,open,rename,unlink} from 'node:fs/promises';
 import {createHash,randomUUID} from 'node:crypto';
 import path from 'node:path';
@@ -33,11 +34,22 @@ export async function openAIChannelJournal({runtimeDir,workspace,maxStarted=2048
  let state,writing=Promise.resolve();
  async function persist(){const snapshot=JSON.stringify(state);const job=writing.then(async()=>{const temp=filename+'.'+randomUUID()+'.tmp';const h=await open(temp,'wx',0o600);try{await h.writeFile(snapshot);await h.sync();}finally{await h.close();}await rename(temp,filename);});writing=job.catch(()=>{});return job;}
  try{
-  try{const info=await stat(filename);if(info.size>300000)throw Error();state=JSON.parse(await readFile(filename,'utf8'));}catch(error){if(error.code!=='ENOENT')throw fail('AI_STATE_INVALID','连接器状态损坏，不能清空状态后重试旧任务。');state={schemaVersion:1,connectorId:randomUUID(),started:[]};}
+  try{const info=await stat(filename);if(info.size>2000000)throw Error();state=JSON.parse(await readFile(filename,'utf8'));}catch(error){if(error.code!=='ENOENT')throw fail('AI_STATE_INVALID','连接器状态损坏，不能清空状态后重试旧任务。');state={schemaVersion:1,connectorId:randomUUID(),started:[]};}
   if(state.schemaVersion!==1||!uuid(state.connectorId)||!Array.isArray(state.started)||state.started.length>maxStarted||state.started.some(x=>typeof x!=='string'||!/^[a-f0-9]{64}$/.test(x))||new Set(state.started).size!==state.started.length)throw fail('AI_STATE_INVALID','连接器去重状态无效。');
+  state.decisions??=[];
+  if(!Array.isArray(state.decisions)||state.decisions.length>maxStarted||state.decisions.some(x=>!uuid(x.taskId)||!uuid(x.root)||!['codex','ollama'].includes(x.provider)||![x.digest,x.scope,x.workspaceHash].every(v=>/^[a-f0-9]{64}$/.test(v))||x.child!==null&&!uuid(x.child))||new Set(state.decisions.map(x=>x.taskId)).size!==state.decisions.length)throw fail('AI_STATE_INVALID','决策续作记录无效。');
   await persist();
  }catch(error){await lock.close();await unlink(lockPath).catch(()=>{});throw error;}
- return {connectorId:state.connectorId,runtimeDir:base,has:taskId=>state.started.includes(hash(taskId)),get full(){return state.started.length>=maxStarted;},async markStarted(taskId){if(!id(taskId))throw fail('AI_TASK_INVALID','任务标识无效。');if(this.has(taskId))return false;if(this.full)throw fail('AI_JOURNAL_FULL','任务去重记录已满，请先归档并人工确认历史任务不会重发。');state.started.push(hash(taskId));await persist();return true;},async close(){await writing;await lock.close();await unlink(lockPath).catch(()=>{});}};
+ return {connectorId:state.connectorId,runtimeDir:base,
+ async markPaused({taskId,root,provider,digest,scope}){
+  if(!uuid(taskId)||!uuid(root)||!['codex','ollama'].includes(provider)||![digest,scope].every(x=>/^[a-f0-9]{64}$/.test(x))||!this.has(taskId)||state.decisions.some(x=>x.taskId===taskId)||state.decisions.length>=maxStarted)throw fail('AI_DECISION_INVALID','不能记录本次暂停。');
+  state.decisions.push({taskId,root,provider,digest,scope,workspaceHash:hash(cwd),child:null});await persist();
+ },
+ async reserveContinuation(task,scope){
+  const previous=state.decisions.find(x=>x.taskId===task.parentTaskId);
+  if(!uuid(task.id)||!previous||previous.child||previous.root!==task.workspaceTaskId||previous.provider!==(task.provider||'codex')||previous.digest!==task.decisionDigest||previous.scope!==scope||previous.workspaceHash!==hash(cwd)||this.has(task.id))throw fail('AI_CONTINUATION_INVALID','续作来源未通过本机核对，没有执行。');
+  if(this.full)throw fail('AI_JOURNAL_FULL','任务去重记录已满。');previous.child=task.id;state.started.push(hash(task.id));await persist();
+ },has:taskId=>state.started.includes(hash(taskId)),get full(){return state.started.length>=maxStarted;},async markStarted(taskId){if(!id(taskId))throw fail('AI_TASK_INVALID','任务标识无效。');if(this.has(taskId))return false;if(this.full)throw fail('AI_JOURNAL_FULL','任务去重记录已满，请先归档并人工确认历史任务不会重发。');state.started.push(hash(taskId));await persist();return true;},async close(){await writing;await lock.close();await unlink(lockPath).catch(()=>{});}};
 }
 
 export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=globalThis.fetch,workspaceLabel,clock=()=>performance.now(),log=()=>{},fileHooks=null,fileHooksFactory=null,heartbeatMs=15000,maxStarted=2048,capabilities=null,source=null}={}){
@@ -74,9 +86,10 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
  if(fileHooksFactory)try{fileHooks=await fileHooksFactory({workspace:cwd,isolatedTasks:runner.configuration.isolatedTasks===true,runtimeDir:journal.runtimeDir,call:(route,input,options)=>call('ai/'+route,input,options)});}catch(error){await journal.close();throw error;}
  function emit(task,event){
   if(active.get(task.id)!==task||task.terminal)return;
-  const terminal=['completed','failed'].includes(event.kind);
+  const terminal=['completed','failed','decision'].includes(event.kind);
   if(task.events.length>=100&&!terminal){task.job?.cancel('AI_OUTPUT_LIMIT');return;}
   const clean={seq:++task.seq,kind:event.kind,...(event.itemId?{itemId:String(event.itemId).slice(0,100)}:{}),...(event.text?{text:redactAIChannelText(event.text).slice(0,2000)}:{}),...(event.code?{code:String(event.code).slice(0,80)}:{})};
+  if(event.kind==='decision')Object.assign(clean,{question:event.question,options:event.options,decisionDigest:event.decisionDigest});
   task.events.push(clean);if(terminal){
    task.terminal=true;
    if(['AI_LOGIN_REQUIRED','AI_QUOTA','AI_TOOL_UNAVAILABLE','AI_EXECUTION_FAILED','AI_OLLAMA_UNAVAILABLE','AI_OLLAMA_MODEL_REQUIRED','AI_OLLAMA_MODEL_UNVERIFIED'].includes(event.code)){
@@ -104,29 +117,41 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
   if(active.size>=maxConcurrent||active.has(task?.id))throw fail('AI_RELAY_RESPONSE','服务端派发超出本机容量或重复任务。');
   if(!task||!id(task.id)||!id(task.leaseId)||typeof task.prompt!=='string'||!task.prompt.trim()||task.prompt.length>8000||!Number.isFinite(task.expiresAt)||task.provider!==undefined&&!['codex','claude','workb','ollama'].includes(task.provider))throw fail('AI_TASK_INVALID','任务内容或范围无效。');
   const providerId=task.provider??'codex',provider=providers.find(item=>item.id===providerId);
+  const continuation=task.parentTaskId!==undefined,workspaceTaskId=continuation?task.workspaceTaskId:task.id;
   const hardUntil=localDeadline({expiresAt:task.expiresAt,serverTime:reply.serverNow,receivedAt,roundTrip:receivedAt-sentAt});
   const leaseUntil=Math.min(receivedAt+heartbeatMs,localDeadline({expiresAt:reply.expiresAt,serverTime:reply.serverNow,receivedAt,roundTrip:receivedAt-sentAt}));
-  const current={id:task.id,provider:providerId,executionMode:provider?.executionMode,leaseId:task.leaseId,events:[],seq:0,acked:0,terminal:false,hardUntil,leaseUntil,job:null,jobFinished:false,controller:new AbortController()};active.set(task.id,current);
+  const current={id:task.id,workspaceTaskId,provider:providerId,executionMode:provider?.executionMode,leaseId:task.leaseId,events:[],seq:0,acked:0,terminal:false,hardUntil,leaseUntil,job:null,jobFinished:false,controller:new AbortController()};active.set(task.id,current);
   if(hardUntil<=receivedAt||leaseUntil<=receivedAt){emit(current,{kind:'failed',code:'AI_LEASE_EXPIRED',text:safeCodexMessage('AI_LEASE_EXPIRED')});return;}
   if(journal.has(task.id)){emit(current,{kind:'failed',code:'AI_EXECUTION_INTERRUPTED',text:'此任务已有启动记录，不会在重启后自动重复执行。'});return;}
   if(provider?.executionSupported!==true||!['codex','ollama'].includes(providerId)){emit(current,{kind:'failed',code:provider?.loggedIn===false?'AI_LOGIN_REQUIRED':'AI_PROVIDER_UNAVAILABLE',text:provider?.loggedIn===false?'所选 AI 需要由本人在这台电脑完成登录。':'所选 AI 没有可用的安全执行适配，本次没有执行。'});return;}
   if(provider.executionMode==='chat-only'&&task.attachments!==undefined&&(!Array.isArray(task.attachments)||task.attachments.length)){emit(current,{kind:'failed',code:'AI_PROVIDER_FILES_UNSUPPORTED',text:'所选本地模型仅支持文字对话，不能读取附件或执行文件。'});return;}
   try{
-   await journal.markStarted(task.id);
+   if(continuation){
+    if(!uuid(task.parentTaskId)||!uuid(task.workspaceTaskId)||!runner.configuration.isolatedTasks||[...active.values()].some(t=>t!==current&&t.workspaceTaskId===workspaceTaskId&&!t.terminal))throw fail('AI_CONTINUATION_INVALID','续作工作区未通过核对。');
+    await journal.reserveContinuation(task,hash(origin.origin+'\n'+config.token));
+   }else{if(task.workspaceTaskId!==undefined||task.decisionDigest!==undefined||task.parentDecisionId!==undefined)throw fail('AI_CONTINUATION_INVALID','不能单独指定工作区或批准来源。');await journal.markStarted(task.id);}
    // Optional file transport remains separate; it must keep state outside cwd,
    // use task-local inbox/outbox and return only a local prompt suffix.
    // Do not hold the outbound polling loop while local files are prepared.
    void startTask();
-  }catch(error){emit(current,{kind:'failed',code:error.code==='AI_JOURNAL_FULL'?'AI_JOURNAL_FULL':'AI_EXECUTION_FAILED',text:error.code==='AI_JOURNAL_FULL'?'去重记录已满，连接器已停止接受新任务。':safeCodexMessage('AI_EXECUTION_FAILED')});}
+  }catch(error){emit(current,{kind:'failed',code:['AI_JOURNAL_FULL','AI_CONTINUATION_INVALID'].includes(error.code)?error.code:'AI_EXECUTION_FAILED',text:error.code==='AI_JOURNAL_FULL'?'去重记录已满，连接器已停止接受新任务。':safeCodexMessage('AI_EXECUTION_FAILED')});}
   async function startTask(){try{
    const prepared=current.executionMode==='tools'&&fileHooks?.prepareTask?await fileHooks.prepareTask(task,{signal:current.controller.signal}):null;
    if(active.get(current.id)!==current||current.terminal||stopped)return;
    enforceLease();if(current.terminal)return;
    const promptSuffix=prepared?.promptSuffix||'';
    if(typeof promptSuffix!=='string'||promptSuffix.length>2000)throw fail('AI_TASK_INVALID','本机文件指引超过独立上限。');
-   current.job=runner.run({provider:providerId,taskId:task.id,prompt:task.prompt,promptSuffix,signal:current.controller.signal,timeoutMs:Math.max(1,current.hardUntil-clock()),onEvent:event=>{
-    if(['completed','failed'].includes(event.kind))current.jobFinished=true;
-    if(event.kind==='completed'&&current.executionMode==='tools'&&fileHooks?.collectTask){void Promise.resolve().then(()=>fileHooks.collectTask(task,{signal:current.controller.signal})).then(()=>{enforceLease();if(!current.controller.signal.aborted)emit(current,event);},()=>emit(current,{kind:'failed',code:'AI_FILE_TRANSFER_FAILED',text:'任务执行结束，但成果文件传回未完成，请保留电脑上的原文件。'}));}else emit(current,event);
+   current.job=runner.run({provider:providerId,taskId:task.id,...(continuation?{workspaceTaskId}:{}),prompt:task.prompt,promptSuffix,signal:current.controller.signal,timeoutMs:Math.max(1,current.hardUntil-clock()),onEvent:event=>{
+    if(['completed','failed','decision'].includes(event.kind))current.jobFinished=true;
+    if(event.kind==='decision'){
+     void Promise.resolve().then(async()=>{
+      const proposal=decisionProposal(event,{redact:redactAIChannelText});if(proposal.decisionDigest!==event.decisionDigest)throw fail('AI_DECISION_INVALID','暂停内容摘要不一致。');
+      if(current.executionMode==='tools'&&fileHooks?.collectTask)await fileHooks.collectTask(task,{signal:current.controller.signal});
+      enforceLease();if(current.controller.signal.aborted||current.terminal||stopped)return;
+      await journal.markPaused({taskId:task.id,root:workspaceTaskId,provider:providerId,digest:proposal.decisionDigest,scope:hash(origin.origin+'\n'+config.token)});
+      enforceLease();if(!current.controller.signal.aborted&&!current.terminal&&!stopped)emit(current,{kind:'decision',...proposal});
+     }).catch(error=>{if(!current.terminal)emit(current,{kind:'failed',code:error.code==='AI_DECISION_INVALID'?'AI_DECISION_INVALID':'AI_FILE_TRANSFER_FAILED',text:'决策或样张未能安全传回，本次没有继续执行。'});});
+    }else if(event.kind==='completed'&&current.executionMode==='tools'&&fileHooks?.collectTask){void Promise.resolve().then(()=>fileHooks.collectTask(task,{signal:current.controller.signal})).then(()=>{enforceLease();if(!current.controller.signal.aborted)emit(current,event);},()=>emit(current,{kind:'failed',code:'AI_FILE_TRANSFER_FAILED',text:'任务执行结束，但成果文件传回未完成，请保留电脑上的原文件。'}));}else emit(current,event);
    }});
   }catch{emit(current,{kind:'failed',code:'AI_EXECUTION_FAILED',text:safeCodexMessage('AI_EXECUTION_FAILED')});}}
  }
@@ -155,7 +180,7 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
  async function pollTask(current){
   if(stopped||current?.retiring)return;
   try{
-   const input={...(maxConcurrent>1?{capacity:runner.canDispatch?.()===false?0:maxConcurrent}:{}),connectorId:journal.connectorId,...(current?{taskId:current.id,leaseId:current.leaseId}:{}),events:current?current.events.slice(0,20):[],status:{code:statusCode,workspaceLabel:label,providers,scannedAt,...(fileHooks?.publicKey?{filePublicKey:fileHooks.publicKey}:{}),...(capabilities?{capabilities}:{}),...(source?{source}:{})}};
+   const input={...(maxConcurrent>1?{capacity:runner.canDispatch?.()===false?0:maxConcurrent}:{}),connectorId:journal.connectorId,...(current?{taskId:current.id,leaseId:current.leaseId}:{}),events:current?current.events.slice(0,20):[],status:{code:statusCode,workspaceLabel:label,providers,scannedAt,decisionProtocolVersion:runner.configuration.isolatedTasks===true?1:0,...(fileHooks?.publicKey?{filePublicKey:fileHooks.publicKey}:{}),...(capabilities?{capabilities}:{}),...(source?{source}:{})}};
    const sentAt=clock(),reply=await call('ai/poll',input),receivedAt=clock();
    if(!Number.isFinite(reply.serverNow)||!Number.isFinite(reply.expiresAt)||!Number.isSafeInteger(reply.ack)||reply.ack<0)throw fail('AI_RELAY_RESPONSE','授权租约响应无效。');
    if(stopped)return;

@@ -69,7 +69,7 @@ function tableSnapshot(raw,names){
  }));
 }
 
-test('migrations020 through026 preserve nonretired history, archive retired tables and add device metadata',t=>{
+test('migrations020 through027 preserve nonretired history, archive retired tables and add device metadata',t=>{
  const parent=realpathSync(tmpdir()),directory=mkdtempSync(join(parent,'ybz-group-migration-')),filename=join(directory,'synthetic-social.sqlite');
  let raw=null,database=null;
  t.after(()=>{
@@ -103,7 +103,7 @@ test('migrations020 through026 preserve nonretired history, archive retired tabl
   assert.deepEqual(columns.slice(oldColumns.length).map(c=>c.name),['source','capabilities','capabilities_at']);
   for(const d of database.raw.prepare('SELECT source,capabilities,capabilities_at FROM personal_devices').all())assert.deepEqual({...d},{source:'local',capabilities:'{}',capabilities_at:null});
   assert.deepEqual(database.raw.prepare('SELECT * FROM social_migrations WHERE version<=17 ORDER BY version').all(),oldMigrations);
-  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,24);
+  assert.equal(database.raw.prepare('SELECT count(*) n FROM social_migrations').get().n,25);
   assert.equal(database.raw.prepare('SELECT checksum FROM social_migrations WHERE version=20').get().checksum,sha256(readFileSync(new URL('022-device-claims-capabilities.sql',migrationsURL),'utf8')));
   for(const table of ['device_pair_claims','device_pair_rates'])assert.equal(database.raw.prepare('SELECT count(*) n FROM '+table).get().n,0);
   const current=database.raw.prepare('SELECT checksum FROM social_migrations WHERE version=18').get();

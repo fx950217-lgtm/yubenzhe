@@ -9,7 +9,7 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const cid='11111111-1111-4111-8111-111111111111',did='22222222-2222-4222-8222-222222222222',sid='33333333-3333-4333-8333-333333333333',otherSid='44444444-4444-4444-8444-444444444444';
 const session=(overrides={})=>({id:sid,owner:true,round:0,maxRounds:10,status:'ready',replies:[],...overrides});
 function deferred(){let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};}
-function harness(t,{sessions=[],request}={}){
+function harness(t,{sessions=[],request,storage:providedStorage}={}){
  let profile={userId:'owner'},current=sessions;
  const handlers=new Map(),events=new Map(),timers=new Map(),calls=[];
  const originals={window:globalThis.window,document:globalThis.document,setInterval:globalThis.setInterval,clearInterval:globalThis.clearInterval};
@@ -30,10 +30,12 @@ function harness(t,{sessions=[],request}={}){
   if(path==='group-device-ai'){const created=session();current=[created,...current.filter(row=>row.id!==sid)];return {session:created};}
   return {session:current.find(row=>row.id===id)};
  };
- const cleanup=mountGroupDeviceAI(root,{client:{getProfile:()=>profile,authenticatedRequest:async(path,options)=>{calls.push({path,...options,account:profile.userId});return request?request(path,options,defaults):defaults(path,options);}},conversationId:cid,pollMs:5000});
+ const storageValues=new Map(),storage=providedStorage||{getItem:key=>storageValues.get(key)||null,setItem:(key,value)=>storageValues.set(key,value),removeItem:key=>storageValues.delete(key)};
+ const cleanup=mountGroupDeviceAI(root,{storage,client:{getProfile:()=>profile,authenticatedRequest:async(path,options)=>{calls.push({path,...options,account:profile.userId});return request?request(path,options,defaults):defaults(path,options);}},conversationId:cid,pollMs:5000});
  t.after(()=>{cleanup();Object.assign(globalThis,originals);});
  return {
   root,calls,cleanup,events,timers,handlers,
+  choose:(taskId,optionId='option-2')=>handlers.get('click')?.({target:{closest:()=>({dataset:{decisionAction:'choose',decisionTask:taskId,decisionOption:optionId}})}}),
   account:(userId='other')=>{profile={userId};},
   input:(name,value,checked)=>handlers.get('input')?.({target:{name,value,checked}}),
   submit:()=>handlers.get('submit')?.({preventDefault(){},target:{matches:()=>true}}),
@@ -146,4 +148,26 @@ test('failed stop-all retains its action error and stops renewing a ready sessio
  const h=harness(t,{sessions:[session()],request:async(path,options,defaults)=>{if(path.endsWith('/stop'))throw Error('停止结果未确认');return defaults(path,options);}});await tick();
  const heartbeats=count(h,'/heartbeat').length;await h.click('stop-all');await tick();await h.poll();await h.click('next',sid);
  assert.match(h.root.innerHTML,/role="alert">停止结果未确认/);assert.match(h.root.innerHTML,/停止确认中/);assert.equal(count(h,'/heartbeat').length,heartbeats);assert.equal(count(h,'/next').length,0);assert.equal(count(h,'/stop').length,1);
+});
+const decisionTaskId='55555555-5555-4555-8555-555555555555',decisionId='66666666-6666-4666-8666-666666666666';
+const waitingSession=extra=>session({deviceId:did,status:'awaiting-decision',decisions:[{taskId:decisionTaskId,provider:'ollama',alias:'方案顾问',canDecide:true,decision:{id:decisionId,version:1,status:'pending',digest:'fixture',expiresAt:Date.now()+1800000,available:true,continuationSupported:true,question:'要继续整理吗？',options:[{id:'option-1',label:'再修改'},{id:'option-2',label:'整理导出'}]}}],...extra});
+test('leaving an untouched waiting decision preserves its thirty-minute multi-device choice without a heartbeat',async t=>{
+ const h=harness(t,{sessions:[waitingSession()]});await tick();assert.match(h.root.innerHTML,/需要你拍板/);assert.equal(count(h,'/heartbeat').length,0);h.emit('pagehide');await tick();assert.equal(count(h,'/stop').length,0);assert.equal(count(h,'/decision').length,0);
+});
+test('an explicit stop includes waiting decisions while another member cannot choose them',async t=>{
+ const other=waitingSession({id:otherSid,owner:false,decisions:[{provider:'ollama',alias:'顾问',canDecide:false,decision:waitingSession().decisions[0].decision}]});const h=harness(t,{sessions:[waitingSession(),other]});await tick();await h.choose('forged-task');assert.equal(count(h,'/decision').length,0);await h.click('stop-all');assert.deepEqual(count(h,'/stop').map(row=>row.path),['group-device-ai/'+sid+'/stop']);
+});
+test('leaving while a decision POST is unresolved stops the parent session and does not approve a new round',async t=>{
+ const reply=deferred();let started;const began=new Promise(resolve=>started=resolve);
+ const h=harness(t,{sessions:[waitingSession()],request:async(path,options,defaults)=>{if(path.endsWith('/decision')){started();return reply.promise;}return defaults(path,options);}});await tick();const pending=h.choose(decisionTaskId);await began;h.emit('pagehide');await tick();assert.equal(count(h,'/stop').length,1);
+ reply.resolve({task:{id:'77777777-7777-4777-8777-777777777777',deviceId:did},decision:{...waitingSession().decisions[0].decision,status:'continued',continuationTaskId:'77777777-7777-4777-8777-777777777777'}});await pending;await tick();assert.equal(count(h,'/next').length,0);assert.ok(count(h,'/stop').length>=1);
+});
+for(const leave of ['unmount','pagehide','visibilitychange'])test('a restored unknown decision stops its group on '+leave+' without resubmitting authorization',async t=>{
+ const d=waitingSession().decisions[0].decision,digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([d.digest,'option-2']))))].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+ const values=new Map([['ybz.ai-decision.request.v1.owner.'+decisionTaskId+'.'+decisionId,JSON.stringify({requestId:crypto.randomUUID(),digest})]]),storage={getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};
+ const h=harness(t,{sessions:[waitingSession()],storage});for(let attempt=0;attempt<100&&!h.root.innerHTML.includes('上次选择结果尚未确认');attempt++)await tick();assert.match(h.root.innerHTML,/上次选择结果尚未确认/);assert.equal(count(h,'/decision').length,0);
+ if(leave==='unmount')h.cleanup();else h.emit(leave,leave==='visibilitychange'?true:undefined);await tick();assert.deepEqual(count(h,'/stop').map(row=>row.path),['group-device-ai/'+sid+'/stop']);assert.equal(count(h,'/decision').length,0);assert.equal(count(h,'/next').length,0);
+});
+test('hiding while a choice digest is being prepared stops the group and never posts new authorization',async t=>{
+ const h=harness(t,{sessions:[waitingSession()]});await tick();const pending=h.choose(decisionTaskId);h.emit('visibilitychange',true);await pending;await tick();assert.equal(count(h,'/decision').length,0);assert.ok(count(h,'/stop').length>=1);assert.equal(count(h,'/next').length,0);
 });

@@ -1,3 +1,4 @@
+import {parseDecisionMessage,DECISION_GUIDANCE} from './decision-protocol.mjs';
 import {spawn} from 'node:child_process';
 import {realpath,stat} from 'node:fs/promises';
 import {lstatSync,realpathSync} from 'node:fs';
@@ -77,6 +78,7 @@ export function createCodexJsonlParser({onEvent=()=>{},onLimit=()=>{},maxLineByt
   if(outputChars+item.text.length>maxOutputChars)return limit();outputChars+=item.text.length;
   // Filter the complete agent text before chunking so a chunk boundary cannot
   // separate a credential label/token from the value being hidden.
+  let proposal;try{proposal=parseDecisionMessage(item.text,{redact:redactAIChannelText});}catch{emit({kind:'decision-invalid'});return;}if(proposal){emit({kind:'decision-proposal',...proposal});return;}
   const text=redactAIChannelText(item.text);
   for(let offset=0;offset<text.length;offset+=2000)emit({kind:'message',itemId:item.id+(text.length>2000?'-'+offset:''),text:text.slice(offset,offset+2000)});
  }
@@ -122,22 +124,24 @@ export async function createCodexRunner({executable,workspace,spawnImpl=spawn,ki
   assertCodexConfigBoundary(config.workspace);
   const args=codexExecutionArguments(config.workspace);
   let child;try{child=spawnImpl(config.executable,args,spawnOptions());}catch{throw fail('AI_EXECUTION_FAILED',safeCodexMessage('AI_EXECUTION_FAILED'));}
-  let cancelCode=null,stderrCode=null,terminal=false,resolveDone;
+   let cancelCode=null,stderrCode=null,terminal=false,finishing=false,resolveDone,proposal=null,killPending=null;
   const done=new Promise(resolve=>{resolveDone=resolve;});
-  const stop=code=>{if(terminal||cancelCode)return;cancelCode=messages[code]?code:'AI_CANCELLED';void killTree(child);};
-  const parser=createCodexJsonlParser({onEvent:event=>{if(!terminal&&!cancelCode)onEvent(event);},onLimit:()=>stop('AI_OUTPUT_LIMIT')});
+  const stop=code=>{if(terminal||cancelCode&&cancelCode!=='AI_DECISION_PAUSE')return;cancelCode=messages[code]||['AI_DECISION_PAUSE','AI_DECISION_INVALID'].includes(code)?code:'AI_CANCELLED';killPending??=Promise.resolve().then(()=>killTree(child));killPending.catch(()=>{cancelCode='AI_EXECUTION_FAILED';});};
+  const parser=createCodexJsonlParser({onEvent:event=>{if(terminal||cancelCode)return;if(event.kind==='decision-proposal'){proposal=event;stop('AI_DECISION_PAUSE');return;}if(event.kind==='decision-invalid'){stop('AI_DECISION_INVALID');return;}onEvent(event);},onLimit:()=>stop('AI_OUTPUT_LIMIT')});
   const timer=setTimeout(()=>stop('AI_TIMEOUT'),Math.min(timeoutMs,maxTaskMs));timer.unref?.();
   const abort=()=>stop('AI_CANCELLED');signal?.addEventListener('abort',abort,{once:true});
-  function finish(exitCode){
-   if(terminal)return;parser.end();terminal=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);
+  async function finish(exitCode){
+    if(terminal||finishing)return;finishing=true;parser.end();try{await killPending;}catch{cancelCode='AI_EXECUTION_FAILED';}clearTimeout(timer);signal?.removeEventListener('abort',abort);if(signal?.aborted)cancelCode='AI_CANCELLED';terminal=true;
    const code=cancelCode||parser.diagnostic||stderrCode||(exitCode!==0?'AI_EXECUTION_FAILED':!parser.completed?'AI_INCOMPLETE':null);
-   const event=code?{kind:'failed',code,text:safeCodexMessage(code)}:{kind:'completed',code:'AI_COMPLETED',text:'Codex 已结束本次任务，请检查结果。'};
+   const event=code==='AI_DECISION_PAUSE'&&proposal&&!parser.diagnostic&&!stderrCode?{...proposal,kind:'decision'}:code?{kind:'failed',code:code==='AI_DECISION_PAUSE'?(parser.diagnostic||stderrCode||'AI_EXECUTION_FAILED'):code,text:safeCodexMessage(code)}:{kind:'completed',code:'AI_COMPLETED',text:'Codex 已结束本次任务，请检查结果。'};
    active=null;onEvent(event);resolveDone(event);
   }
   child.stdout?.setEncoding?.('utf8');child.stdout?.on('data',chunk=>parser.push(String(chunk)));
   child.stderr?.on('data',chunk=>{const code=classifyCodexDiagnostic(String(chunk).slice(0,4096));if(code!=='AI_EXECUTION_FAILED')stderrCode=code;});
-  child.once('error',()=>finish(null));child.once('close',finish);child.stdin?.on('error',()=>stop('AI_EXECUTION_FAILED'));
-  const job={taskId,done,cancel:stop};active=job;child.stdin.end(prompt+(promptSuffix?'\n'+promptSuffix:'')+'\n');
+   // With a live PID, an error can describe a failed kill or IPC operation.
+   // Only close establishes process exit; never release a paused slot on error.
+   child.once('error',()=>{if(child.pid)stop('AI_EXECUTION_FAILED');else void finish(null);});child.once('close',finish);child.stdin?.on('error',()=>stop('AI_EXECUTION_FAILED'));
+  const job={taskId,done,cancel:stop};active=job;child.stdin.end(prompt+(promptSuffix?'\n'+promptSuffix:'')+'\n\n'+DECISION_GUIDANCE+'\n');
   return job;
  }
  return {configuration:config,loginStatus,run,get busy(){return Boolean(active);},cancel:code=>active?.cancel(code),async close(){if(active){active.cancel('AI_CANCELLED');await active.done;}}};

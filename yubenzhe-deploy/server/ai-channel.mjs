@@ -1,5 +1,6 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {fail,fields,text} from './social-validation.mjs';
+import {checkedDecisionProposal,continuationPrompt} from './ai-decision-policy.mjs';
 import {readDeviceCapabilities,deviceSource,validateDeviceCapabilities} from './device-capabilities.mjs';
 import {AI_PROVIDER_CATALOG,checkedProviderId,checkedProvidersReport,readAIProviders,providerProblem,aiLoginReminders} from './ai-providers.mjs';
 
@@ -8,17 +9,29 @@ const uuid=value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}
 const final=new Set(['succeeded','failed','cancelled']);
 export const AI_CHANNEL_LIMITS=Object.freeze({promptChars:8000,queue:5,hardMs:600000,leaseMs:15000,onlineMs:20000,events:50,eventChars:16000,retainedChars:64000,totalOutputChars:256000,eventCount:2000,retainedTasks:250,globalChars:2000000,retentionMs:86400000});
 const allowedStatus=new Set(['ready','login-required','quota','error']);
-const errorCodes=new Set(['AI_CANCELLED','AI_TIMEOUT','AI_LOGIN_REQUIRED','AI_QUOTA','AI_EXECUTION_INTERRUPTED','AI_EXECUTION_FAILED','AI_OUTPUT_LIMIT','AI_PROCESS_FAILED','AI_UNAVAILABLE','AI_PROTOCOL_ERROR','AI_LEASE_EXPIRED','AI_REVOKED','AI_TOOL_UNAVAILABLE','AI_INCOMPLETE','AI_JOURNAL_FULL','AI_FILE_TRANSFER_FAILED','AI_PROVIDER_UNAVAILABLE','AI_PROVIDER_FILES_UNSUPPORTED','AI_OLLAMA_UNAVAILABLE','AI_OLLAMA_MODEL_REQUIRED','AI_OLLAMA_MODEL_UNVERIFIED']);
+const errorCodes=new Set(['AI_CANCELLED','AI_TIMEOUT','AI_LOGIN_REQUIRED','AI_QUOTA','AI_EXECUTION_INTERRUPTED','AI_EXECUTION_FAILED','AI_OUTPUT_LIMIT','AI_PROCESS_FAILED','AI_UNAVAILABLE','AI_PROTOCOL_ERROR','AI_LEASE_EXPIRED','AI_REVOKED','AI_TOOL_UNAVAILABLE','AI_INCOMPLETE','AI_JOURNAL_FULL','AI_FILE_TRANSFER_FAILED','AI_PROVIDER_UNAVAILABLE','AI_PROVIDER_FILES_UNSUPPORTED','AI_OLLAMA_UNAVAILABLE','AI_OLLAMA_MODEL_REQUIRED','AI_OLLAMA_MODEL_UNVERIFIED','AI_DECISION_INVALID','AI_CONTINUATION_INVALID','AI_DECISION_UNSUPPORTED']);
 
 export function createAIChannel({database,socialService,devices,now=Date.now,filesService=null}={}){
- const db=database.raw,memory=new Map(),publicKeys=new Map();
+ const db=database.raw,memory=new Map(),publicKeys=new Map();let decisionGuard=()=>{};
  const one=(sql,...args)=>db.prepare(sql).get(...args),all=(sql,...args)=>db.prepare(sql).all(...args),run=(sql,...args)=>db.prepare(sql).run(...args);
  const transaction=fn=>{const saved=new Map([...memory].map(([id,entry])=>[id,{...entry,events:[...entry.events]}])),savedKeys=new Map(publicKeys);db.exec('BEGIN IMMEDIATE');try{const value=fn();trimMemory();db.exec('COMMIT');return value;}catch(error){db.exec('ROLLBACK');memory.clear();for(const [id,entry]of saved)memory.set(id,entry);publicKeys.clear();for(const [id,key]of savedKeys)publicKeys.set(id,key);throw error;}};
  const row=id=>one('SELECT * FROM ai_channel_tasks WHERE id=?',id);
- const bytes=entry=>entry.prompt.length+entry.events.reduce((n,e)=>n+(e.text?.length||0),0);
+ const eventChars=event=>event.kind==='decision'?JSON.stringify({question:event.question,options:event.options}).length:event.text?.length||0;
+ const bytes=entry=>entry.prompt.length+entry.events.reduce((n,e)=>n+eventChars(e),0)+(entry.decision?JSON.stringify(entry.decision).length:0);
+ const decisionForTask=id=>one('SELECT * FROM ai_task_decisions WHERE task_id=?',id);
+ function decisionAvailable(id){const d=one('SELECT * FROM ai_task_decisions WHERE id=?',id),proposal=d&&memory.get(d.task_id)?.decision;return !!(d&&d.state==='pending'&&d.expires_at>now()&&proposal&&hash(proposal)===d.proposal_digest);}
+ function decisionView(d){if(!d)return null;const proposal=memory.get(d.task_id)?.decision,report=one('SELECT * FROM ai_channel_devices WHERE device_id=?',d.device_id),continuationSupported=report?.decision_protocol_version===1&&report.last_seen>now()-AI_CHANNEL_LIMITS.onlineMs&&!providerProblem(d.provider,readAIProviders(report,now()));return {id:d.id,version:d.version,status:d.state,digest:d.proposal_digest,expiresAt:d.expires_at,selectedOptionId:d.selected_option_id,continuationTaskId:d.continuation_task_id,available:decisionAvailable(d.id),continuationSupported:!!continuationSupported,...(proposal?{question:proposal.question,options:proposal.options.map(({id,label})=>({id,label}))}:{})};}
+ function suspendDecisions(){for(const d of all("SELECT d.*,a.deleted_at,r.state AS restriction,p.revoked_at,p.token_hash FROM ai_task_decisions d LEFT JOIN personal_devices p ON p.id=d.device_id JOIN accounts a ON a.id=d.owner_id LEFT JOIN account_restrictions r ON r.account_id=a.id WHERE d.state='pending'")){
+  const cancelled=!d.token_hash||d.revoked_at||d.deleted_at||d.restriction&&d.restriction!=='active';
+  if(cancelled||d.expires_at<=now()||!memory.get(d.task_id)?.decision)run("UPDATE ai_task_decisions SET state=?,version=version+1,resolved_at=? WHERE id=? AND state='pending'",cancelled?'cancelled':'suspended',now(),d.id);
+ }}
+ function leafTask(id){let task=row(id);const seen=new Set();while(task){if(seen.has(task.id)||seen.size>=100)fail(409,'AI_DECISION_CHAIN','任务续作记录异常，请人工核对。');seen.add(task.id);const d=decisionForTask(task.id);if(d?.state!=='continued'||!d.continuation_task_id)return task;const child=row(d.continuation_task_id);if(!child||child.parent_task_id!==task.id||child.parent_decision_id!==d.id||child.owner_id!==task.owner_id||child.device_id!==task.device_id||child.provider!==task.provider)fail(409,'AI_DECISION_CHAIN','任务续作来源发生变化。');task=child;}return null;}
+ function cancelChain(id,ownerId){let task=row(id);const seen=new Set();while(task&&task.owner_id===ownerId&&!seen.has(task.id)){seen.add(task.id);const d=decisionForTask(task.id);if(d?.state==='pending')run("UPDATE ai_task_decisions SET state='cancelled',version=version+1,resolved_at=? WHERE id=?",now(),d.id);terminal(task,'cancelled','AI_CANCELLED');task=d?.continuation_task_id?row(d.continuation_task_id):null;}}
+
  function terminal(task,status,code=null){if(final.has(task.status))return;run('UPDATE ai_channel_tasks SET status=?,error_code=?,finished_at=?,lease_until=NULL WHERE id=?',status,code,now(),task.id);const entry=memory.get(task.id);if(entry)entry.finishedAt=now();}
- function revokeDevice(deviceId){for(const task of all("SELECT * FROM ai_channel_tasks WHERE device_id=? AND status IN('queued','running')",deviceId))terminal(task,'cancelled','AI_DEVICE_REVOKED');for(const [id,entry]of memory)if(entry.deviceId===deviceId)memory.delete(id);publicKeys.delete(deviceId);filesService?.revokeDevice?.(deviceId);}
+ function revokeDevice(deviceId){for(const task of all("SELECT * FROM ai_channel_tasks WHERE device_id=? AND status IN('queued','running')",deviceId))terminal(task,'cancelled','AI_DEVICE_REVOKED');for(const [id,entry]of memory)if(entry.deviceId===deviceId)memory.delete(id);publicKeys.delete(deviceId);run("UPDATE ai_task_decisions SET state='cancelled',version=version+1,resolved_at=? WHERE device_id=? AND state='pending'",now(),deviceId);filesService?.revokeDevice?.(deviceId);}
  function maintain(){
+  suspendDecisions();
   for(const task of all("SELECT t.*,d.revoked_at,a.deleted_at,r.state AS restriction FROM ai_channel_tasks t JOIN personal_devices d ON d.id=t.device_id JOIN accounts a ON a.id=t.owner_id LEFT JOIN account_restrictions r ON r.account_id=a.id WHERE t.status IN('queued','running')")){
    if(task.revoked_at||task.deleted_at||task.restriction&&task.restriction!=='active')terminal(task,'cancelled','AI_DEVICE_REVOKED');
    else if(task.status==='running'&&(task.lease_until<=now()||task.hard_until<=now()))terminal(task,'failed',task.hard_until<=now()?'AI_TIMEOUT':'AI_EXECUTION_INTERRUPTED');
@@ -29,11 +42,11 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
   trimMemory();
   filesService?.maintain?.();
  }
- function trimMemory(){let total=[...memory.values()].reduce((n,e)=>n+bytes(e),0);for(const [id,entry]of memory){if(total<=AI_CHANNEL_LIMITS.globalChars)break;const task=row(id);if(!task||final.has(task.status)){total-=bytes(entry);memory.delete(id);}else while(total>AI_CHANNEL_LIMITS.globalChars&&entry.events.length){total-=entry.events.shift().text?.length||0;}}}
+ function trimMemory(){let total=[...memory.values()].reduce((n,e)=>n+bytes(e),0);for(const [id,entry]of memory){if(total<=AI_CHANNEL_LIMITS.globalChars)break;const task=row(id);if(!task||final.has(task.status)){total-=bytes(entry);memory.delete(id);}else while(total>AI_CHANNEL_LIMITS.globalChars&&entry.events.length){total-=eventChars(entry.events.shift());}}}
  function restart(){
   // Existing request hashes remain durable. A lost process never re-dispatches a task.
   for(const task of all("SELECT * FROM ai_channel_tasks WHERE status IN('queued','running')"))terminal(task,'failed','AI_EXECUTION_INTERRUPTED');
-  run("UPDATE ai_channel_devices SET last_seen=0,status_code='error'");memory.clear();publicKeys.clear();
+  run("UPDATE ai_channel_devices SET last_seen=0,status_code='error'");run("UPDATE ai_task_decisions SET state='suspended',version=version+1,resolved_at=? WHERE state='pending'",now());memory.clear();publicKeys.clear();
  }
  function reserveMemory(prompt){
   let total=[...memory.values()].reduce((n,e)=>n+bytes(e),0);
@@ -43,12 +56,12 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
  function statusView(device){
   const current=one('SELECT * FROM ai_channel_devices WHERE device_id=?',device.id),online=Boolean(!device.revoked_at&&device.token_hash&&current?.last_seen&&current.last_seen>now()-AI_CHANNEL_LIMITS.onlineMs);
   const report=readAIProviders(current,now());
-  return {id:device.id,name:device.name,online,aiStatus:online?report.status:'offline',workspaceLabel:current?.workspace_label||'',providers:report.providers,scannedAt:report.scannedAt,providersStale:report.stale,loginReminders:aiLoginReminders(report,{online}),filePublicKey:online?publicKeys.get(device.id)||null:null,source:device.source,capabilities:readDeviceCapabilities(device)};
+  return {id:device.id,name:device.name,online,decisionProtocolVersion:current?.decision_protocol_version||0,aiStatus:online?report.status:'offline',workspaceLabel:current?.workspace_label||'',providers:report.providers,scannedAt:report.scannedAt,providersStale:report.stale,loginReminders:aiLoginReminders(report,{online}),filePublicKey:online?publicKeys.get(device.id)||null:null,source:device.source,capabilities:readDeviceCapabilities(device)};
  }
  function taskView(task){
   const entry=memory.get(task.id),device=one('SELECT name FROM personal_devices WHERE id=?',task.device_id);
-  const provider=task.provider||'codex';
-  return {id:task.id,deviceId:task.device_id,provider,status:task.status,...(entry?{prompt:entry.prompt}:{}),outputAvailable:Boolean(entry),errorCode:task.error_code,createdAt:task.created_at,startedAt:task.started_at,finishedAt:task.finished_at,expiresAt:task.hard_until,latestSeq:task.last_seq,sourceLabel:(device?.name||'设备')+' · '+(AI_PROVIDER_CATALOG[provider]?.name||'AI'),...(filesService?{files:filesService.listForTask({ownerId:task.owner_id,deviceId:task.device_id,taskId:task.id})}:{})};
+  const provider=task.provider||'codex',decision=decisionForTask(task.id),status=decision?({pending:'awaiting-decision',suspended:'suspended',cancelled:'cancelled',continued:'continued'}[decision.state]):task.status,group=one('SELECT s.id,s.conversation_id FROM device_ai_rounds r JOIN device_ai_sessions s ON s.id=r.session_id WHERE r.task_id=?',task.workspace_task_id||task.id);
+  return {id:task.id,deviceId:task.device_id,provider,status,...(group?{groupSessionId:group.id,conversationId:group.conversation_id}:{}),...(decision?{decision:decisionView(decision)}:{}),...(task.parent_task_id?{parentTaskId:task.parent_task_id,workspaceTaskId:task.workspace_task_id}:{}),...(entry?{prompt:entry.prompt}:{}),outputAvailable:Boolean(entry),errorCode:task.error_code,createdAt:task.created_at,startedAt:task.started_at,finishedAt:task.finished_at,expiresAt:task.hard_until,latestSeq:task.last_seq,sourceLabel:(device?.name||'设备')+' · '+(AI_PROVIDER_CATALOG[provider]?.name||'AI'),...(filesService?{files:filesService.listForTask({ownerId:task.owner_id,deviceId:task.device_id,taskId:task.id})}:{})};
  }
  function own(request,id,{write=false}={}){const account=socialService.assertAIAccess(request.token,{write}),task=row(id);if(!task||task.owner_id!==account.id)fail(404,'AI_TASK_NOT_FOUND','AI 任务不存在。');devices.ownedDevice(account,task.device_id);return {account,task};}
  function send(request){
@@ -85,7 +98,22 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
   const {account,task}=own(request,id,{write:true}),old=one('SELECT * FROM ai_channel_cancel_requests WHERE owner_id=? AND request_id=?',account.id,input.requestId);
   if(old&&old.task_id!==id)fail(409,'IDEMPOTENCY_CONFLICT','取消操作编号已用于其他任务。');
   if(!old)run('INSERT INTO ai_channel_cancel_requests VALUES(?,?,?)',account.id,input.requestId,id);
-  terminal(task,'cancelled','AI_CANCELLED');return {task:taskView(row(id))};
+  cancelChain(id,account.id);return {task:taskView(row(id))};
+ }
+ function respondDecision(request,id){
+  const input=request.input||{};fields(input,['requestId','decisionId','version','optionId','approveExecution']);
+  if(!uuid(input.requestId)||input.requestId.trim()!==input.requestId||!uuid(input.decisionId)||input.decisionId.trim()!==input.decisionId||!Number.isSafeInteger(input.version)||input.version<1||!/^option-[1-4]$/.test(input.optionId||'')||input.approveExecution!==true)fail(400,'AI_DECISION_APPROVAL','请由本人明确选择现有选项并批准继续。');
+  const {account,task}=own(request,id,{write:true}),d=decisionForTask(id),signature=hash({id,...input});
+  if(!d||d.id!==input.decisionId||d.owner_id!==account.id)fail(404,'AI_DECISION_NOT_FOUND','决策记录不存在。');
+  if(d.state==='continued'){if(d.command_request_id===input.requestId&&d.command_digest===signature){const child=row(d.continuation_task_id);if(!child)fail(409,'AI_DECISION_UNAVAILABLE','后续任务已不可用，不会重新执行。');return {task:taskView(child),decision:decisionView(d)};}fail(409,'AI_DECISION_HANDLED','该决策已处理，请刷新查看后续任务。');}
+  if(d.state!=='pending'||d.version!==input.version||!decisionAvailable(d.id))fail(409,'AI_DECISION_UNAVAILABLE','决策已过期、挂起或改变，没有继续执行。');
+  if(one('SELECT decision_protocol_version FROM ai_channel_devices WHERE device_id=?',task.device_id)?.decision_protocol_version!==1)fail(409,'AI_DECISION_UNSUPPORTED','请在电脑更新支持决策续作的连接器。');
+  decisionGuard(task);
+  if(one('SELECT 1 FROM ai_channel_tasks WHERE owner_id=? AND request_id=?',account.id,input.requestId)||one('SELECT 1 FROM ai_task_decisions WHERE owner_id=? AND command_request_id=?',account.id,input.requestId))fail(409,'IDEMPOTENCY_CONFLICT','操作编号已经使用。');
+  const entry=memory.get(task.id),prompt=continuationPrompt(entry.prompt,entry.decision,input.optionId),result=send({...request,input:{deviceId:task.device_id,provider:task.provider,prompt,requestId:input.requestId,...(entry.replyPublicKey?{replyPublicKey:entry.replyPublicKey}:{})}}),root=task.workspace_task_id||task.id;
+  run('UPDATE ai_channel_tasks SET parent_task_id=?,workspace_task_id=?,parent_decision_id=? WHERE id=?',task.id,root,d.id,result.task.id);
+  run("UPDATE ai_task_decisions SET state='continued',version=version+1,selected_option_id=?,selected_by=?,continuation_task_id=?,resolved_at=?,command_request_id=?,command_digest=? WHERE id=? AND state='pending'",input.optionId,account.id,result.task.id,now(),input.requestId,signature,d.id);
+  return {task:taskView(row(result.task.id)),decision:decisionView(one('SELECT * FROM ai_task_decisions WHERE id=?',d.id))};
  }
  function handle(request){
   const path=request.path||'';if(path!=='ai-channel'&&!path.startsWith('ai-channel/'))return undefined;
@@ -94,22 +122,26 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
   if(request.method==='POST'&&route==='send')return transaction(()=>send(request));
   const deviceRoute=/^devices\/([a-f0-9-]{36})$/.exec(route);
   if(request.method==='GET'&&deviceRoute){const account=socialService.assertAIAccess(request.token),device=devices.ownedDevice(account,deviceRoute[1]);return {device:statusView(device),tasks:all('SELECT * FROM ai_channel_tasks WHERE owner_id=? AND device_id=? ORDER BY created_at DESC,rowid DESC LIMIT 50',account.id,device.id).map(taskView)};}
-  const taskRoute=/^tasks\/([a-f0-9-]{36})(?:\/(cancel))?$/.exec(route);
+  const taskRoute=/^tasks\/([a-f0-9-]{36})(?:\/(cancel|decision))?$/.exec(route);
+  if(taskRoute&&request.method==='POST'&&taskRoute[2]==='decision')return transaction(()=>respondDecision(request,taskRoute[1]));
   if(taskRoute&&request.method==='POST'&&taskRoute[2]==='cancel')return transaction(()=>cancel(request,taskRoute[1]));
   if(taskRoute&&request.method==='GET'&&!taskRoute[2]){const {task}=own(request,taskRoute[1]),after=request.query?.after===undefined?0:Number(request.query.after);if(!Number.isSafeInteger(after)||after<0)fail(400,'INVALID_CURSOR','消息同步位置无效。');const entry=memory.get(task.id),events=entry?.events.filter(e=>e.seq>after)||[];return {task:taskView(task),events,latestSeq:task.last_seq,truncated:task.last_seq>after&&(!entry||!entry.events.length||entry.events[0].seq>after+1)};}
   fail(404,'AI_CHANNEL_ROUTE','AI 通道入口不存在。');
  }
  function checkedStatus(input){
-  if(!input||typeof input!=='object'||Array.isArray(input))fail(400,'INVALID_AI_STATUS','AI 状态无效。');fields(input,['code','workspaceLabel','provider','providers','scannedAt','filePublicKey','source','capabilities']);
+  if(!input||typeof input!=='object'||Array.isArray(input))fail(400,'INVALID_AI_STATUS','AI 状态无效。');fields(input,['code','workspaceLabel','provider','providers','scannedAt','filePublicKey','source','capabilities','decisionProtocolVersion']);
   if(!allowedStatus.has(input.code))fail(400,'INVALID_AI_STATUS','AI 状态无效。');
+  if(input.decisionProtocolVersion!==undefined&&input.decisionProtocolVersion!==0&&input.decisionProtocolVersion!==1)fail(400,'INVALID_AI_STATUS','决策协议版本无效。');
   const report=checkedProvidersReport(input,now());
   const label=text(input.workspaceLabel,60,'工作区标签',1);if(/[\\/:]|(?:\.\.)/.test(label))fail(400,'INVALID_AI_STATUS','工作区只可报告名称，不能报告本机路径。');
   if(input.filePublicKey!==undefined&&(typeof input.filePublicKey!=='string'||!/^[A-Za-z0-9+/]{40,1024}={0,2}$/.test(input.filePublicKey)))fail(400,'AI_FILE_PUBLIC_KEY','文件公钥格式无效。');
-  return {code:input.code,workspaceLabel:label,...report,filePublicKey:input.filePublicKey,...(input.source===undefined?{}:{source:deviceSource(input.source)}),...(input.capabilities===undefined?{}:{capabilities:validateDeviceCapabilities(input.capabilities)})};
+  return {code:input.code,workspaceLabel:label,decisionProtocolVersion:input.decisionProtocolVersion||0,...report,filePublicKey:input.filePublicKey,...(input.source===undefined?{}:{source:deviceSource(input.source)}),...(input.capabilities===undefined?{}:{capabilities:validateDeviceCapabilities(input.capabilities)})};
  }
  function normalizeEvent(event){
-  if(!event||typeof event!=='object'||Array.isArray(event))fail(400,'INVALID_AI_EVENT','事件格式无效。');fields(event,['seq','kind','itemId','text','code']);
-  if(!Number.isSafeInteger(event.seq)||event.seq<1||!['message','progress','completed','failed'].includes(event.kind))fail(400,'INVALID_AI_EVENT','事件编号或类型无效。');
+  if(!event||typeof event!=='object'||Array.isArray(event))fail(400,'INVALID_AI_EVENT','事件格式无效。');fields(event,['seq','kind','itemId','text','code','question','options','decisionDigest']);
+  if(!Number.isSafeInteger(event.seq)||event.seq<1||!['message','progress','completed','failed','decision'].includes(event.kind))fail(400,'INVALID_AI_EVENT','事件编号或类型无效。');
+  if(event.kind==='decision'){if(event.text!==undefined||event.itemId!==undefined||event.code!==undefined)fail(400,'INVALID_AI_DECISION','决策事件只允许严格结构化字段。');const proposal=checkedDecisionProposal(event);return {seq:event.seq,kind:'decision',...proposal,decisionDigest:event.decisionDigest};}
+  if(event.question!==undefined||event.options!==undefined||event.decisionDigest!==undefined)fail(400,'INVALID_AI_EVENT','非决策事件不能附加决策内容。');
   if(event.itemId!==undefined&&(typeof event.itemId!=='string'||!/^[A-Za-z0-9_.:-]{1,120}$/.test(event.itemId)))fail(400,'INVALID_AI_EVENT','输出编号无效。');
   if(event.text!==undefined&&(typeof event.text!=='string'||event.text.length>AI_CHANNEL_LIMITS.eventChars||/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(event.text)))fail(400,'INVALID_AI_EVENT','输出文本无效或过长。');
   if(event.kind==='message'&&(!event.itemId||!event.text))fail(400,'INVALID_AI_EVENT','模型消息缺少文本或编号。');
@@ -126,13 +158,17 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
    if(old){if(old.digest!==digest)fail(409,'AI_EVENT_CONFLICT','重复事件编号与内容不同。');continue;}
    if(event.seq!==current.last_seq+1)fail(409,'AI_EVENT_SEQUENCE','事件存在缺口，请从未确认的编号重试。');
    if(final.has(current.status))break;
-   const outputChars=current.output_chars+(event.text?.length||0);
+   const outputChars=current.output_chars+eventChars(event);
    if(outputChars>AI_CHANNEL_LIMITS.totalOutputChars||current.event_count>=AI_CHANNEL_LIMITS.eventCount){terminal(current,'failed','AI_OUTPUT_LIMIT');break;}
    run('INSERT INTO ai_channel_event_hashes VALUES(?,?,?)',task.id,event.seq,digest);
    run('UPDATE ai_channel_tasks SET last_seq=?,event_count=event_count+1,output_chars=? WHERE id=?',event.seq,outputChars,task.id);
    entry.events.push(event);
-   while(entry.events.length>AI_CHANNEL_LIMITS.events||entry.events.reduce((n,e)=>n+(e.text?.length||0),0)>AI_CHANNEL_LIMITS.retainedChars)entry.events.shift();
-   if(event.kind==='completed')terminal(current,'succeeded');else if(event.kind==='failed')terminal(current,'failed',event.code||'AI_EXECUTION_FAILED');
+   while(entry.events.length>AI_CHANNEL_LIMITS.events||entry.events.reduce((n,e)=>n+eventChars(e),0)>AI_CHANNEL_LIMITS.retainedChars)entry.events.shift();
+   if(event.kind==='decision'){
+    const proposal={question:event.question,options:event.options};
+    run("INSERT INTO ai_task_decisions(id,task_id,owner_id,device_id,provider,proposal_digest,state,option_count,workspace_task_id,created_at,expires_at) VALUES(?,?,?,?,?,?,'pending',?,?,?,?)",randomUUID(),task.id,task.owner_id,task.device_id,task.provider||'codex',event.decisionDigest,event.options.length,task.workspace_task_id||task.id,now(),now()+1800000);
+    entry.decision=proposal;terminal(current,'succeeded');
+   }else if(event.kind==='completed')terminal(current,'succeeded');else if(event.kind==='failed')terminal(current,'failed',event.code||'AI_EXECUTION_FAILED');
    current=row(task.id);
   }
  }
@@ -141,7 +177,7 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
   const state=checkedStatus(input.status);if(input.taskId!==undefined&&!uuid(input.taskId)||input.leaseId!==undefined&&!uuid(input.leaseId))fail(400,'INVALID_AI_LEASE','执行租约无效。');
   if(Boolean(input.taskId)!==Boolean(input.leaseId))fail(400,'INVALID_AI_LEASE','任务与执行租约须同时提供。');
   if(!Array.isArray(input.events??[])||(input.events||[]).length>50||!input.taskId&&(input.events||[]).length)fail(400,'INVALID_AI_EVENT','事件批次无效。');
-  const events=(input.events||[]).map(normalizeEvent),device=devices.authenticateAgent(token);maintain();
+  const events=(input.events||[]).map(normalizeEvent),device=devices.authenticateAgent(token);if(events.some(event=>event.kind==='decision')&&state.decisionProtocolVersion!==1)fail(409,'AI_DECISION_UNSUPPORTED','此连接器没有声明安全决策续作协议。');maintain();
   return transaction(()=>{
    devices.authenticateAgent(token);
    devices.updateMetadata(device,state);
@@ -149,17 +185,17 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
    if(active&&active.connector_id!==input.connectorId)fail(409,'AI_CONNECTOR_BUSY','另一连接器正在执行任务。');
    const previousState=one('SELECT * FROM ai_channel_devices WHERE device_id=?',device.id);
    if(previousState?.connector_id===input.connectorId&&state.scannedAt>0&&state.scannedAt<previousState.scanned_at)fail(409,'AI_PROVIDER_SCAN_REPLAY','AI 探测时间不能倒退，请在电脑重新刷新。');
-   run("INSERT INTO ai_channel_devices(device_id,connector_id,status_code,workspace_label,provider,last_seen,providers,scanned_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(device_id) DO UPDATE SET connector_id=excluded.connector_id,status_code=excluded.status_code,workspace_label=excluded.workspace_label,provider=excluded.provider,last_seen=excluded.last_seen,providers=excluded.providers,scanned_at=excluded.scanned_at",device.id,input.connectorId,state.code,state.workspaceLabel,'Codex',now(),JSON.stringify(state.providers),state.scannedAt);
+   run("INSERT INTO ai_channel_devices(device_id,connector_id,status_code,workspace_label,provider,last_seen,providers,scanned_at,decision_protocol_version) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(device_id) DO UPDATE SET connector_id=excluded.connector_id,status_code=excluded.status_code,workspace_label=excluded.workspace_label,provider=excluded.provider,last_seen=excluded.last_seen,providers=excluded.providers,scanned_at=excluded.scanned_at,decision_protocol_version=excluded.decision_protocol_version",device.id,input.connectorId,state.code,state.workspaceLabel,'Codex',now(),JSON.stringify(state.providers),state.scannedAt,state.decisionProtocolVersion);
    const report=readAIProviders(one('SELECT * FROM ai_channel_devices WHERE device_id=?',device.id),now());
    if(state.filePublicKey)publicKeys.set(device.id,state.filePublicKey);
    let task=input.taskId?row(input.taskId):null;
    if(input.taskId){
     if(!task||task.device_id!==device.id||task.connector_id!==input.connectorId||task.lease_id!==input.leaseId)fail(403,'AI_LEASE_DENIED','执行租约与设备不匹配。');
-    const unavailable=providerProblem(task.provider||'codex',report,{activeLease:task.status==='running'});
+    const unavailable=task.parent_task_id&&state.decisionProtocolVersion!==1?{code:'AI_DECISION_UNSUPPORTED'}:providerProblem(task.provider||'codex',report,{activeLease:task.status==='running'});
     // A failing runner disables its capability in the same heartbeat. Preserve
     // its authenticated failure receipt, but never accept a success after loss
     // of the selected provider or silently reroute the task to another AI.
-    const hasFailure=events.at(-1)?.kind==='failed'&&!events.some(event=>event.kind==='completed');
+    const hasFailure=events.at(-1)?.kind==='failed'&&!events.some(event=>['completed','decision'].includes(event.kind));
     if(!final.has(task.status)&&unavailable&&!hasFailure)terminal(task,'failed',unavailable.code);
     task=row(task.id);
     if(!final.has(task.status))acceptEvents(task,events);
@@ -172,7 +208,7 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
    if(activeRows.length>=(input.capacity??1))return {serverNow:now(),expiresAt:now(),task:null,ack:0};
    task=null;
    for(const queued of all("SELECT * FROM ai_channel_tasks WHERE device_id=? AND status='queued' ORDER BY created_at,rowid",device.id)){
-    const unavailable=providerProblem(queued.provider||'codex',report);
+    const unavailable=queued.parent_task_id&&state.decisionProtocolVersion!==1?{code:'AI_DECISION_UNSUPPORTED'}:providerProblem(queued.provider||'codex',report);
     if(unavailable){terminal(queued,'failed',unavailable.code);continue;}
     task=queued;break;
    }
@@ -180,11 +216,11 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
    const entry=memory.get(task.id);if(!entry){terminal(task,'failed','AI_EXECUTION_INTERRUPTED');return {serverNow:now(),expiresAt:now(),task:null,ack:0};}
    const leaseId=randomUUID(),hardUntil=now()+AI_CHANNEL_LIMITS.hardMs,until=now()+AI_CHANNEL_LIMITS.leaseMs;
    run("UPDATE ai_channel_tasks SET status='running',connector_id=?,lease_id=?,lease_until=?,hard_until=?,started_at=? WHERE id=?",input.connectorId,leaseId,until,hardUntil,now(),task.id);
-   return {serverNow:now(),expiresAt:until,task:{id:task.id,provider:task.provider||'codex',executionMode:report.providers.find(item=>item.id===(task.provider||'codex')).executionMode,prompt:entry.prompt,leaseId,expiresAt:hardUntil,attachments:entry.attachments||[],replyPublicKey:entry.replyPublicKey||null},ack:0};
+   return {serverNow:now(),expiresAt:until,task:{id:task.id,provider:task.provider||'codex',executionMode:report.providers.find(item=>item.id===(task.provider||'codex')).executionMode,prompt:entry.prompt,...(task.parent_task_id?{parentTaskId:task.parent_task_id,workspaceTaskId:task.workspace_task_id,parentDecisionId:task.parent_decision_id,decisionDigest:one('SELECT proposal_digest FROM ai_task_decisions WHERE id=?',task.parent_decision_id)?.proposal_digest}:{}),leaseId,expiresAt:hardUntil,attachments:entry.attachments||[],replyPublicKey:entry.replyPublicKey||null},ack:0};
   });
  }
  function authorizeOwner(token,deviceId){const account=socialService.assertAIAccess(token,{write:true}),device=devices.ownedDevice(account,deviceId);if(device.revoked_at||!device.token_hash)fail(403,'AI_DEVICE_REVOKED','设备已撤销或尚未配对。');if(readDeviceCapabilities(device).files.state==='unsupported')fail(409,'AI_FILES_UNAVAILABLE','这台设备的文件通道不可用。');return {ownerId:account.id,deviceId:device.id};}
  function authorizeAgent(token,{taskId,leaseId}={}){const device=devices.authenticateAgent(token);maintain();const task=row(taskId);if(!task||task.device_id!==device.id||task.status!=='running'||task.lease_id!==leaseId||task.lease_until<=now()||task.hard_until<=now())fail(403,'AI_LEASE_DENIED','AI 执行租约已失效。');if(task.provider==='ollama')fail(409,'AI_PROVIDER_FILES_UNSUPPORTED','本地模型只支持文字聊天，没有任务文件访问权限。');return {ownerId:task.owner_id,deviceId:device.id,taskId:task.id};}
  function handleAgentFiles(token,path,input){if(!filesService)fail(503,'AI_FILES_UNAVAILABLE','加密文件中转尚未配置。');devices.authenticateAgent(token);return filesService.handleAgent(token,path,input);}
- return {handle,poll,maintain,restart,revokeDevice,readInternalTask:id=>{const t=row(id);return t?{task:taskView(t),events:memory.get(id)?.events||[]}:null;},cancelInternalTask:(id,ownerId)=>{const t=row(id);if(t?.owner_id===ownerId)terminal(t,'cancelled','AI_CANCELLED');},authorizeOwner,authorizeAgent,handleAgentFiles,setFilesService(value){filesService=value;},limits:AI_CHANNEL_LIMITS};
+ return {handle,poll,maintain,restart,revokeDevice,decisionAvailable,setDecisionGuard(fn){decisionGuard=fn;},readInternalTask:id=>{const t=leafTask(id);return t?{task:taskView(t),events:memory.get(t.id)?.events||[]}:null;},cancelInternalTask:cancelChain,authorizeOwner,authorizeAgent,handleAgentFiles,setFilesService(value){filesService=value;},limits:AI_CHANNEL_LIMITS};
 }

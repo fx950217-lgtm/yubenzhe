@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {once} from 'node:events';
+import {request as httpRequest} from 'node:http';
+import {randomUUID,createHash} from 'node:crypto';
+import {fileURLToPath} from 'node:url';
+import {openSocialDatabase} from '../server/social-database.mjs';
+import {createProductModules} from '../server/product-modules.mjs';
+import {createAcceptanceServer} from '../server/server.mjs';
+import {passwordRecord} from '../server/auth.mjs';
+test('two simultaneous real HTTP decision submissions yield one child and preserve device-owner and origin boundaries',async t=>{
+ const origin='http://127.0.0.1:18800',database=openSocialDatabase(':memory:'),modules=createProductModules({database,origin,simulation:true});
+ const register=()=>modules.handle({method:'POST',path:'register',input:{password:'482193',requestId:randomUUID()},ip:randomUUID()}),a=await register(),b=await register();
+ const server=createAcceptanceServer({role:'frontend',origin,authConfig:await passwordRecord('preview','Decision-test-only-728361'),socialService:{devices:modules.devices,aiChannel:modules.aiChannel,handle:r=>modules.handle(r)},staticRoot:fileURLToPath(new URL('../public/frontend',import.meta.url))});server.listen(0,'127.0.0.1');await once(server,'listening');
+ t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));database.close();});
+ const request=(token,path,input,extra={})=>new Promise((resolve,reject)=>{const req=httpRequest({host:'127.0.0.1',port:server.address().port,path,method:input===undefined?'GET':'POST',headers:{Host:'127.0.0.1:18800',Authorization:'Bearer '+token,...(input===undefined?{}:{'Content-Type':'application/json'}),...(path.startsWith('/api/device-bridge/')?{}:{Origin:origin}),...extra}},res=>{let data='';res.on('data',chunk=>data+=chunk);res.on('end',()=>resolve({status:res.statusCode,body:JSON.parse(data)}));});req.on('error',reject);req.end(input===undefined?undefined:JSON.stringify(input));});
+ const pair=await request(a.token,'/api/social/devices/pair',{name:'决策HTTP电脑'}),device=(await request('','/api/device-bridge/enroll',{pairToken:pair.body.pairToken})).body,poll={connectorId:randomUUID(),status:{decisionProtocolVersion:1,code:'ready',provider:'Codex',workspaceLabel:'决策协议测试'}};
+ assert.equal((await request(device.token,'/api/device-bridge/ai/poll',poll)).status,200);
+ const created=await request(a.token,'/api/social/ai-channel/send',{requestId:randomUUID(),deviceId:device.deviceId,prompt:'HTTP-PRIVATE-DECISION-PARENT'}),task=(await request(device.token,'/api/device-bridge/ai/poll',poll)).body.task;assert.equal(task.id,created.body.task.id);
+ const proposal={question:'HTTP-PRIVATE-DECISION-QUESTION',options:[{id:'option-1',label:'继续导出',instruction:'HTTP-PRIVATE-DECISION-INSTRUCTION'},{id:'option-2',label:'整理内容',instruction:'先整理内容'}]},decisionDigest=createHash('sha256').update(JSON.stringify(proposal)).digest('hex');
+ const paused=await request(device.token,'/api/device-bridge/ai/poll',{...poll,taskId:task.id,leaseId:task.leaseId,events:[{seq:1,kind:'decision',...proposal,decisionDigest}]});assert.equal(paused.status,200);assert.equal(paused.body.ack,1);
+ const view=(await request(a.token,'/api/social/ai-channel/tasks/'+task.id)).body.task,d=view.decision,payload={requestId:randomUUID(),decisionId:d.id,version:d.version,optionId:'option-1',approveExecution:true},path='/api/social/ai-channel/tasks/'+task.id+'/decision';
+ assert.equal(view.status,'awaiting-decision');assert.equal((await request(b.token,path,payload)).status,404);assert.equal((await request(a.token,path,payload,{Origin:'https://foreign.invalid'})).status,403);
+ const responses=await Promise.all([request(a.token,path,payload),request(a.token,path,payload)]);assert.deepEqual(responses.map(r=>r.status),[200,200]);assert.equal(responses[0].body.task.id,responses[1].body.task.id);assert.equal(database.raw.prepare('SELECT count(*) n FROM ai_channel_tasks').get().n,2);
+ assert.equal((await request(a.token,path,{...payload,requestId:randomUUID(),optionId:'option-2'})).status,409);
+ const child=(await request(device.token,'/api/device-bridge/ai/poll',poll)).body.task;assert.equal(child.parentTaskId,task.id);assert.equal(child.workspaceTaskId,task.id);assert.equal(child.decisionDigest,decisionDigest);assert.equal(child.provider,'codex');assert.match(child.prompt,/HTTP-PRIVATE-DECISION-INSTRUCTION/);
+ for(const table of ['ai_task_decisions','ai_channel_tasks','ai_channel_event_hashes'])assert.doesNotMatch(JSON.stringify(database.raw.prepare('SELECT * FROM '+table).all()),/HTTP-PRIVATE-/);
+});

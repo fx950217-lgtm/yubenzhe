@@ -1,3 +1,4 @@
+import {DECISION_GUIDANCE} from '../device-bridge/decision-protocol.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
@@ -24,7 +25,7 @@ test('chat-only generation rechecks installed model, sends no tools or command a
  const f=await fixture(t),events=[];const job=f.runner.run({taskId:'local_task',prompt:'给我文字建议',onEvent:event=>events.push(event)});assert.throws(()=>f.runner.run({taskId:'second',prompt:'x'}),{code:'AI_BUSY'});
  assert.equal((await job.done).kind,'completed');assert.equal(f.runner.busy,false);
  assert.deepEqual(f.calls.map(call=>call.url),['/api/tags','/api/show','/api/generate'].map(route=>OLLAMA_ORIGIN+route));
- const sent=JSON.parse(f.calls[2].options.body);assert.equal(sent.model,model);assert.equal(sent.prompt,'给我文字建议');assert.equal(sent.stream,false);assert.equal(sent.tools,undefined);assert.equal(sent.messages,undefined);
+ const sent=JSON.parse(f.calls[2].options.body);assert.equal(sent.model,model);assert.equal(sent.prompt,'给我文字建议\n\n'+DECISION_GUIDANCE);assert.equal(sent.stream,false);assert.equal(sent.tools,undefined);assert.equal(sent.messages,undefined);
  assert.ok(f.calls.every(call=>call.options.redirect==='error'&&call.options.credentials==='omit'));
  assert.doesNotMatch(JSON.stringify(events),/private-output|API_KEY/);assert.match(events.at(-1).text,/未执行文件或命令/);
  assert.throws(()=>f.runner.run({taskId:'file',prompt:'x',promptSuffix:'read inbox'}),{code:'AI_PROVIDER_FILES_UNSUPPORTED'});

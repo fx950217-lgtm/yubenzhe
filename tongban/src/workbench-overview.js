@@ -20,7 +20,7 @@ export function overviewSections(tasks) {
  const ordered = newestFirst(tasks);
  return {
   running: ordered.filter(task => ['running', 'queued'].includes(task.status)),
-  decisions: ordered.filter(task => task.origin === 'rules' && ['awaiting-confirmation', 'awaiting-user', 'budget-paused', 'paused'].includes(task.status)),
+  decisions: ordered.filter(task => task.origin === 'device' ? task.decision && ['pending','suspended'].includes(task.decision.status) : ['awaiting-confirmation', 'awaiting-user', 'budget-paused', 'paused'].includes(task.status)),
   completed: ordered.filter(task => task.status === 'succeeded' || task.origin === 'device' && task.status === 'completed').slice(0, 3),
  };
 }

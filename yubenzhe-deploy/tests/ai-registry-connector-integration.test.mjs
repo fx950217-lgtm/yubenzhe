@@ -13,6 +13,7 @@ import {createAIChannel as createRelay} from '../server/ai-channel.mjs';
 import {createAIChannel} from '../device-bridge/ai-channel.mjs';
 import {createProviderRunner} from '../device-bridge/provider-runner.mjs';
 import {probeAIRegistry} from '../device-bridge/ai-registry.mjs';
+import {DECISION_GUIDANCE} from '../device-bridge/decision-protocol.mjs';
 const json=value=>new Response(JSON.stringify(value),{status:200});
 
 test('real registry through connector and relay preserves selected local model, metadata privacy, ownership and durable no-content storage',async t=>{
@@ -46,7 +47,7 @@ test('real registry through connector and relay preserves selected local model, 
  // terminal state with a wall-time bound, not a fixed number of event turns.
  while(!['succeeded','failed','cancelled'].includes(call('GET','tasks/'+created.id).task.status)&&performance.now()<deadline){await new Promise(resolve=>setTimeout(resolve,10));await channel.pollOnce();}
  const result=call('GET','tasks/'+created.id);assert.equal(result.task.status,'succeeded');assert.equal(result.task.provider,'ollama');assert.equal(result.events.some(event=>event.text==='INTEGRATION-OUTPUT-PRIVATE'),true);
- assert.equal(localRequests.filter(item=>item.url.endsWith('/api/generate')).length,1);const generated=localRequests.find(item=>item.url.endsWith('/api/generate')).body;assert.equal(generated.model,model);assert.equal(generated.prompt,'INTEGRATION-PROMPT-PRIVATE');assert.equal(generated.tools,undefined);
+ assert.equal(localRequests.filter(item=>item.url.endsWith('/api/generate')).length,1);const generated=localRequests.find(item=>item.url.endsWith('/api/generate')).body;assert.equal(generated.model,model);assert.equal(generated.prompt,'INTEGRATION-PROMPT-PRIVATE\n\n'+DECISION_GUIDANCE);assert.equal(generated.tools,undefined);
  assert.throws(()=>call('GET','tasks/'+created.id,{},other),error=>error.code==='AI_TASK_NOT_FOUND');
  assert.doesNotMatch(JSON.stringify(polls),/private@example|\.exe|executables|authOutput/);
  for(const name of ['ai_channel_devices','ai_channel_tasks','ai_channel_event_hashes']){const stored=JSON.stringify(database.raw.prepare('SELECT * FROM '+name).all());assert.doesNotMatch(stored,/INTEGRATION-PROMPT-PRIVATE|INTEGRATION-OUTPUT-PRIVATE|private@example|\.exe/);}

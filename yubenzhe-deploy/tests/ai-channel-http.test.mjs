@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once,EventEmitter} from 'node:events';
 import {PassThrough} from 'node:stream';
-import {mkdtemp,mkdir,rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,rm,writeFile,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve,relative,isAbsolute,basename} from 'node:path';
 import {request as httpRequest} from 'node:http';
@@ -13,6 +13,9 @@ import {createProductModules} from '../server/product-modules.mjs';
 import {createAcceptanceServer} from '../server/server.mjs';
 import {passwordRecord} from '../server/auth.mjs';
 import {createCodexRunner} from '../device-bridge/codex-runner.mjs';
+import {createAIChannel} from '../device-bridge/ai-channel.mjs';
+import {createTaskPool} from '../device-bridge/task-pool.mjs';
+import {spawn} from 'node:child_process';
 
 async function fixture(t,{internalPreview=false}={}){
  const database=openSocialDatabase(':memory:'),modules=createProductModules({database,origin:'http://localhost:18800',simulation:true});
@@ -111,4 +114,30 @@ test('modern registry and selected Ollama task traverse real HTTP while content 
  const other=await f.modules.handle({method:'POST',path:'register',input:{password:'482193',requestId:randomUUID()},ip:'127.0.0.2'}),otherHeaders={Origin:f.origin,Authorization:'Bearer '+other.token};
  for(const path of ['/api/ai-channel/devices/'+f.device.deviceId,'/api/ai-channel/tasks/'+task.id])assert.equal((await f.request(path,undefined,otherHeaders)).status,404);
  for(const name of ['ai_channel_tasks','ai_channel_devices','ai_channel_event_hashes']){const rows=JSON.stringify(f.database.raw.prepare('SELECT * FROM '+name).all());assert.equal(rows.includes('HTTP-OLLAMA-PRIVATE'),false);assert.equal(rows.includes('HTTP-OLLAMA-OUTPUT-PRIVATE'),false);}
+});
+
+test('real local child and HTTP perform prepare → pause → owner click → same-workspace export exactly once',async t=>{
+ // The executable fixture is NOT Codex or an LLM. Real local process shutdown,
+ // isolated directories, HTTP authorization and durable decision records are tested.
+ const f=await fixture(t),base=await mkdtemp(join(tmpdir(),'ybz-decision-http-')),workspace=join(base,'work'),runtimeDir=join(base,'private'),statePath=join(base,'pair.json'),script=join(base,'synthetic-worker.cjs');await mkdir(workspace);
+ await writeFile(statePath,JSON.stringify({origin:'https://relay.example',deviceId:f.device.deviceId,token:f.device.token}));
+ await writeFile(script,`const fs=require('node:fs');process.stdin.resume();process.stdin.on('end',()=>{fs.appendFileSync('executions.txt','one segment\\n');fs.mkdirSync('outbox',{recursive:true});if(!fs.existsSync('sample.txt')){fs.writeFileSync('sample.txt','verified sample');console.log(JSON.stringify({type:'item.completed',item:{id:'decision',type:'agent_message',text:JSON.stringify({ybzDecision:{question:'SYNTHETIC-PRIVATE-QUESTION',options:[{label:'修改',instruction:'SYNTHETIC-PRIVATE-REVISE'},{label:'导出',instruction:'SYNTHETIC-PRIVATE-EXPORT'}]}})}}));setInterval(()=>{},1000);}else{fs.copyFileSync('sample.txt','outbox/result.txt');console.log(JSON.stringify({type:'item.completed',item:{id:'answer',type:'agent_message',text:'SYNTHETIC-PRIVATE-DONE'}}));console.log(JSON.stringify({type:'turn.completed'}));}});`);
+ const pool=createTaskPool({workspace,resourceReady:()=>true,factory:cwd=>createCodexRunner({workspace:cwd,executable:process.execPath,spawnImpl:(_exe,_args,options)=>spawn(process.execPath,[script],options),killTree:async child=>{if(child.exitCode===null)child.kill();}})});
+ const runner={configuration:{workspace,isolatedTasks:true,maxConcurrent:3},loginStatus:async()=>({code:'ready'}),run:pool.run,close:pool.close,canDispatch:pool.canDispatch};
+ const channel=await createAIChannel({statePath,runtimeDir,runner,fetchImpl:async(url,options)=>{assert.equal(new URL(url).origin,'https://relay.example');const r=await f.request(new URL(url).pathname,JSON.parse(options.body),options.headers);return new Response(JSON.stringify(r.body),{status:r.status});}});
+ t.after(async()=>{await channel.close();const actual=resolve(base),rel=relative(resolve(tmpdir()),actual);assert.ok(rel&&!rel.startsWith('..')&&!isAbsolute(rel)&&basename(actual).startsWith('ybz-decision-http-'));await rm(actual,{recursive:true,force:true});});
+ const ownerHeaders={Origin:f.origin,Authorization:'Bearer '+f.user.token};await channel.pollOnce();
+ const created=await f.request('/api/ai-channel/send',{deviceId:f.device.deviceId,prompt:'SYNTHETIC-PRIVATE-INITIAL',requestId:randomUUID()},ownerHeaders);assert.equal(created.status,200,JSON.stringify(created.body));
+ const taskId=created.body.task.id,root=join(workspace,'.ybz-ai-channel',taskId);let detail;
+ for(let n=0;n<100;n++){await channel.pollOnce();detail=await f.request('/api/ai-channel/tasks/'+taskId,undefined,ownerHeaders);if(detail.body.task.status==='awaiting-decision')break;await new Promise(r=>setTimeout(r,10));}
+ assert.equal(detail.body.task.status,'awaiting-decision');assert.equal(pool.size,0);assert.equal(await readFile(join(root,'executions.txt'),'utf8'),'one segment\n');
+ await channel.pollOnce();assert.equal(await readFile(join(root,'executions.txt'),'utf8'),'one segment\n');
+ const decision=detail.body.task.decision,input={requestId:randomUUID(),decisionId:decision.id,version:decision.version,optionId:'option-2',approveExecution:true};
+ const stranger=await f.modules.handle({method:'POST',path:'register',input:{password:'482193',requestId:randomUUID()},ip:'127.0.0.2'});assert.equal((await f.request('/api/ai-channel/tasks/'+taskId+'/decision',input,{Origin:f.origin,Authorization:'Bearer '+stranger.token})).status,404);
+ const responses=await Promise.all([f.request('/api/ai-channel/tasks/'+taskId+'/decision',input,ownerHeaders),f.request('/api/ai-channel/tasks/'+taskId+'/decision',input,ownerHeaders)]);assert.ok(responses.every(r=>r.status===200),JSON.stringify(responses));
+ const childRow=f.database.raw.prepare('SELECT id FROM ai_channel_tasks WHERE parent_task_id=?').all(taskId);assert.equal(childRow.length,1);
+ let finished;for(let n=0;n<100;n++){await channel.pollOnce();finished=await f.request('/api/ai-channel/tasks/'+childRow[0].id,undefined,ownerHeaders);if(finished.body.task.status==='succeeded')break;await new Promise(r=>setTimeout(r,10));}
+ assert.equal(finished.body.task.status,'succeeded',JSON.stringify(finished.body));assert.equal(await readFile(join(root,'outbox/result.txt'),'utf8'),'verified sample');assert.equal(await readFile(join(root,'executions.txt'),'utf8'),'one segment\none segment\n');
+ assert.equal(f.database.raw.prepare('SELECT COUNT(*) n FROM ai_task_decisions WHERE state=? AND selected_option_id=?').get('continued','option-2').n,1);
+ for(const table of ['ai_task_decisions','ai_channel_tasks','ai_channel_devices','ai_channel_event_hashes'])assert.doesNotMatch(JSON.stringify(f.database.raw.prepare('SELECT * FROM '+table).all()),/SYNTHETIC-PRIVATE/);
 });
