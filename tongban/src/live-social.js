@@ -372,7 +372,7 @@ export function mountLiveSocial(container, options = {}) {
     else if (['report-user','report-message','report-group'].includes(action)) openModal('report', { targetType: action.slice(7), targetId: id, reason: 'spam', detail: '', requestId: uid() });
     else if (action === 'block-user') openModal('confirm', { label: blocked(id) ? '解除拉黑' : '拉黑用户', detail: blocked(id) ? '解除后，如果仍是好友即可恢复私聊。' : '将阻止双方私聊、好友申请和直接群邀请，共同群聊中的消息仍可见。', operation: blocked(id) ? 'unblock' : 'block', userId: id });
     else if (action === 'chat') openChat(id);
-    else if(action==='group-ai-chat'){const ai=groupAIEntries(conversation(page.id)).find(row=>row.id===id);if(ai?.canChat)onNavigate('workbench',{route:'ai-channel',deviceId:ai.deviceId,provider:ai.provider});}
+    else if(action==='group-ai-chat'){const ai=groupAIEntries(conversation(page.id)).find(row=>row.id===id);if(ai?.canChat)onNavigate('messages',{route:'ai-channel',deviceId:ai.deviceId,provider:ai.provider,returnConversationId:page.id});}
     else if (action === 'device-chat') {const device=deviceEntries.find(item=>item.deviceId===id);if(device)onNavigate('messages',{route:'ai-channel',deviceId:device.deviceId});}
     else if (action === 'group-task' && page.type === 'chat' && conversation(page.id)?.type === 'group') options.onGroupTask?.(page.id);
     else if(action==='group-ai'&&page.type==='chat'&&conversation(page.id)?.type==='group')options.onGroupAI?.(page.id);

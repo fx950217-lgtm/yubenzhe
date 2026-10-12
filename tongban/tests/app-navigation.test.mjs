@@ -63,3 +63,9 @@ test('private AI chat has its own message route while regular conversation bookm
  assert.notEqual(navigationFromHash('#messages/devices/../chat').options.route,'ai-channel');
  assert.equal(navigationFromHash('#messages/'+deviceId).options.conversationId,deviceId);
 });
+test('group AI single chat retains its return group after refresh without arbitrary external destinations',()=>{
+ const deviceId='11111111-1111-4111-8111-111111111111';
+ for(const provider of [undefined,'codex']){const options={route:'ai-channel',deviceId,...(provider?{provider}:{}),returnConversationId:'group_1'};assert.deepEqual(navigationFromHash(hashForView('messages',options)),{view:'messages',options});}
+ const unsafe=normalizeNavigation('messages',{route:'ai-channel',deviceId,returnConversationId:'https://evil'});assert.equal(unsafe.options.returnConversationId,undefined);
+ assert.equal(navigationFromHash('#messages/devices/'+deviceId+'/chat/from/../../admin').options.route,undefined);
+});

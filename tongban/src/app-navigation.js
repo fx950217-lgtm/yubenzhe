@@ -17,7 +17,7 @@ export function normalizedHubState(value={}) {
 export function normalizeNavigation(view,options={}) {
  const safe=options&&typeof options==='object'?{...options}:{};
  if(view==='discover'&&WORKBENCH_FEATURES.includes(safe.route))return {view:'workbench',options:{route:safe.route}};
-  if(['workbench','messages'].includes(view)&&safe.route==='ai-channel'&&routeId(safe.deviceId))return {view,options:{route:'ai-channel',deviceId:routeId(safe.deviceId),...(providerId(safe.provider)?{provider:safe.provider}:{})}};
+  if(['workbench','messages'].includes(view)&&safe.route==='ai-channel'&&routeId(safe.deviceId))return {view,options:{route:'ai-channel',deviceId:routeId(safe.deviceId),...(providerId(safe.provider)?{provider:safe.provider}:{}),...(view==='messages'&&routeId(safe.returnConversationId)?{returnConversationId:safe.returnConversationId}:{})}};
   if(view==='messages'&&safe.route==='ai-channel')return {view,options:{}};
  if(view==='messages'&&safe.route==='device-ai'&&routeId(safe.conversationId))return {view,options:{route:'device-ai',conversationId:safe.conversationId}};
  if(view==='workbench'&&safe.route==='cooperation')return {view,options:{route:'cooperation',conversationId:routeId(safe.conversationId),workflowId:routeId(safe.workflowId)}};
@@ -26,7 +26,7 @@ export function normalizeNavigation(view,options={}) {
  return {view:isAppView(view)?view:'messages',options:safe};
 }
 export function hashForView(view,options={}) {
- if(['workbench','messages'].includes(view)&&options.route==='ai-channel'&&routeId(options.deviceId))return '#'+view+'/devices/'+options.deviceId+'/chat'+(providerId(options.provider)?'/ai/'+options.provider:'');
+ if(['workbench','messages'].includes(view)&&options.route==='ai-channel'&&routeId(options.deviceId))return '#'+view+'/devices/'+options.deviceId+'/chat'+(providerId(options.provider)?'/ai/'+options.provider:'')+(view==='messages'&&routeId(options.returnConversationId)?'/from/'+options.returnConversationId:'');
  if(view==='messages'&&options.route==='device-ai'&&routeId(options.conversationId))return '#messages/'+options.conversationId+'/device-ai';
  if(view==='messages'&&routeId(options.conversationId))return '#messages/'+options.conversationId;
  if(view==='workbench'&&options.route==='cooperation')return '#workbench/cooperation'+(routeId(options.conversationId)?'/'+options.conversationId:'')+(routeId(options.workflowId)?'/'+options.workflowId:'');
@@ -49,7 +49,13 @@ export function navigationFromHash(hash) {
  if(value==='mine/assets')return {view:'wallet',options:{}};
  if(['mine/favorites','mine/drafts','mine/moments'].includes(value))return {view:'discover',options:{route:value.split('/')[1],origin:'mine'}};
  const parts=value.split('/');
- if((parts.length===4||parts.length===6&&parts[4]==='ai'&&providerId(parts[5]))&&['workbench','messages'].includes(parts[0])&&parts[1]==='devices'&&parts[3]==='chat')return normalizeNavigation(parts[0],{route:'ai-channel',deviceId:parts[2],provider:parts[5]});
+  if(['workbench','messages'].includes(parts[0])&&parts[1]==='devices'&&parts[3]==='chat'){
+   const tail=parts.slice(4);let provider,returnConversationId;
+   if(tail[0]==='ai'&&providerId(tail[1])){provider=tail[1];tail.splice(0,2);}
+   if(parts[0]==='messages'&&tail[0]==='from'&&routeId(tail[1])){returnConversationId=tail[1];tail.splice(0,2);}
+   if(!tail.length&&routeId(parts[2]))return normalizeNavigation(parts[0],{route:'ai-channel',deviceId:parts[2],provider,returnConversationId});
+   return normalizeNavigation(parts[0],{});
+  }
  if(parts.length===3&&parts[0]==='messages'&&parts[2]==='device-ai'&&routeId(parts[1]))return normalizeNavigation('messages',{route:'device-ai',conversationId:parts[1]});
  if(parts[0]==='messages'&&routeId(parts[1]))return {view:'messages',options:{conversationId:parts[1]}};
  if(parts[0]==='workbench'&&parts[1]==='cooperation')return normalizeNavigation('workbench',{route:'cooperation',conversationId:parts[2],workflowId:parts[3]});

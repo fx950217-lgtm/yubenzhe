@@ -135,7 +135,7 @@ function groupUIFixture(t,initialConversationId){
  globalThis.document={activeElement:null,createElement:()=>root,addEventListener(){},removeEventListener(){}};globalThis.window={};globalThis.FormData=class{constructor(f){this.values=f.values;}get(n){return this.values[n];}};
  const owner={userId:'owner_1',nickname:'我'},friend={userId:'friend_1',nickname:'好友'},group={id:'group_1',type:'group',name:'讨论',ownerId:owner.userId,members:[owner,friend]},state={profile:owner,friends:[friend],requests:[],outgoingRequests:[],conversations:initialConversationId?[group]:[]};
  const service={async getState(){return state;},async createGroup(input){calls.push({kind:'group',input});state.conversations=[group];return {conversationId:group.id};},async getMessages(){return {messages:[{id:'1',type:'text',text:'AI-ONLY-MARKER <script>',senderId:owner.userId,createdAt:1,deviceAI:{alias:'<选品顾问>',provider:'codex',deviceName:'<电脑>',serverVerified:true}},{id:'2',type:'text',text:'人的判断',senderId:friend.userId,createdAt:2}]};},async markRead(){},async authenticatedRequest(){throw Error('Group creation cannot invoke device AI');}};
- const cleanup=mountLiveSocial({append(){}},{service,initialConversationId,onGroupAI:id=>routes.push(id)});t.after(()=>{cleanup();Object.assign(globalThis,saved);});
+ const cleanup=mountLiveSocial({append(){}},{service,initialConversationId,onGroupAI:id=>routes.push(id),onNavigate:(view,options)=>routes.push({view,options})});t.after(()=>{cleanup();Object.assign(globalThis,saved);});
  const click=action=>handlers.get('click')({target:{matches:()=>false,closest:()=>({dataset:{action}})}});
  return {root,modal,handlers,calls,routes,click,group};
 }
@@ -162,4 +162,12 @@ test('AI member routes are only offered for explicit owner capability and a vali
  assert.equal(groupAIEntries({type:'group',aiMembers:[{...row,canChat:true}]})[0].canChat,true);
  assert.equal(groupAIEntries({type:'group',aiMembers:[{...row,canChat:true,deviceId:'../../other'}]})[0].canChat,false);
  assert.deepEqual(groupAIEntries({type:'group',aiMembers:[{...row,kind:'friend'},null]}),[]);
+});
+
+test('only an authorized roster avatar opens private chat and preserves the originating group',async t=>{
+ const f=groupUIFixture(t,'group_1'),deviceId='11111111-1111-4111-8111-111111111111';
+ f.group.aiMembers=[{id:'own-ai',kind:'ai',alias:'选品顾问',provider:'codex',canChat:true,deviceId},{id:'other-ai',kind:'ai',alias:'只读助手',provider:'codex',canChat:false}];await new Promise(setImmediate);
+ const click=id=>f.handlers.get('click')({target:{matches:()=>false,closest:()=>({dataset:{action:'group-ai-chat',id}})}});
+ click('other-ai');click('forged-id');assert.deepEqual(f.routes,[]);click('own-ai');assert.deepEqual(f.routes,[{view:'messages',options:{route:'ai-channel',deviceId,provider:'codex',returnConversationId:'group_1'}}]);
+ f.group.aiMembers[0].canChat=false;click('own-ai');assert.equal(f.routes.length,1);
 });
