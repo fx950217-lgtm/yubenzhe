@@ -2,7 +2,7 @@
 .bottom-nav .nav-item { min-height: 64px; padding: var(--sp-2) var(--sp-1); gap: var(--sp-1); font-size: var(--fs-xs); line-height: calc(1em + 8px); }
 .bottom-nav .nav-item svg { width: 24px; height: 24px; stroke-width: 1.8; }
 .bottom-nav .nav-workbench { overflow: visible; position: relative; color: var(--brand); }
-.bottom-nav .nav-workbench svg { width: 52px; height: 52px; padding: 14px; margin-top: -26px; border-radius: var(--r-full); background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-1); }
+.bottom-nav .nav-item.nav-workbench svg { width: 52px; height: 52px; padding: 14px; margin-top: -26px; border-radius: var(--r-full); background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-1); }
 .bottom-nav .nav-workbench.active svg { background: var(--brand-hi); }
 .live-social.is-messages { background: var(--bg-page); }
 .live-social .live-conversation { background: transparent; border-radius: 0; padding: var(--sp-3) 0; }
@@ -23,3 +23,12 @@
 }
 
 .workspace .live-social .live-conversation::after { display: none; }
+.workspace .live-social .live-group-count { margin: 0 var(--sp-4) var(--sp-2); color: var(--t2); font-size: var(--fs-s); line-height: calc(1em + 8px); }
+.workspace .live-social .live-group-strip { display: flex; flex: 0 0 auto; gap: var(--sp-4); padding: var(--sp-3) var(--sp-4); overflow-x: auto; border-bottom: 1px solid var(--border); }
+.workspace .live-social .live-group-strip button { flex: 0 0 64px; min-width: 64px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: 0; background: transparent; border: 0; color: var(--t2); font-size: var(--fs-s); line-height: calc(1em + 8px); }
+.workspace .live-social .live-group-strip button>span:last-child { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace .live-social .live-group-strip .live-group-ai-member { color: var(--brand-text); }
+.workspace .live-social .live-ai-reply { border-left: 2px solid var(--brand-2); background: var(--bg-container); border-radius: var(--r-m); padding: var(--sp-3) var(--sp-4); }
+.workspace .live-social .live-ai-reply strong,.workspace .live-social .live-ai-reply small { display: block; color: var(--t2); font-weight: 400; font-size: var(--fs-s); line-height: calc(1em + 8px); }
+.workspace .live-social .live-ai-reply p { margin: var(--sp-1) 0; color: var(--t1); font-size: var(--fs-b); line-height: calc(1em + 8px); white-space: pre-wrap; overflow-wrap: anywhere; }
+.workspace .live-social .live-message.is-ai>.live-avatar { background: var(--brand-1); color: var(--brand-text); }
