@@ -4,7 +4,7 @@ import {build} from 'esbuild';
 import {fileURLToPath} from 'node:url';
 const built=await build({entryPoints:[fileURLToPath(new URL('../src/workbench-hub.js',import.meta.url))],bundle:true,write:false,format:'esm',platform:'node',loader:{'.css':'empty'},logLevel:'silent'});
 const {mountWorkbenchHub}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
-function harness({bridge=()=>null,api={},...options}={}){let profile={userId:'owner'},cleaned=0;const listeners=new Map(),calls=[],features=[],screens=[],cloud=[],child={};const root={innerHTML:'',contains:()=>true,querySelector:()=>child,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};const cleanup=mountWorkbenchHub(root,{client:{getProfile:()=>profile,authenticatedRequest:path=>{if(path==='workbench/tasks')return new Promise(()=>{});throw Error('Unexpected API request');},...api},bridge,...options,onOpenFeature:route=>features.push(route),onScreenChange:view=>screens.push(view),mountChat:(target,options)=>{cloud.push({target,options});return ()=>cleaned++;},mountDevices:()=>()=>cleaned++,mountTasks:(target,options)=>{calls.push({target,options});return ()=>cleaned++;}});return {root,calls,features,screens,cloud,cleanup,cleaned:()=>cleaned,account:value=>{profile=value;},click(action,values={}){const target={dataset:{hub:action,...values}};return listeners.get('click')({target:{closest:()=>target}});},input(name,value){return listeners.get('input')({target:{name,value,closest:()=>({})}});},submit(form){return listeners.get('submit')({target:form,preventDefault(){}});}};}
+function harness({bridge=()=>null,api={},...options}={}){let profile={userId:'owner'},cleaned=0;const listeners=new Map(),calls=[],features=[],screens=[],cloud=[],deviceMounts=[],deviceChats=[],child={};const root={innerHTML:'',contains:()=>true,querySelector:()=>child,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};const cleanup=mountWorkbenchHub(root,{client:{getProfile:()=>profile,authenticatedRequest:path=>{if(path==='workbench/tasks')return new Promise(()=>{});if(path==='devices')return Promise.resolve({devices:[]});throw Error('Unexpected API request');},...api},bridge,...options,onOpenFeature:route=>features.push(route),onScreenChange:view=>screens.push(view),mountChat:(target,options)=>{cloud.push({target,options});return ()=>cleaned++;},onDeviceChat:(...args)=>deviceChats.push(args),mountDevices:(target,options)=>{deviceMounts.push(options);return ()=>cleaned++;},mountTasks:(target,options)=>{calls.push({target,options});return ()=>cleaned++;}});return {root,calls,features,screens,cloud,deviceMounts,deviceChats,cleanup,cleaned:()=>cleaned,account:value=>{profile=value;},click(action,values={}){const target={dataset:{hub:action,...values}};return listeners.get('click')({target:{closest:()=>target}});},input(name,value){return listeners.get('input')({target:{name,value,closest:()=>({})}});},submit(form){return listeners.get('submit')({target:form,preventDefault(){}});}};}
 function deferred(){let resolve;return {promise:new Promise(r=>resolve=r),resolve:v=>resolve(v)};}
 test('copying a supported workflow opens only a goal draft; unavailable or forged templates never start a task',async()=>{const h=harness();await h.click('use',{id:'research'});await h.click('use',{id:'__proto__'});assert.equal(h.calls.length,0);await h.click('use',{id:'orders'});assert.equal(h.calls.length,1);assert.match(h.calls[0].options.initialGoal,/订单表/);assert.equal(h.calls[0].options.embedded,true);assert.equal('fileIds' in h.calls[0].options,false);h.cleanup();});
 test('switching away cleans the task component without requesting cancellation or changing a server task',async()=>{const h=harness();await h.click('tasks');await h.click('mode',{mode:'chat'});await h.click('chat-local');assert.equal(h.cleaned(),1);assert.match(h.root.innerHTML,/本机模型/);h.cleanup();assert.equal(h.cleaned(),1);});
@@ -64,7 +64,7 @@ test('template task return preserves its detail while direct tasks return to ent
  const h=harness();await h.click('workflows');await h.click('detail',{id:'orders'});await h.click('use',{id:'orders'});
  assert.equal(h.cleanup.back(),true);assert.equal(h.cleaned(),1);assert.match(h.root.innerHTML,/订单表去重/);assert.match(h.root.innerHTML,/你提供/);
  assert.equal(h.cleanup.back(),true);assert.match(h.root.innerHTML,/会议文字整理/);h.cleanup.back();
- await h.click('tasks');h.cleanup.back();assert.equal(h.cleaned(),2);assert.doesNotMatch(h.root.innerHTML,/订单表去重/);assert.match(h.root.innerHTML,/选择你的情况/);h.cleanup();
+ await h.click('tasks');h.cleanup.back();assert.equal(h.cleaned(),2);assert.doesNotMatch(h.root.innerHTML,/订单表去重/);assert.match(h.root.innerHTML,/我的电脑/);h.cleanup();
 });
 
 test('chat entrance defers model status and form until a detail is opened; back discards late checks',async()=>{
@@ -78,17 +78,17 @@ test('chat entrance defers model status and form until a detail is opened; back 
 test('restoring a valid location preserves mode and detail, while invalid values fall back safely',()=>{
  const detail=harness({initialMode:'work',initialScreen:'detail',initialSelected:'meeting'});assert.match(detail.root.innerHTML,/会议文字整理/);assert.match(detail.root.innerHTML,/你提供/);assert.deepEqual(detail.screens.at(-1),{mode:'work',screen:'detail',selected:'meeting'});detail.cleanup();
  const chat=harness({initialMode:'chat',initialScreen:'chat-cloud'});assert.equal(chat.cloud.length,1);assert.equal(chat.screens.at(-1).mode,'chat');chat.cleanup();
- const invalid=harness({initialMode:'other',initialScreen:'<invalid>',initialSelected:'<script>'});assert.match(invalid.root.innerHTML,/选择你的情况/);assert.deepEqual(invalid.screens.at(-1),{mode:'work',screen:'home',selected:null});invalid.cleanup();
+ const invalid=harness({initialMode:'other',initialScreen:'<invalid>',initialSelected:'<script>'});assert.match(invalid.root.innerHTML,/我的电脑/);assert.deepEqual(invalid.screens.at(-1),{mode:'work',screen:'home',selected:null});invalid.cleanup();
  const missing=harness({initialScreen:'detail',initialSelected:'unavailable'});assert.equal(missing.screens.at(-1).screen,'workflows');missing.cleanup();
  const tasks=harness({initialScreen:'tasks'});assert.equal(tasks.calls.length,1);assert.equal(tasks.calls[0].options.initialGoal,'');tasks.cleanup();
 });
 
 test('brand home centers group decisions and execution with devices as cooperating carriers',async()=>{
  let opened=0;const h=harness({onCollaborate:()=>opened++});
- assert.match(h.root.innerHTML,/群里的共同任务/);
- assert.match(h.root.innerHTML,/执行工具与模型/);
- assert.match(h.root.innerHTML,/手机、电脑与云机协作/);
- assert.equal((h.root.innerHTML.match(/class="wh-route"/g)||[]).length,3);
+ assert.match(h.root.innerHTML,/群协作/);
+ assert.match(h.root.innerHTML,/工具与模型/);
+ assert.match(h.root.innerHTML,/我的电脑/);
+ assert.match(h.root.innerHTML,/data-hub="cooperation"/);assert.match(h.root.innerHTML,/data-hub="tasks"/);assert.match(h.root.innerHTML,/data-hub="workflows"/);
  assert.match(h.root.innerHTML,/<details class="wh-about">/);
  assert.match(h.root.innerHTML,/人负责思维、决策、方向、创意和授权/);
  assert.doesNotMatch(h.root.innerHTML,/我们不提供 AI 本身|把你的电脑变成 AI 工作站/);
@@ -127,17 +127,17 @@ test('the chat entry moves into secondary content, not the hero',async()=>{
 const settleSummary=()=>new Promise(resolve=>setImmediate(resolve));
 test('brand home renders exact copy, one primary action and only real account/task summary data',async()=>{
  const requests=[];
- const h=harness({api:{authenticatedRequest:async(path,options)=>{requests.push(path);assert.equal(options,undefined);return {tasks:[{id:'task-old',title:'较早任务',status:'running',createdAt:'2026-01-01T01:00:00Z'},{id:'task-new',title:'<img src=x onerror=alert(1)>',status:'succeeded',createdAt:'2026-01-02T01:00:00Z'}]};}}});
+ const h=harness({api:{authenticatedRequest:async(path,options)=>{requests.push(path);assert.equal(options,undefined);if(path==='devices')return {devices:[]};return {tasks:[{id:'task-old',title:'较早任务',status:'running',createdAt:'2026-01-01T01:00:00Z'},{id:'task-new',title:'<img src=x onerror=alert(1)>',status:'succeeded',createdAt:'2026-01-02T01:00:00Z'}]};}}});
  assert.match(h.root.innerHTML,/技能交给 AI，判断留给自己。/);
- assert.match(h.root.innerHTML,/思维<span>·<\/span>决策<span>·<\/span>创造性/);
- assert.match(h.root.innerHTML,/YBZ/);assert.match(h.root.innerHTML,/>愚<\/button>/);
+ assert.match(h.root.innerHTML,/思维、决策、方向、创意和授权/);
+ assert.match(h.root.innerHTML,/需要你决策/);assert.match(h.root.innerHTML,/最近完成/);
  assert.doesNotMatch(h.root.innerHTML,/积分|POINT|data-hub="points"/);
  assert.equal((h.root.innerHTML.match(/class="wh-primary\b/g)||[]).length,1);
- assert.match(h.root.innerHTML,/正在读取近期动态/);assert.doesNotMatch(h.root.innerHTML,/2,480/);
+ assert.match(h.root.innerHTML,/正在读取任务/);assert.doesNotMatch(h.root.innerHTML,/2,480/);
  await settleSummary();
- assert.deepEqual(requests,['workbench/tasks']);
+ assert.deepEqual(requests,['workbench/tasks','devices']);
  assert.match(h.root.innerHTML,/&lt;img src=x/);assert.doesNotMatch(h.root.innerHTML,/<img src=x/);
- assert.ok(h.root.innerHTML.indexOf('data-id="task-new"')<h.root.innerHTML.indexOf('data-id="task-old"'));
+ assert.match(h.root.innerHTML,/data-summary="running"[\s\S]*data-id="task-old"[\s\S]*data-summary="completed"[\s\S]*data-id="task-new"/);
  await h.click('recent-task',{id:'forged'});assert.equal(h.calls.length,0);
  await h.click('recent-task',{id:'task-new'});assert.equal(h.calls[0].options.initialTaskId,'task-new');assert.equal(h.calls[0].options.initialScreen,'tasks');
  h.cleanup();
@@ -149,8 +149,8 @@ test('new task and all tasks select different task destinations without silently
 });
 
 test('summary preserves empty results and malformed tasks stay unavailable until a successful retry',async()=>{
- const h=harness({api:{authenticatedRequest:async()=>({tasks:[]})}});await settleSummary();assert.match(h.root.innerHTML,/还没有任务动态/);assert.doesNotMatch(h.root.innerHTML,/暂不可用|积分/);h.cleanup();
- let shouldFail=true;const retry=harness({api:{authenticatedRequest:async()=>shouldFail?{tasks:[{title:'invalid row'}]}:{tasks:[{id:'task',title:'有效任务',status:'paused',createdAt:'invalid'}]}}});await settleSummary();assert.match(retry.root.innerHTML,/近期动态暂不可用/);shouldFail=false;await retry.click('refresh-summary');assert.match(retry.root.innerHTML,/有效任务/);assert.match(retry.root.innerHTML,/时间待同步/);assert.doesNotMatch(retry.root.innerHTML,/积分|POINT/);retry.cleanup();
+ const h=harness({api:{authenticatedRequest:async path=>path==='devices'?{devices:[]}:{tasks:[]}}});await settleSummary();assert.match(h.root.innerHTML,/暂无正在执行的任务/);assert.doesNotMatch(h.root.innerHTML,/暂不可用|积分/);h.cleanup();
+ let shouldFail=true;const retry=harness({api:{authenticatedRequest:async path=>path==='devices'?{devices:[]}:shouldFail?{tasks:[{title:'invalid row'}]}:{tasks:[{id:'task',title:'有效任务',status:'paused',createdAt:'invalid'}]}}});await settleSummary();assert.match(retry.root.innerHTML,/文件工具任务暂不可用/);shouldFail=false;await retry.click('refresh-summary');assert.match(retry.root.innerHTML,/有效任务/);assert.match(retry.root.innerHTML,/已暂停/);assert.doesNotMatch(retry.root.innerHTML,/积分|POINT/);retry.cleanup();
 });
 test('late summary responses cannot overwrite child pages, leak across accounts or render after cleanup',async()=>{
  for(const exit of ['screen','account','cleanup']){
@@ -172,11 +172,76 @@ test('signed-out home reads no private summary and displays its actual state',as
  await settleSummary();assert.equal(reads,0);assert.match(h.root.innerHTML,/登录后查看你的任务/);h.cleanup();
 });
 
-test('recent task ordering accepts actual server millisecond timestamps and only shows the latest three',async()=>{
- const h=harness({api:{authenticatedRequest:async()=>({tasks:[{id:'oldest',title:'too old',status:'succeeded',createdAt:1700000000000},{id:'changed',title:'updated task',status:'running',createdAt:1700000000001,updatedAt:1800000000000},{id:'middle',title:'middle task',status:'queued',createdAt:1750000000000},{id:'new',title:'new task',status:'paused',createdAt:1790000000000}]})}});
+test('completed ordering accepts actual timestamps and limits only the completed section to three',async()=>{
+ const tasks=[{id:'oldest',title:'too old',status:'succeeded',createdAt:1700000000000},{id:'changed',title:'updated task',status:'succeeded',createdAt:1700000000001,updatedAt:1800000000000},{id:'middle',title:'middle task',status:'succeeded',createdAt:1750000000000},{id:'new',title:'new task',status:'succeeded',createdAt:1790000000000},{id:'active',title:'running is separate',status:'running',createdAt:1600000000000}];
+ const h=harness({api:{authenticatedRequest:async path=>path==='devices'?{devices:[]}:{tasks}}});
  await settleSummary();
- assert.doesNotMatch(h.root.innerHTML,/data-id="oldest"/);
+ assert.doesNotMatch(h.root.innerHTML,/data-id="oldest"/);assert.match(h.root.innerHTML,/data-id="active"/);
  assert.ok(h.root.innerHTML.indexOf('data-id="changed"')<h.root.innerHTML.indexOf('data-id="new"'));
  assert.ok(h.root.innerHTML.indexOf('data-id="new"')<h.root.innerHTML.indexOf('data-id="middle"'));
  h.cleanup();
+});
+
+const readyDevice=(id='computer',name='我的电脑')=>({id,name,online:true,aiOnline:true,providers:[{id:'codex',installed:true,loggedIn:true,executionSupported:true,executionMode:'tools'},{id:'ollama',installed:true,loggedIn:null,executionSupported:true,executionMode:'chat-only'}]});
+function overviewApi({devices=[readyDevice()],tasks=[],computer=[],failure=null}={}){return {authenticatedRequest:async(path,options)=>{
+ assert.equal(options,undefined,'dashboard must never write');
+ if(path==='devices')return {devices};
+ if(path==='workbench/tasks')return {tasks};
+ const device=devices.find(item=>path==='ai-channel/devices/'+encodeURIComponent(item.id));
+ if(!device)throw Error('Unexpected path');
+ if(failure)throw Error(failure);
+ return {device,tasks:computer.filter(task=>task.deviceId===device.id)};
+}};}
+test('real device activity and rule progress stay distinct; no synthetic AI percentage or accepted delivery',async()=>{
+ const h=harness({api:overviewApi({tasks:[{id:'rule',title:'文件去重',status:'running',step:1,remainingSteps:2},{id:'decision',title:'待批准清单',status:'awaiting-confirmation'},{id:'done',title:'已处理文件',status:'succeeded',outputs:[{id:'a'},{id:'b'}]}],computer:[{id:'ai-run',deviceId:'computer',provider:'codex',status:'running',prompt:'真实任务',step:72,remainingSteps:28},{id:'ai-done',deviceId:'computer',provider:'codex',status:'completed',prompt:'电脑回复',finishedAt:1800000000000}]})});
+ await settleSummary();
+ assert.match(h.root.innerHTML,/正在执行 1 项任务/);assert.match(h.root.innerHTML,/aria-valuemax="3" aria-valuenow="1"/);assert.match(h.root.innerHTML,/>33%/);assert.doesNotMatch(h.root.innerHTML,/72%/);
+ assert.match(h.root.innerHTML,/data-summary="decisions"[\s\S]*待批准清单/);
+ assert.match(h.root.innerHTML,/2 份成果/);assert.match(h.root.innerHTML,/回复已结束，待核对/);
+ await h.click('recent-task',{id:'ai-run',origin:'device'});assert.deepEqual(h.deviceChats,[['computer','codex',{taskId:'ai-run'}]]);
+ await h.click('recent-task',{id:'decision',origin:'rules'});assert.equal(h.calls[0].options.initialTaskId,'decision');
+ h.cleanup();
+});
+test('machine-code addition opens existing devices claim UI; normal management does not force it',async()=>{
+ const h=harness();await h.click('add-device');assert.equal(h.deviceMounts[0].initialClaim,true);
+ h.cleanup.back();await h.click('devices');assert.equal(h.deviceMounts[1].initialClaim,false);h.cleanup();
+});
+test('dispatch requires explicit owned executable provider and carries only a draft, without a send request',async t=>{
+ const h=harness({api:overviewApi()});await settleSummary();
+ const original=globalThis.FormData;globalThis.FormData=class{constructor(form){this.values=form.values;}get(name){return this.values[name];}};
+ t.after(()=>{globalThis.FormData=original;h.cleanup();});
+ assert.match(h.root.innerHTML,/<option value="">先选择自己的电脑/);assert.doesNotMatch(h.root.innerHTML,/value="computer" selected/);
+ const submit=values=>h.submit({matches:selector=>selector==='[data-hub-assign]',values});
+ for(const values of [{draft:'目标'}, {draft:'目标',deviceId:'someone-else',provider:'codex'}, {draft:'目标',deviceId:'computer',provider:'claude'}, {draft:'',deviceId:'computer',provider:'codex'}])await submit(values);
+ assert.equal(h.deviceChats.length,0);
+ await h.click('pick-device',{id:'computer'});assert.match(h.root.innerHTML,/value="computer" selected/);assert.doesNotMatch(h.root.innerHTML,/value="codex" selected/);
+ await submit({draft:'  处理这些文件  ',deviceId:'computer',provider:'codex'});
+ assert.deepEqual(h.deviceChats,[['computer','codex',{draft:'处理这些文件'}]]);
+ h.account({userId:'other'});await submit({draft:'不得发送',deviceId:'computer',provider:'codex'});assert.equal(h.deviceChats.length,1);
+});
+test('offline, revoked and stale AI never becomes executable merely because it was installed',async t=>{
+ const original=globalThis.FormData;globalThis.FormData=class{constructor(form){this.values=form.values;}get(name){return this.values[name];}};t.after(()=>{globalThis.FormData=original;});
+ for(const patch of [{online:false,aiOnline:false},{revoked:true},{providersStale:true},{providers:[{id:'codex',installed:true,loggedIn:false,executionSupported:true,executionMode:'tools'}]}]){
+  const h=harness({api:overviewApi({devices:[{...readyDevice(),...patch}]})});await settleSummary();
+  await h.submit({matches:selector=>selector==='[data-hub-assign]',values:{draft:'任务',deviceId:'computer',provider:'codex'}});
+  assert.equal(h.deviceChats.length,0);h.cleanup();
+ }
+});
+test('partial failures remain explicit and cannot erase good task results or claim a computer is idle',async()=>{
+ const h=harness({api:overviewApi({tasks:[{id:'good',title:'真实完成',status:'succeeded'}],failure:'offline'})});await settleSummary();
+ assert.match(h.root.innerHTML,/真实完成/);assert.match(h.root.innerHTML,/任务状态暂不可用/);assert.doesNotMatch(h.root.innerHTML,/在线 · 空闲/);h.cleanup();
+ const mismatch=harness({api:{authenticatedRequest:async path=>path==='devices'?{devices:[readyDevice()]}:path==='workbench/tasks'?{tasks:[]}:{device:{id:'another-device'},tasks:[{id:'bad',deviceId:'another-device',status:'running',prompt:'other-device-secret'}]}}});
+ await settleSummary();assert.doesNotMatch(mismatch.root.innerHTML,/other-device-secret/);assert.match(mismatch.root.innerHTML,/任务状态暂不可用/);mismatch.cleanup();
+});
+test('late computer task reads do not render after switching accounts or leaving the workbench',async()=>{
+ for(const exit of ['account','cleanup','screen']){
+  const detail=deferred();const h=harness({api:{authenticatedRequest:async path=>path==='devices'?{devices:[readyDevice()]}:path==='workbench/tasks'?{tasks:[]}:detail.promise}});
+  await settleSummary();
+  if(exit==='account')h.account({userId:'other'});
+  if(exit==='cleanup')h.cleanup();
+  if(exit==='screen')await h.click('workflows');
+  const before=h.root.innerHTML;
+  detail.resolve({device:readyDevice(),tasks:[{id:'private',deviceId:'computer',status:'running',prompt:'private-computer-task'}]});
+  await settleSummary();assert.equal(h.root.innerHTML,before);assert.doesNotMatch(h.root.innerHTML,/private-computer-task/);h.cleanup();
+ }
 });

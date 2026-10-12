@@ -18,3 +18,14 @@ test('phone device cards route actual provider, toggle missing tools and reject 
  for(const provider of ['ollama','claude','evil'])for(const fn of handlers.get('click'))await fn({target:{closest:()=>({dataset:{device:'provider-chat',id,provider}}),matches:()=>false}});assert.deepEqual(opened,[[id,'ollama']]);
  for(const fn of handlers.get('change'))fn({target:{matches:q=>q==='[data-hide-missing]',checked:true}});assert.doesNotMatch(root.innerHTML,/data-provider="claude"/);assert.match(root.innerHTML,/data-provider="ollama"/);
 });
+
+test('workbench add-device opens machine-code entry while preserving the legacy file pairing path',async t=>{
+ const old=globalThis.window;globalThis.window={addEventListener(){},removeEventListener(){}};
+ const root={innerHTML:'',querySelector:()=>null,addEventListener(){},removeEventListener(){}},calls=[];
+ const client={getProfile:()=>({userId:'owner'}),authenticatedRequest:async(path,options)=>{calls.push({path,options});return {devices:[]};}};
+ const cleanup=mountPersonalDevices(root,{client,initialClaim:true});t.after(()=>{cleanup();globalThis.window=old;});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.match(root.innerHTML,/data-device-claim/);assert.match(root.innerHTML,/name="machineCode"/);
+ assert.match(root.innerHTML,/data-device-pair/);assert.match(root.innerHTML,/旧版配对文件/);
+ assert.equal(calls.some(call=>call.options?.method==='POST'),false);
+});

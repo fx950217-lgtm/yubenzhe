@@ -4,8 +4,8 @@ import {aiLoginReminderCards} from './ai-login-reminders.js';
 import './remote-work.css';
 import {DEVICE_CAPABILITIES,deviceSource,deviceCapability,deviceCanAttempt,normalizeMachineCode} from './device-capabilities.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function mountPersonalDevices(root,{client,onAccount=()=>{},onChat=()=>{},providerDescriptions=AI_PROVIDER_DESCRIPTIONS}={}){
- let active=true,devices=[],clouds=[],cloudError='',selected=null,error='',notice='',busy=false,refreshing=false,frameBusy=false,sessionId=null,pair=null,textDraft='',pointer='click',pairName='',machineCode='',showPair=false,legacyOpen=false,hideMissing=false;
+export function mountPersonalDevices(root,{client,onAccount=()=>{},onChat=()=>{},providerDescriptions=AI_PROVIDER_DESCRIPTIONS,initialClaim=false}={}){
+ let active=true,devices=[],clouds=[],cloudError='',selected=null,error='',notice='',busy=false,refreshing=false,frameBusy=false,sessionId=null,pair=null,textDraft='',pointer='click',pairName='',machineCode='',showPair=initialClaim===true,legacyOpen=false,hideMissing=false;
  const owner=client.getProfile()?.userId,valid=()=>active&&client.getProfile()?.userId===owner;
  const api=(path,method='GET',input)=>client.authenticatedRequest(path,{method,input});
  const capabilities=d=>'<ul class="rw-capabilities">'+DEVICE_CAPABILITIES.map(([key,label])=>{const value=deviceCapability(d,key);return '<li data-capability="'+key+'" data-state="'+value.state+'"><span><strong>'+label+'</strong><b>'+value.label+'</b></span><small>'+esc(value.reason)+'</small></li>';}).join('')+'</ul>';
