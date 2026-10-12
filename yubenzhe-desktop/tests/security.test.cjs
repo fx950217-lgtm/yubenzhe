@@ -13,6 +13,40 @@ test('HTTPS external links require exact allowlisted hostname', () => {
   for (const url of ['https://testnet.bscscan.com/tx/0x123', 'https://docs.ethers.org/v6/', 'https://docs.bnbchain.org/']) assert.equal(isExternalUrl(url), true);
   for (const url of ['http://testnet.bscscan.com/', 'https://testnet.bscscan.com.evil.example/', 'https://testnet.bscscan.com@evil.example/', 'https://evil.example@testnet.bscscan.com/', 'file:///tmp/app', 'javascript:alert(1)', 'https://bscscan.com/', 'https://docs.ethers.org:8443/']) assert.equal(isExternalUrl(url), false, url);
 });
+test('DApp opens only the exact Remix root and never becomes a renderer network target', () => {
+  assert.equal(isExternalUrl('https://app.remix.live/'), true);
+  for (const url of [null, {}, 'https://app.remix.live', 'https://app.remix.live/path', 'https://app.remix.live//', 'https://app.remix.live/./', 'https://app.remix.live/%2f', 'https://app.remix.live/?url=https://evil.example', 'https://app.remix.live/#wallet', 'https://app.remix.live:443/', 'https://app.remix.live:8443/', 'https://user:pass@app.remix.live/', 'https://app.remix.live@evil.example/', 'https://app.remix.live.evil.example/', 'https://APP.REMIX.LIVE/', 'http://app.remix.live/', 'javascript:alert(1)']) {
+    assert.equal(isExternalUrl(url), false, String(url));
+  }
+  for (const type of ['mainFrame', 'subFrame', 'script', 'stylesheet', 'image', 'media', 'xhr', 'fetch', 'webSocket', 'other']) {
+    assert.equal(isAllowedRequest('https://app.remix.live/', type), false, type);
+    assert.equal(isAllowedRequest('https://testnet.bscscan.com/', type), false, type);
+  }
+  assert.doesNotMatch(CSP, /app\.remix\.live/);
+  assert.match(CSP, /frame-src 'none'/);
+});
+test('desktop external link IPC is reachable only from a real clicked anchor', () => {
+  const vm = require('node:vm'), fs = require('node:fs');
+  const sends = [], handlers = new Map(), exposed = {};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../src/preload.cjs'), 'utf8'), {
+    require: name => {
+      assert.equal(name, 'electron');
+      return { contextBridge: { exposeInMainWorld: (name, value) => { exposed[name] = value; } }, ipcRenderer: { send: (...args) => sends.push(args) } };
+    },
+    document: { addEventListener: (name, callback) => handlers.set(name, callback) },
+  });
+  assert.equal(exposed.YubenzheDesktop.openExternal, undefined, 'page code has no arbitrary external-navigation method');
+  const click = handlers.get('click');
+  let prevented = 0;
+  const event = (trusted, href) => ({ isTrusted: trusted, target: { closest: () => href ? { href } : null }, preventDefault: () => prevented++ });
+  click(event(false, 'https://app.remix.live/'));
+  click(event(true, 'javascript:alert(1)'));
+  click(event(true));
+  assert.equal(sends.length, 0);
+  click(event(true, 'https://app.remix.live/'));
+  assert.deepEqual(sends, [['yubenzhe:open-external', 'https://app.remix.live/']]);
+  assert.equal(prevented, 1, 'real external link never navigates the embedded application');
+});
 test('only the BSC testnet RPC can receive app connections', () => {
   assert.equal(isAllowedRequest('https://bsc-testnet.bnbchain.org', 'xhr'), true);
   assert.equal(isAllowedRequest('https://bsc-testnet-dataseed.bnbchain.org', 'fetch'), true);

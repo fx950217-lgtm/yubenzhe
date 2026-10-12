@@ -77,8 +77,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func openExternal(_ action: WKNavigationAction) {
-        guard action.navigationType == .linkActivated, let url = action.request.url,
-              url.scheme == "https", let host = url.host, externalHosts.contains(host),
+        guard action.navigationType == .linkActivated,
+              action.sourceFrame.isMainFrame, isLocal(action.sourceFrame.request.url),
+              let url = action.request.url, url.scheme == "https", let host = url.host,
+              (url.absoluteString == "https://app.remix.live/" || externalHosts.contains(host)),
               url.user == nil, url.password == nil, url.port == nil || url.port == 443 else { return }
         UIApplication.shared.open(url)
     }

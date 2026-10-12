@@ -66,7 +66,7 @@ test('private-key import, encrypted V3 export and re-import preserve only the se
   assert.equal(result.address, keyAddress); assert.equal(result.unlocked, true);
   const backup = wallet.exportEncryptedKeystore().content;
   assert.equal(JSON.parse(backup).version, 3);
-  const raw = memory.get(vaultKey);
+  const raw = memory.get('ybz.wallet.evm.v2.97');
   assert.equal(raw.includes(privateKey.slice(2)), false); assert.equal(raw.includes(password), false);
   assert.equal((await Wallet.fromEncryptedJson(backup, password)).address, keyAddress);
   wallet.lock(); assert.equal((await wallet.unlock(password)).address, keyAddress);
@@ -85,7 +85,7 @@ test('BIP39 passphrase and non-default account survive encrypted storage and unl
   const options = { passphrase: 'TREZOR', path: "m/44'/60'/2'/0/1" };
   const expectedAddress = HDNodeWallet.fromPhrase(phrase, options.passphrase, options.path).address;
   assert.equal((await wallet.restoreWallet(phrase, password, { ...options, expectedAddress })).address, expectedAddress);
-  const raw = memory.get(vaultKey);
+  const raw = memory.get('ybz.wallet.evm.v2.97');
   assert.equal(raw.includes(phrase), false); assert.equal(raw.includes('TREZOR'), false);
   wallet.lock(); assert.equal((await wallet.unlock(password)).address, expectedAddress);
   assert.equal((await Wallet.fromEncryptedJson(wallet.exportEncryptedKeystore().content, password)).address, expectedAddress);

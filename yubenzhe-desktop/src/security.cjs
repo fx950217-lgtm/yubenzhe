@@ -17,6 +17,8 @@ const LOCAL_FILES = Object.freeze({
 });
 const RPC_HOSTS = new Set(deployment.rpcUrls.map(v=>new URL(v).hostname));
 const EXTERNAL_HOSTS = new Set(['docs.ethers.org','docs.ollama.com',...[deployment.explorerUrl,deployment.faucetUrl].map(v=>new URL(v).hostname)]);
+// DApps are system-browser destinations only; never grant their host app network access.
+const EXTERNAL_DAPP_ROOT = 'https://app.remix.live/';
 const CSP = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${deployment.previewOrigin}/api/social/avatars/; media-src 'self' blob:; connect-src 'self' ${deployment.rpcUrls.map(v=>new URL(v).origin).join(' ')} ${deployment.previewOrigin}/api/social/; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'`;
 
 function parsed(value) { try { return new URL(value); } catch { return null; } }
@@ -31,8 +33,9 @@ function localAsset(value) {
   return Object.hasOwn(LOCAL_FILES, url.pathname) ? LOCAL_FILES[url.pathname] : null;
 }
 function isExternalUrl(value) {
+  if (typeof value !== 'string') return false;
   const url = parsed(value);
-  return !!url && url.protocol === 'https:' && (EXTERNAL_HOSTS.has(url.hostname) || (value === deployment.ollamaDownloadUrl || value.startsWith(deployment.ollamaDownloadUrl+'/'))) && !url.port && !url.username && !url.password;
+  return !!url && url.protocol === 'https:' && (value === EXTERNAL_DAPP_ROOT || EXTERNAL_HOSTS.has(url.hostname) || (value === deployment.ollamaDownloadUrl || value.startsWith(deployment.ollamaDownloadUrl+'/'))) && !url.port && !url.username && !url.password;
 }
 function remotePath(value) {
  if(typeof value !== 'string') return null;

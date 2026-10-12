@@ -26,7 +26,15 @@ P1 — 桌面向导五类官方软件清单：代码与本地验证通过。
 邮箱说明核验官方页面：support.google.com/accounts/answer/27441、support.google.com/accounts/answer/114129、support.microsoft.com/en-US/accounts-billing/manage/how-to-create-a-new-microsoft-account、proton.me/support/human-verification、www.zoho.com/mail/help/login-to-zoho.html。手机号/额外验证取决于服务商当前注册流程，不能承诺免验证。
 Node.js标注独立脚本/开发可选，电脑版已有运行环境。AI清单显示待检测，P4再联动真实注册表。
 证据：仓库外output/ybz-ultimate-20261012/p1-{desktop-tests,frontend-tests,frontend-build}.log及p1-wizard/{dom.txt,result.json}。
-P2 — 多链钱包与DApp边界：待执行。
+P1 commit：cba47c3（Add official setup toolkit to the desktop pairing wizard）。
+
+P2 — 多链钱包与DApp边界：代码、本地EVM与本地页面验证通过；外部钱包连接未接通。
+新增五链注册表、按链vault/交易记录分区和完整Gas预览；仅97测试网启用，56/1/137/42161显示未开放且无RPC。旧97密文只读兼容；显式切网保留同一身份但锁定钱包、失效旧预览及异步响应。未知交易不被记录上限隐藏，读取存储失败阻止继续签名。删除钱包覆盖同地址分区，保留其他身份和社交数据。
+新增固定BSC测试网浏览器/Remix外链及纯本地DApp请求审核策略；逐笔授权、完整参数、锁定/切网撤销、限速/过期/防重放、eth_sign禁用。该策略默认关闭、无transport或signer，reviewed-only不等于签名；WalletConnect明确不可用。桌面/Android/iOS外链白名单同步，不放宽RPC或CSP。
+前端553/553（P0后500 + P2新增53）、钱包定向122/122（包含在553内）、电脑版60/60、Android相关6/6（含JVM109+64+35项断言）、iOS静态14/14与桥接4/4、本地钱包/EVM联测1/1均通过。EVM四笔approve/fund/claim/refund为本地内存链，无外部RPC；Ganache原生uWS缺失已自动回落JS，测试通过。
+命令：npm test（tongban）；node --test yubenzhe-desktop/tests/*.test.cjs；node --test tongban-android/tests/android-security.test.mjs；python -m unittest discover（yubenzhe-ios/tests）；node --test yubenzhe-ios/tests/*.test.mjs；node --test test/wallet-integration.test.mjs（contracts）；node tongban/build.mjs。
+localhost:18934实际浏览器已核对钱包、五条网络启用/禁用、系统外链与WalletConnect未接通提示。没有创建真实资金钱包、没有公网签名、没有原生包/手机新安装验收。23份历史迁移/受保护合约哈希不变。
+缺失：WALLETCONNECT_PROJECT_ID、WalletConnect SDK、真实provider验证；硬件钱包直连、完整TP代币/NFT/行情/跨链功能均未实现。EIP1559仅隔离fixture验证，主网未验收。商店组织资质/申报、法律审查与独立安全审计仍属外部交付，不以“零收费”宣称自动合规。细项见WALLET-NETWORK-SAFETY-20261012.txt。
 P3 — 默认关闭的ERC-4337框架：待执行。
 P4 — AI注册表与024迁移：待执行。
 P5 — D1登录提醒：待执行。

@@ -28,6 +28,15 @@ public class NativePoliciesTest {
         for (String unsafe : new String[] {"http://localhost", "https://localhost.evil.test/", "https://localhost@evil.test", "https://user@localhost/", "https://localhost:1234", "file:///etc/passwd", "javascript:alert(1)", "intent://example", "https://localhost\\@evil.test"}) check(!NavigationPolicy.isLocal(unsafe), "Reject nonlocal origin: " + unsafe);
         check(NavigationPolicy.mayOpenExternal("https://testnet.bscscan.com/tx/0x12", true), "Clicked testnet explorer link");
         check(!NavigationPolicy.mayOpenExternal("https://testnet.bscscan.com/", false), "No silent external navigation");
+        check(NavigationPolicy.mayOpenExternal("https://app.remix.live/", true), "Clicked exact Remix root");
+        check(!NavigationPolicy.mayOpenExternal("https://app.remix.live/", false), "No automatic DApp browser launch");
+        for (String unsafe : new String[] {"https://app.remix.live", "https://app.remix.live/path", "https://app.remix.live//", "https://app.remix.live/./", "https://app.remix.live/%2f", "https://app.remix.live/?url=https://evil.test", "https://app.remix.live/#wallet", "https://app.remix.live:443/", "https://app.remix.live:8443/", "https://user:pass@app.remix.live/", "https://app.remix.live@evil.test/", "https://app.remix.live.evil.test/", "https://APP.REMIX.LIVE/", "http://app.remix.live/"}) check(!NavigationPolicy.mayOpenExternal(unsafe, true), "DApp URL must be exact: " + unsafe);
+        for (String external : new String[] {"https://app.remix.live/", "https://testnet.bscscan.com/"}) {
+            check(!NavigationPolicy.isLocal(external), "DApp cannot become a local document");
+            check(!NavigationPolicy.isTestnetRpc(external), "DApp is never an RPC endpoint");
+            check(!NavigationPolicy.isSocialApi(external), "DApp is never a background API endpoint");
+            check(!NavigationPolicy.isSocialAvatar(external), "DApp cannot supply embedded content");
+        }
         check(NavigationPolicy.mayOpenExternal("https://ollama.com/download", true), "Clicked official Ollama download");
         check(NavigationPolicy.mayOpenExternal("https://docs.ollama.com/quickstart", true), "Clicked official model documentation");
         for (String unsafe : new String[] {"https://ollama.com/", "https://ollama.com/download?redirect=evil", "https://ollama.com/download/windows", "https://ollama.com.evil.test/download", "https://ollama.com@evil.test/download", "http://ollama.com/download"}) check(!NavigationPolicy.mayOpenExternal(unsafe, true), "Model download URL must be exact");

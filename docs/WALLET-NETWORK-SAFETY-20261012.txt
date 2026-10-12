@@ -1,0 +1,39 @@
+YBZ P2 钱包网络与边界核对（2026-10-12）
+
+MASTER P2优先于TP参考中的真实主网试转要求：本轮没有真实主网授权，不添加主网RPC、不做主网签名或部署。
+网络表：BSC测试网97启用；BSC56、Ethereum1、Polygon137、Arbitrum42161只保留网络元数据，默认且实际禁用。
+按链隔离加密vault和交易记录，同一EVM身份地址不静默变化。旧97加密数据保留兼容；不上传密钥或助记词。
+普通转账仍拒绝合约收款。现有已验证等额分发调用单独受97配置和代码哈希保护，不等于允许任意合约调用。
+EIP-1559费用使用独立结构，不能把gasPrice直接当作全部费用字段；既有97交易保持legacy兼容。主网费用路径只允许模拟测试。
+
+C1：外部工具使用系统浏览器；不把DApp加载进原生WebView。
+C2：固定两个官方入口：BSC测试网浏览器、Remix。没有任意网址输入。
+C3：eth_sign拒绝；未接通的WalletConnect不暴露实际签名入口。
+C4：普通转账显示完整chainId/from/to/value/gas/方法/data，用户逐笔输入本机密码批准。
+C5：无买币、法币入金、平台充值入口。
+C6：无邀请奖励或做任务送币；原测试网付款是验收后本人单独签名的付款，不是平台奖励。
+C7：社交、工作台、设备权限不依赖钱包资产或链上支付解锁。
+C8：原远控为整机屏幕/输入；AI任务是独立授权通道，不以远控镜像绕过某服务登录。
+C9/C14：设备只提供连接、远控、AI任务、文件收发；没有出租或兑换凭证。
+C10：外部待办。Apple钱包应用需组织开发者账号；尚未提供/办理主体资质。组织账号不等于Apple企业内部分发项目。
+C11：外部待办。Google Play金融功能申报尚未提交。非托管钱包在某项钱包政策范围之外，不等于免除全部法律、申报或商店要求。
+C12：平台免费使用；第三方软件条款及网络交易费用各自明确，未建立平台计费入口。
+C13：积分服务由P0退役，014历史迁移保留，023归档后删除四张积分表。
+
+WalletConnect边界
+固定外链可打开；请求策略、过期、撤销、逐次批准、防重放可在本地测试。
+WALLETCONNECT_PROJECT_ID、WALLETCONNECT_SDK、WALLETCONNECT_PROVIDER_VERIFICATION仍缺失，正式连接入口禁用；没有已连接记录、没有硬件钱包签名、没有真实WalletConnect联测。不能把策略单测计作连接验收。
+TP扩展项：自动代币发现、任意ERC20转账、完整Gas三档/地址簿、跨链转移与硬件直连不因本批网络表完成而声称已接通。
+
+本轮官方核验来源（不是商店预批准）
+- Apple App Review Guidelines：3.1.5(i)组织主体、3.1.5(v)奖励限制、3.1.1功能支付、4.2.7远控条件。
+  https://developer.apple.com/app-store/review/guidelines/
+- Google Play非托管政策范围与申报说明：
+  https://support.google.com/googleplay/android-developer/answer/16329703?hl=en-en
+  https://support.google.com/googleplay/android-developer/answer/13607354?hl=en
+- EIP-1559交易格式：https://eips.ethereum.org/EIPS/eip-1559
+- EIP-1193信任边界：https://eips.ethereum.org/EIPS/eip-1193
+- EIP-712不提供重放保护：https://eips.ethereum.org/EIPS/eip-712
+- Remix官方入口安全说明：https://remix-ide.readthedocs.io/en/latest/security.html
+
+独立安全审计、真实设备联测、用户资质和各地区法律评估仍是上线前工作；代码检查不能承诺合规或过审。

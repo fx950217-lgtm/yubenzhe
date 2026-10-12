@@ -46,3 +46,5 @@
 .chain-public-address{font-family:var(--font-number);font-size:11px;overflow-wrap:anywhere;max-width:72%}
 [data-distribution-root] .transfer-detail{gap:12px}
 [data-distribution-root] .transfer-detail b{text-align:right;overflow-wrap:anywhere}
+/* Network metadata never presents an activation action for disabled mainnets. */
+.wallet-network-list{display:grid;gap:10px}.wallet-network-list button{text-align:left;white-space:normal}.wallet-network-list button:disabled{opacity:.65;cursor:default}.wallet-network-list small{display:inline-block;margin-top:5px}.wallet-dapp-links{display:grid;gap:18px;margin:18px 0}.wallet-dapp-links article{padding:16px;border:1px solid var(--grey-3);border-radius:var(--radius-m,14px)}.wallet-dapp-links h3{margin:0 0 10px}.wallet-dapp-links .secondary{display:inline-block}

@@ -1,4 +1,5 @@
-import gzip, importlib.util, io, pathlib, plistlib, struct, sys, tarfile, tempfile, unittest
+import gzip, importlib.util, io, json, pathlib, plistlib, struct, sys, tarfile, tempfile, unittest
+from urllib.parse import urlsplit
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from verify_app import macho_ios_arm64, verify_preview_entitlements, verify_app
@@ -71,13 +72,41 @@ class PackagingChecks(unittest.TestCase):
         self.assertIn('"privacy.html": "text/html; charset=utf-8"', source)
         self.assertIn('"terms.html": "text/html; charset=utf-8"', source)
         self.assertNotIn('"sw.js":', source)
-        policy = source.split('let policy = "',1)[1].split('"',1)[0]
+        # The native shell now reads the build-generated policy; a hard-coded Swift
+        # string assertion would miss the policy that an actual package ships.
+        self.assertIn('root.appendingPathComponent("app-policy.txt")', source)
+        self.assertIn('?? "default-src \'none\'"', source)
+        self.assertIn('with: "form-action \'none\'"', source)
+        self.assertIn("frame-src 'none'; frame-ancestors 'none'", source)
+        self.assertIn("'app-policy.txt'", (ROOT/'scripts/sync-web.py').read_text(encoding='utf-8'))
+        dist = ROOT.parent/'tongban/dist'
+        policy = (dist/'app-policy.txt').read_text(encoding='utf-8')
+        config = json.loads((dist/'public-deployment.json').read_text(encoding='utf-8'))
+        rpc_origins = [urlsplit(url).scheme + '://' + urlsplit(url).netloc for url in config['rpcUrls']]
+        self.assertEqual(rpc_origins, ['https://bsc-testnet-dataseed.bnbchain.org', 'https://bsc-testnet.bnbchain.org'])
         connect = next(d.strip().split() for d in policy.split(';') if d.strip().startswith('connect-src'))
-        self.assertEqual(connect, ['connect-src', "'self'", 'https://bsc-testnet-dataseed.bnbchain.org', 'https://bsc-testnet.bnbchain.org', 'https://66.42.56.29/api/social/'])
+        self.assertEqual(connect, ['connect-src', "'self'", config['previewOrigin'] + '/api/social/', *rpc_origins])
         images = next(d.strip().split() for d in policy.split(';') if d.strip().startswith('img-src'))
-        self.assertEqual(images, ['img-src', "'self'", 'data:', 'blob:', 'https://66.42.56.29/api/social/avatars/'])
-        self.assertIn("frame-src 'none'", policy)
+        self.assertEqual(images, ['img-src', "'self'", 'data:', 'blob:', config['previewOrigin'] + '/api/social/avatars/'])
         self.assertIn("object-src 'none'", policy)
+        self.assertNotIn('app.remix.live', policy)
+    def test_dapp_policy_is_exact_system_browser_only_and_requires_local_user_click(self):
+        source = (ROOT/'App/BrowserViewController.swift').read_text(encoding='utf-8')
+        external = source.split('private func openExternal(', 1)[1].split('\n    }', 1)[0]
+        self.assertIn('action.navigationType == .linkActivated', external)
+        self.assertIn('action.sourceFrame.isMainFrame, isLocal(action.sourceFrame.request.url)', external)
+        self.assertIn('url.absoluteString == "https://app.remix.live/" || externalHosts.contains(host)', external)
+        self.assertIn('url.scheme == "https"', external)
+        self.assertIn('url.user == nil, url.password == nil', external)
+        self.assertIn('UIApplication.shared.open(url)', external)
+        self.assertNotIn('load(', external)
+        host_list = source.split('private let externalHosts:', 1)[1].split('\n', 1)[0]
+        self.assertNotIn('app.remix.live', host_list)
+        self.assertIn('testnet.bscscan.com', host_list)
+        self.assertIn('else { openExternal(navigationAction); decisionHandler(.cancel) }', source)
+        self.assertIn('openExternal(navigationAction); return nil', source)
+        self.assertIn('javaScriptCanOpenWindowsAutomatically = false', source)
+        self.assertNotIn('app.remix.live', (ROOT/'App/LocalAssetServer.swift').read_text(encoding='utf-8'))
     def test_project_references_are_resolvable(self):
         with (ROOT/'Yubenzhe.xcodeproj/project.pbxproj').open('rb') as file:data=plistlib.load(file)
         objects=data['objects']

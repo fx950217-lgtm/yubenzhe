@@ -69,6 +69,20 @@ test('social API permission is limited to background requests, not navigation', 
   const navigation = client.slice(client.indexOf('boolean shouldOverrideUrlLoading'), client.indexOf('WebResourceResponse shouldInterceptRequest'));
   assert.doesNotMatch(navigation, /isSocialApi|isSocialAvatar/);
 });
+test('DApp navigation requires an actual main-frame click and opens the system browser', () => {
+  const prefix = 'android/app/src/main/java/app/tongban/wallet/demo/';
+  const client = read(prefix + 'SafeWebViewClient.java');
+  const navigation = client.slice(client.indexOf('boolean shouldOverrideUrlLoading'), client.indexOf('WebResourceResponse shouldInterceptRequest'));
+  assert.match(navigation, /request\.isForMainFrame\(\) && NavigationPolicy\.mayOpenExternal\(url, request\.hasGesture\(\)\)/);
+  assert.match(navigation, /Intent\.ACTION_VIEW/);
+  assert.match(navigation, /Intent\.CATEGORY_BROWSABLE/);
+  assert.match(navigation, /startActivity\(intent\)/);
+  assert.doesNotMatch(navigation, /loadUrl\(|new WebView|addJavascriptInterface/);
+  const legacy = navigation.slice(navigation.indexOf('shouldOverrideUrlLoading(WebView view, String url)'));
+  assert.doesNotMatch(legacy, /mayOpenExternal|startActivity/);
+  assert.doesNotMatch(read(prefix + 'DeploymentConfig.java'), /app\.remix\.live/);
+  assert.match(read(prefix + 'SafeChromeClient.java'), /boolean onCreateWindow[\s\S]*return false;/);
+});
 
 
 test('internal preview transport policy and memory-only session execute in JVM', () => {
