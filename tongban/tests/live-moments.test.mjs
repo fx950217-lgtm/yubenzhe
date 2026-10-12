@@ -53,6 +53,12 @@ test('unauthenticated moments show an account entry without treating cached loca
  const h=featureHarness(t,{loggedIn:false});h.feature.routeChanged('moments');assert.match(h.markup,/登录账号/);assert.equal(h.calls.length,0);assert.doesNotMatch(h.markup,/SERVER_CONTENT|LOCAL_ONLY_TEXT/);
 });
 
+test('personal moments preserve their return label and escape the supplied label',t=>{
+ const h=featureHarness(t);assert.match(h.feature.render(),/aria-label="返回发现"/);
+ assert.match(h.feature.render({ownOnly:true,backLabel:'返回我的'}),/aria-label="返回我的"/);
+ assert.match(h.feature.render({backLabel:'"<test>'}),/aria-label="&quot;&lt;test&gt;"/);
+});
+
 test('feed failures clear former content and offer explicit retry',async t=>{
  let fail=false;const h=featureHarness(t,{request:async()=>{if(fail)throw new Error('好友关系已更新');return {posts:[post()],nextBefore:null};}});h.feature.routeChanged('moments');await tick();assert.match(h.markup,/SERVER_CONTENT/);fail=true;await h.feature.refresh();assert.doesNotMatch(h.markup,/SERVER_CONTENT/);assert.match(h.markup,/好友关系已更新/);assert.match(h.markup,/重试/);
 });

@@ -119,7 +119,7 @@ export function mountMine(container, { toast = () => {}, onNavigate = () => {}, 
   function render(focus = false) {
     if (!active) return;
     const screens = { home, account, settings, edit, appearance, security, orders, help, about };
-    container.innerHTML = `<div class="mine-page mine-brand-page" data-mine-view="${view}">${screens[view]()}${view==='about'?'<p class="mine-footnote">版本 <span class="mine-number">0.14.0-dev.12</span></p>':''}</div>`;
+    container.innerHTML = `<div class="mine-page mine-brand-page" data-mine-view="${view}">${screens[view]()}${view==='about'?'<p class="mine-footnote">版本 <span class="mine-number">0.14.0-dev.13</span></p>':''}</div>`;
     if (focus) container.querySelector('h2')?.focus({ preventScroll: true });
   }
   function scrollTo(top) { globalThis.window?.scrollTo({ top, behavior: 'instant' }); }

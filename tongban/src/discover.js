@@ -310,7 +310,7 @@ export function mountDiscover(container, options = {}) {
     return false;
   }
   function renderServices() { return renderHub(); }
-  function renderMoments() { return moments.render({ownOnly:ownMoments}); }
+  function renderMoments() { return moments.render({ownOnly:ownMoments,backLabel}); }
   function renderProvider(){return `${header('认证服务商')}${saved('provider')}${workbench.render('provider')}`}
   function renderAI(){return `${header('模型与工具')}${saved('ai')}${workbench.render('ai')}`}
   function renderBounty(){return `${header('赏金任务')}${saved('bounty')}${workbench.render('bounty')}`}
