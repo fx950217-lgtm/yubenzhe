@@ -113,6 +113,17 @@ test('invalid lease rolls back providers, scan timestamp and task metadata atomi
  assert.throws(()=>f.poll({taskId:randomUUID(),leaseId:randomUUID(),status:f.status([provider('ollama')])}),error('AI_LEASE_DENIED'));const after=f.state();assert.deepEqual(after.providers,before.providers);assert.equal(after.scannedAt,before.scannedAt);
 });
 
+test('D1 reminders require fresh online evidence of logged-out installation, are owner-only and expose no login operation',async t=>{
+ const f=await fixture(t),loggedOut=provider('codex',{loggedIn:false,executionSupported:false,executionMode:'disabled'});
+ f.poll({status:f.status([loggedOut,provider('claude',{loggedIn:null}),provider('workb',{installed:false,loggedIn:null}),provider('ollama')])});
+ assert.deepEqual(f.state().loginReminders,[{providerId:'codex',providerName:'Codex',kind:'login-required',message:'这台电脑上的 Codex 需要登录，请在电脑上完成'}]);
+ assert.throws(()=>f.call('GET','devices/'+f.device.deviceId,{},f.other),error('DEVICE_NOT_FOUND'));
+ for(const route of ['login','auth','credentials','devices/'+f.device.deviceId+'/login'])assert.throws(()=>f.call('POST',route,{password:'synthetic-never-used'}),error('AI_CHANNEL_ROUTE'));
+ f.advance(20001);assert.deepEqual(f.state().loginReminders,[]);
+ const scannedAt=f.now();f.advance(AI_PROVIDER_SCAN_MAX_MS);f.poll({status:f.status([loggedOut],{scannedAt})});assert.deepEqual(f.state().loginReminders,[]);
+ f.poll({status:f.status([provider('codex')])});assert.deepEqual(f.state().loginReminders,[]);
+});
+
 test('an admitted live lease may complete beyond scan TTL without admitting new work or falsifying scan time',async t=>{
  const f=await fixture(t),status=f.status(),task=f.send('codex'),queued=f.send('ollama'),dispatch=f.poll().task;
  for(let n=0;n<31;n++){f.advance(10000);f.poll({status,taskId:task.id,leaseId:dispatch.leaseId});}

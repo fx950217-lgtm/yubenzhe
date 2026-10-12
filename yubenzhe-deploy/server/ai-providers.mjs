@@ -4,6 +4,12 @@ import {fail,fields} from './social-validation.mjs';
 // columns deliberately have no enum CHECK that would force another migration.
 export const AI_PROVIDER_CATALOG=Object.freeze({codex:Object.freeze({name:'Codex',mode:'tools'}),claude:Object.freeze({name:'Claude',mode:'disabled'}),workb:Object.freeze({name:'WorkB',mode:'disabled'}),ollama:Object.freeze({name:'Ollama',mode:'chat-only'})});
 export const AI_PROVIDER_SCAN_MAX_MS=5*60*1000;
+// D1 only: never automate login or read provider credentials. D2 automation can
+// breach a provider's terms and expose the user's account to restrictions.
+export function aiLoginReminders(report,{online=false}={}){
+ if(!online||report.stale)return [];
+ return report.providers.filter(item=>item.installed&&item.loggedIn===false).map(item=>({providerId:item.id,providerName:AI_PROVIDER_CATALOG[item.id].name,kind:'login-required',message:'这台电脑上的 '+AI_PROVIDER_CATALOG[item.id].name+' 需要登录，请在电脑上完成'}));
+}
 const invalid=()=>fail(400,'INVALID_AI_PROVIDERS','AI 工具清单格式或能力组合无效。');
 export function checkedProviderId(value){if(typeof value!=='string'||value.trim()!==value||!/^[a-z][a-z0-9-]{1,23}$/.test(value)||!Object.hasOwn(AI_PROVIDER_CATALOG,value))fail(400,'AI_PROVIDER_INVALID','AI 工具标识无效或尚未支持。');return value;}
 export function validateAIProviders(input){

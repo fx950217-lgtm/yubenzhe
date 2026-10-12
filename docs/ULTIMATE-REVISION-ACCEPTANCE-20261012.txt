@@ -56,7 +56,12 @@ P4 — AI注册表与024迁移：代码、本地合成工具与真实HTTP验证�
 真实Electron隔离向导DOM验收四种provider状态、本地模型默认空、无exe路径暴露通过；检测/网络使用明确替身，没有AI实际执行、实际模型输出或新版安装验收。证据p4-wizard/result.json和dom.txt，不将DOM验收称为截图验收。
 命令：node --test yubenzhe-deploy/tests/*.test.mjs；node --test yubenzhe-desktop/tests/*.test.cjs；node --test tongban/tests/ai-channel-chat.test.mjs tongban/tests/ai-channel-files.test.mjs tongban/tests/device-code-ui.test.mjs tongban/tests/personal-devices-chat.test.mjs；node scripts/check-project.mjs --allow-changes。
 边界与本机启动见AI-PROVIDER-REGISTRY-SAFETY-20261012.txt。P4仍单任务，手机逐provider入口在P5/P6，不能以本批后端通过宣称最终群聊闭环已完成。
-P5 — D1登录提醒：待执行。
+P4 commit：75efe92（Add device AI registry and safe provider dispatch）。
+
+P5 — D1登录提醒：代码与专项验证通过。
+本人设备的既有鉴权GET返回loginReminders；只对在线、新鲜、明确已安装且loggedIn=false的工具显示“这台电脑上的 Codex 需要登录，请在电脑上完成”等固定提示。手机AI对话页轮询展示卡片，不采集密码/验证码、不自动打开登录，不新增登录或凭据接口。离线、未知、未安装、过期及重复提醒均被过滤。代码明确D2可能造成服务条款与账号风险，本轮不实现。
+专项39/39通过（新增后端1、前端3，原覆盖保留），网页构建通过。包括真实服务对象owner-only/404、伪造登录路由拒绝、前端实际mount读取卡片且只有GET请求。探测与登录状态为合成fixture，未代用户登录。P6继续把设备页的动态工具入口与提醒联起来。
+命令：node --test tongban/tests/ai-login-reminders.test.mjs tongban/tests/ai-channel-chat.test.mjs yubenzhe-deploy/tests/ai-providers.test.mjs；node tongban/build.mjs。
 P6 — 动态AI入口：待执行。
 P7 — 群AI与并发、025迁移：待执行。
 

@@ -77,3 +77,7 @@ test('successful reads clear only read failures and preserve failed send or down
  const d=harness(t,{tasks:[complete],fileTransfer:{download:async()=>{downloads++;throw Error('download canceled by browser');}},request:async(path,options,fallback)=>path.includes('/tasks/')?{task:complete,events:[],latestSeq:0}:fallback(path,options)});
  await tick();await d.click('download',file.id,tid);await d.click('refresh');assert.match(d.root.innerHTML,/download canceled by browser/);assert.equal(downloads,1);
 });
+
+test('phone receives D1 reminder through existing authenticated device polling without initiating login',async t=>{
+ const h=harness(t,{request:async(path,options,fallback)=>path.includes('/devices/')?{device:{id:did,online:true,aiStatus:'login-required',providers:[{id:'codex',installed:true,loggedIn:false}],loginReminders:[{providerId:'codex',kind:'login-required'}]},tasks:[]}:fallback(path,options)});await tick();assert.match(h.root.innerHTML,/class="rw-card ac-login-reminder"/);assert.match(h.root.innerHTML,/请在电脑上完成/);assert.deepEqual(h.calls.map(c=>[c.path,c.options.method]),[['ai-channel/devices/'+did,'GET']]);
+});

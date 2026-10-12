@@ -1,7 +1,7 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {fail,fields,text} from './social-validation.mjs';
 import {readDeviceCapabilities,deviceSource,validateDeviceCapabilities} from './device-capabilities.mjs';
-import {AI_PROVIDER_CATALOG,checkedProviderId,checkedProvidersReport,readAIProviders,providerProblem} from './ai-providers.mjs';
+import {AI_PROVIDER_CATALOG,checkedProviderId,checkedProvidersReport,readAIProviders,providerProblem,aiLoginReminders} from './ai-providers.mjs';
 
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid=value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
@@ -43,7 +43,7 @@ export function createAIChannel({database,socialService,devices,now=Date.now,fil
  function statusView(device){
   const current=one('SELECT * FROM ai_channel_devices WHERE device_id=?',device.id),online=Boolean(!device.revoked_at&&device.token_hash&&current?.last_seen&&current.last_seen>now()-AI_CHANNEL_LIMITS.onlineMs);
   const report=readAIProviders(current,now());
-  return {id:device.id,name:device.name,online,aiStatus:online?report.status:'offline',workspaceLabel:current?.workspace_label||'',providers:report.providers,scannedAt:report.scannedAt,providersStale:report.stale,filePublicKey:online?publicKeys.get(device.id)||null:null,source:device.source,capabilities:readDeviceCapabilities(device)};
+  return {id:device.id,name:device.name,online,aiStatus:online?report.status:'offline',workspaceLabel:current?.workspace_label||'',providers:report.providers,scannedAt:report.scannedAt,providersStale:report.stale,loginReminders:aiLoginReminders(report,{online}),filePublicKey:online?publicKeys.get(device.id)||null:null,source:device.source,capabilities:readDeviceCapabilities(device)};
  }
  function taskView(task){
   const entry=memory.get(task.id),device=one('SELECT name FROM personal_devices WHERE id=?',task.device_id);

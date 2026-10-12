@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {aiLoginReminderCards} from '../src/ai-login-reminders.js';
+const device=()=>({online:true,providersStale:false,providers:[{id:'codex',installed:true,loggedIn:false}],loginReminders:[{providerId:'codex',kind:'login-required',message:'<img src=x onerror=evil>',providerName:'bad'}]});
+test('D1 renders a fixed safe instruction with no login button, password field or arbitrary server content',()=>{const html=aiLoginReminderCards(device());assert.match(html,/这台电脑上的 Codex 需要登录，请在电脑上完成/);assert.doesNotMatch(html,/img|onerror|input|button|href|bad/);});
+test('D1 does not invent a login requirement for unknown, absent, offline or stale tools',()=>{for(const change of [{online:false},{providersStale:true},{providers:[]},{providers:[{id:'codex',installed:true,loggedIn:null}]},{providers:[{id:'codex',installed:false,loggedIn:false}]},{loginReminders:[{providerId:'<script>',kind:'login-required'}]}])assert.equal(aiLoginReminderCards({...device(),...change}),'');const d=device();d.loginReminders.push(d.loginReminders[0]);assert.equal((aiLoginReminderCards(d).match(/<aside/g)||[]).length,1);});
