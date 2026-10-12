@@ -3,240 +3,169 @@ import {transactionFeeFields,feeCap,sameFeeFields} from './wallet-fee-policy.js'
 import { Wallet, getAddress, formatEther, parseEther, keccak256, toQuantity } from 'ethers';
 import { walletFromMnemonic, walletFromPrivateKey, walletFromKeystore, normalizePublicAddress, validateExpectedAddress } from './wallet-compatibility.js';
 import { requireWatchWallet } from './wallet-watchlist.js';
+import {COLLECTION_KEY,LEGACY_VAULT_KEY,LEGACY_VAULT_PREFIX,legacyVaultLocations,readWalletCollection,selectedLocalVault,collectionWith,persistCollection,withWalletWrite,walletName,encryptLocalVault,decryptLocalVault,cleanLegacySources,vaultDigest,walletStorage} from './wallet-local-vaults.js';
 export { listWatchWallets, addWatchWallet, removeWatchWallet } from './wallet-watchlist.js';
 export { DEFAULT_DERIVATION_PATH, MAX_KEYSTORE_BYTES, previewMnemonic, previewPrivateKey, previewKeystore } from './wallet-compatibility.js';
 
-// Selection is in memory; stored preferences can never enable a network.
+// A stored preference never enables a disabled network.
 export let NETWORK = getEnabledChain(DEFAULT_CHAIN_ID);
 export const getNetworks = () => CHAIN_REGISTRY;
-const LEGACY_VAULT_KEY = 'tongban.wallet.bsc-testnet.v1';
 const LEGACY_RECORD_PREFIX = 'tongban.transactions.bsc-testnet.v1.';
-const VAULT_PREFIX = 'ybz.wallet.evm.v2.';
 const RECORD_PREFIX = 'ybz.transactions.evm.v2.';
-const vaultKey = chainId => VAULT_PREFIX + chainId;
 let networkEpoch = 0;
 const AUTO_LOCK_MS = 5 * 60 * 1000;
 const PREVIEW_MS = 2 * 60 * 1000;
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-let session = null;
-let draft = null;
-let prepared = null;
-let lockTimer = null;
-let epoch = 0;
-let creating = false;
-let confirming = false;
-let requestId = 0;
+let session = null, draft = null, prepared = null, exportCache = null, selectionStamp;
+let lockTimer = null, epoch = 0, creating = false, confirming = false, requestId = 0;
 
-function fail(message, code = 'WALLET_ERROR') {
-  const error = new Error(message);
-  error.code = code;
-  return error;
+function fail(message, code = 'WALLET_ERROR') { return Object.assign(new Error(message),{code}); }
+const storage=walletStorage;
+const fingerprint=item=>item?.storageFormat==='aes-256-gcm'?JSON.stringify(item.envelope):item?.encryptedJson;
+const selectedNetwork=item=>getChain(item?.chainId)?.enabled?getEnabledChain(item.chainId):getEnabledChain(DEFAULT_CHAIN_ID);
+function announceSelection(){globalThis.dispatchEvent?.(new Event('ybz:wallet-selection-changed'));}
+function adoptSnapshot(snapshot){
+ const item=selectedLocalVault(snapshot);selectionStamp=snapshot.stamp;
+ if(item)NETWORK=selectedNetwork(item);
+ return item;
 }
-
-function storage() {
-  try {
-    if (!globalThis.localStorage) throw new Error();
-    return globalThis.localStorage;
-  } catch {
-    throw fail('浏览器无法使用本地存储，请关闭无痕模式后重试。', 'STORAGE_UNAVAILABLE');
-  }
+function synchronize(){
+ const snapshot=readWalletCollection();
+ const changed=selectionStamp!==undefined&&selectionStamp!==snapshot.stamp;
+ adoptSnapshot(snapshot);if(changed){networkEpoch++;lock();}return snapshot;
 }
-
-function readVaultAt(key,chainId,{legacy=false}={}) {
-  let raw;
-  try { raw=storage().getItem(key); }
-  catch { throw fail('无法读取本地钱包，请检查浏览器存储权限。','STORAGE_UNAVAILABLE'); }
-  if(!raw)return null;
-  try {
-    const vault=JSON.parse(raw);
-    if(vault.version!==(legacy?1:2)||vault.chainId!==chainId||!getChain(vault.chainId)||typeof vault.encryptedJson!=='string')throw Error();
-    const address=getAddress(vault.address),encrypted=JSON.parse(vault.encryptedJson);
-    if(encrypted.version!==3||!encrypted.Crypto&&!encrypted.crypto||getAddress('0x'+encrypted.address.replace(/^0x/,''))!==address)throw Error();
-    return {...vault,address};
-  }catch { throw fail('本地钱包文件无法读取，请保留原始数据并使用助记词在可信钱包中恢复。','VAULT_INVALID'); }
+function readVault(){
+ const item=selectedLocalVault(synchronize());
+ return item?{...item,encryptedJson:fingerprint(item)}:null;
 }
-function readVault(chainId=NETWORK.chainId) {
-  return readVaultAt(vaultKey(chainId),chainId)||(chainId===DEFAULT_CHAIN_ID?readVaultAt(LEGACY_VAULT_KEY,DEFAULT_CHAIN_ID,{legacy:true}):null);
+function unchanged(snapshot){if(readWalletCollection().stamp!==snapshot.stamp)throw fail('另一页面已更改钱包，请重新核对。','WALLET_CHANGED');}
+function remember(wallet,item,encryptedJson){session=wallet;exportCache={id:item.id,fingerprint:fingerprint(item),encryptedJson,expiresAt:Date.now()+AUTO_LOCK_MS};armLock();}
+function ensureAvailable(snapshot,options={}){
+ if(snapshot.value.wallets.length&&!options.additional)throw fail('此设备已有钱包，请使用添加钱包入口。','WALLET_EXISTS');
+ if(snapshot.value.wallets.length>=20)throw fail('本机最多保存 20 个钱包。','WALLET_LIMIT');
 }
-function persistVault(wallet,encryptedJson,chainId=NETWORK.chainId) {
-  getEnabledChain(chainId);
-  const value=JSON.stringify({version:2,chainId,address:wallet.address,encryptedJson});
-  try { const local=storage(),key=vaultKey(chainId);local.setItem(key,value);if(local.getItem(key)!==value)throw Error(); }
-  catch { throw fail('钱包未保存：浏览器存储已满或被禁用，请保留助记词后重试。','STORAGE_UNAVAILABLE'); }
+function newItem(wallet,snapshot,options){
+ if(snapshot.value.wallets.some(item=>item.address===wallet.address))throw fail('本机已保存这个地址，请选择已有钱包。','WALLET_DUPLICATE');
+ return {id:crypto.randomUUID(),address:wallet.address,name:walletName(options.name,'钱包 '+(snapshot.value.wallets.length+1)),chainId:NETWORK.chainId,storageFormat:'aes-256-gcm'};
 }
-export function setNetwork(chainId) {
-  const next=getEnabledChain(chainId);
-  if(next.chainId===NETWORK.chainId)return NETWORK;
-  if(creating||confirming)throw fail('钱包操作尚未结束，请稍后切换网络。','WALLET_BUSY');
-  const previous=readVault(),target=readVault(chainId);
-  if(previous&&target&&(previous.address!==target.address||previous.encryptedJson!==target.encryptedJson))throw fail('目标网络已有不同的钱包，未覆盖本机数据。','NETWORK_WALLET_CONFLICT');
-  // Copy only the encrypted envelope, and only after explicit network selection.
-  // A failed write leaves the selected chain and the original vault intact.
-  if(previous&&!target)persistVault(previous,previous.encryptedJson,chainId);
-  lock();networkEpoch++;NETWORK=next;
-  globalThis.dispatchEvent?.(new Event('ybz:wallet-network-changed'));
-  return NETWORK;
+export function listLocalWallets(){
+ const snapshot=synchronize();return snapshot.value.wallets.map(item=>({id:item.id,address:item.address,name:item.name,chainId:item.chainId,selected:item.id===snapshot.value.selectedId,storageFormat:item.storageFormat,migrationRequired:item.storageFormat!=='aes-256-gcm'||(item.legacyCleanup||[]).some(source=>storage().getItem(source.key)!==null)}));
 }
-function checkConnection(connection) {
-  if(connection.revision!==networkEpoch||connection.network.chainId!==NETWORK.chainId)throw fail('网络已改变，请重新核对。','NETWORK_CHANGED');
+export async function selectWallet(id){
+ if(creating||confirming)throw fail('钱包操作尚未结束，请稍后切换。','WALLET_BUSY');
+ return withWalletWrite(()=>{
+  const snapshot=synchronize(),item=snapshot.value.wallets.find(row=>row.id===id);
+  if(!item)throw fail('本机没有这个钱包。','WALLET_MISSING');
+  const saved=persistCollection(snapshot,collectionWith(snapshot,{selectedId:id}));
+  networkEpoch++;adoptSnapshot(saved);lock();announceSelection();return getWalletState();
+ });
 }
-
-function validatePassword(password) {
-  if (typeof password !== 'string' || password.length < 10 || password.length > 256 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-    throw fail('请设置 10–256 位密码，至少包含字母和数字。', 'PASSWORD_WEAK');
-  }
+export async function renameWallet(id,name){
+ name=walletName(name);
+ return withWalletWrite(()=>{
+  const snapshot=synchronize();if(!snapshot.value.wallets.some(item=>item.id===id))throw fail('本机没有这个钱包。','WALLET_MISSING');
+  const saved=persistCollection(snapshot,collectionWith(snapshot,{wallets:snapshot.value.wallets.map(item=>item.id===id?{...item,name}:item)}));
+  adoptSnapshot(saved);return listLocalWallets();
+ });
 }
-
-function armLock() {
-  clearTimeout(lockTimer);
-  lockTimer = setTimeout(lock, AUTO_LOCK_MS);
-  // Do not hold a Node test process open; browsers return a numeric timer ID.
-  lockTimer?.unref?.();
+export async function setNetwork(chainId){
+ const next=getEnabledChain(chainId);
+ if(creating||confirming)throw fail('钱包操作尚未结束，请稍后切换网络。','WALLET_BUSY');
+ return withWalletWrite(()=>{
+  const snapshot=synchronize(),item=selectedLocalVault(snapshot);
+  if(next.chainId===NETWORK.chainId&&(!item||item.chainId===next.chainId))return NETWORK;
+  const saved=item?persistCollection(snapshot,collectionWith(snapshot,{wallets:snapshot.value.wallets.map(row=>row.id===item.id?{...row,chainId:next.chainId}:row)})):snapshot;
+  networkEpoch++;adoptSnapshot(saved);NETWORK=next;lock();
+  globalThis.dispatchEvent?.(new Event('ybz:wallet-network-changed'));announceSelection();return NETWORK;
+ });
 }
-
-function requireSession() {
-  const vault = readVault();
-  if (!vault || !session || vault.address !== session.address) {
-    lock();
-    throw fail('请先解锁钱包。', 'WALLET_LOCKED');
-  }
-  armLock();
-  return vault;
+function checkConnection(connection){
+ synchronize();
+ if(connection.revision!==networkEpoch||connection.network.chainId!==NETWORK.chainId)throw fail('钱包或网络已改变，请重新核对。','NETWORK_CHANGED');
 }
-
-function requireSameSession(startEpoch, address, encryptedJson) {
-  const current = readVault();
-  if (epoch !== startEpoch || !session || session.address !== address || !current || current.encryptedJson !== encryptedJson) {
-    throw fail('钱包已锁定或已发生变化，请重新解锁并确认。', 'SESSION_CHANGED');
-  }
+function validatePassword(password){if(typeof password!=='string'||password.length<10||password.length>256||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password))throw fail('请设置 10–256 位密码，至少包含字母和数字。','PASSWORD_WEAK');}
+function armLock(){clearTimeout(lockTimer);lockTimer=setTimeout(lock,AUTO_LOCK_MS);lockTimer?.unref?.();}
+function requireSession(){
+ const vault=readVault();if(!vault||!session||vault.address!==session.address||exportCache?.id!==vault.id||exportCache.fingerprint!==vault.encryptedJson){lock();throw fail('请先解锁钱包。','WALLET_LOCKED');}armLock();return vault;
 }
-
-export function lock() {
-  epoch += 1;
-  session = null;
-  draft = null;
-  prepared = null;
-  clearTimeout(lockTimer);
-  lockTimer = null;
-  globalThis.dispatchEvent?.(new Event('tongban:wallet-locked'));
+function requireSameSession(startEpoch,address,encryptedJson){
+ const current=readVault();if(epoch!==startEpoch||!session||session.address!==address||!current||current.encryptedJson!==encryptedJson)throw fail('钱包已锁定或已发生变化，请重新解锁并确认。','SESSION_CHANGED');
 }
-
-export function getWalletState() {
-  try {
-    const vault = readVault();
-    return { exists: Boolean(vault), address: vault?.address ?? null, unlocked: Boolean(vault && session?.address === vault.address) };
-  } catch (error) {
-    if (error.code === 'VAULT_INVALID') return { exists: true, address: null, unlocked: false, corrupt: true };
-    throw error;
-  }
+function clearSession(notify=true){epoch++;session=null;draft=null;prepared=null;exportCache=null;clearTimeout(lockTimer);lockTimer=null;if(notify)globalThis.dispatchEvent?.(new Event('tongban:wallet-locked'));}
+export function lock(){clearSession();}
+export function getWalletState(){try{const vault=readVault();return {exists:Boolean(vault),address:vault?.address??null,unlocked:Boolean(vault&&session?.address===vault.address)};}catch(error){if(error.code==='VAULT_INVALID')return {exists:true,address:null,unlocked:false,corrupt:true};throw error;}}
+export async function createWallet(password,options={}){
+ validatePassword(password);const snapshot=synchronize();ensureAvailable(snapshot,options);
+ if(creating||confirming)throw fail('钱包正在处理中，请稍候。','WALLET_BUSY');
+ creating=true;draft=null;const startEpoch=epoch;
+ try{
+  const wallet=Wallet.createRandom(),item=newItem(wallet,snapshot,options),encryptedJson=await wallet.encrypt(password);
+  item.envelope=await encryptLocalVault(item,encryptedJson,password);
+  if(epoch!==startEpoch)throw fail('创建已取消，请重新开始。','CREATION_CANCELLED');
+  unchanged(snapshot);draft={wallet,item,encryptedJson,snapshot,epoch:startEpoch,options};armLock();return {address:wallet.address,phrase:wallet.mnemonic.phrase};
+ }catch(error){if(error.code&&/^[\u3400-\u9fff]/.test(error.message||''))throw error;throw fail('未能创建钱包，请使用支持安全随机数的现代浏览器。','CREATION_FAILED');}finally{creating=false;}
 }
-
-export async function createWallet(password) {
-  validatePassword(password);
-  if (readVault()) throw fail('此设备已有钱包，请先解锁现有钱包。', 'WALLET_EXISTS');
-  if (creating) throw fail('钱包正在创建，请稍候。', 'WALLET_BUSY');
-  creating = true;
-  draft = null;
-  const startEpoch = epoch;
-  try {
-    const wallet = Wallet.createRandom();
-    const encryptedJson = await wallet.encrypt(password);
-    if (epoch !== startEpoch) throw fail('创建已取消，请重新开始。', 'CREATION_CANCELLED');
-    draft = { wallet, encryptedJson };
-    armLock();
-    return { address: wallet.address, phrase: wallet.mnemonic.phrase };
-  } catch (error) {
-    if (error.code === 'CREATION_CANCELLED') throw error;
-    throw fail('未能创建钱包，请使用支持安全随机数的现代浏览器。', 'CREATION_FAILED');
-  } finally { creating = false; }
+// Only called after the user has verified the backup words.
+export async function commitWallet(){
+ return withWalletWrite(()=>{
+  const pending=draft;if(!pending)throw fail('创建已过期，请重新创建并备份。','CREATION_EXPIRED');
+  const current=readWalletCollection();ensureAvailable(current,pending.options);unchanged(pending.snapshot);
+  if(epoch!==pending.epoch)throw fail('创建已取消，请重新开始。','CREATION_CANCELLED');
+  const saved=persistCollection(current,collectionWith(current,{wallets:[...current.value.wallets,pending.item],selectedId:pending.item.id}));
+  clearSession(false);networkEpoch++;adoptSnapshot(saved);remember(pending.wallet,pending.item,pending.encryptedJson);return getWalletState();
+ });
 }
-
-// The UI calls this only after the user has verified their backup words.
-export function commitWallet() {
-  if (!draft) throw fail('创建已过期，请重新创建并备份。', 'CREATION_EXPIRED');
-  if (readVault()) throw fail('此设备已有钱包，未覆盖原有数据。', 'WALLET_EXISTS');
-  persistVault(draft.wallet, draft.encryptedJson);
-  session = draft.wallet;
-  draft = null;
-  armLock();
-  return getWalletState();
+export function cancelCreation(){epoch++;draft=null;if(!session){clearTimeout(lockTimer);lockTimer=null;}}
+async function importWallet(factory,password,options={}){
+ validatePassword(password);const snapshot=synchronize();ensureAvailable(snapshot,options);
+ if(creating||confirming)throw fail('钱包正在处理中，请稍候。','WALLET_BUSY');
+ creating=true;draft=null;const startEpoch=epoch;
+ try{
+  const wallet=await factory();if(epoch!==startEpoch)throw fail('导入已取消，请重新开始。','CREATION_CANCELLED');
+  validateExpectedAddress(wallet.address,options);const item=newItem(wallet,snapshot,options),encryptedJson=await wallet.encrypt(password);
+  item.envelope=await encryptLocalVault(item,encryptedJson,password);
+  return await withWalletWrite(()=>{
+   const current=readWalletCollection();ensureAvailable(current,options);
+   if(epoch!==startEpoch)throw fail('导入已取消，请重新开始。','CREATION_CANCELLED');unchanged(snapshot);
+   const saved=persistCollection(current,collectionWith(current,{wallets:[...current.value.wallets,item],selectedId:item.id}));
+   clearSession(false);networkEpoch++;adoptSnapshot(saved);remember(wallet,item,encryptedJson);return getWalletState();
+  });
+ }catch(error){if(error.code&&/^[\u3400-\u9fff]/.test(error.message||''))throw error;throw fail('钱包导入失败，请检查输入后重试。','RESTORE_FAILED');}finally{creating=false;}
 }
-
-export function cancelCreation() {
-  epoch += 1;
-  draft = null;
-  if (!session) { clearTimeout(lockTimer); lockTimer = null; }
+export function restoreWallet(phrase,password,options={}){return importWallet(()=>walletFromMnemonic(phrase,options),password,options);}
+export function importPrivateKey(privateKey,password,options={}){return importWallet(()=>walletFromPrivateKey(privateKey),password,options);}
+export function importKeystore(json,sourcePassword,password,options={}){return importWallet(()=>walletFromKeystore(json,sourcePassword),password,options);}
+async function decryptInfo(vault,password){
+ if(typeof password!=='string'||!password||password.length>256)throw fail('请输入钱包密码。','PASSWORD_REQUIRED');
+ try{const encryptedJson=vault.storageFormat==='aes-256-gcm'?await decryptLocalVault(vault,password):vault.encryptedJson;const wallet=await Wallet.fromEncryptedJson(encryptedJson,password);if(wallet.address!==vault.address)throw Error();return {wallet,encryptedJson};}
+ catch{throw fail('密码错误或钱包文件已损坏，请检查后重试。','UNLOCK_FAILED');}
 }
-
-async function importWallet(factory, password, options = {}) {
-  validatePassword(password);
-  if (readVault()) throw fail('此设备已有钱包，未覆盖原有数据。', 'WALLET_EXISTS');
-  if (creating) throw fail('钱包正在处理中，请稍候。', 'WALLET_BUSY');
-  creating = true;
-  draft = null;
-  const startEpoch = epoch;
-  try {
-    const wallet = await factory();
-    if (epoch !== startEpoch) throw fail('导入已取消，请重新开始。', 'CREATION_CANCELLED');
-    validateExpectedAddress(wallet.address, options);
-    const encryptedJson = await wallet.encrypt(password);
-    if (epoch !== startEpoch) throw fail('导入已取消，请重新开始。', 'CREATION_CANCELLED');
-    if (readVault()) throw fail('此设备已有钱包，未覆盖原有数据。', 'WALLET_EXISTS');
-    persistVault(wallet, encryptedJson);
-    session = wallet;
-    armLock();
-    return getWalletState();
-  } catch (error) {
-    if (error.code && /^[\u3400-\u9fff]/.test(error.message || '')) throw error;
-    throw fail('钱包导入失败，请检查输入后重试。', 'RESTORE_FAILED');
-  } finally { creating = false; }
+async function decrypt(vault,password){return (await decryptInfo(vault,password)).wallet;}
+export async function unlock(password){
+ const vault=readVault();if(!vault)throw fail('请先创建或恢复钱包。','WALLET_MISSING');
+ const snapshot=readWalletCollection(),startEpoch=epoch,{wallet,encryptedJson}=await decryptInfo(vault,password);
+ if(epoch!==startEpoch)throw fail('解锁已取消，请重试。','SESSION_CHANGED');unchanged(snapshot);
+ let item=selectedLocalVault(snapshot);
+ if(item.storageFormat==='legacy-keystore'){
+  const envelope=await encryptLocalVault(item,encryptedJson,password,item.legacySources);
+  const {encryptedJson:oldJson,legacySources,...metadata}=item;
+  item={...metadata,storageFormat:'aes-256-gcm',envelope,legacyCleanup:legacySources.map(source=>({key:source.key,digest:vaultDigest(source.raw)}))};
+  await withWalletWrite(()=>{
+   if(epoch!==startEpoch)throw fail('解锁已取消，请重试。','SESSION_CHANGED');unchanged(snapshot);
+   const saved=persistCollection(snapshot,collectionWith(snapshot,{wallets:snapshot.value.wallets.map(row=>row.id===item.id?item:row)}));
+   adoptSnapshot(saved);cleanLegacySources(item);
+  });
+ }else if(item.legacyCleanup?.length){await withWalletWrite(()=>{unchanged(snapshot);cleanLegacySources(item);});}
+ const current=readVault();if(epoch!==startEpoch||current?.id!==item.id||current.encryptedJson!==fingerprint(item))throw fail('解锁已取消，请重试。','SESSION_CHANGED');
+ remember(wallet,item,encryptedJson);return getWalletState();
 }
-
-// One selected EVM account is imported; this does not synchronize app profiles or
-// discover every account belonging to a mnemonic. No raw secrets are persisted.
-export function restoreWallet(phrase, password, options = {}) {
-  return importWallet(() => walletFromMnemonic(phrase, options), password, options);
-}
-
-export function importPrivateKey(privateKey, password, options = {}) {
-  return importWallet(() => walletFromPrivateKey(privateKey), password, options);
-}
-
-export function importKeystore(json, sourcePassword, password, options = {}) {
-  return importWallet(() => walletFromKeystore(json, sourcePassword), password, options);
-}
-
-async function decrypt(vault, password) {
-  if (typeof password !== 'string' || !password || password.length > 256) throw fail('请输入钱包密码。', 'PASSWORD_REQUIRED');
-  try {
-    const wallet = await Wallet.fromEncryptedJson(vault.encryptedJson, password);
-    if (wallet.address !== vault.address) throw new Error();
-    return wallet;
-  } catch { throw fail('密码错误或钱包文件已损坏，请检查后重试。', 'UNLOCK_FAILED'); }
-}
-
-export async function unlock(password) {
-  const vault = readVault();
-  if (!vault) throw fail('请先创建或恢复钱包。', 'WALLET_MISSING');
-  const startEpoch = epoch;
-  const wallet = await decrypt(vault, password);
-  if (epoch !== startEpoch || readVault()?.encryptedJson !== vault.encryptedJson) throw fail('解锁已取消，请重试。', 'SESSION_CHANGED');
-  session = wallet;
-  armLock();
-  return getWalletState();
-}
-
-// Local credential check only. This does not unlock, authorize a platform payment,
-// extend an existing session, or expose the decrypted wallet to callers.
-export async function verifyPassword(password) {
-  const vault = readVault();
-  if (!vault) throw fail('请先创建或恢复钱包。', 'WALLET_MISSING');
-  const startEpoch = epoch;
-  const checked = await decrypt(vault, password);
-  if (epoch !== startEpoch || readVault()?.encryptedJson !== vault.encryptedJson) {
-    throw fail('密码验证已取消或钱包已发生变化，请重新验证。', 'SESSION_CHANGED');
-  }
-  return { verified: true, address: checked.address };
+// Credential verification never unlocks a signing session. A short-lived cache
+// permits synchronous export of an interoperable Web3 V3 keystore afterwards.
+export async function verifyPassword(password){
+ const vault=readVault();if(!vault)throw fail('请先创建或恢复钱包。','WALLET_MISSING');
+ const startEpoch=epoch,{wallet,encryptedJson}=await decryptInfo(vault,password);
+ if(epoch!==startEpoch||readVault()?.encryptedJson!==vault.encryptedJson)throw fail('密码验证已取消或钱包已发生变化，请重新验证。','SESSION_CHANGED');
+ exportCache={id:vault.id,fingerprint:vault.encryptedJson,encryptedJson,expiresAt:Date.now()+60000};return {verified:true,address:wallet.address};
 }
 
 async function rpc(connection, method, params = []) {
@@ -270,7 +199,8 @@ async function assertChain(url) {
   }
 }
 
-async function connectRpc({chainId=NETWORK.chainId}={}) {
+async function connectRpc(options={}) {
+  synchronize();const chainId=options.chainId??NETWORK.chainId;
   const network=getEnabledChain(chainId),revision=networkEpoch;
   if(chainId!==NETWORK.chainId)throw fail('请先切换到对应网络后再查询。','NETWORK_CHANGED');
   for(const endpoint of network.rpcUrls){
@@ -346,8 +276,8 @@ function requireNoPending(address) {
 }
 
 export async function refreshRecords() {
-  const chainId=NETWORK.chainId,revision=networkEpoch;
   const address = readVault()?.address;
+  const chainId=NETWORK.chainId,revision=networkEpoch;
   if (!address) return [];
   const results = [];
   for (const record of readRecords(address).slice(0, 20)) {
@@ -442,6 +372,9 @@ export function getRecords({allChains=false}={}){
 }
 
 export async function confirmTransfer(id, password, {beforeBroadcast} = {}) {
+  return withWalletWrite(()=>confirmTransferLocked(id,password,{beforeBroadcast}));
+}
+async function confirmTransferLocked(id,password,{beforeBroadcast}={}) {
   if (confirming) throw fail('上一笔交易正在处理中，请稍候。', 'TRANSACTION_BUSY');
   const vault = requireSession();
   const tx = prepared;
@@ -532,6 +465,9 @@ export async function prepareDistributionAction(action) {
 }
 
 export async function confirmDistributionAction(id,password) {
+ return withWalletWrite(()=>confirmDistributionLocked(id,password));
+}
+async function confirmDistributionLocked(id,password) {
  if(NETWORK.chainId!==DEFAULT_CHAIN_ID)throw fail('当前分发活动仅在原测试网络核验。','DISTRIBUTION_NETWORK_UNSUPPORTED');
  if(confirming)throw fail('上一笔交易正在处理中。','TRANSACTION_BUSY');
  const vault=requireSession();requireNoPending(vault.address);const tx=prepared;prepared=null;
@@ -556,7 +492,8 @@ export async function confirmDistributionAction(id,password) {
  finally{confirming=false;}
 }
 
-export async function getTransactionStatus(hash,{chainId=NETWORK.chainId}={}) {
+export async function getTransactionStatus(hash,options={}) {
+  synchronize();const chainId=options.chainId??NETWORK.chainId;
   getEnabledChain(chainId);
   if (typeof hash !== 'string' || !/^0x[0-9a-f]{64}$/i.test(hash)) throw fail('交易哈希无效。', 'HASH_INVALID');
   const vault = readVault();
@@ -594,44 +531,55 @@ export async function getTransactionStatus(hash,{chainId=NETWORK.chainId}={}) {
 export function exportEncryptedKeystore() {
   const vault = readVault();
   if (!vault) throw fail('请先创建或恢复钱包。', 'WALLET_MISSING');
+  const content=vault.storageFormat==='aes-256-gcm'?(exportCache?.id===vault.id&&exportCache.fingerprint===vault.encryptedJson&&(session||exportCache.expiresAt>Date.now())?exportCache.encryptedJson:null):vault.encryptedJson;
+  if(!content)throw fail('请先验证钱包密码后导出。','WALLET_LOCKED');
   return {
     filename: `ybz-evm-${vault.address}.json`,
-    content: vault.encryptedJson, mimeType: 'application/json',
+    content, mimeType: 'application/json',
   };
 }
 
 // Lock other tabs when the encrypted vault changes. The UI also hides backup words.
-globalThis.addEventListener?.('storage', event => { if (event.key === null || event.key === LEGACY_VAULT_KEY || CHAIN_REGISTRY.some(chain=>event.key===vaultKey(chain.chainId))) lock(); });
+globalThis.addEventListener?.('storage',event=>{
+ if(event.key!==null&&event.key!==COLLECTION_KEY&&!legacyVaultLocations().some(([key])=>key===event.key))return;
+ const previous=NETWORK.chainId;networkEpoch++;
+ try{adoptSnapshot(readWalletCollection());}catch{selectionStamp=undefined;}
+ lock();if(previous!==NETWORK.chainId)globalThis.dispatchEvent?.(new Event('ybz:wallet-network-changed'));
+ announceSelection();
+});
 
 // Called after local backup acknowledgement. The permit is local-only and
 // verifies that the same encrypted vault is still present before removing it.
 export async function prepareLocalWalletDeletion(password,{expectedAddress}={}){
  const vault=readVault();if(!vault||vault.address!==expectedAddress)throw fail('本机钱包已变化，请重新核对。','WALLET_CHANGED');
- await verifyPassword(password);
- if(readVault()?.encryptedJson!==vault.encryptedJson)throw fail('本机钱包已变化，请重新核对。','WALLET_CHANGED');
- const local=storage(),vaultSnapshots=new Map(),recordKeys=CHAIN_REGISTRY.map(chain=>recordsKey(vault.address,chain.chainId));
- recordKeys.push(LEGACY_RECORD_PREFIX+vault.address.toLowerCase());
- for(const [key,chainId,legacy] of [[LEGACY_VAULT_KEY,DEFAULT_CHAIN_ID,true],...CHAIN_REGISTRY.map(chain=>[vaultKey(chain.chainId),chain.chainId,false])]){
-  const raw=local.getItem(key);if(raw===null)continue;
-  const candidate=readVaultAt(key,chainId,{legacy});if(candidate?.address===vault.address)vaultSnapshots.set(key,raw);
- }
- let consumed=false,removalStarted=false;const removed=new Set();
- return {clear:async()=>{
+ const snapshot=readWalletCollection();await verifyPassword(password);unchanged(snapshot);
+ const local=storage(),legacySnapshots=new Map(legacyVaultLocations().map(([key])=>[key,local.getItem(key)]));
+ const targetKeys=[...legacySnapshots].filter(([,raw])=>raw!==null&&getAddress(JSON.parse(raw).address)===vault.address).map(([key])=>key);
+ const recordKeys=[...CHAIN_REGISTRY.map(chain=>recordsKey(vault.address,chain.chainId)),LEGACY_RECORD_PREFIX+vault.address.toLowerCase()];
+ const wallets=snapshot.value.wallets.filter(item=>item.id!==vault.id),selectedId=wallets[0]?.id||null;
+ let consumed=false,removalStarted=false,committedRaw=null;const removed=new Set();
+ return {clear:async()=>withWalletWrite(()=>{
   if(consumed)throw fail('清理授权已经使用，请重新验证。','DELETION_PERMIT_USED');
   try{
-   const currentLocal=storage();
-   for(const [key,chainId,legacy] of [[LEGACY_VAULT_KEY,DEFAULT_CHAIN_ID,true],...CHAIN_REGISTRY.map(chain=>[vaultKey(chain.chainId),chain.chainId,false])]){
-    if(!vaultSnapshots.has(key)&&currentLocal.getItem(key)!==null&&readVaultAt(key,chainId,{legacy})?.address===vault.address)throw fail('钱包分区已变化，请重新核对。','WALLET_CHANGED');
+   const currentLocal=storage(),currentRaw=currentLocal.getItem(COLLECTION_KEY);
+   // A failed read-back after a successful write may be acknowledged on retry,
+   // but a different revision or selection can never reuse this permit.
+   if(committedRaw&&currentRaw===committedRaw){
+    adoptSnapshot(readWalletCollection());lock();
+    for(const key of recordKeys){currentLocal.removeItem(key);if(currentLocal.getItem(key)!==null)throw Error('Records remain');}
+    consumed=true;announceSelection();return {cleared:true};
    }
-   // Validate every partition before deleting any, including same-address replacements.
-   for(const [key,raw] of vaultSnapshots){const current=currentLocal.getItem(key);if(current!==raw&&!(removed.has(key)&&current===null))throw fail('钱包已变化，未清理新钱包。','WALLET_CHANGED');}
+   if(currentRaw!==snapshot.raw)throw fail('钱包已变化，未清理新钱包。','WALLET_CHANGED');
+   for(const [key,raw]of legacySnapshots){const current=currentLocal.getItem(key);if(current!==raw&&!(removed.has(key)&&current===null))throw fail('钱包副本已变化，未清理新数据。','WALLET_CHANGED');}
+   // Revoke signing first, retain unknown-payment records until this wallet is
+   // no longer selectable. A partial cleanup must not enable a duplicate send.
+   removalStarted=true;lock();
+   for(const key of targetKeys){if(removed.has(key)&&currentLocal.getItem(key)===null)continue;removalStarted=true;currentLocal.removeItem(key);removed.add(key);if(currentLocal.getItem(key)!==null){removed.delete(key);throw Error('Vault remains');}}
+   const current=readWalletCollection(),value=collectionWith(current,{wallets,selectedId});
+   committedRaw=JSON.stringify(value);removalStarted=true;const saved=persistCollection(current,value);
+   networkEpoch++;adoptSnapshot(saved);
    for(const key of recordKeys){currentLocal.removeItem(key);if(currentLocal.getItem(key)!==null)throw Error('Records remain');}
-   for(const key of vaultSnapshots.keys()){
-    if(removed.has(key)&&currentLocal.getItem(key)===null)continue;
-    removalStarted=true;currentLocal.removeItem(key);removed.add(key);
-    if(currentLocal.getItem(key)!==null){removed.delete(key);throw Error('Vault remains');}
-   }
-   consumed=true;lock();return {cleared:true};
-  }catch(error){if(error.code==='WALLET_CHANGED')throw error;if(removalStarted)lock();throw fail('本机清理未完成，请保留离线备份并重试。','LOCAL_CLEANUP_FAILED');}
- }};
+   consumed=true;lock();announceSelection();return {cleared:true};
+  }catch(error){if(removalStarted)lock();if(error.code==='WALLET_CHANGED')throw error;throw fail('本机清理未完成，请保留离线备份并重试。','LOCAL_CLEANUP_FAILED');}
+ })};
 }

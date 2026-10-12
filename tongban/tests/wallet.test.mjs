@@ -68,7 +68,7 @@ test('self-custody wallet lifecycle and pinned testnet transfer safeguards', asy
     assert.equal(Wallet.fromPhrase(created.phrase).address, created.address);
     assert.equal(memory.size, 0);
     assert.equal(wallet.getWalletState().exists, false);
-    assert.equal(wallet.commitWallet().unlocked, true);
+    assert.equal((await wallet.commitWallet()).unlocked, true);
     assert.equal(memory.size, 1);
   });
 

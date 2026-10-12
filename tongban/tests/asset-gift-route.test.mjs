@@ -1,4 +1,5 @@
 import {walletHomeHTML} from '../src/wallet-home.js';
+import {walletManagementHTML} from '../src/wallet-management-ui.js';
 import {PUBLIC_DEPLOYMENT} from '../src/deployment-config.js';
 import {getChain} from '../src/chain-registry.js';
 import test from 'node:test';
@@ -26,7 +27,7 @@ test('wallet home preserves real chain amounts and has one primary action',()=>{
  const h=walletHarness();h.render();assert.match(h.page.innerHTML,/<strong class="asset-total-number" id="balance-number">12\.5<\/strong>/);assert.match(h.page.innerHTML,/测试资产无实际价值/);assert.doesNotMatch(h.page.innerHTML,/balance-card|总资产估值|USDT|\$12/);
  assert.match(h.page.innerHTML,/密钥保存在你自己的设备上，平台不托管、不接触你的资金。/);
  assert.ok((h.page.innerHTML.match(/class="primary"/g)||[]).length<=1);
- for(const name of ["send","receive","exchange","wallet-more"])assert.ok(h.page.innerHTML.includes('data-action="'+name+'"'));
+ for(const name of ["send","receive","wallet-more"])assert.ok(h.page.innerHTML.includes('data-action="'+name+'"'));
  assert.doesNotMatch(h.page.innerHTML,/手续费 \$0\.01|设计示例/);assert.match(h.page.innerHTML,/行情与涨跌幅未接入/);
  assert.match(h.page.innerHTML,/class="asset-segment active" aria-current="page" data-action="chain-assets"/);assert.doesNotMatch(h.page.innerHTML,/id="recent-records"/);assert.match(h.page.innerHTML,/钱包资产/);
 });
@@ -69,9 +70,28 @@ test('distribution entry mounts the real preview and an unconfigured deployment 
  assert.doesNotMatch(source,/mountPlatformAssets|mountGiftComposer|assets\/|gifts\/|autoBindCreatedWallet/);
 });
 
-test('wallet reference has exactly four actions and four truthful asset categories',()=>{
+test('wallet exposes only supported actions and implemented asset categories',()=>{
  const h=walletHarness();h.render();
  const nav=h.page.innerHTML.match(/<nav class="mobile-wallet-actions"[\s\S]*?<\/nav>/)[0];
- assert.deepEqual([...nav.matchAll(/data-action="([^"]+)"/g)].map(x=>x[1]),['send','receive','exchange','wallet-more']);
+ assert.deepEqual([...nav.matchAll(/data-action="([^"]+)"/g)].map(x=>x[1]),['send','receive','wallet-more']);
+ const tabs=h.page.innerHTML.match(/<nav class="mobile-wallet-tabs"[\s\S]*?<\/nav>/)[0];assert.deepEqual([...tabs.matchAll(/data-action="([^"]+)"/g)].map(x=>x[1]),['chain-assets','chain-bills']);
+ assert.doesNotMatch(source,/['"]chain-(?:defi|nft|authorizations)['"]:/);
  for(const section of ['defi','nft','authorizations']){h.context.chainSection=section;h.render();assert.match(h.page.innerHTML,/尚未接入/);assert.doesNotMatch(h.page.innerHTML,/id="token-balance"/);}
+});
+
+test('switching wallets discards a late asset response without clearing the new wallet request',async()=>{
+ const old=deferred(),next=deferred();let count=0;
+ const h=walletHarness({getBalance:()=>++count===1?old.promise:next.promise});
+ const first=h.refresh();h.context.state().address='0x2222222222222222222222222222222222222222';h.context.resetWalletDisplay();
+ const second=h.refresh();old.resolve('111');await first;
+ assert.equal(h.context.balance,null);assert.equal(h.context.loadingBalance,true);
+ next.resolve('222');await second;assert.equal(h.context.balance,'222');assert.equal(h.context.loadingBalance,false);assert.equal(h.recordRefreshes,1);
+});
+
+test('local management escapes names and shows a single create action and selected-wallet controls',()=>{
+ const html=walletManagementHTML([{id:'a',address:'0x1111',name:'<img src=x>',selected:true},{id:'b',address:'0x2222',name:'钱包 2',selected:false}]);
+ assert.doesNotMatch(html,/<img/);assert.match(html,/&lt;img src=x&gt;/);assert.match(html,/data-select-wallet="a" aria-current="true" disabled/);assert.match(html,/data-select-wallet="b"/);
+ assert.equal((html.match(/class="primary"/g)||[]).length,1);assert.match(html,/不影响其他钱包、链上资产/);
+ const card=walletHomeHTML({state:{exists:true,address:'0x1111111111111111111111111111111111111111'},network:getChain(97),amount:'—',walletName:'<私有备注>'});
+ assert.match(card,/aria-label="切换或管理本机钱包"/);assert.match(card,/&lt;私有备注&gt;/);assert.doesNotMatch(card,/chain-defi|chain-nft|chain-authorizations|data-action="exchange"/);
 });

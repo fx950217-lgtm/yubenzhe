@@ -43,7 +43,7 @@
 .workspace .mobile-wallet .mobile-wallet-amount strong { font-size: var(--fs-num); line-height: calc(1em + 8px); font-weight: 600; font-family: var(--font-number); }
 .workspace .mobile-wallet .mobile-wallet-card p { margin: 0; font-size: var(--fs-s); line-height: calc(1em + 8px); color: inherit; }
 .mobile-wallet svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-.mobile-wallet-actions { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--sp-2); }
+.mobile-wallet-actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--sp-2); }
 .mobile-wallet-actions button { border: 0; background: var(--bg-container); color: var(--brand-text); border-radius: var(--r-m); display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--sp-3) 0; font-size: var(--fs-s); line-height: calc(1em + 8px); }
 .mobile-wallet-actions button span { color: var(--t1); }
 .mobile-wallet-tabs { display: flex; gap: var(--sp-3); }

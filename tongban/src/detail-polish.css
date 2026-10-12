@@ -1,0 +1,11 @@
+.wallet-name-switch { display: inline-flex; align-items: center; gap: var(--sp-1); min-width: 0; min-height: 44px; max-width: 55%; flex: 1 1 auto; padding: var(--sp-1); border: 0; background: transparent; color: inherit; font-size: var(--fs-m); font-weight: 600; text-align: left; }
+.wallet-name-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.mobile-wallet-card-top .wallet-backup { white-space: nowrap; flex-shrink: 0; }
+.wallet-name-switch svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.local-wallet-list { display: grid; gap: var(--sp-2); margin-block: var(--sp-4); }
+.local-wallet-choice { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: 64px; width: 100%; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--bg-container); color: var(--t1); padding: var(--sp-3); text-align: left; }
+.local-wallet-choice[aria-current="true"] { border-color: var(--brand); opacity: 1; }
+.local-wallet-choice strong { display: block; font-weight: 600; }
+.local-wallet-choice small { display: block; font-family: var(--font-mono,monospace); color: var(--t2); overflow-wrap: anywhere; margin-top: var(--sp-1); }
+.local-wallet-choice>span:first-child { min-width: 0; flex: 1; }
+.local-wallet-choice>span:last-child { flex: 0 0 auto; color: var(--brand-text); }

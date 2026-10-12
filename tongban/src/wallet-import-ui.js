@@ -1,6 +1,6 @@
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-export function mountWalletImport(container,{wallet,onSuccess=()=>{}}={}){
+export function mountWalletImport(container,{wallet,additional=false,onSuccess=()=>{}}={}){
  let mode='mnemonic',active=true,completed=false,keystore='',preview=null;
  let viewVersion=0,inputVersion=0,fileVersion=0,importing=false;
  function render(){
@@ -69,9 +69,9 @@ export function mountWalletImport(container,{wallet,onSuccess=()=>{}}={}){
     if(form.elements.password.value!==form.elements.repeat.value)throw new Error('两次输入的新密码不一致。');
     const run=inputVersion,expectedAddress=preview.address,password=form.elements.password.value;
     importing=true;freeze(true);
-    if(mode==='mnemonic')await wallet.restoreWallet(form.elements.phrase.value,password,{...options(),expectedAddress});
-    else if(mode==='private')await wallet.importPrivateKey(form.elements.privateKey.value,password,{expectedAddress});
-    else await wallet.importKeystore(keystore,form.elements.sourcePassword.value,password,{expectedAddress});
+    if(mode==='mnemonic')await wallet.restoreWallet(form.elements.phrase.value,password,{...options(),expectedAddress,...(additional?{additional:true}:{})});
+    else if(mode==='private')await wallet.importPrivateKey(form.elements.privateKey.value,password,{expectedAddress,...(additional?{additional:true}:{})});
+    else await wallet.importKeystore(keystore,form.elements.sourcePassword.value,password,{expectedAddress,...(additional?{additional:true}:{})});
     if(!current()||run!==inputVersion)return;
     completed=true;keystore='';preview=null;form.reset();
     // onSuccess may synchronously call cleanup. Mark completion first so cleanup

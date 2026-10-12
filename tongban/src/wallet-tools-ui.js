@@ -7,8 +7,9 @@ export function networkPickerHTML(networks,currentId){
 
 export function mountNetworkPicker(root,{wallet,onChanged=()=>{}}){
  root.innerHTML=networkPickerHTML(wallet.getNetworks(),wallet.NETWORK.chainId);
- const click=event=>{const button=event.target.closest?.('[data-wallet-chain]');if(!button||button.disabled)return;try{wallet.setNetwork(Number(button.dataset.walletChain));onChanged();}catch(error){root.querySelector('.form-error').textContent=error.message;}};
- root.addEventListener('click',click);return()=>root.removeEventListener('click',click);
+ let active=true,busy=false;
+ const click=async event=>{const button=event.target.closest?.('[data-wallet-chain]');if(!active||busy||!button||button.disabled)return;busy=true;button.disabled=true;try{await wallet.setNetwork(Number(button.dataset.walletChain));if(active)onChanged();}catch(error){if(active){root.querySelector('.form-error').textContent=error.message;button.disabled=false;}}finally{busy=false;}};
+ root.addEventListener('click',click);return()=>{active=false;root.removeEventListener('click',click);};
 }
 
 export function walletToolsHTML(){

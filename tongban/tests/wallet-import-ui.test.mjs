@@ -56,7 +56,7 @@ function mockWallet(overrides={}){
 }
 function importHarness(overrides={},options={}){
  const root=containerDOM(),mock=mockWallet(overrides);let succeeded=0,cleanup;
- cleanup=mountWalletImport(root,{wallet:mock.wallet,onSuccess(){succeeded++;if(options.cleanupOnSuccess)cleanup();}});
+  cleanup=mountWalletImport(root,{wallet:mock.wallet,additional:options.additional===true,onSuccess(){succeeded++;if(options.cleanupOnSuccess)cleanup();}});
  return {root,...mock,cleanup,succeeded:()=>succeeded,
   mode(name){return root.tabs.find(tab=>tab.dataset.importMode===name).onclick();},
   input(name,value){const form=root.form;form.elements[name].value=value;form.listeners.get('input')?.({target:form.elements[name]});},
@@ -67,6 +67,16 @@ function importHarness(overrides={},options={}){
  };
 }
 function fillPassword(h){h.input('password',PASSWORD);h.input('repeat',PASSWORD);}
+
+test('adding another wallet explicitly opts in without losing address confirmation',async()=>{
+ for(const mode of ['mnemonic','private','keystore']){
+  const h=importHarness({}, {additional:true});if(mode!=='mnemonic')h.mode(mode);
+  if(mode==='mnemonic')h.input('phrase',PHRASE);else if(mode==='private')h.input('privateKey',KEY);else await h.file({size:2,text:async()=>'{}'});
+  fillPassword(h);await h.preview();h.confirm();await h.submit();
+  const call=h.calls.find(row=>row[0]==={mnemonic:'restoreWallet',private:'importPrivateKey',keystore:'importKeystore'}[mode]);
+  assert.equal(call.at(-1).additional,true);assert.equal(call.at(-1).expectedAddress,mode==='private'?KEY_ADDRESS:ADDRESS);h.cleanup();
+ }
+});
 
  test('three import modes call the matching API and retain the exact passphrase/path',async()=>{
   for(const mode of ['mnemonic','private','keystore']){

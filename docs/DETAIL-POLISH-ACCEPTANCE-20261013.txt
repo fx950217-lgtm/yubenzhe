@@ -1,0 +1,209 @@
+YBZ 细节优化包第三轮：A 组阶段验收报告（全轮尚未完成）
+日期：2026-10-13
+任务来源：docs/CODEX-TASK-DETAIL-POLISH-20261013.md
+核对基线：ee841653e79af263a192c1bf8f8cec3d128caeb5 / dev.13
+当前版本：0.14.0-dev.13 基线上的 A 组补丁，未更改版本号。
+阶段结论：A1–A3 正文共 12 项通过；两个 A1 候选补项已实现，但是否补为第 55/56 项仍待用户确认。B、D、C 未实施，不能称全轮 56 项完成。
+本轮实跑：前端 714/714（较基线 678 新增 36 项），后端 603/603，消费者钱包签名本地 EVM 1/1，网页构建与项目边界检查通过。另有历史群工作流本地 EVM 测试失败，详见第六节，不能称群 EVM 全绿。
+A 组 commit 待主代理提交；主题标识为“A: local wallet collection and honest wallet UI”，这里不编造 commit hash。
+
+一、范围、冲突与待确认解释
+
+1. 计数：任务正文 A1 只有 4 项，但汇总写 6 项；正文合计 54，汇总合计 56。
+   A1-05/06 暂列“预留注释”“授权安全原文保留”两个候选补项，来自正文要求；实现已满足，但用户尚未确认这两个补项作为第 55/56 项。不能提前标为已同意或全部 56 项通过。
+2. 迁移：现有历史版本为 001–028。A3 钱包集合、C2 地址簿明确只存本机，不应为凑编号新增服务器密钥/地址簿表。任务迁移表允许不用 029/030，又要求 031/032 且禁止跳号，存在冲突。等待用户/主代理确认后才确定 B 组实际新迁移编号；不改任何已应用历史 SQL。
+3. R5：当前普通社交在 social-service.mjs 的 messages.text/social_media.bytes 中持久化聊天文字/图片；设备 AI 的 prompt、输出、文件字节仅有界内存，group-device-ai.mjs 只落空 text 和来源元数据。不得把“所有普通聊天也从不入库”当作现状。是否要求本轮重构普通聊天为临时通道须明确；本轮不能自行清空旧聊天或把 AI 临时内容转入普通聊天表。
+4. AI 转发与提及：B4 去掉 AI 身份后直接普通 send(text) 仍会把临时输出入库；需明确拒绝或采用受权限保护的临时引用方案。B2 AI 是群备注，不是用户/好友；@ 不得自动运行 AI、替代逐轮批准或授予设备访问。T2 只推三类任务事件，普通 @ 社交提醒应留在应用内。
+5. A3 加密：ee84165 wallet.js 使用 ethers Wallet.encrypt / fromEncryptedJson 的标准 Web3 Secret Storage V3 envelope（AES-128-CTR + scrypt），与任务文字 aes-256-gcm 不同。A 组已新增本机 AES-256-GCM 集合封装，内部保留标准 V3 密钥库，验证密码后仍可导出标准 V3 文件。旧 V1/V2 单钱包仅在本机成功验证密码后逐个转换；写入/核验失败保留原始数据，清理失败明确保留待清理状态。钱包名仅本机；切换取消签名预览、清掉解锁态，记录按地址/网络隔离，迟到 RPC 不能覆盖新钱包。没有服务端钱包迁移或上传密钥。
+6. R2：基线 wallet-home.js 有 exchange/兑换按钮，app.js 为未接入提示，并非已实现交易；A 组已移除该不可用入口。保留已有测试网转账/收款，不新增兑换或平台收费。原型/历史文档数字与实现数字区分：本轮 src 与 server 实现扫描假行情 0.59 / 752 为零命中，未删除历史文档以制造“全项目零命中”。
+7. D1：当前已有白天/黑天/护眼三项，跟随系统实际是第四个选择模式，不是第三种皮肤。建议保持三套 THEME token 不变，system 为偏好模式，最终只解析 light/dark；护眼仍手动。
+8. D3：必须在已登录、本人设备列表成功返回且无有效设备时触发。请求未返回、网络失败和未知不能按“无设备”处理。一次性标记只存本机，不存机器码、令牌或 AI 内容。下载入口需展示真实当前安装包状态，不能承诺尚未上传的安装包可公网下载。
+9. 服务器：任务 R1 列 4 台，而既有上轮红线另含 45.77.247.167；本轮继续不连接、不修改全部 5 台。不开主网、真实模型调用、外部付费或生产部署。
+
+二、逐项映射（54 项正文 + 2 项待确认候选）
+
+状态含义：通过 = A 组有本轮实现和验证证据；待验证 = 后续批次尚未实施；待确认 = 候选计数尚未获用户答复，不算用户已认可的验收数量。
+证据总目录：../../output/ybz-detail-polish-20261013/。A-browser-evidence.json 是实际浏览器使用合成本机钱包的验证记录，不是真人/实体手机/原生包验收。
+
+编号    状态      标准 / 预定证据
+A1-01  通过      钱包分类为“资产 / 转账记录”；wallet-home.js、asset-gift-route 与 wallet-collection-ui 回归，A-browser-evidence.json walletUI.tabs。
+A1-02  通过      三个 unavailable key 和分支仍在；app 操作映射及工具菜单已去掉三分类入口，组件测试确认没有可点击分类控制。
+A1-03  通过      旧 action 调用点移除，浏览器实际钱包路径无 JS 错误（dev.logs errors 为空），A UI 生命周期测试通过。
+A1-04  通过      前端 714/714，失败/取消/跳过均 0；A-frontend.log。
+A1-05  待确认    候选标准实现已满足：wallet-home.js 保留“预留：DeFi / NFT / 授权，接入后恢复 tab”注释；是否计作新增验收项仍待答复。
+A1-06  待确认    候选标准实现已满足：unavailable.authorizations 保留“这里没有结果，不代表链上没有授权”；是否计作新增验收项仍待答复。
+A2-01  通过      tongban/src 与 yubenzhe-deploy/server 对 0.59 / 752 扫描零命中；原型/历史文档例子不冒充实际资产。
+A2-02  通过      页面显示“行情与涨跌幅未接入”“测试资产不估值”；组件及 A-browser-evidence.json walletUI 验证。
+A3-01  通过      浏览器通过真实创建流程建立 A/B 两个不同地址，wallet-multi-vault 与加密存储回归通过；浏览器记录 createdThroughUI=2、differentAddresses=true。
+A3-02  通过      A/B 切换锁定，名称/地址与地址、网络分区记录随选择变化；wallet-multi-vault 覆盖预览失效/跨标签选择/记录隔离，wallet-collection-ui 覆盖旧资产请求迟到成败不覆盖 B。当前仅启用测试网，不宣称主网已开放。
+A3-03  通过      浏览器验证密码并确认备份后删除 B，A 名称/地址不变且能再解锁；存储写失败和删除重试回归保留其他钱包，A-browser-evidence.json。
+A3-04  通过      wallet-local-vaults.js 只调用本机存储及 Web Crypto，不调用上传接口；wallet.js 链 RPC 只用公开地址/已签交易，助记词、私钥与备注不传社交、AI 或服务器；模块加密/存储测试及本地 EVM 签名验证通过。
+A3-05  通过      新增 wallet-collection-ui 12 条全部通过，另 wallet-multi-vault 覆盖独立钱包/加密篡改/迁移/切换/删除/竞态，超过至少 5 条要求；计入 A-frontend.log 的 714 项。
+A3-06  通过      旧 V1/V2 单钱包被只读识别，密码核验成功后逐个 GCM 转换；失败保留旧字节、旧标签页修改来源拒绝迁移、V3 导出可由 ethers 恢复；wallet-multi-vault、wallet-compatibility、wallet-local-deletion 回归通过。
+B1-01  待验证    未读总数非零显示消息 Tab 红底白字；真实状态源组件测试。
+B1-02  待验证    全已读后隐藏红点；读状态更新及账号切换回归。
+B1-03  待验证    大于 99 显示 99+；边界断言。
+B1-04  待验证    白天/黑天/护眼红点清晰；三皮肤浏览器记录。
+B1-05  待验证    不新增轮询；复用 social 状态事件及原请求频率检查。
+B2-01  待验证    群输入 @ 弹成员浮层；键盘上下选择及整块删除。
+B2-02  待验证    AI 项显示已授权群备注名；不可伪造账号/好友/设备访问。
+B2-03  待验证    被提及者应用内收到提醒；受群成员和历史边界限制。
+B2-04  待验证    @ 文本紫色高亮且转义安全；重名与 XSS 回归。
+B2-05  待验证    提及测试至少 4 条；测试名称及计数。
+B3-01  待验证    仅本人消息 2 分钟内可撤回、超时按钮消失；服务器时间和边界测试。
+B3-02  待验证    双方撤回状态一致且不留原文；消息、引用、预览与图片读取回归。
+B3-03  待验证    撤回不新增未读；不插入新普通消息且未读更新回归。
+B3-04  待验证    撤回测试至少 3 条；测试名称及计数。
+B4-01  待验证    可转发至另一个有权限的个人/群会话；来源与目标权限均核验。
+B4-02  待验证    转发标注来源；服务端可信来源、不相信客户端任意姓名。
+B4-03  待验证    AI 转发不冒充 AI 且不破坏仅临时中转；策略边界待明确。
+B5-01  待验证    移动长按、桌面右键打开按消息类型定制的菜单；手势/键盘/滚动取消。
+B5-02  待验证    点击外部关闭菜单；离页、Escape、消息撤回时关闭。
+B5-03  待验证    原消息下挂操作按钮移除；保留发送失败重试状态操作。
+B5-04  待验证    菜单触控目标至少 44px；浏览器边界框与 CSS。
+B5-05  待验证    菜单测试至少 3 条；测试名称及计数。
+C2-01  待验证    地址簿新增/编辑/删除；有效地址、名称转义、损坏存储回归。
+C2-02  待验证    转账页可选地址簿；选地址不自动签名/付款、不绕预览。
+C2-03  待验证    地址簿仅本机零上传；API 审查与存储隔离测试。
+C2-04  待验证    地址簿测试至少 4 条；测试名称及计数。
+D1-01  待验证    外观设置包含跟随系统模式；原三皮肤保留。
+D1-02  待验证    系统变深色时实时切 App 深色；matchMedia change 事件测试。
+D1-03  待验证    手动选皮肤退出 system 模式；跨 Tab 偏好同步。
+D1-04  待验证    三皮肤与 system 切换组合无样式错乱；resolved dataset 与浏览器记录。
+D1-05  待验证    跟随系统测试至少 3 条；存储失败、无 matchMedia、旧选择兼容。
+D2-01  待验证    消息列表、设备列表、任务看板、钱包资产各有初次加载骨架；四接点测试。
+D2-02  待验证    骨架匹配真实行布局；头像/两行文字/任务卡/资产行分别处理。
+D2-03  待验证    完成加载平滑替换、无明显抖动；不清空已有数据、不强制虚假等待。
+D2-04  待验证    三皮肤骨架颜色合适；皮肤变量、减少动画偏好、对比记录。
+D2-05  待验证    骨架测试至少 2 条；初载/成功/失败/晚响应均保持真实状态。
+D3-01  待验证    已登录且成功确认无设备的首次打开出现引导；未知/失败不误触发。
+D3-02  待验证    四步引导含可直接输入机器码；复用规范化与 devices/claim 接口。
+D3-03  待验证    可跳过；不触发安装/配对/AI 调用。
+D3-04  待验证    本机记住已看过，不重复显示；存储不可用诚实降级。
+D3-05  待验证    已有设备不显示；含离线已配对设备，不能只看在线数。
+D3-06  待验证    引导测试至少 3 条；账号切换/离页/晚响应/未知配对不自动重试。
+
+取消项：C1 收款码已存在，本轮不重做；C3 授权管理不实现，其原安全提示受 A1 保留要求保护。
+共同要求：前端/后端全量通过；三皮肤；44px；字重 400/600；无平台收费；设备和 AI 不成为好友；服务器与主网不操作。上述共同项不额外充数为第 57 项。
+
+三、D 组实施接点与测试计划（尚未实施）
+
+D1：theme-skins.js 增 preference/resolved 分离，THEMES 保持三项 immutable；system 偏好单独保存并监听 matchMedia，getTheme 保持返回已解析皮肤，新增 getPreference 供 mine.js 选中态使用。mine.js appearance 增第 4 项与护眼说明；启动早期恢复、跨 Tab storage、主题 meta/event 顺序不倒退。theme-skins.test.mjs 原“只公开三皮肤”断言保留；新增偏好模式断言，mine.test.mjs 检查四个选项。无系统 API 降级白天；手动模式不响应系统变化。
+
+D2：可新增共用 skeleton.js/CSS，但不新增数据请求。
+  - live-social.js：loaded=false 且无 loadError 的消息列表入口；不能覆盖网络错误或已缓存列表。
+  - personal-devices.js：区分 initial loading/ready/error，当前初始空数组会先显示无设备，必须先消除假空态；refreshing 后台轮询保留现有设备。
+  - workbench-hub.js：activityState/deviceState 的首次 loading，只占尚无结果区域；保留部分任务失败警告。
+  - wallet-home.js：现有 loading 参数与资产行相接，loading 结束才显示真实/未知值，不插入价格/示例金额。
+  - role=status + 简短读取说明，灰块 aria-hidden，不放交互按钮；样式使用皮肤 tokens，prefers-reduced-motion 下无动画；固定形状和合理最小高度。
+
+D3：新增独立 onboarding 视图/状态模块；主 app 完成账号恢复后基于既有 devices 成功结果判断，不对每页再轮询。四步：产品说明→真实 install.html→说明 8 个有效字符（显示 YBZ-XXXX-XXXX）→直接输入；保持跳过、返回、关闭与焦点行为。复用 device-capabilities.normalizeMachineCode 与 devices/claim，成功后刷新既有设备/消息数据；避免复制旧配对另一套协议。未知/失败只人工核查，不自动循环 claim。已看标记不含机器码、设备令牌、地址、AI 文本；不要在组件销毁的迟到响应中重开引导或写入另一账号状态。
+
+四、保护基线
+
+基线文件：../../output/ybz-detail-polish-20261013/protected-baseline.json
+来源：Git ee841653e79af263a192c1bf8f8cec3d128caeb5 的 tracked 字节；另核对创建时 working tree 字节。
+包含：历史迁移 001–028 共 28 个；保护模块 3 个（其中 021 已在迁移中）；contracts/ 全部 tracked 文件 21 个；去重后 51 个文件。
+创建时 51 个 working tree 文件均与基线逐字节一致；A 组阶段结束再次 SHA-256 复验 51/51 一致，差异 0。证据：../../output/ybz-detail-polish-20261013/protected-final-evidence.json。该 JSON 的 phase 明确是 A 组阶段结束；全轮完成后仍需重新复验。
+三个保护路径：
+  yubenzhe-deploy/server/workbench-adapters.mjs
+  yubenzhe-deploy/server/task-payment-verifier.mjs
+  yubenzhe-deploy/migrations/021-ai-channel.sql
+
+五、A 组实际修改文件与验证
+
+以下清单按 A 阶段 git diff --name-only 与明确新文件核对，不把用户此前未跟踪的任务书、简报或其他历史 docs 归为本轮开发。
+
+已跟踪文件修改（16 个）：
+  tongban/src/app.js
+    钱包列表/切换/重命名/追加创建导入；异步备份确认与取消保护；资产刷新序号，跨标签变更后不保留旧签名状态；去掉不可用分类与兑换入口。
+  tongban/src/mobile-ui.css
+    钱包操作栏与窄屏布局适配。
+  tongban/src/wallet-home.js
+    只露出资产/记录分类、本机备注名切换、诚实行情标注；保留预留分类及安全提示。
+  tongban/src/wallet-import-ui.js
+    追加导入模式传递，保留地址预览、用户确认、取消和过期结果保护。
+  tongban/src/wallet-tools-ui.js
+    网络选择等待异步完成，已卸载弹窗不响应迟到成败。
+  tongban/src/wallet.js
+    对接本机钱包集合；独立选择/重命名/加密/删除；兼容旧钱包与标准 V3 导出；签名前后身份/版本验证与未知付款防重复保持。
+  tongban/tests/asset-gift-route.test.mjs
+  tongban/tests/distribution-signing.test.mjs
+  tongban/tests/native-wallet-lifecycle.test.mjs
+  tongban/tests/wallet-compatibility.test.mjs
+  tongban/tests/wallet-deletion-ui.test.mjs
+  tongban/tests/wallet-import-ui.test.mjs
+  tongban/tests/wallet-intent.test.mjs
+  tongban/tests/wallet-local-deletion.test.mjs
+  tongban/tests/wallet-multichain.test.mjs
+  tongban/tests/wallet.test.mjs
+    适配异步集合写入与旧数据兼容，保留签名、生命周期、删除及支付安全断言。
+
+本轮新增文件（7 个，含本报告）：
+  scripts/start-detail-review.mjs
+    固定 127.0.0.1 审阅端口 18938、独立 ../ybz-detail-review-20261013 数据目录，关闭群测试网付款；不升级原库。
+  tongban/src/detail-polish.css
+    钱包选择列表、长名称省略、窄屏触控与三皮肤变量样式。
+  tongban/src/wallet-local-vaults.js
+    版本化本机集合、AES-256-GCM 封装、旧来源快照/清理校验、写锁与存储故障保护。
+  tongban/src/wallet-management-ui.js
+    本机钱包列表、当前备注、创建/导入/备份/删除入口；名称转义。
+  tongban/tests/wallet-collection-ui.test.mjs
+    12 条 UI 生命周期回归，覆盖异步确认、集合读取故障、网络选择及资产晚响应。
+  tongban/tests/wallet-multi-vault.test.mjs
+    独立钱包、GCM 篡改、标准备份、旧钱包转换、删除和跨标签竞态回归。
+  docs/DETAIL-POLISH-ACCEPTANCE-20261013.txt
+    本 A 组阶段报告。
+
+A 组没有修改后端生产源码、历史后端测试、001–028 SQL 或 contracts/ 历史文件，没有新增 029/030/031/032。
+此处待主代理提交 A 组 commit；不写不存在的哈希。
+
+验证结果与实际命令（未注明其他 cwd 的命令均从项目根目录执行）：
+  1. node --test tongban/tests/*.test.mjs
+     714/714 通过，相较 ee84165 的 678 项增加 36；A-frontend.log。
+  2. node --test --test-timeout=30000 yubenzhe-deploy/tests/*.test.mjs
+     603/603 通过；A-backend.log。
+  3. node --test contracts/test/wallet-integration.test.mjs
+     1/1 通过；A-wallet-signing-evm.log。消费者钱包实际签署 approve/fund/claim/refund 四笔交易并在内存 chain-97 EVM 确认，不是外部测试网交易。
+     Ganache 的当前 Windows/Node 原生 µWS 二进制不兼容，日志明确回退 NodeJS 实现；测试仍完成且通过，并未隐藏为“无警告”。
+  4. cwd tongban：node build.mjs
+     构建通过，仍生成 0.14.0-dev.13；A-build.log。
+  5. cwd 项目根目录：node scripts/check-project.mjs --allow-changes
+     status=passed；A-project-check.log。MANIFEST 的历史差异清单不等于 A 组改动清单，也不能替代当前 Git diff。
+  6. cwd tongban：node --test tests/wallet-collection-ui.test.mjs tests/wallet-setup-cancellation.test.mjs tests/wallet-tools-ui.test.mjs
+     A UI 生命周期相关 18/18 通过；a-ui-lifecycle-tests.log（已含于前端全量，不能再次累计为新增总数）。
+  7. cwd 工作空间根：node output/ybz-detail-polish-20261013/verify-protected-baseline.cjs
+     51/51 保护文件与 ee84165 一致；protected-final-evidence.json。
+  8. git diff --check 通过；src/server 原型假行情数字扫描零命中。旧原型与文档保留。
+
+实际浏览器验证：
+  地址 http://localhost:18938/；独立本机状态与合成测试钱包。
+  页面实际创建 A/B，地址不同；A 重命名；A↔B 切换后需要重新解锁；输入 B 密码与备份确认后删除 B，A 地址和名称保留且能解锁。
+  白天、黑天、护眼均在 390px 验证：scrollWidth=390，按钮最小高度 44px，字重仅 400/600。
+  320px 长名称此前挤压顶部按钮，已改省略显示并重测：clientWidth=305、scrollWidth=305，顶部三个按钮高度都是 44px，无横向溢出。
+  浏览器 dev.logs errors 为空；A-browser-evidence.json 保存去密钥证据，没有助记词/私钥/密码。
+  模拟窄屏抓图下边缘出现过浏览器 compositor 重复瓦片；DOM 只存在一个钱包卡，内容及计算尺寸已核对。此证据不替代原生渲染或实体设备完整验收。
+  浏览器过程未签名或广播链上交易；本地 EVM 的四笔交易属于另一项隔离自动测试，二者不混称真实公网验收。
+
+六、明确未通过与未完成项
+
+额外联合运行钱包与历史群工作流本地 EVM 的日志为 A-wallet-evm.log：共 2 项，1 项通过、1 项失败。失败项 contracts/test/group-workflow-integration.test.mjs 的断言预期 403，实际 400。该历史 fixture 仍提交已移除的 budgetPoints / acceptPoints，参数校验在任何钱包签名前失败。没有为通过此旧断言恢复积分字段，也没有修改历史合约测试或后端源码。随后单独运行消费者钱包的精确命令为 node --test contracts/test/wallet-integration.test.mjs，1/1 通过，证据 A-wallet-signing-evm.log；不以该通过日志掩盖联合运行中的群测试失败。
+因此只能报告消费者钱包本地 EVM 1/1 通过，不能报告“群工作流 EVM 通过”或“真实群支付闭环重新验收完成”。历史群 fixture 需要在单独获准范围内按零积分授权协议更新并再测。
+
+用户三项澄清仍未答：A1 补两项的 56 计数解释；029/030 本机不需要但 031/032 不能跳号的迁移安排；R5 是限定设备 AI 临时内容还是要求改变普通社交持久化。当前未默认接受任何答案。
+B 组未实施，尤其 AI 转发/提及和普通消息持久化边界要先确定；D 组、C2 地址簿仍未实施，保留第二节对应待验证状态与第三节方案，继续遵循任务批次顺序。
+A 没有接行情、主网、兑换协议、云模型/云资源提供商或 Gas 代付，不新增分佣/收费。钱包正式独立安全审计、真实硬件钱包、原生端和实体手机专项不在本 A 验收范围。
+
+七、启动、配置与回滚
+
+本机启动：在项目根目录运行 node scripts/start-detail-review.mjs，然后打开 http://localhost:18938/。
+独立数据库/状态目录为 ../ybz-detail-review-20261013；未迁移旧 18936 审阅库或真实运行库。
+不需要增加钱包服务端配置或数据库表。当前审阅未连接真实 AI，群测试网付款关闭；PUSH_CONFIG_FILE 等外部关键通知配置仍未提供，保留明确未配置状态。没有领取测试币、连接服务器或开放公网。
+
+回滚步骤：
+  1. 停止使用正在修改钱包的标签页，逐个选择钱包、由用户核验密码并导出标准 Ethereum/Web3 V3 加密备份；检查文件确实保存并妥善保留对应密码，不能把密码或备份上传 Git。
+  2. 保留现有本机集合与原始存储/独立浏览器 profile，不删除新 GCM 集合或任何钱包记录。旧版代码不能读取新集合；旧源码回滚不会自动回滚钱包数据。
+  3. 需要查看旧版时，在独立 checkout 与不同浏览器 origin/profile 运行 ee84165 或 A 提交前版本，避免旧页面与新集合并发写入。需要旧版钱包时，用户在独立环境逐个导入已验证 V3 备份；旧单钱包界面不提供新多钱包管理。
+  4. A commit 后可单独撤销该代码批次；记录具体 commit 由主代理提交后补充。Git revert 仅回退代码，不保证恢复 localStorage、解锁状态或钱包删除。
+
+交付边界：本 A 阶段只有本地源码、自动测试、网页构建与浏览器审阅；没有原生打包/安装、服务器修改、生产部署、Git push、主网操作、付费资源或新的公网链交易。
