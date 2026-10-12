@@ -44,6 +44,10 @@
 **/pairing*.json
 **/*-pairing.json
 **/device-pair*.json
+**/.ybz-ai-channel/
+**/ai-channel-state.json
+**/ai-channel-state.json.tmp
+**/ai-channel.lock
 
 # Existing machine-specific handover notes/scripts contain private credentials.
 # Keep local originals; do not stage or publish these operations materials.
