@@ -124,6 +124,11 @@ test('D1 reminders require fresh online evidence of logged-out installation, are
  f.poll({status:f.status([provider('codex')])});assert.deepEqual(f.state().loginReminders,[]);
 });
 
+test('owned device list includes safe dynamic registry and never projects another account devices',async t=>{
+ const f=await fixture(t);f.poll({status:f.status([provider('ollama'),provider('codex',{loggedIn:false,executionSupported:false,executionMode:'disabled'})])});
+ const list=user=>f.devices.handle({method:'GET',path:'devices',token:user.token}).devices;assert.equal(list(f.other).length,0);const d=list(f.owner)[0];assert.deepEqual(d.providers.map(p=>p.id),['ollama','codex']);assert.equal(d.aiOnline,true);assert.equal(d.loginReminders[0].providerId,'codex');f.advance(20001);assert.equal(list(f.owner)[0].aiOnline,false);assert.deepEqual(list(f.owner)[0].loginReminders,[]);
+});
+
 test('an admitted live lease may complete beyond scan TTL without admitting new work or falsifying scan time',async t=>{
  const f=await fixture(t),status=f.status(),task=f.send('codex'),queued=f.send('ollama'),dispatch=f.poll().task;
  for(let n=0;n<31;n++){f.advance(10000);f.poll({status,taskId:task.id,leaseId:dispatch.leaseId});}

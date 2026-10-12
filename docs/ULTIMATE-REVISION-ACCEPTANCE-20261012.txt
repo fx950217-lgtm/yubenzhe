@@ -62,7 +62,13 @@ P5 — D1登录提醒：代码与专项验证通过。
 本人设备的既有鉴权GET返回loginReminders；只对在线、新鲜、明确已安装且loggedIn=false的工具显示“这台电脑上的 Codex 需要登录，请在电脑上完成”等固定提示。手机AI对话页轮询展示卡片，不采集密码/验证码、不自动打开登录，不新增登录或凭据接口。离线、未知、未安装、过期及重复提醒均被过滤。代码明确D2可能造成服务条款与账号风险，本轮不实现。
 专项39/39通过（新增后端1、前端3，原覆盖保留），网页构建通过。包括真实服务对象owner-only/404、伪造登录路由拒绝、前端实际mount读取卡片且只有GET请求。探测与登录状态为合成fixture，未代用户登录。P6继续把设备页的动态工具入口与提醒联起来。
 命令：node --test tongban/tests/ai-login-reminders.test.mjs tongban/tests/ai-channel-chat.test.mjs yubenzhe-deploy/tests/ai-providers.test.mjs；node tongban/build.mjs。
-P6 — 动态AI入口：待执行。
+P5 commit：909bf5b（Show owner-only AI login reminders without delegated authentication）。
+
+P6 — 手机动态AI入口：代码与本地验证通过。
+本人设备列表按providers动态生成工具；默认未安装标灰，可切换隐藏；说明由AI_PROVIDER_DESCRIPTIONS或调用方配置。D1卡片同时出现在设备列表。入口带正确provider，URL刷新保留选择；任务幂等缓存摘要含provider，选定工具缺失/能力失效不会自动换Codex。Ollama页面明确仅文字，不生成文件接收密钥、不上传附件；消息来源按服务端task.provider/sourceLabel显示。
+前端全量562/562（P2后553 + P5新增3 + P6新增6）、后端495/495（P4后493 + P5新增1 + P6新增1）通过，网页构建和diff检查通过。覆盖工具列表与开关真实mount、正确路由/请求、未知工具拒绝、身份切换/迟到结果、文件边界与另一账号404。未删除旧配对、聊天或文件测试。
+本地浏览器已检查localhost:18934设备页与隐藏开关、保留远控/配对入口；当前合成审阅账号没有已连接设备，多个provider卡片由DOM fixture验收，不宣称实机工具或云机已接通。只重启本轮自己启动的18934预览，旧预览与服务器未动。
+命令：node --test tongban/tests/*.test.mjs；node --test yubenzhe-deploy/tests/*.test.mjs；node tongban/build.mjs。
 P7 — 群AI与并发、025迁移：待执行。
 
 审计时发现的必要决定（将按各批次验证）

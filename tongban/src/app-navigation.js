@@ -1,3 +1,4 @@
+import {providerId} from './device-ai-providers.js';
 export const MAIN_NAV = Object.freeze([
   ['workbench','spark','工作台'],['messages','message','消息'],['wallet','wallet','钱包'],['discover','discover','发现'],['mine','user','我的'],
 ]);
@@ -16,14 +17,14 @@ export function normalizedHubState(value={}) {
 export function normalizeNavigation(view,options={}) {
  const safe=options&&typeof options==='object'?{...options}:{};
  if(view==='discover'&&WORKBENCH_FEATURES.includes(safe.route))return {view:'workbench',options:{route:safe.route}};
- if(view==='workbench'&&safe.route==='ai-channel'&&routeId(safe.deviceId))return {view,options:{route:'ai-channel',deviceId:routeId(safe.deviceId)}};
+ if(view==='workbench'&&safe.route==='ai-channel'&&routeId(safe.deviceId))return {view,options:{route:'ai-channel',deviceId:routeId(safe.deviceId),...(providerId(safe.provider)?{provider:safe.provider}:{})}};
  if(view==='workbench'&&safe.route==='cooperation')return {view,options:{route:'cooperation',conversationId:routeId(safe.conversationId),workflowId:routeId(safe.workflowId)}};
  if(view==='workbench'&&!WORKBENCH_FEATURES.includes(safe.route))return {view,options:{hub:normalizedHubState(safe.hub)}};
  if(view==='discover')return {view,options:{...safe,route:discoveryRoutes.has(safe.route)?safe.route:'hub',origin:safe.origin==='mine'?'mine':'discover'}};
  return {view:isAppView(view)?view:'workbench',options:safe};
 }
 export function hashForView(view,options={}) {
- if(view==='workbench'&&options.route==='ai-channel'&&routeId(options.deviceId))return '#workbench/devices/'+options.deviceId+'/chat';
+ if(view==='workbench'&&options.route==='ai-channel'&&routeId(options.deviceId))return '#workbench/devices/'+options.deviceId+'/chat'+(providerId(options.provider)?'/ai/'+options.provider:'');
  if(view==='messages'&&routeId(options.conversationId))return '#messages/'+options.conversationId;
  if(view==='workbench'&&options.route==='cooperation')return '#workbench/cooperation'+(routeId(options.conversationId)?'/'+options.conversationId:'')+(routeId(options.workflowId)?'/'+options.workflowId:'');
  if(view==='wallet')return '#wallet';
@@ -45,7 +46,7 @@ export function navigationFromHash(hash) {
  if(value==='mine/assets')return {view:'wallet',options:{}};
  if(['mine/favorites','mine/drafts'].includes(value))return {view:'discover',options:{route:value.split('/')[1],origin:'mine'}};
  const parts=value.split('/');
- if(parts.length===4&&parts[0]==='workbench'&&parts[1]==='devices'&&parts[3]==='chat')return normalizeNavigation('workbench',{route:'ai-channel',deviceId:parts[2]});
+ if((parts.length===4||parts.length===6&&parts[4]==='ai'&&providerId(parts[5]))&&parts[0]==='workbench'&&parts[1]==='devices'&&parts[3]==='chat')return normalizeNavigation('workbench',{route:'ai-channel',deviceId:parts[2],provider:parts[5]});
  if(parts[0]==='messages'&&routeId(parts[1]))return {view:'messages',options:{conversationId:parts[1]}};
  if(parts[0]==='workbench'&&parts[1]==='cooperation')return normalizeNavigation('workbench',{route:'cooperation',conversationId:parts[2],workflowId:parts[3]});
  if(parts[0]==='discover')return normalizeNavigation('discover',{route:parts[1]||'hub'});
