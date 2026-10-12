@@ -18,7 +18,8 @@ const cameraGrants = new Set();
 let deviceManager = null;
 let quitting = false;
 // A separate per-user review profile leaves the installed user's wallet intact.
-if (process.argv.includes('--device-review')) app.setPath('userData',path.join(app.getPath('appData'),'YBZ Device Installer Review'));
+const reviewProfile=require('./review-profile.cjs').reviewProfilePath(process.argv,app.getPath('appData'));
+if(reviewProfile)app.setPath('userData',reviewProfile);
 
 function trustedSender(event) {
   return !!window && !window.isDestroyed() && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame && isLocalUrl(event.senderFrame.url);
@@ -72,6 +73,7 @@ async function initialize() {
     title: '愚笨者', backgroundColor: '#FCFAFF', autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'), session: isolatedSession,
+      additionalArguments: ['--ybz-app-version='+app.getVersion()],
       contextIsolation: true, nodeIntegration: false, nodeIntegrationInWorker: false,
       sandbox: true, webSecurity: true, allowRunningInsecureContent: false,
       webviewTag: false, devTools: false, spellcheck: false,

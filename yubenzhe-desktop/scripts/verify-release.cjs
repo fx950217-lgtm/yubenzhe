@@ -10,6 +10,12 @@ const asar = appBuilderRequire('@electron/asar');
 const { getCurrentFuseWire, FuseV1Options } = appBuilderRequire('@electron/fuses');
 
 function hash(buffer) { return crypto.createHash('sha256').update(buffer).digest('hex'); }
+const BRIDGE_FILES=Object.freeze(['agent.mjs','desktop.ps1','ai-channel.mjs','codex-runner.mjs','ai-channel-files.mjs','protocol.mjs','capabilities.mjs','capability-probe.ps1','desktop-worker.mjs','probe-process.mjs','ai-registry.mjs','provider-runner.mjs','ollama-runner.mjs','task-pool.mjs','decision-protocol.mjs']);
+function verifyBridgeBundle({sourceDir,bundleDir,filter}){
+  assert.deepEqual([...filter].sort(),[...BRIDGE_FILES].sort(),'Builder connector allowlist must match the verified runtime');
+  assert.deepEqual(fs.readdirSync(bundleDir).sort(),[...BRIDGE_FILES].sort(),'Only allowlisted connector files are bundled; no Codex, tokens or Node install is included');
+  for(const file of BRIDGE_FILES)assert.deepEqual(fs.readFileSync(path.join(bundleDir,file)),fs.readFileSync(path.join(sourceDir,file)),file);
+}
 function pe(file) {
   const b = fs.readFileSync(file);
   assert.equal(b.subarray(0, 2).toString(), 'MZ', `${file} is a PE executable`);
@@ -20,12 +26,13 @@ function pe(file) {
   return { machine: b.readUInt16LE(offset + 4), certificateBytes: b.readUInt32LE(directory + 4 * 8 + 4), bytes: b.length, sha256: hash(b) };
 }
 
-(async () => {
+async function verifyRelease() {
   const root = path.resolve(__dirname, '..');
   const dist = path.join(root, 'dist');
   const archive = path.join(dist, 'win-unpacked/resources/app.asar');
   const expected = JSON.parse(fs.readFileSync(path.join(root, 'web-assets-verification.json'), 'utf8'));
   const sourcePackage = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  assert.equal(sourcePackage.build.appId,'app.yubenzhe.desktop','Use the approved public application ID');
   const consumerPackage = JSON.parse(fs.readFileSync(path.join(root, '../tongban/package.json'), 'utf8'));
   const buildInfo = JSON.parse(fs.readFileSync(path.join(root, '../tongban/dist/build-info.json'), 'utf8'));
   assert.equal(expected.version, consumerPackage.version, 'Snapshot must use current consumer version');
@@ -37,11 +44,9 @@ function pe(file) {
     assert.equal(hash(fs.readFileSync(path.join(root, '../tongban/dist', file))), sha256, `Current consumer asset: ${file}`);
     assert.equal(hash(asar.extractFile(archive, `web/${file}`)), sha256, file);
   }
-  for (const file of ['main.cjs', 'preload.cjs', 'security.cjs', 'local-ai.cjs', 'internal-preview.cjs','deployment.cjs','setup-catalog.cjs','device-provider-state.cjs','device-manager.cjs','device-process-stop.cjs','device-preload.cjs','device-wizard.html','device-wizard.css','device-wizard.js']) assert.deepEqual(asar.extractFile(archive, `src/${file}`), fs.readFileSync(path.join(root, 'src', file)), file);
-  const bridgeFiles=['agent.mjs','desktop.ps1','ai-channel.mjs','codex-runner.mjs','ai-channel-files.mjs','protocol.mjs','capabilities.mjs','capability-probe.ps1','desktop-worker.mjs','probe-process.mjs','ai-registry.mjs','provider-runner.mjs','ollama-runner.mjs','task-pool.mjs'];
+  for (const file of ['main.cjs', 'review-profile.cjs', 'preload.cjs', 'security.cjs', 'local-ai.cjs', 'internal-preview.cjs','deployment.cjs','setup-catalog.cjs','device-provider-state.cjs','device-manager.cjs','device-process-stop.cjs','device-preload.cjs','device-wizard.html','device-wizard.css','device-wizard.js']) assert.deepEqual(asar.extractFile(archive, `src/${file}`), fs.readFileSync(path.join(root, 'src', file)), file);
   const bridge=path.join(dist,'win-unpacked/resources/device-bridge');
-  assert.deepEqual(fs.readdirSync(bridge).sort(),[...bridgeFiles].sort(),'Only allowlisted connector files are bundled; no Codex, tokens or Node install is included');
-  for(const file of bridgeFiles)assert.deepEqual(fs.readFileSync(path.join(bridge,file)),fs.readFileSync(path.join(root,'../yubenzhe-deploy/device-bridge',file)),file);
+  verifyBridgeBundle({bundleDir:bridge,sourceDir:path.join(root,'../yubenzhe-deploy/device-bridge'),filter:sourcePackage.build.extraResources.find(entry=>entry.to==='device-bridge')?.filter||[]});
   const pkg = JSON.parse(asar.extractFile(archive, 'package.json').toString());
   assert.equal(pkg.version, sourcePackage.version); assert.equal(pkg.productName, '愚笨者');
   const runtimePath = path.join(dist, 'win-unpacked/Yubenzhe.exe');
@@ -57,15 +62,17 @@ function pe(file) {
     files[filename] = { bytes: bytes.length, sha256: hash(bytes) };
   }
   const installer = pe(path.join(dist, `yubenzhe-${pkg.version}-windows-x64-setup.exe`));
-  assert.equal(installer.certificateBytes, 0, 'This private release has no Authenticode certificate');
+  assert.equal(installer.certificateBytes, 0, 'This build has no Authenticode certificate');
   const result = {
     productName: '愚笨者', version: pkg.version, consumerVersion: expected.version, platform: 'Windows x64',
     electronVersion: '44.7.0', electronBuilderVersion: '26.15.3',
-    distribution: 'private-preview', storePublished: false, codeSigned: false,
+    appId:sourcePackage.build.appId,distribution:require('../src/deployment.cjs').accessMode==='public'?'public':'private-preview', storePublished: false, codeSigned: false,
     checks: { packagedAssetsMatchSource: true, packagedNativeBridgeMatchesSource: true, noAdminOrPrivateSigningMaterial: true, windowsRuntimePE64: true, securityFusesVerified: true, unitAndHostTests: 'run separately; not asserted by this verifier', actualWindowsDeviceTested: false, installerRunOnWindows: false, actualLocalModelRunOnWindows: false },
     files, webAssets: expected.files,
   };
   fs.writeFileSync(path.join(root, 'release-verification.json'), JSON.stringify(result, null, 2) + '\n');
   fs.writeFileSync(path.join(dist, 'SHA256SUMS.txt'), Object.entries(files).map(([name, info]) => `${info.sha256}  ${name}`).join('\n') + '\n');
   console.log(JSON.stringify(result, null, 2));
-})().catch(error => { console.error(error); process.exitCode = 1; });
+}
+module.exports={BRIDGE_FILES,verifyBridgeBundle};
+if(require.main===module)verifyRelease().catch(error => { console.error(error); process.exitCode = 1; });

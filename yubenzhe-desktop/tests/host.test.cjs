@@ -32,7 +32,7 @@ async function host({ saveResult = { canceled: true }, writeError = null, camera
     loadURL(url) { this.loaded = url; return Promise.resolve(); }
   }
   const app = new EventEmitter();
-  Object.assign(app, { enableSandbox: () => calls.sandbox = true, setName: name => calls.name = name, requestSingleInstanceLock: () => true, quit: () => {}, whenReady: () => Promise.resolve() });
+  Object.assign(app, { getPath:()=>path.join(__dirname,'temporary-profile'), getVersion:()=>require('../package.json').version, enableSandbox: () => calls.sandbox = true, setName: name => calls.name = name, requestSingleInstanceLock: () => true, quit: () => {}, whenReady: () => Promise.resolve() });
   const electron = {
     app, BrowserWindow: Window, Menu: { setApplicationMenu() {} }, protocol: { registerSchemesAsPrivileged: value => calls.schemes = value },
     session: { fromPartition: value => { calls.partition = value; return ses; } }, ipcMain: ipc, powerMonitor: new EventEmitter(),
@@ -42,7 +42,7 @@ async function host({ saveResult = { canceled: true }, writeError = null, camera
   const fakeFs = { readFile: async () => Buffer.from('local content'), writeFile: async (...args) => { if (writeError) throw writeError; calls.writes.push(args); } };
   const filename = path.resolve(__dirname, '../src/main.cjs');
   vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {
-    require: name => name === 'electron' ? electron : name === 'node:fs/promises' ? fakeFs : name === './security.cjs' ? security : name === './internal-preview.cjs' ? {createInternalPreview:()=>({status:async()=>({authenticated:false}),login:async()=>({authenticated:true}),logout:async()=>({authenticated:false}),request:async()=>({status:200,bodyBase64:'',headers:{}}),clear:()=>{calls.previewCleared=true;}})} : name === './local-ai.cjs' ? {createLocalAI:()=>({status:async()=>({available:true,models:[]}),generate:async()=>({text:'test'}),cancel:()=>true})} : require(name),
+    require: name => name === 'electron' ? electron : name === 'node:fs/promises' ? fakeFs : name === './review-profile.cjs' ? require('../src/review-profile.cjs') : name === './security.cjs' ? security : name === './internal-preview.cjs' ? {createInternalPreview:()=>({status:async()=>({authenticated:false}),login:async()=>({authenticated:true}),logout:async()=>({authenticated:false}),request:async()=>({status:200,bodyBase64:'',headers:{}}),clear:()=>{calls.previewCleared=true;}})} : name === './local-ai.cjs' ? {createLocalAI:()=>({status:async()=>({available:true,models:[]}),generate:async()=>({text:'test'}),cancel:()=>true})} : require(name),
     __dirname: path.dirname(filename), URL, Response, Buffer, console, Set, process: {argv:[]},
   }, { filename });
   await new Promise(resolve => setImmediate(resolve));
@@ -59,6 +59,7 @@ test('window enforces sandbox, isolation, local origin and no renderer Node APIs
   assert.equal(win.options.webPreferences.sandbox, true);
   assert.equal(win.options.webPreferences.webSecurity, true);
   assert.equal(win.options.webPreferences.webviewTag, false);
+  assert.deepEqual(Array.from(win.options.webPreferences.additionalArguments),['--ybz-app-version='+require('../package.json').version]);
   assert.equal(win.loaded, 'yubenzhe://app/index.html');
   assert.equal(win.protected, true);
   assert.equal(win.popup().action, 'deny');

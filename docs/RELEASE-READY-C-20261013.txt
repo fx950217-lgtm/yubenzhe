@@ -1,0 +1,16 @@
+C 安装包交付 — 0.14.0-dev.15
+
+Android applicationId：app.yubenzhe.mobile，versionCode 19，保留Java namespace。Windows appId：app.yubenzhe.desktop。
+两端使用公开服务 https://66.42.56.29，跳过旧共享外层门禁，产品账号仍需个人密码。
+
+验证：
+原生与地址配置合计103/103通过（含Windows92、Android9；Android另有240项JVM断言）。
+Android APK使用原签名，签名SHA256见RELEASE-READY-PACKAGES-20261013.json；在Android14模拟器安装启动，旧app.tongban.wallet.localqa保留。
+同签名instrumentation 1/1通过：实际正式APK显示个人密码注册页、Web Locks可用；release非debuggable、FLAG_SECURE、主帧桥保护均保留。不是实体手机验收。
+Windows安装到独立Programs/YBZRelease15，安装后关键资源字节与验证包一致；在新建review-id用户目录启动向导并正常退出，未覆盖历史已配对review目录。完整公网派任务在D继续。
+ASAR内原生代码、网页文件、连接器完整白名单及Electron安全fuse验证通过；Windows未做代码签名，未提交商店。
+实际渲染24项/31截图通过：手机390px和电脑1280px，三皮肤与system实时切换、引导、骨架、地址簿、两钱包切换、群AI头像单聊、Tab红点。网络与链RPC是明示的本地合成数据，不等于公网端到端。
+
+最终SHA-256与大小：见RELEASE-READY-PACKAGES-20261013.json。候选包校验值不再用于交付。
+使用方式：见RELEASE-READY-USER-GUIDE-20261013.txt；公开下载页已接入最终文件名与SHA，待成套备份后线上更新。
+Android新包名不继承旧包钱包，沿用签名不改变此事实。必须保留旧应用，先备份和核对恢复，再自行决定迁移清理；不要求先卸载。

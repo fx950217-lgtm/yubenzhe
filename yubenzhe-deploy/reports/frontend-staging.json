@@ -1,8 +1,8 @@
 {
-  "version": "0.14.0-dev.14",
-  "stagedAt": "2026-10-12T22:26:18.097Z",
-  "indexSha256": "916c74fbfe0e63e071811b4b2b27e17816225809df5145026977e4b51e4ee8ec",
-  "appSha256": "7f067e3f103caabf4489e6e059489997d5a542b07dc048182877ec5ad3e0f3b8",
+  "version": "0.14.0-dev.15",
+  "stagedAt": "2026-10-12T22:50:34.925Z",
+  "indexSha256": "8e13e95650e106b5e03bd858829a2f33f6575889d7565a36d5faff4be307008e",
+  "appSha256": "a284c91652f82f878bfbd68e9d9886bee79e675811852e6183631c072a6cce1c",
   "adminEntry": false,
   "historicalDownloadsIncluded": false,
   "deployed": false,

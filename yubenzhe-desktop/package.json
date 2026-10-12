@@ -20,7 +20,7 @@
     "electron-builder": "26.15.3"
   },
   "build": {
-    "appId": "app.yubenzhe.desktop.preview",
+    "appId": "app.yubenzhe.desktop",
     "productName": "愚笨者",
     "asar": true,
     "electronFuses": {

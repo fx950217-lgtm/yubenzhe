@@ -3,9 +3,11 @@ apply plugin: 'com.android.application'
 android {
     namespace = "app.tongban.wallet.demo"
     compileSdk = rootProject.ext.compileSdkVersion
+    // Opt in to a separately signed instrumentation APK; release behavior stays unchanged.
+    testBuildType project.findProperty("diagnosticTestBuildType") ?: "debug"
     defaultConfig {
-        // A separately signed preview can coexist without replacing existing wallet data.
-        applicationId project.findProperty("previewApplicationId") ?: "app.tongban.wallet.demo"
+        // The release installs beside the legacy package; its local wallet is not transferred.
+        applicationId project.findProperty("previewApplicationId") ?: "app.yubenzhe.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 19

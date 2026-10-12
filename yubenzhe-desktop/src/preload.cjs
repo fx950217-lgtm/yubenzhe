@@ -1,9 +1,12 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
+// Sandboxed preloads cannot read package.json; the host appends its own build version.
+const versionArgument=globalThis.process?.argv?.findLast(value=>typeof value==='string'&&value.startsWith('--ybz-app-version='));
+const version=typeof versionArgument==='string'&&versionArgument.length<=96?versionArgument.match(/^--ybz-app-version=(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/)?.[1]:null;
 
 contextBridge.exposeInMainWorld('YubenzheDesktop', Object.freeze({
   platform: 'windows',
-  version: '0.14.0-dev.11',
+  version: version||'unknown',
   internalPreview: Object.freeze({
     status: () => ipcRenderer.invoke('yubenzhe:internal-status'),
     login: value => ipcRenderer.invoke('yubenzhe:internal-login', {username:value?.username,password:value?.password}),

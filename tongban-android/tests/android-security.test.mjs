@@ -20,7 +20,12 @@ test('consistent release version, increasing Android code, local bundled origin,
   assert.equal(pkg.dependencies['@capacitor/android'], '8.5.3');
   assert.equal(pkg.devDependencies['@capacitor/cli'], '8.5.3');
   const config = JSON.parse(read('capacitor.config.json'));
-  assert.equal(config.appId, 'app.tongban.wallet.demo');
+  assert.equal(config.appId, 'app.yubenzhe.mobile');
+  assert.equal(gradle.match(/applicationId[^\n]*\?:\s*"([^"]+)"/)?.[1],config.appId);
+  assert.match(gradle,/namespace\s*=\s*"app\.tongban\.wallet\.demo"/,'Java namespace remains stable while the application ID changes');
+  const strings=read('android/app/src/main/res/values/strings.xml');
+  assert.match(strings,/<string name="package_name">app\.yubenzhe\.mobile<\/string>/);
+  assert.match(strings,/<string name="custom_url_scheme">app\.yubenzhe\.mobile<\/string>/);
   assert.equal(config.server.url, undefined);
   assert.equal(config.server.androidScheme, 'https');
   assert.equal(config.server.cleartext, false);
