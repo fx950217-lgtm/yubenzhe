@@ -37,6 +37,14 @@
 **/*-wal
 **/*-shm
 
+# Device connectors: paired credentials and process-local state are never source.
+**/device-state.json
+**/connector.pid
+**/*.pid
+**/pairing*.json
+**/*-pairing.json
+**/device-pair*.json
+
 # Dependencies, caches and generated application output.
 **/node_modules/
 **/.git/
