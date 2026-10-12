@@ -1,8 +1,8 @@
 {
   "version": "0.14.0-dev.13",
-  "stagedAt": "2026-10-12T10:52:25.541Z",
+  "stagedAt": "2026-10-12T11:01:51.624Z",
   "indexSha256": "e5e67cf599da5996ca1445fc7db721729c4dba3acf26c68a03e2b3fdb22b4e3f",
-  "appSha256": "40b17a72b0765073037e77ec9866fb1e4f7d6bec9bab92ca0571060fa0828c9b",
+  "appSha256": "667df614eafcead0563fce507b7009178e943ecaa8ae4e2c2a45b85e8611d5ed",
   "adminEntry": false,
   "historicalDownloadsIncluded": false,
   "deployed": false,

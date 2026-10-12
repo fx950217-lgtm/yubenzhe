@@ -109,3 +109,16 @@ test('group decisions in private device history only navigate to the group viewe
  const cid='99999999-9999-4999-8999-999999999999',routes=[],current=task({status:'awaiting-decision',decision:decisionFixture(),groupSessionId:'group-session',conversationId:cid});
  const h=harness(t,{onGroupDecision:id=>routes.push(id),request:async(path,options,fallback)=>path.includes('/devices/')?{device:{id:did,online:true,aiStatus:'ready'},tasks:[current]}:path.includes('/tasks/')?{task:current,events:[],latestSeq:0}:fallback(path,options)});await tick();assert.match(h.root.innerHTML,/返回讨论组继续/);assert.doesNotMatch(h.root.innerHTML,/data-decision-action="choose"/);await h.choose();assert.equal(h.calls.some(c=>c.options.method==='POST'),false);await h.choose(null,'group',cid);assert.deepEqual(routes,[cid]);
 });
+test('continuation bubbles show concise approval without rendering or mutating the internal execution prompt',async t=>{
+ const childId='88888888-8888-4888-8888-888888888888',userPrompt='请整理用户提交的样例 <table>',internalPrompt='INTERNAL_CONTINUATION_AUTHORIZATION original workspace and terminated process instructions';
+ const original=task({prompt:userPrompt,status:'continued'}),child=task({id:childId,parentTaskId:tid,workspaceTaskId:tid,prompt:internalPrompt,status:'queued'});
+ const h=harness(t,{request:async(path,options,fallback)=>path.includes('/devices/')?{device:{id:did,online:true,aiStatus:'ready'},tasks:[original,child]}:path.includes('/tasks/')?{task:path.includes(childId)?child:original,events:[],latestSeq:0}:fallback(path,options)});
+ await tick();assert.match(h.root.innerHTML,/请整理用户提交的样例 &lt;table&gt;/);assert.match(h.root.innerHTML,/你已批准继续这项任务。/);assert.doesNotMatch(h.root.innerHTML,/INTERNAL_CONTINUATION_AUTHORIZATION|original workspace and terminated process instructions/);
+ assert.equal(child.prompt,internalPrompt,'display normalization must not alter the execution DTO');assert.equal(original.prompt,userPrompt);await h.click('refresh');assert.doesNotMatch(h.root.innerHTML,/INTERNAL_CONTINUATION_AUTHORIZATION/);assert.equal(h.calls.some(call=>call.options.method==='POST'),false);
+});
+test('group tasks in private history hide internal group context while keeping normal user prompts intact',async t=>{
+ const groupId='99999999-9999-4999-8999-999999999999',internal='INTERNAL_GROUP_AUTHORIZATION 你受用户授权参加群讨论 上一轮 AI 回复与授权规则';
+ const groupTask=task({groupSessionId:groupId,conversationId:groupId,prompt:internal,status:'succeeded'}),plain=task({id:'88888888-8888-4888-8888-888888888888',prompt:'这是用户自己的普通任务',status:'succeeded'});
+ const h=harness(t,{request:async(path,options,fallback)=>path.includes('/devices/')?{device:{id:did,online:true,aiStatus:'ready'},tasks:[groupTask,plain]}:path.includes('/tasks/')?{task:path.includes(plain.id)?plain:groupTask,events:[],latestSeq:0}:fallback(path,options)});
+ await tick();assert.match(h.root.innerHTML,/已授权执行讨论组任务，请返回讨论组查看。/);assert.match(h.root.innerHTML,/这是用户自己的普通任务/);assert.doesNotMatch(h.root.innerHTML,/INTERNAL_GROUP_AUTHORIZATION|你受用户授权参加群讨论|上一轮 AI 回复与授权规则/);assert.equal(groupTask.prompt,internal);assert.equal(h.calls.some(call=>call.options.method==='POST'),false);
+});

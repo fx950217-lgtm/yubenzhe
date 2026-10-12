@@ -79,6 +79,8 @@ export function mountLiveSocial(container, options = {}) {
   let state = { profile: options.profile || null, friends: [], requests: [], outgoingRequests: [], conversations: [] }, loaded = false, loadError = '', networkError = '', disposed = false, loadingState = false;
   let deviceEntries=[],deviceReadError='';
   let page = { type: 'list', view }, menu = false, modal = null, epoch = 0, lookupSequence = 0, busy = new Set(), timer;
+  const initialOwner = options.profile?.userId || service.getProfile?.()?.userId || null;
+  let initialDestination = initialConversationId ? { type: 'chat', id: initialConversationId } : initialProfileId ? { type: 'profile', userId: initialProfileId } : null;
   const permissionRevisions = new Map(), readThrough = new Map(), syncCursors = new Map();
   const replies = new Map(), messages = new Map(), messageErrors = new Map(), messageLoading = new Set(), olderCursors = new Map(), drafts = draftSession(options.profile?.userId), pending = new Map();
   const selfId = () => state.profile?.userId;
@@ -96,8 +98,24 @@ export function mountLiveSocial(container, options = {}) {
   function empty(label, detail, action = '') { return '<div class="live-empty">' + icon('group') + '<h3>' + esc(label) + '</h3><p>' + esc(detail) + '</p>' + action + '</div>'; }
   function errorBox(text, action = '') { return text ? '<div class="live-error" role="alert"><span>' + esc(text) + '</span>' + (action ? '<button type="button" data-action="' + action + '">重试</button>' : '') + '</div>' : ''; }
   function personRow(person, action, extra = '') { return '<button type="button" class="live-person" data-action="' + action + '" data-id="' + esc(person.userId) + '">' + avatar(person) + '<span><strong>' + esc(nameOf(person)) + badges(person) + '</strong><small>ID：' + esc(person.userId) + '</small></span>' + extra + '</button>'; }
-  function navigate(next) { menu = false; modal = null; epoch++; page = { ...next, previous: page }; render(); if (page.type === 'chat') void loadMessages(page.id); }
-  function back() { if (disposed) return false; if (modal) { if (!modal.busy) { modal = null; renderModal(); } return true; } if (menu) { menu = false; renderMenu(); return true; } if (page.previous) { epoch++; page = page.previous; render(); return true; } if (page.type !== 'list') { epoch++; page = { type: 'list', view }; render(); return true; } return false; }
+  function navigate(next) { initialDestination = null; menu = false; modal = null; epoch++; page = { ...next, previous: page }; render(); if (page.type === 'chat') void loadMessages(page.id); }
+  function back() { if (disposed) return false; initialDestination = null; if (modal) { if (!modal.busy) { modal = null; renderModal(); } return true; } if (menu) { menu = false; renderMenu(); return true; } if (page.previous) { epoch++; page = page.previous; render(); return true; } if (page.type !== 'list') { epoch++; page = { type: 'list', view }; render(); return true; } return false; }
+  function consumeInitialDestination() {
+    if (!initialDestination || disposed || !loaded) return false;
+    const destination = initialDestination;
+    initialDestination = null;
+    // A stale initial GET may be invalidated by a stop POST from the previous
+    // screen. Keep its destination until a successful read, but never carry it
+    // into another account or override navigation performed in this mount.
+    if (epoch !== 0 || page.type !== 'list' || initialOwner && state.profile?.userId !== initialOwner || service.getProfile && service.getProfile()?.userId !== state.profile?.userId) return false;
+    if (destination.type === 'chat') {
+      if (!conversation(destination.id)) return false;
+      openChat(destination.id);
+    } else {
+      navigate(destination); void lookup(destination.userId);
+    }
+    return true;
+  }
   function notify() { onScreenChange({ screen: page.type, conversationId: page.type === 'chat' ? page.id : null }); root.classList.toggle('is-chat', page.type === 'chat'); root.classList.toggle('is-contacts', page.type === 'list' && page.view === 'contacts'); root.classList.toggle('is-messages', page.type === 'list' && page.view === 'messages'); fitViewport(); }
   function fitViewport() { const viewport = globalThis.window?.visualViewport; if (viewport) { root.style.setProperty('--live-height', viewport.height + 'px'); root.style.setProperty('--live-top', viewport.offsetTop + 'px'); } }
   function rememberFocus() { const element = document.activeElement; return element && root.contains(element) && element.name ? { name: element.name, start: element.selectionStart, end: element.selectionEnd } : null; }
@@ -264,8 +282,8 @@ export function mountLiveSocial(container, options = {}) {
         for (const id of invalidatedConversationIds(state.conversations, next.conversations)) { permissionRevisions.set(id, (permissionRevisions.get(id) || 0) + 1); messages.delete(id); replies.delete(id); messageErrors.delete(id); olderCursors.delete(id); pending.delete(id); readThrough.delete(id); syncCursors.delete(id); if (['gallery','photo'].includes(modal?.type) && modal.conversationId === id) modal = null; }
         state = next; loaded = true; loadError = ''; networkError = ''; snapshotSignature = signature;
         if (page.result?.profile) { const updated = state.friends.find(person => person.userId === page.result.profile.userId); if (updated) page.result = { profile: updated, relationship: 'friend' }; else if (page.result.relationship === 'friend') page.result.relationship = 'none'; }
-        if (changed && !composing) render();
-      } catch (error) { if (staleResponse(error)) return; if (!disposed) { if (!loaded) loadError = error.message || '连接失败，请检查网络后重试'; else networkError = '暂时无法同步新消息：' + (error.message || '网络连接中断'); if (!composing) render(); } }
+        if (!consumeInitialDestination() && changed && !composing) render();
+      } catch (error) { if (error?.code === 'SESSION_CHANGED') initialDestination = null; if (staleResponse(error)) return; if (!disposed) { if (!loaded) loadError = error.message || '连接失败，请检查网络后重试'; else networkError = '暂时无法同步新消息：' + (error.message || '网络连接中断'); if (!composing) render(); } }
       finally { loadingState = false; }
     })();
     try { await statePromise; } finally { statePromise = null; }
@@ -374,8 +392,8 @@ export function mountLiveSocial(container, options = {}) {
     else if (action === 'chat') openChat(id);
     else if(action==='group-ai-chat'){const ai=groupAIEntries(conversation(page.id)).find(row=>row.id===id);if(ai?.canChat)onNavigate('messages',{route:'ai-channel',deviceId:ai.deviceId,provider:ai.provider,returnConversationId:page.id});}
     else if (action === 'device-chat') {const device=deviceEntries.find(item=>item.deviceId===id);if(device)onNavigate('messages',{route:'ai-channel',deviceId:device.deviceId});}
-    else if (action === 'group-task' && page.type === 'chat' && conversation(page.id)?.type === 'group') options.onGroupTask?.(page.id);
-    else if(action==='group-ai'&&page.type==='chat'&&conversation(page.id)?.type==='group')options.onGroupAI?.(page.id);
+    else if (action === 'group-task' && ['chat','details'].includes(page.type) && conversation(page.id)?.type === 'group') options.onGroupTask?.(page.id);
+    else if(action==='group-ai'&&['chat','details'].includes(page.type)&&conversation(page.id)?.type==='group')options.onGroupAI?.(page.id);
     else if (action === 'workflow-event' && page.type === 'chat' && conversation(page.id)?.type === 'group') {const taskEvent=trustedGroupWorkflow(messages.get(page.id)?.find(message=>message.id===id));if(taskEvent)options.onGroupTask?.(page.id,taskEvent.workflowId);}
     else if (action === 'friend-chat') void openFriendChat(id);
     else if (action === 'request-friend') {
@@ -492,7 +510,7 @@ export function mountLiveSocial(container, options = {}) {
   document.addEventListener('pointerdown', onOutside); document.addEventListener('visibilitychange', onVisibility);
   window.visualViewport?.addEventListener('resize', fitViewport); window.visualViewport?.addEventListener('scroll', fitViewport);
   render();
-  void refresh().then(() => { if (!disposed && loaded) { if (initialConversationId) openChat(initialConversationId); else if (initialProfileId) { navigate({ type: 'profile', userId: initialProfileId }); void lookup(initialProfileId); } } });
+  void refresh();
   timer = setInterval(() => { void poll(); }, 3000);
   const cleanup = () => { if (disposed) return; disposed = true; epoch++; lookupSequence++; clearInterval(timer); for (const [event, handler] of Object.entries(listeners)) root.removeEventListener(event, handler); root.removeEventListener('error', onImageError, true); document.removeEventListener('pointerdown', onOutside); document.removeEventListener('visibilitychange', onVisibility); window.visualViewport?.removeEventListener('resize', fitViewport); window.visualViewport?.removeEventListener('scroll', fitViewport); root.remove(); onScreenChange({ screen: 'closed', conversationId: null }); };
   cleanup.canGoBack = () => !disposed && !!(modal || menu || page.previous || page.type !== 'list'); cleanup.back = back;

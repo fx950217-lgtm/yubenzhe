@@ -60,3 +60,4 @@
 .wallet-setup-actions { display: flex; gap: var(--sp-2); }
 .workspace .mobile-wallet .wallet-setup-actions .secondary { background: transparent; border: 1px solid currentColor; }
 .workspace .mobile-wallet .wallet-custody-notice { margin: var(--sp-2) 0; text-align: center; color: var(--t2); font-size: var(--fs-s); line-height: calc(1em + 8px); }
+.notification-settings [hidden] { display: none !important; }

@@ -47,6 +47,16 @@ function harness(t,{sessions=[],request,storage:providedStorage}={}){
 function prepare(h){h.input('device',did);h.input('provider','roster-ollama',true);h.input('goal','fixture discussion');h.input('share','',true);}
 const count=(h,suffix)=>h.calls.filter(call=>call.path.endsWith(suffix));
 
+test('the browser input-before-change sequence preserves the group-sharing checkbox until its POST',async t=>{
+ const h=harness(t);await tick();let html=h.root.innerHTML,renders=0;
+ Object.defineProperty(h.root,'innerHTML',{get:()=>html,set:value=>{html=value;renders++;},configurable:true});
+ const target={checked:true,matches:selector=>selector==='[data-gai-setting]'};
+ h.handlers.get('input')({target});assert.equal(renders,0,'input must not detach the checkbox before change bubbles');
+ await h.handlers.get('change')({target});await tick();
+ const writes=h.calls.filter(call=>call.method==='POST'&&call.path==='group-device-ai/groups/'+cid);
+ assert.equal(writes.length,1);assert.deepEqual(writes[0].input,{allowDeviceAI:true});
+});
+
 test('installed providers outside the roster cannot start a discussion, including forged legacy selections',async t=>{
  const h=harness(t,{request:(path,options,defaults)=>path.endsWith('/roster')?{version:0,canManage:true,members:[]}:defaults(path,options)});await tick();prepare(h);h.input('provider','ollama',true);await h.submit();assert.equal(count(h,'group-device-ai').length,0);assert.match(h.root.innerHTML,/仅可使用本群 AI 名单/);
 });
@@ -165,7 +175,7 @@ test('leaving while a decision POST is unresolved stops the parent session and d
 for(const leave of ['unmount','pagehide','visibilitychange'])test('a restored unknown decision stops its group on '+leave+' without resubmitting authorization',async t=>{
  const d=waitingSession().decisions[0].decision,digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([d.digest,'option-2']))))].map(byte=>byte.toString(16).padStart(2,'0')).join('');
  const values=new Map([['ybz.ai-decision.request.v1.owner.'+decisionTaskId+'.'+decisionId,JSON.stringify({requestId:crypto.randomUUID(),digest})]]),storage={getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};
- const h=harness(t,{sessions:[waitingSession()],storage});for(let attempt=0;attempt<100&&!h.root.innerHTML.includes('上次选择结果尚未确认');attempt++)await tick();assert.match(h.root.innerHTML,/上次选择结果尚未确认/);assert.equal(count(h,'/decision').length,0);
+ const h=harness(t,{sessions:[waitingSession()],storage}),deadline=performance.now()+5000;while(!h.root.innerHTML.includes('上次选择结果尚未确认')&&performance.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));assert.match(h.root.innerHTML,/上次选择结果尚未确认/);assert.equal(count(h,'/decision').length,0);
  if(leave==='unmount')h.cleanup();else h.emit(leave,leave==='visibilitychange'?true:undefined);await tick();assert.deepEqual(count(h,'/stop').map(row=>row.path),['group-device-ai/'+sid+'/stop']);assert.equal(count(h,'/decision').length,0);assert.equal(count(h,'/next').length,0);
 });
 test('hiding while a choice digest is being prepared stops the group and never posts new authorization',async t=>{

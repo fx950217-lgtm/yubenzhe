@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { createSocialClient } from '../src/social-client.js';
 const dataURL = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 const stripCSS = source => source.replace(/import '\.\/[^']+\.css';\n/g, '');
 const mediaURL = dataURL(stripCSS(await readFile(new URL('../src/chat-media.js', import.meta.url), 'utf8')));
@@ -135,7 +136,7 @@ function groupUIFixture(t,initialConversationId){
  globalThis.document={activeElement:null,createElement:()=>root,addEventListener(){},removeEventListener(){}};globalThis.window={};globalThis.FormData=class{constructor(f){this.values=f.values;}get(n){return this.values[n];}};
  const owner={userId:'owner_1',nickname:'我'},friend={userId:'friend_1',nickname:'好友'},group={id:'group_1',type:'group',name:'讨论',ownerId:owner.userId,members:[owner,friend]},state={profile:owner,friends:[friend],requests:[],outgoingRequests:[],conversations:initialConversationId?[group]:[]};
  const service={async getState(){return state;},async createGroup(input){calls.push({kind:'group',input});state.conversations=[group];return {conversationId:group.id};},async getMessages(){return {messages:[{id:'1',type:'text',text:'AI-ONLY-MARKER <script>',senderId:owner.userId,createdAt:1,deviceAI:{alias:'<选品顾问>',provider:'codex',deviceName:'<电脑>',serverVerified:true}},{id:'2',type:'text',text:'人的判断',senderId:friend.userId,createdAt:2}]};},async markRead(){},async authenticatedRequest(){throw Error('Group creation cannot invoke device AI');}};
- const cleanup=mountLiveSocial({append(){}},{service,initialConversationId,onGroupAI:id=>routes.push(id),onNavigate:(view,options)=>routes.push({view,options})});t.after(()=>{cleanup();Object.assign(globalThis,saved);});
+  const cleanup=mountLiveSocial({append(){}},{service,initialConversationId,onGroupAI:id=>routes.push(id),onGroupTask:id=>routes.push({taskGroup:id}),onNavigate:(view,options)=>routes.push({view,options})});t.after(()=>{cleanup();Object.assign(globalThis,saved);});
  const click=action=>handlers.get('click')({target:{matches:()=>false,closest:()=>({dataset:{action}})}});
  return {root,modal,handlers,calls,routes,click,group};
 }
@@ -148,6 +149,13 @@ test('creating a group can continue to device/AI selection but never enables sha
 test('group AI attribution is escaped and its transient body is excluded from chat search',async t=>{
  const f=groupUIFixture(t,'group_1');await new Promise(setImmediate);assert.match(f.root.innerHTML,/&lt;选品顾问&gt; · AI/);assert.match(f.root.innerHTML,/AI-ONLY-MARKER &lt;script&gt;/);assert.doesNotMatch(f.root.innerHTML,/<script>/);
  f.click('group-ai');assert.deepEqual(f.routes,['group_1']);f.handlers.get('input')({target:{name:'chatQuery',value:'AI-ONLY-MARKER'}});assert.doesNotMatch(f.root.innerHTML,/AI-ONLY-MARKER &lt;script&gt;/);assert.match(f.root.innerHTML,/没有找到相关消息/);
+});
+
+test('discussion settings buttons open their AI and collaboration flows from the actual details page',async t=>{
+ const f=groupUIFixture(t,'group_1');await new Promise(setImmediate);f.click('details');
+ assert.match(f.root.innerHTML,/聊天详情/);assert.match(f.root.innerHTML,/设备 AI 讨论/);assert.match(f.root.innerHTML,/协作任务与回执/);
+ f.click('group-ai');f.click('group-task');assert.deepEqual(f.routes,['group_1',{taskGroup:'group_1'}]);
+ f.group.type='direct';f.click('group-ai');f.click('group-task');assert.equal(f.routes.length,2);
 });
 
 test('discussion strips show people and escaped AI aliases without converting AI to social members',async t=>{
@@ -170,4 +178,52 @@ test('only an authorized roster avatar opens private chat and preserves the orig
  const click=id=>f.handlers.get('click')({target:{matches:()=>false,closest:()=>({dataset:{action:'group-ai-chat',id}})}});
  click('other-ai');click('forged-id');assert.deepEqual(f.routes,[]);click('own-ai');assert.deepEqual(f.routes,[{view:'messages',options:{route:'ai-channel',deviceId,provider:'codex',returnConversationId:'group_1'}}]);
  f.group.aiMembers[0].canChat=false;click('own-ai');assert.equal(f.routes.length,1);
+});
+
+async function initialRouteFixture(t) {
+ const saved={document:globalThis.document,window:globalThis.window,setInterval:globalThis.setInterval,clearInterval:globalThis.clearInterval},handlers=new Map(),screens=[],calls=[],menu={innerHTML:''},modal={innerHTML:''};
+ const root={innerHTML:'',classList:{toggle(){}},setAttribute(){},contains:()=>true,remove(){},querySelectorAll:()=>[],querySelector:s=>s==='[data-menu]'?menu:s==='[data-modal-host]'?modal:null,addEventListener:(event,handler)=>handlers.set(event,handler),removeEventListener:event=>handlers.delete(event)};
+ globalThis.document={activeElement:null,createElement:()=>root,addEventListener(){},removeEventListener(){}};globalThis.window={};
+ let poll;globalThis.setInterval=callback=>{poll=callback;return 1;};globalThis.clearInterval=()=>{};
+ const owner={userId:'427918',nickname:'测试甲',bio:'',avatar:'🌱',avatarImage:'',level:1,official:false,identityScope:'server',revision:1},other={...owner,userId:'528194',nickname:'测试乙'},group={id:'group_1',type:'group',name:'返回的原群',ownerId:owner.userId,members:[owner,other]};
+ let account=owner,readCount=0,release,started;
+ const startedPromise=new Promise(resolve=>{started=resolve;}),initialResponse=new Promise(resolve=>{release=resolve;});
+ const response=value=>({status:200,ok:true,headers:{get:()=>null},json:async()=>value});
+ const client=createSocialClient({baseURL:'https://navigation.test.invalid',native:false,storage:{getItem:()=>null,setItem(){},removeItem(){}},fetcher:async(url,options)=>{
+  const path=url.split('/api/social/')[1];calls.push({path,method:options.method});
+  if(path==='me')return response({profile:account});
+  if(path==='login'){account=other;return response({profile:account});}
+  if(path==='state'){const snapshot={profile:account,friends:[],requests:[],outgoingRequests:[],conversations:[group]};if(++readCount===1){started();await initialResponse;}return response(snapshot);}
+  if(path==='devices/conversations')return response({conversations:[]});
+  if(path==='group-device-ai/session/stop')return response({ok:true});
+  if(path==='conversations/group_1/messages')return response({messages:[]});
+  throw Error('Unexpected local fixture request: '+path);
+ }});
+ await client.initialize();
+ const cleanup=mountLiveSocial({append(){}},{service:client,profile:client.getProfile(),initialConversationId:group.id,onScreenChange:screen=>screens.push(screen)});
+ t.after(()=>{cleanup();client.dispose();Object.assign(globalThis,saved);});
+ await startedPromise;
+ return {client,root,screens,calls,release,async settle(){await new Promise(setImmediate);},async poll(){poll();await new Promise(setImmediate);},click:action=>handlers.get('click')({target:{matches:()=>false,closest:()=>({dataset:{action}})}})};
+}
+
+test('return-to-group intent survives a stop POST invalidating the first state read and is consumed only once',async t=>{
+ const f=await initialRouteFixture(t);
+ await f.client.authenticatedRequest('group-device-ai/session/stop',{method:'POST',input:{}});
+ f.release();await f.settle();assert.equal(f.screens.some(row=>row.screen==='chat'),false);
+ await f.poll();assert.deepEqual(f.screens.at(-1),{screen:'chat',conversationId:'group_1'});
+ assert.equal(f.calls.filter(row=>row.path==='conversations/group_1/messages').length,1);
+ f.click('back');await f.poll();assert.equal(f.screens.at(-1).screen,'list','a later poll must not reopen a consumed route');
+});
+
+test('user navigation cancels a pending initial group route after a stale initial read',async t=>{
+ const f=await initialRouteFixture(t);
+ await f.client.authenticatedRequest('group-device-ai/session/stop',{method:'POST',input:{}});
+ f.release();await f.settle();f.click('add-friend');await f.poll();
+ assert.equal(f.screens.at(-1).screen,'lookup');assert.equal(f.calls.some(row=>row.path==='conversations/group_1/messages'),false);
+});
+
+test('an account change during the initial read never carries the old group route into the new account',async t=>{
+ const f=await initialRouteFixture(t);await f.client.login('528194','735194');f.release();await f.settle();await f.poll();
+ assert.equal(f.screens.at(-1).screen,'list');assert.equal(f.screens.some(row=>row.screen==='chat'),false);
+ assert.equal(f.calls.some(row=>row.path==='conversations/group_1/messages'),false);
 });
