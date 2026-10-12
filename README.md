@@ -1,5 +1,13 @@
 # 愚笨者 · YBZ
 
+2026-10-12 **0.14.0-dev.13 本地审核版**：已按 [UI 与功能任务书](docs/CODEX-TASK-UI-AND-FEATURES-20261012.md) 完成 U0→U5、F1→F4、T1→T2，逐批提交。消息首页、三皮肤、讨论组 AI 备注、私聊与人工决策续作、关键通知均有实际代码与验证。默认消息；五 Tab 为消息→发现→中央工作台→钱包→我的。
+
+启动：`node tongban/build.mjs`，再执行 `node scripts/start-ui-review.mjs`；审核 [localhost:18936](http://localhost:18936/?v=0.14.0-dev.13#messages)。使用独立 `../ybz-ui-review-20261012` 数据；旧18934预览已停，旧库未升级。最终前端678、后端603、桌面79、合约40、本地钱包EVM1项通过。完整变更、逐批结果、缺失配置、未完成项及回滚见 [总验证报告](docs/UI-FEATURES-ACCEPTANCE-20261012.txt) 和 [逐文件清单](docs/UI-FEATURES-FILE-CHANGES-20261012.txt)。
+
+本轮没有连接或部署服务器、没有 push、没有更新原生安装包。浏览器决策验收使用明确标注的合成执行器，真实写入本地文件；真实模型、真机、实际 Web Push 和公网链上完整闭环仍待配置与验证。`public/frontend` 已刷新至dev.13，历史internal资料完整保留；本地staging不等于上线。
+
+以下为上一轮及历史交付记录，不能覆盖上方本轮结论。
+
 2026-10-12 **0.14.0-dev.12 本地审核版**：已按 [MASTER P0→P7](docs/MASTER-ULTIMATE-REVISION-20261012.md) 实施并逐批提交，代码与本机验收结果见 [本轮验收](docs/ULTIMATE-REVISION-ACCEPTANCE-20261012.txt)。本轮方针为平台零收费、删除积分、设备只连接/远控/AI任务/文件收发。AI＋社交、AI＋钱包、社交＋区块链三个闭环保留，用户批准与链上付款核验不因移除积分而取消。未连接或修改服务器，不启用主网或实际Gas代付。
 
 下方为历次交付证据，提及积分预算、旧版本或公网状态的段落不再代表本轮功能，也不应作为部署依据。既有用户库未经本轮升级；023迁移只在隔离测试库演练，实际升级必须先归档并验证。
@@ -48,7 +56,7 @@ AI 工作台、熟人社交与自托管测试网钱包。当前需求基线为 *
 | 目录 | 内容 |
 | --- | --- |
 | `tongban` | 消费者网页、三皮肤、钱包与前端测试 |
-| `yubenzhe-deploy` | 产品账号、社交、积分、工作台、独立管理端、SQLite 与运维 |
+| `yubenzhe-deploy` | 产品账号、社交、设备 AI、人工决策、工作台、独立管理端、SQLite 与运维 |
 | `contracts` | 已部署至 BSC 测试网的一次性链上分发合约、本地测试与链上验收记录 |
 | `tongban-android` | Android 工程 |
 | `yubenzhe-ios` | iOS 工程，需要完整 Xcode 的 Mac |
