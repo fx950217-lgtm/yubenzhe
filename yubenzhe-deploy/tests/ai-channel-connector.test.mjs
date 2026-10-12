@@ -10,6 +10,7 @@ import {PassThrough} from 'node:stream';
 import {createCodexJsonlParser,createCodexRunner,killCodexProcessTree,validateCodexPaths,codexExecutionArguments,assertCodexConfigBoundary} from '../device-bridge/codex-runner.mjs';
 import {createAIChannel,openAIChannelJournal,parseAIChannelArguments,redactAIChannelText} from '../device-bridge/ai-channel.mjs';
 import {generateKeyPairSync} from 'node:crypto';
+import {checkedProvidersReport} from '../server/ai-providers.mjs';
 
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 async function fixture(t){const base=await mkdtemp(path.join(tmpdir(),'ybz-ai-fixture-'));t.after(()=>rm(base,{recursive:true,force:true}));const workspace=path.join(base,'work'),runtimeDir=path.join(base,'private');await mkdir(workspace);await mkdir(runtimeDir);const statePath=path.join(base,'pair.json');await writeFile(statePath,JSON.stringify({origin:'https://relay.example',token:'a'.repeat(43)}));return {base,workspace,runtimeDir,statePath};}
@@ -110,6 +111,30 @@ test('observed read-only sandbox rejection on stderr cannot report successful ex
 });
 
 const registryProvider=(id,ready=true)=>({id,name:id,installed:true,loggedIn:id==='ollama'?null:true,version:'1.2.3',reason:'fixture metadata',executionSupported:ready,executionMode:ready?(id==='ollama'?'chat-only':'tools'):'disabled'});
+test('real entry scan calibration tolerates device clock skew without weakening relay time checks',async t=>{
+ for(const offset of [160000,-160000,86400000,-86400000]){
+  const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[],logs=[];let mono=0,scans=0,health=0,wallOffset=offset;const serverEpoch=Date.UTC(2026,9,13);
+  runner.loginStatus=async()=>{scans++;return {providers:[registryProvider('codex')],scannedAt:serverEpoch+mono+wallOffset};};
+  const channel=await createAIChannel({...f,runner,calibrateScanClock:true,clock:()=>mono,log:entry=>logs.push(entry),fetchImpl:async(url,options)=>{
+   if(url.endsWith('/healthz')){health++;assert.equal(options.headers.Authorization,undefined);return new Response('{}',{headers:{Date:new Date(serverEpoch).toUTCString()}});}
+   const input=JSON.parse(options.body);inputs.push(input);checkedProvidersReport(input.status,serverEpoch+mono);return response(reply(input,{serverNow:serverEpoch+mono,expiresAt:serverEpoch+mono+15000}));
+  }});t.after(()=>channel.close());
+  await channel.pollOnce();assert.equal(inputs[0].status.scannedAt,serverEpoch);assert.equal(logs.at(-1).code,'AI_CONNECTED');
+  mono=15000;wallOffset=-offset*2;await channel.pollOnce();assert.equal(inputs[1].status.scannedAt,serverEpoch,'cached scan is not refreshed by heartbeat or wall clock jumps');
+  mono=60000;await channel.pollOnce();assert.equal(inputs[2].status.scannedAt,serverEpoch+60000);assert.equal(scans,2);assert.equal(health,1);assert.equal(channel.stopped,false);
+ }
+});
+test('clock failure blocks heartbeat and reports only safe transport codes, then reports real recovery',async t=>{
+ const f=await fixture(t),runner=fakeRunner(f.workspace),logs=[];let okay=false,requests=0;const epoch=Date.UTC(2026,9,13);
+ const channel=await createAIChannel({...f,runner,calibrateScanClock:true,clock:()=>0,log:entry=>logs.push(entry),fetchImpl:async(url,options)=>{
+  if(url.endsWith('/healthz')){if(!okay)throw Error('private-credential-do-not-echo');return new Response('{}',{headers:{Date:new Date(epoch).toUTCString()}});}
+  requests++;return response(reply(JSON.parse(options.body),{serverNow:epoch,expiresAt:epoch+15000}));
+ }});t.after(()=>channel.close());await channel.pollOnce();await channel.pollOnce();assert.equal(requests,0);assert.equal(logs.length,1);assert.equal(logs[0].reason,'AI_RELAY_CLOCK_UNAVAILABLE');assert.doesNotMatch(JSON.stringify(logs),/private-credential/);
+ okay=true;await channel.pollOnce();assert.equal(requests,1);assert.equal(logs.at(-1).code,'AI_CONNECTED');
+});
+test('rejected provider heartbeat exposes bounded error code without CLI diagnostics or response body',async t=>{
+ const f=await fixture(t),logs=[];const channel=await createAIChannel({...f,runner:fakeRunner(f.workspace),log:entry=>logs.push(entry),fetchImpl:async()=>new Response(JSON.stringify({code:'INVALID_AI_SCAN_TIME',message:'private-server-detail'}),{status:400})});t.after(()=>channel.close());await channel.pollOnce();assert.deepEqual(logs,[{code:'AI_CONNECTION_INTERRUPTED',reason:'INVALID_AI_SCAN_TIME',status:400}]);assert.equal(channel.stopped,false);
+});
 test('modern connector dispatches the selected provider, projects public metadata and skips chat-only file hooks',async t=>{
  const f=await fixture(t),runner=fakeRunner(f.workspace),inputs=[];let sent=false;
  runner.loginStatus=async()=>({providers:[{...registryProvider('ollama'),executable:'private-path',authOutput:'private-output'}],scannedAt:123,executables:{ollama:'private-path'}});

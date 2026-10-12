@@ -22,12 +22,12 @@
   },
   "files": {
     "yubenzhe-0.14.0-dev.15-windows-x64-setup.exe": {
-      "bytes": 112625516,
-      "sha256": "281a02c5f14dfb9cb9dee3696a27f626d2ef4ab7b0e37111305bf0f7b91098cb"
+      "bytes": 112627163,
+      "sha256": "66f7f8e685a6fe59c1984f6bdb5b22d70d64edd36efa9d7f80b0c94fc30c77f0"
     },
     "yubenzhe-0.14.0-dev.15-windows-x64.zip": {
-      "bytes": 154239605,
-      "sha256": "91f38d017b19968e2f5a7a8e1dda4ba44c8e6e2a893d8cc5bdce25c625ab4849"
+      "bytes": 154241059,
+      "sha256": "acade8b4a428a7f674dcf0bd7df0a951d4765f1d35976901879a04d29b197cc8"
     }
   },
   "webAssets": {

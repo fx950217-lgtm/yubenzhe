@@ -19,7 +19,7 @@ process.parentPort?.on('message',async({data})=>{
   const config=data.config;
   const runner=await createProviderRunner({executables:config.executables||{},executable:config.executable,workspace:config.workspace,ollamaModel:config.ollamaModel||null});
   const {ai,files,autoStart}=config.capabilities||{};
-  channel=await createAIChannel({...config,capabilities:{...(ai?{ai}:{}),...(files?{files}:{}),...(autoStart?{autoStart}:{})},runner,fileHooksFactory:createAIChannelFiles});tell({kind:'ready'});
+   channel=await createAIChannel({...config,calibrateScanClock:true,capabilities:{...(ai?{ai}:{}),...(files?{files}:{}),...(autoStart?{autoStart}:{})},runner,fileHooksFactory:createAIChannelFiles,log:entry=>{if(['AI_CONNECTED','AI_CONNECTION_INTERRUPTED','AI_REVOKED'].includes(entry.code))tell({kind:'connection',code:entry.code,reason:entry.reason,status:entry.status});}});tell({kind:'ready'});
   try{await channel.run({signal:controller.signal});}finally{await channel.close();}process.exit(0);
  }catch{tell({kind:'error'});process.exitCode=1;process.exit(1);}
 });

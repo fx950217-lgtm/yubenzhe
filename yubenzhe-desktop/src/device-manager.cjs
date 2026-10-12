@@ -32,7 +32,19 @@ function createDeviceManager({electron,showApp,connectorDirectory,probeImpl=null
  async function startImpl(epoch){if(unreadable||stopFailed)throw Error('请先解决设备凭据或停止状态，再启动连接。');if(closed||epoch!==intent||state.running||!state.token)return publicState(state);await probe();if(closed||epoch!==intent)return publicState(state);await writePrivateState();if(closed||epoch!==intent){await fs.unlink(privateFile).catch(()=>{});return publicState(state);}state.enabled=true;await persist();if(closed||epoch!==intent)return publicState(state);const config={statePath:privateFile,runtimeDir:path.join(runtime,'ai'),workspace,executable:state.executable,executables:state.executables,providers:state.providers,scannedAt:state.scannedAt,ollamaModel:normalizeOllamaModel(state.ollamaModel),capabilities:state.capabilities,source:state.source};
   try{worker=utilityProcess.fork(path.join(connector,'desktop-worker.mjs'),[],{serviceName:'YBZ device AI connector',cwd:runtime,env:safeEnvironment(),stdio:'pipe'});
   worker.stdout?.on('data',()=>{});worker.stderr?.on('data',()=>{});
-  worker.on('message',value=>{if(value?.kind==='ready')update('设备连接器已启动；手机可查看实际在线状态。');else if(value?.kind==='error')update('连接器未继续执行，请检查本机登录与运行环境。');});
+   worker.on('message',value=>{
+    if(value?.kind==='ready')update('设备连接器已启动，正在核验与手机的连接。');
+    else if(value?.kind==='connection'){
+     if(value.code==='AI_CONNECTED')update('AI 通道已连接，手机可查看实际在线状态。');
+     else if(value.code==='AI_REVOKED')update('设备连接授权已失效，请在手机核对。');
+     else if(value.code==='AI_CONNECTION_INTERRUPTED'){
+      const reasons=['INVALID_AI_SCAN_TIME','AI_PROVIDER_SCAN_REPLAY','INVALID_AI_PROVIDERS','INVALID_AI_STATUS','AI_RELAY_CLOCK_UNAVAILABLE','AI_TLS_UNVERIFIED','AI_RELAY_REJECTED','AI_RELAY_UNREACHABLE'];
+      const reason=reasons.includes(value.reason)?value.reason:'AI_RELAY_UNREACHABLE';
+      const status=Number.isInteger(value.status)&&value.status>=400&&value.status<=599?' / HTTP '+value.status:'';
+      update('AI 通道尚未连接，请核对网络与服务状态。（'+reason+status+'）');
+     }
+    }else if(value?.kind==='error')update('连接器未继续执行，请检查本机登录与运行环境。');
+   });
   worker.once('exit',()=>{worker=null;state.running=Boolean(screen);update('AI 连接器已停止。');});worker.postMessage({kind:'start',config});
   if(state.capabilities.screen.state==='supported'||state.capabilities.screen.state==='partial'){
    screen=utilityProcess.fork(path.join(connector,'desktop-worker.mjs'),[],{serviceName:'YBZ screen connector',cwd:runtime,env:safeEnvironment(),stdio:'pipe'});screen.stdout?.on('data',()=>{});screen.stderr?.on('data',()=>{});screen.once('exit',()=>{screen=null;state.running=Boolean(worker);update();});screen.postMessage({kind:'screen',statePath:privateFile});

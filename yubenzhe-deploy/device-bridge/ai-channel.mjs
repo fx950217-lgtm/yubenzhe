@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {safeCodexMessage,redactAIChannelText} from './codex-runner.mjs';
 import {createProviderRunner} from './provider-runner.mjs';
 export {redactAIChannelText} from './codex-runner.mjs';
-import {localDeadline} from './protocol.mjs';
+import {localDeadline,createRelayScanClock} from './protocol.mjs';
 import {createAIChannelFiles} from './ai-channel-files.mjs';
 
 const fail=(code,message)=>Object.assign(new Error(message),{code});
@@ -52,31 +52,32 @@ export async function openAIChannelJournal({runtimeDir,workspace,maxStarted=2048
  },has:taskId=>state.started.includes(hash(taskId)),get full(){return state.started.length>=maxStarted;},async markStarted(taskId){if(!id(taskId))throw fail('AI_TASK_INVALID','任务标识无效。');if(this.has(taskId))return false;if(this.full)throw fail('AI_JOURNAL_FULL','任务去重记录已满，请先归档并人工确认历史任务不会重发。');state.started.push(hash(taskId));await persist();return true;},async close(){await writing;await lock.close();await unlink(lockPath).catch(()=>{});}};
 }
 
-export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=globalThis.fetch,workspaceLabel,clock=()=>performance.now(),log=()=>{},fileHooks=null,fileHooksFactory=null,heartbeatMs=15000,maxStarted=2048,capabilities=null,source=null}={}){
+export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=globalThis.fetch,workspaceLabel,clock=()=>performance.now(),calibrateScanClock=false,log=()=>{},fileHooks=null,fileHooksFactory=null,heartbeatMs=15000,maxStarted=2048,capabilities=null,source=null}={}){
  if(!runner?.configuration?.workspace||typeof statePath!=='string'||!path.isAbsolute(statePath))throw fail('AI_STARTUP_PATH','必须提供本机固定工作目录与绝对配对文件路径。');
  const stateFile=await realpath(statePath),cwd=await realpath(runner.configuration.workspace);
  if(inside(cwd,stateFile))throw fail('AI_STATE_PATH','设备凭据文件必须位于 AI 工作区之外。');
  const info=await stat(stateFile);if(!info.isFile()||info.size>16384)throw fail('AI_STATE_INVALID','配对文件无效。');
  const config=JSON.parse(await readFile(stateFile,'utf8'));let origin;
- try{origin=new URL(config.origin);if(origin.protocol!=='https:'||origin.origin!==config.origin||origin.username||origin.password)throw Error();}catch{throw fail('AI_HTTPS_REQUIRED','连接器只允许已配对的可信 HTTPS 服务，不提供 HTTP 例外。');}
+  try{origin=new URL(config.origin);if(origin.protocol!=='https:'||origin.origin!==config.origin||origin.username||origin.password)throw Error();}catch{throw fail('AI_HTTPS_REQUIRED','连接器只允许已配对的可信 HTTPS 服务，不提供 HTTP 例外。');}
+ const scanClock=calibrateScanClock?createRelayScanClock({origin:origin.origin,fetchImpl,clock}):null;
  if(!/^[A-Za-z0-9_-]{43}$/.test(config.token||'')&&!/^[A-Za-z0-9_-]{43}$/.test(config.pairToken||''))throw fail('AI_STATE_INVALID','需要现有设备凭据或尚未过期的配对文件。');
  if(!Number.isFinite(heartbeatMs)||heartbeatMs<=0||heartbeatMs>15000)throw fail('AI_LEASE_INVALID','授权心跳不能超过十五秒。');
  const journal=await openAIChannelJournal({runtimeDir,workspace:cwd,maxStarted});
  const label=String(workspaceLabel||path.basename(cwd)).slice(0,80);
  const active=new Map(),maxConcurrent=runner.configuration.maxConcurrent||1;let stopped=false,polling=false,statusCode='error',lastLoginCheck=-Infinity,scanPending=null;
  if(!Number.isInteger(maxConcurrent)||maxConcurrent<1||maxConcurrent>3)throw fail('AI_CAPACITY','并发上限无效。');
- let providers=[],scannedAt=0;
+  let providers=[],scannedAt=0,connectionState=null;
  const overallStatus=()=>providers.some(provider=>provider.executionSupported)?'ready':providers.some(provider=>provider.installed&&provider.loggedIn===false)?'login-required':'error';
  function recordStatus(login){
   if(Array.isArray(login.providers)){
-   providers=login.providers.map(({id,name,installed,loggedIn,version,reason,executionSupported,executionMode})=>({id,name,installed,loggedIn,version,reason,executionSupported,executionMode}));scannedAt=login.scannedAt;
+    providers=login.providers.map(({id,name,installed,loggedIn,version,reason,executionSupported,executionMode})=>({id,name,installed,loggedIn,version,reason,executionSupported,executionMode}));scannedAt=scanClock?scanClock.timestamp():login.scannedAt;
    statusCode=overallStatus();
   }else{
    // A pre-registry runner is explicitly Codex-only. Missing provider metadata
    // never makes an unrelated AI available or routes its prompt to Codex.
    const ready=login.code==='ready';
    providers=[{id:'codex',name:'Codex',installed:true,loggedIn:ready?true:login.code==='login-required'?false:null,version:null,reason:ready?'旧版 Codex 连接器已登录；仅支持 Codex。':'旧版 Codex 连接器尚未就绪。',executionSupported:ready,executionMode:ready?'tools':'disabled'}];
-   scannedAt=Date.now();statusCode=['ready','login-required','quota','error'].includes(login.code)?login.code:'error';
+    scannedAt=scanClock?scanClock.timestamp():Date.now();statusCode=['ready','login-required','quota','error'].includes(login.code)?login.code:'error';
   }
  }
  async function call(route,input,{signal}={}){
@@ -163,7 +164,7 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
     // renew facts, not manufacture a new timestamp from cached login state.
     try{recordStatus(await runner.loginStatus());}catch{
      providers=providers.map(provider=>({...provider,executionSupported:false,executionMode:'disabled',reason:'本机检测未完成，请在电脑刷新后再试。'}));
-     scannedAt=Date.now();statusCode='error';
+      scannedAt=scanClock?scanClock.timestamp():Date.now();statusCode='error';
     }
     if(!stopped)for(const current of active.values())if(!current.terminal&&!providers.some(provider=>provider.id===current.provider&&provider.executionSupported))stopTask('AI_PROVIDER_UNAVAILABLE',current);
    })().finally(()=>{scanPending=null;});return scanPending;
@@ -175,14 +176,18 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
    // its occupied slot until the child exits, while siblings keep heartbeating.
    void retireServerTerminal(current,'AI_LEASE_EXPIRED');
   }
-  enforceLease();log({code:error.status===401?'AI_REVOKED':'AI_CONNECTION_INTERRUPTED'});
+   const code=error.status===401||error.status===403&&stopped?'AI_REVOKED':'AI_CONNECTION_INTERRUPTED';
+   const reason=['INVALID_AI_SCAN_TIME','AI_PROVIDER_SCAN_REPLAY','INVALID_AI_PROVIDERS','INVALID_AI_STATUS'].includes(error.relayCode)?error.relayCode:error.code==='AI_RELAY_CLOCK_UNAVAILABLE'?error.code:['CERT_HAS_EXPIRED','UNABLE_TO_VERIFY_LEAF_SIGNATURE','DEPTH_ZERO_SELF_SIGNED_CERT','ERR_TLS_CERT_ALTNAME_INVALID'].includes(error.cause?.code)?'AI_TLS_UNVERIFIED':Number.isInteger(error.status)?'AI_RELAY_REJECTED':'AI_RELAY_UNREACHABLE';
+   const status=Number.isInteger(error.status)&&error.status>=400&&error.status<=599?error.status:undefined;
+   enforceLease();const key=code+':'+reason+':'+status;if(connectionState!==key){connectionState=key;log({code,reason,...(status?{status}:{})});}
  }
  async function pollTask(current){
   if(stopped||current?.retiring)return;
   try{
    const input={...(maxConcurrent>1?{capacity:runner.canDispatch?.()===false?0:maxConcurrent}:{}),connectorId:journal.connectorId,...(current?{taskId:current.id,leaseId:current.leaseId}:{}),events:current?current.events.slice(0,20):[],status:{code:statusCode,workspaceLabel:label,providers,scannedAt,decisionProtocolVersion:runner.configuration.isolatedTasks===true?1:0,...(fileHooks?.publicKey?{filePublicKey:fileHooks.publicKey}:{}),...(capabilities?{capabilities}:{}),...(source?{source}:{})}};
    const sentAt=clock(),reply=await call('ai/poll',input),receivedAt=clock();
-   if(!Number.isFinite(reply.serverNow)||!Number.isFinite(reply.expiresAt)||!Number.isSafeInteger(reply.ack)||reply.ack<0)throw fail('AI_RELAY_RESPONSE','授权租约响应无效。');
+    if(!Number.isFinite(reply.serverNow)||!Number.isFinite(reply.expiresAt)||!Number.isSafeInteger(reply.ack)||reply.ack<0)throw fail('AI_RELAY_RESPONSE','授权租约响应无效。');
+    if(connectionState!=='AI_CONNECTED'){connectionState='AI_CONNECTED';log({code:'AI_CONNECTED'});}
    if(stopped)return;
    if(current&&active.get(current.id)===current){
     if(reply.cancelTaskId===current.id){void retireServerTerminal(current);return;}
@@ -198,7 +203,7 @@ export async function createAIChannel({statePath,runtimeDir,runner,fetchImpl=glo
  async function pollOnce(){
   if(stopped||polling)return;polling=true;
   try{
-   await enroll();enforceLease();
+    await enroll();if(scanClock)await scanClock.synchronize();enforceLease();
    if(clock()-lastLoginCheck>=60000){const scan=refreshStatus();if(!active.size)await scan;}
    if(journal.full)statusCode='error';
    // Network calls and process shutdowns for one task must not consume the
@@ -221,7 +226,7 @@ export function parseAIChannelArguments(args){
 
 async function main(){
  const options=parseAIChannelArguments(process.argv.slice(2));const runner=await createProviderRunner(options);
- const channel=await createAIChannel({...options,runner,fileHooksFactory:createAIChannelFiles,log:entry=>console.log(JSON.stringify(entry))});
+  const channel=await createAIChannel({...options,runner,calibrateScanClock:true,fileHooksFactory:createAIChannelFiles,log:entry=>console.log(JSON.stringify(entry))});
  const controller=new AbortController(),stop=()=>controller.abort();process.once('SIGINT',stop);process.once('SIGTERM',stop);
  try{await channel.run({signal:controller.signal});}finally{await channel.close();}
 }
