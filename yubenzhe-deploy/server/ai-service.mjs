@@ -22,8 +22,8 @@ export function createAiService({database,provider,now=Date.now,maintenanceMs=10
   const db=database.raw,workers=new Map();let closed=false,readinessFlight=null;
   function transaction(operation){db.exec('BEGIN IMMEDIATE');try{const result=operation();db.exec('COMMIT');return result;}catch(error){db.exec('ROLLBACK');throw error;}}
   function actor(user,role){if(!user||typeof user.userId!=='string'||!user.userId||user.userId.length>500)fail(401,'SIGN_IN_REQUIRED','请先使用验收身份登录。');if(!['admin','frontend'].includes(role))fail(403,'OWNER_ONLY','访问身份无效。');return {id:user.userId,role};}
-  function workspace(identity,workspaceId){const row=db.prepare('SELECT * FROM ai_workspaces WHERE id=?').get(workspaceId);if(!row||(identity.role!=='admin'&&row.owner_id!==identity.id))fail(404,'NOT_FOUND','工作区不存在。');return row;}
-  function task(identity,taskId){const row=db.prepare('SELECT * FROM ai_tasks WHERE id=?').get(taskId);if(!row||(identity.role!=='admin'&&row.owner_id!==identity.id))fail(404,'NOT_FOUND','任务不存在。');return row;}
+  function workspace(identity,workspaceId){const row=db.prepare('SELECT * FROM ai_workspaces WHERE id=?').get(workspaceId);if(!row||(identity.role!=='admin'&&(row.owner_id!==identity.id||row.id.startsWith('group-')&&!identity.allowGroup)))fail(404,'NOT_FOUND','工作区不存在。');return row;}
+  function task(identity,taskId){const row=db.prepare('SELECT * FROM ai_tasks WHERE id=?').get(taskId);if(!row||(identity.role!=='admin'&&(row.owner_id!==identity.id||row.workspace_id.startsWith('group-')&&!identity.allowGroup)))fail(404,'NOT_FOUND','任务不存在。');return row;}
   function audit(identity,action,{workspaceId=null,taskId=null,from=null,to=null,reason='',requestId=null}={}){db.prepare('INSERT INTO ai_audit VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(id('audit'),identity.id,identity.role,action,workspaceId,taskId,from,to,reason,requestId,now());}
   function cached(identity,operation,input){requestId(input.requestId);const fingerprint=hash({operation,input});const record=db.prepare('SELECT * FROM ai_requests WHERE actor_role=? AND actor_id=? AND request_id=?').get(identity.role,identity.id,input.requestId);if(record&&record.fingerprint!==fingerprint)fail(409,'IDEMPOTENCY_CONFLICT','此请求标识已用于其他操作，请刷新后重新提交。');return {fingerprint,result:record?JSON.parse(record.response_json):null};}
   function remember(identity,input,fingerprint,result){db.prepare('INSERT INTO ai_requests VALUES(?,?,?,?,?,?)').run(identity.role,identity.id,input.requestId,fingerprint,JSON.stringify(result),now());return result;}
@@ -52,24 +52,78 @@ export function createAiService({database,provider,now=Date.now,maintenanceMs=10
     return mutate(identity,operation,input,()=>{row=workspace(identity,workspaceId);ensureVersion(row,input.version);if(!transition[0].includes(row.status))fail(409,'STATE_CONFLICT','当前状态不能执行此操作。');if(['activate','resume'].includes(action)&&!capabilities().cloud.ready)fail(503,'AI_NOT_READY','模型尚未就绪，工作区状态未改变。');const target=transition[1];db.prepare('UPDATE ai_workspaces SET status=?,version=version+1,review_note=?,updated_at=? WHERE id=?').run(target,reason,now(),row.id);if(['paused','closed','cancelled','rejected'].includes(target))cancelRunning(identity,row,reason,req);audit(identity,'workspace.'+action,{workspaceId,from:row.status,to:target,reason,requestId:req});return {workspace:item(workspace(identity,workspaceId))};});
   }
   async function createTask(identity,workspaceId,input){fields(input,['prompt','version','requestId']);const prompt=text(input.prompt,1,AI_LIMITS.maxInputChars,'任务内容');const previous=cached(identity,'task.create.'+workspaceId,input);if(previous.result)return previous.result;const before=workspace(identity,workspaceId);ensureVersion(before,input.version);if(before.status!=='active')fail(409,'WORKSPACE_NOT_ACTIVE','工作区尚未开通或已暂停。');await refreshOwnedReadiness(identity);let created=null;const result=mutate(identity,'task.create.'+workspaceId,input,()=>{const row=workspace(identity,workspaceId);ensureVersion(row,input.version);if(row.status!=='active')fail(409,'WORKSPACE_NOT_ACTIVE','工作区尚未开通或已暂停。');const cap=capabilities();if(!cap.cloud.configured)fail(503,'AI_NOT_CONFIGURED',cap.cloud.message);if(!cap.cloud.ready)fail(503,'AI_NOT_READY','模型连接尚未验证或验证已过期，请联系管理员。');const date=utcDay(now());const q=quota(workspaceId);if(!q.remaining)fail(429,'DAILY_QUOTA_EXCEEDED','本工作区今日免费验收次数已用完（失败和取消也计入次数）。');if(db.prepare('SELECT COUNT(*) AS n FROM ai_tasks WHERE owner_id=? AND quota_date=?').get(identity.id,date).n>=AI_LIMITS.dailyOwnerTasks||db.prepare('SELECT COUNT(*) AS n FROM ai_tasks WHERE quota_date=?').get(date).n>=AI_LIMITS.dailyGlobalTasks)fail(429,'DAILY_QUOTA_EXCEEDED','今日免费验收总次数已用完，请明日再试。');if(db.prepare("SELECT COUNT(*) AS n FROM ai_tasks WHERE status='running' AND workspace_id=?").get(workspaceId).n>=AI_LIMITS.workspaceConcurrency||db.prepare("SELECT COUNT(*) AS n FROM ai_tasks WHERE status='running'").get().n>=limits.globalConcurrency)fail(429,'CONCURRENCY_LIMIT','已有任务执行中，请等待或取消后重试。');const taskId=id('task'),time=now();db.prepare('INSERT INTO ai_tasks(id,workspace_id,owner_id,prompt,status,version,quota_date,created_at,updated_at,lease_until,config_fingerprint) VALUES(?,?,?,?,?,1,?,?,?,?,?)').run(taskId,workspaceId,identity.id,prompt,'running',date,time,time,time+(provider.executionTimeoutMs||30000)+15000,provider.fingerprint);audit(identity,'task.submit',{workspaceId,taskId,to:'running',reason:'免费验收调用；不消耗服务积分',requestId:input.requestId});created=taskId;return {task:taskItem(task(identity,taskId))};});if(created)startWorker(created);return result;}
+
+  function chatWorkspace(identity){
+    let row=db.prepare("SELECT * FROM ai_workspaces WHERE owner_id=? AND id LIKE 'chat-%' ORDER BY created_at LIMIT 1").get(identity.id);
+    if(!row){
+      identity.assertAuthorized?.();
+      const time=now(),workspaceId=id('chat');
+      db.prepare("INSERT INTO ai_workspaces VALUES(?,?,?,?,?,'active',1,'个人免费对话',?,?)").run(workspaceId,identity.id,'我的 AI 助手','content','用中文协助用户澄清目标、撰写内容和整理工作计划。说明不确定性；仅返回文本，不能声称已经执行电脑操作。',time,time);
+      row=workspace(identity,workspaceId);
+      audit(identity,'chat.create',{workspaceId,to:'active',reason:'用户主动开启个人免费对话'});
+    }
+    return row;
+  }
+  function chatView(identity){
+    const row=db.prepare("SELECT * FROM ai_workspaces WHERE owner_id=? AND id LIKE 'chat-%' ORDER BY created_at LIMIT 1").get(identity.id);
+    return {workspace:item(row),tasks:row?db.prepare('SELECT * FROM ai_tasks WHERE workspace_id=? ORDER BY created_at DESC,id LIMIT 100').all(row.id).map(taskItem):[],quota:row?quota(row.id):{limit:AI_LIMITS.dailyTasks,used:0,remaining:AI_LIMITS.dailyTasks},capabilities:capabilities()};
+  }
+  async function chatMessage(identity,input){
+    fields(input,['prompt','requestId']);
+    text(input.prompt,1,AI_LIMITS.maxInputChars,'问题');requestId(input.requestId);
+    const row=transaction(()=>chatWorkspace(identity));
+    return createTask(identity,row.id,{prompt:input.prompt,version:row.version,requestId:input.requestId});
+  }
   function cancelTask(identity,taskId,input){fields(input,['version','requestId']);return mutate(identity,'task.cancel.'+taskId,input,()=>{const row=task(identity,taskId);ensureVersion(row,input.version);if(row.status!=='running')fail(409,'STATE_CONFLICT','任务已经结束，不能再次取消。');db.prepare("UPDATE ai_tasks SET status='cancelled',version=version+1,updated_at=?,finished_at=?,error_code='AI_CANCELLED',error_message='已取消；本次尝试仍计入免费验收次数。' WHERE id=?").run(now(),now(),taskId);audit(identity,'task.cancel',{workspaceId:row.workspace_id,taskId,from:row.status,to:'cancelled',reason:'申请人取消执行',requestId:input.requestId});workers.get(taskId)?.controller.abort();return {task:taskItem(task(identity,taskId))};});}
   function finish(taskId,result,error){transaction(()=>{const row=db.prepare('SELECT * FROM ai_tasks WHERE id=?').get(taskId);if(!row||row.status!=='running')return;const ws=db.prepare('SELECT status FROM ai_workspaces WHERE id=?').get(row.workspace_id);if(ws?.status!=='active'||row.lease_until<now()||row.config_fingerprint!==provider.fingerprint){db.prepare("UPDATE ai_tasks SET status='cancelled',version=version+1,updated_at=?,finished_at=?,error_code='AI_CANCELLED',error_message='任务上下文已失效，未接收迟到结果。' WHERE id=?").run(now(),now(),taskId);audit({id:'system',role:'system'},'task.cancel',{workspaceId:row.workspace_id,taskId,from:'running',to:'cancelled',reason:'工作区状态或执行期限已经改变'});return;}
       const code=error?(Object.hasOwn(taskErrorMessages,error.code)?error.code:'AI_PROVIDER_UNAVAILABLE'):null,status=error?'failed':'succeeded';db.prepare('UPDATE ai_tasks SET status=?,version=version+1,output=?,error_code=?,error_message=?,usage_json=?,updated_at=?,finished_at=? WHERE id=?').run(status,error?null:result.output,code,code?taskErrorMessages[code]:null,error||!result.usage?null:JSON.stringify(result.usage),now(),now(),taskId);if(error)health(false,'最近一次模型任务失败，请重新验证模型连接。');audit({id:'system',role:'system'},'task.'+status,{workspaceId:row.workspace_id,taskId,from:'running',to:status,reason:error?taskErrorMessages[code]:'已保存模型服务实际返回的文本'});
     });}
-  function startWorker(taskId){const controller=new AbortController();const job={controller,promise:null};workers.set(taskId,job);job.promise=(async()=>{try{const row=db.prepare('SELECT * FROM ai_tasks WHERE id=?').get(taskId),ws=db.prepare('SELECT * FROM ai_workspaces WHERE id=?').get(row.workspace_id);if(row.status!=='running'||ws.status!=='active')return;const result=await provider.run({purpose:ws.purpose,requirements:ws.requirements,prompt:row.prompt,signal:controller.signal});if(!closed)finish(taskId,result,null);}catch(error){if(!closed)finish(taskId,null,error);}finally{workers.delete(taskId);}})();job.promise.catch(()=>{});}
+  function startWorker(taskId){const controller=new AbortController();const job={controller,promise:null};workers.set(taskId,job);job.promise=(async()=>{try{const row=db.prepare('SELECT * FROM ai_tasks WHERE id=?').get(taskId),ws=db.prepare('SELECT * FROM ai_workspaces WHERE id=?').get(row.workspace_id);if(row.status!=='running'||ws.status!=='active')return;const history=ws.id.startsWith('chat-')?db.prepare("SELECT prompt,output FROM ai_tasks WHERE workspace_id=? AND status='succeeded' AND id<>? ORDER BY created_at DESC,id LIMIT 4").all(ws.id,row.id).reverse().flatMap(t=>[{role:'user',content:t.prompt.slice(0,1500)},{role:'assistant',content:t.output.slice(0,1500)}]):[];const result=await provider.run({purpose:ws.purpose,requirements:ws.requirements,prompt:row.prompt,history,signal:controller.signal});if(!closed)finish(taskId,result,null);}catch(error){if(!closed)finish(taskId,null,error);}finally{workers.delete(taskId);}})();job.promise.catch(()=>{});}
   function maintain(){if(closed)return;try{for(const [taskId,job]of workers){const row=db.prepare('SELECT status FROM ai_tasks WHERE id=?').get(taskId);if(row?.status!=='running')job.controller.abort();}transaction(()=>{for(const row of db.prepare("SELECT * FROM ai_tasks WHERE status='running' AND lease_until<?").all(now())){db.prepare("UPDATE ai_tasks SET status='failed',version=version+1,error_code='AI_EXECUTION_INTERRUPTED',error_message='执行中断或超过期限；未自动重试，避免重复调用。',updated_at=?,finished_at=? WHERE id=? AND status='running'").run(now(),now(),row.id);audit({id:'system',role:'system'},'task.failed',{workspaceId:row.workspace_id,taskId:row.id,from:'running',to:'failed',reason:'执行中断或超时；未自动重试'});}});}catch{/* No payloads or credentials are logged; next bounded maintenance run retries. */}}
   const timer=setInterval(maintain,maintenanceMs);timer.unref();
   return {
     capabilities,
+    // Server-only bridge. Group authorization stays in the social orchestrator;
+    // the browser cannot select a model owner or activate these workspaces.
+    groupProposals: {
+      capabilities:()=>({configured:!!provider.configured,ready:capabilities().cloud.ready,mode:'real-provider',missing:provider.configured?[]:['AI_PROVIDER','AI_MODEL']}),
+      async start({ownerId,scopeId,prompt,requestId:operationId,assertAuthorized}) {
+        if(closed)fail(503,'AI_UNAVAILABLE','AI 服务已停止。');
+        if(typeof assertAuthorized!=='function'||!/^[-a-f0-9]{36}$/.test(ownerId||'')||!/^[-a-f0-9]{36}$/.test(scopeId||''))fail(400,'GROUP_AI_SCOPE','群方案上下文无效。');
+        assertAuthorized();text(prompt,1,AI_LIMITS.maxInputChars,'群任务');requestId(operationId);
+        if(!provider.configured)fail(503,'AI_NOT_CONFIGURED','AI 方案需要配置真实模型；没有使用模拟方案替代。');
+        const identity={id:'social:'+ownerId,role:'frontend',allowGroup:true,assertAuthorized},workspaceId='group-'+scopeId;
+        const row=transaction(()=>{
+          assertAuthorized();let current=db.prepare('SELECT * FROM ai_workspaces WHERE id=?').get(workspaceId);
+          if(current)return workspace(identity,workspaceId);
+          if(db.prepare('SELECT COUNT(*) n FROM ai_workspaces WHERE owner_id=?').get(identity.id).n>=100)fail(429,'WORKSPACE_LIMIT','当前账号工作区数量已达上限。');
+          const time=now();
+          db.prepare("INSERT INTO ai_workspaces VALUES(?,?,?,?,?,'active',1,'群成员主动请求方案，执行和支付另需用户授权',?,?)").run(workspaceId,identity.id,'群协作方案','research','根据明确提供的群任务资料起草方案：目标、步骤、交付内容、验收标准和待确认事项。人负责决策、判断、方向、创意和授权；AI 仅建议。不得声称执行、验收、付款已经完成，不索取密钥，不产生任意命令或支付参数。',time,time);
+          audit(identity,'group.proposal.create',{workspaceId,to:'active',reason:'独立群任务上下文，不包含个人聊天历史'});
+          return workspace(identity,workspaceId);
+        });
+        const result=await createTask(identity,workspaceId,{prompt,version:row.version,requestId:operationId});
+        assertAuthorized();return {id:result.task.id};
+      },
+      async read({ownerId,id:taskId,assertAuthorized}) {
+        if(closed)fail(503,'AI_UNAVAILABLE','AI 服务已停止。');
+        if(typeof assertAuthorized!=='function')fail(403,'GROUP_AI_SCOPE','需要群任务授权。');
+        assertAuthorized();const row=task({id:'social:'+ownerId,role:'frontend',allowGroup:true},taskId);
+        if(!row.workspace_id.startsWith('group-'))fail(404,'NOT_FOUND','群方案不存在。');
+        return {id:row.id,status:row.status,output:row.output,error:row.error_code};
+      },
+    },
     async handle({role,user,method,path,input={},query={},assertAuthorized}){assertAuthorized?.();const identity={...actor(user,role),assertAuthorized},admin=role==='admin';
       if(method==='GET'){
+        if(!admin&&path==='chat')return {value:chatView(identity)};
         if(path==='capabilities'){await refreshOwnedReadiness(identity);identity.assertAuthorized?.();return {value:capabilities()};}
-        if(path==='workspaces'){if(query.status&&query.status!=='all'&&!statusList.includes(query.status))fail(400,'INVALID_STATUS','状态无效。');const predicates=admin?[]:['owner_id=?'],params=admin?[]:[identity.id];if(query.status&&query.status!=='all'){predicates.push('status=?');params.push(query.status);}const rows=db.prepare('SELECT * FROM ai_workspaces'+(predicates.length?' WHERE '+predicates.join(' AND '):'')+' ORDER BY created_at DESC,id LIMIT 100').all(...params);return {value:{items:rows.map(item)}};}
+        if(path==='workspaces'){if(query.status&&query.status!=='all'&&!statusList.includes(query.status))fail(400,'INVALID_STATUS','状态无效。');const predicates=admin?[]:['owner_id=?',"id NOT LIKE 'group-%'"],params=admin?[]:[identity.id];if(query.status&&query.status!=='all'){predicates.push('status=?');params.push(query.status);}const rows=db.prepare('SELECT * FROM ai_workspaces'+(predicates.length?' WHERE '+predicates.join(' AND '):'')+' ORDER BY created_at DESC,id LIMIT 100').all(...params);return {value:{items:rows.map(item)}};}
         if(/^workspaces\/[a-z0-9-]+$/.test(path)){const workspaceId=path.split('/')[1],row=workspace(identity,workspaceId);return {value:{workspace:item(row),tasks:db.prepare('SELECT * FROM ai_tasks WHERE workspace_id=? ORDER BY created_at DESC,id LIMIT 100').all(workspaceId).map(taskItem),quota:quota(workspaceId)}};}
         if(/^tasks\/[a-z0-9-]+$/.test(path))return {value:{task:taskItem(task(identity,path.split('/')[1]))}};
         if(admin&&path==='tasks'){if(query.workspaceId)workspace(identity,query.workspaceId);return {value:{items:db.prepare('SELECT * FROM ai_tasks'+(query.workspaceId?' WHERE workspace_id=?':'')+' ORDER BY created_at DESC,id LIMIT 100').all(...(query.workspaceId?[query.workspaceId]:[])).map(taskItem)}};}
         if(admin&&path==='audit'){if(query.workspaceId)workspace(identity,query.workspaceId);const rows=db.prepare('SELECT * FROM ai_audit'+(query.workspaceId?' WHERE workspace_id=?':'')+' ORDER BY created_at DESC,id LIMIT 200').all(...(query.workspaceId?[query.workspaceId]:[]));return {value:{items:rows.map(r=>({id:r.id,actorId:r.actor_id,actorRole:r.actor_role,action:r.action,workspaceId:r.workspace_id,taskId:r.task_id,fromStatus:r.from_status,toStatus:r.to_status,reason:r.reason,requestId:r.request_id,createdAt:r.created_at}))}};}
       }else if(method==='POST'){
+        if(!admin&&path==='chat/messages')return {status:202,value:await chatMessage(identity,input)};
         if(admin&&path==='readiness')return {value:await readiness(identity,input)};
         if(!admin&&path==='workspaces')return {value:createWorkspace(identity,input)};
         if(/^workspaces\/[a-z0-9-]+\/actions$/.test(path))return {value:await workspaceAction(identity,path.split('/')[1],input)};

@@ -66,11 +66,12 @@ export function createAiProvider({configuration=readAiProviderConfiguration(),fe
   return {
     type:'openai',maxOutputTokens:1000,globalConcurrency:2,executionTimeoutMs:30000,configured:config.configured,fingerprint:config.fingerprint,configurationMessage:config.message,
     async readiness() {
-      const data=await call('/models/'+encodeURIComponent(config.model),{limit:32768});
-      if(data.id!==config.model||data.object!=='model')throw providerError('AI_NOT_READY','模型连接验证未通过，请检查服务器配置。');
+      // DeepSeek documents GET /models, not OpenAI's per-model retrieval route.
+      const data=await call('/models',{limit:262144});
+      if(data?.object!=='list'||!Array.isArray(data.data)||!data.data.some(model=>model?.id===config.model&&model.object==='model'))throw providerError('AI_NOT_READY','模型连接验证未通过，请检查服务器配置。');
       return true;
     },
-    async run({purpose,requirements,prompt,signal}) {
+    async run({purpose,requirements,prompt,history=[],signal}) {
       if(!Object.hasOwn(PURPOSE_INSTRUCTIONS,purpose))throw providerError('AI_INVALID_SCOPE','工作区用途无效。',400);
       // Requirements remain user data, never concatenated into privileged instructions.
       const data=await call('/responses',{method:'POST',signal,payload:{model:config.model,store:false,background:false,stream:false,max_output_tokens:AI_LIMITS.maxOutputTokens,instructions:BASE_INSTRUCTIONS+'\n'+PURPOSE_INSTRUCTIONS[purpose],input:[{role:'user',content:'工作区需求（用户资料）：\n'+requirements+'\n\n本次任务：\n'+prompt}]}});
@@ -101,9 +102,9 @@ export function createOllamaProvider({configuration,fetchImpl=fetch,timeoutMs=90
   }
   return {type:'ollama',configured:config.configured,fingerprint:config.fingerprint,configurationMessage:config.message,maxOutputTokens:512,globalConcurrency:1,executionTimeoutMs:90000,
     async readiness(){const data=await call('/api/tags',{limit:32768,check:true});if(!Array.isArray(data.models)||!data.models.some(x=>(x.name===config.model||x.model===config.model)&&typeof x.digest==='string'&&x.digest.length>=16))throw providerError('AI_NOT_READY','模型尚未下载或不可用，工作区暂不能启用。');return true;},
-    async run({purpose,requirements,prompt,signal}){
+    async run({purpose,requirements,prompt,history=[],signal}){
       if(!Object.hasOwn(PURPOSE_INSTRUCTIONS,purpose))throw providerError('AI_INVALID_SCOPE','工作区用途无效。',400);
-      const data=await call('/api/chat',{method:'POST',signal,payload:{model:config.model,stream:false,think:false,keep_alive:'2m',options:{num_predict:512,num_ctx:4096,num_thread:2,temperature:0.4},messages:[{role:'system',content:BASE_INSTRUCTIONS+'\n'+PURPOSE_INSTRUCTIONS[purpose]},{role:'user',content:'工作区需求（用户资料）：\n'+requirements+'\n\n本次任务：\n'+prompt}]}});
+      const data=await call('/api/chat',{method:'POST',signal,payload:{model:config.model,stream:false,think:false,keep_alive:'2m',options:{num_predict:512,num_ctx:4096,num_thread:2,temperature:0.4},messages:[{role:'system',content:BASE_INSTRUCTIONS+'\n'+PURPOSE_INSTRUCTIONS[purpose]},...history,{role:'user',content:'工作区需求（用户资料）：\n'+requirements+'\n\n本次任务：\n'+prompt}]}});
       if(data.done!==true||data.done_reason!=='stop')throw providerError('AI_INCOMPLETE','模型未完整生成结果，请缩短任务后重试。');
       const output=typeof data.message?.content==='string'?data.message.content.trim():'';
       if(data.message?.role!=='assistant'||!output||output.length>32000||data.message.tool_calls?.length)throw providerError('AI_INVALID_RESPONSE','模型没有返回可用文本。');
